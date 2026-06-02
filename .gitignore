@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+auto_test_platform.db
+tests/*.db
+reports/

@@ -1,0 +1,11 @@
+url = "https://jpapi.rakumart.cn/client/userLogin"
+request = "POST"
+silent
+show-error
+location
+output = "D:\\A_zidonghuapingtai\\.rakumart_curl_output_30928_1780297125023_24396.json"
+header = "User-Agent: RakumartBulkCart/1.0"
+header = "Accept: application/json, text/plain, */*"
+form-string = "account=12345678990"
+form-string = "password=123456"
+form-string = "client_tool=1"
