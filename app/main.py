@@ -162,6 +162,12 @@ DATA_SCRIPT_API_CASES = [
         "body": {"porder_sn": "{{porder_sn}}", "count": "{{box_count}}", "length": "{{box_length}}", "width": "{{box_width}}", "height": "{{box_height}}", "weight": "{{box_weight}}"},
     },
     {
+        "key": "admin_porder_complete_box",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u6807\u8bb0\u88c5\u7bb1\u5b8c\u6210",
+        "url": "/porder.completeBox",
+        "body": {"porder_sn": "{{porder_sn}}", "freight_id_set[0]": "{{freight_id}}", "count": "{{box_count}}", "length": "{{box_length}}", "width": "{{box_width}}", "height": "{{box_height}}", "weight": "{{box_weight}}"},
+    },
+    {
         "key": "admin_porder_into_box_preview",
         "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u88c5\u7bb1\u9884\u89c8",
         "url": "/porder.intoBoxPreview",

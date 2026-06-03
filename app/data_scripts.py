@@ -2862,6 +2862,30 @@ def _freight_box_brief(payload: Dict[str, Any], limit: int = 10) -> list[Dict[st
     return boxes
 
 
+def _has_incomplete_freight_box(payload: Dict[str, Any]) -> bool:
+    boxes = _freight_box_brief(payload)
+    for box in boxes:
+        status = box.get("status")
+        status_name = str(box.get("statusName") or "")
+        if status in (None, "", 0, "0", False) or "未完成" in status_name or "空箱" in status_name:
+            return True
+    return False
+
+
+def _porder_complete_box_paths(variables: Dict[str, Any]) -> list[str]:
+    paths: list[str] = []
+    api_paths = _api_paths(variables)
+    configured = api_paths.get("admin_porder_complete_box") or variables.get("admin_porder_complete_box_path")
+    if configured:
+        paths.append(str(configured))
+    paths.extend(_as_list(variables.get("porder_complete_box_paths"), []))
+    paths.append("/porder.completeBox")
+    normalized = []
+    for path in _unique_list(paths):
+        normalized.append(path if path.startswith("/") else f"/{path}")
+    return normalized
+
+
 def _extract_stock_item(payload: Dict[str, Any], fallback_num: int, porder_detail_id: str = "") -> Dict[str, Any]:
     configured_stock_id = str(payload.get("stock_id") or "").strip()
     if configured_stock_id:
@@ -3154,6 +3178,38 @@ def _run_backend_porder_flow(
     )
     backend_log["spot_after_into_box"] = _payload_brief(spot_after_into_box_payload)
 
+    complete_box_attempts: list[Dict[str, Any]] = []
+    if _has_incomplete_freight_box(freight_after_into_box_payload):
+        complete_box_fields = {**box_fields, "freight_id_set": [freight_id]}
+        for complete_box_path in _porder_complete_box_paths(variables):
+            try:
+                complete_payload = _post_admin_urlencoded(session, base_url, complete_box_path, complete_box_fields, timeout)
+                complete_brief = _payload_brief(complete_payload)
+            except Exception as exc:
+                complete_payload = {"success": False, "message": str(exc)}
+                complete_brief = {"success": False, "message": str(exc)}
+            time.sleep(float(variables.get("after_complete_box_delay") or 0.8))
+            complete_check_payload = _post_admin_urlencoded(
+                session,
+                base_url,
+                _api_path(variables, "admin_porder_freight_list", "/porder.freightList"),
+                {"porder_sn": porder_sn, "filterByFreightNum": "false"},
+                timeout,
+            )
+            attempt = {
+                "path": complete_box_path,
+                "request": complete_box_fields,
+                "response": complete_brief,
+                "boxes": _freight_box_brief(complete_check_payload),
+                "box_completed": not _has_incomplete_freight_box(complete_check_payload),
+            }
+            complete_box_attempts.append(attempt)
+            if _api_success(complete_payload) and attempt["box_completed"]:
+                break
+    else:
+        complete_box_attempts.append({"skipped": True, "reason": "freight box already completed"})
+    backend_log["complete_box_attempts"] = complete_box_attempts
+
     to_wait_offer_payload = _post_admin_urlencoded(
         session,
         base_url,
@@ -3276,6 +3332,7 @@ def _run_backend_porder_flow(
             "add_box",
             "into_box_preview",
             "into_box_submit",
+            "complete_box",
             "to_wait_offer",
             "batch_update_freight_logistics",
             "freight_list",
