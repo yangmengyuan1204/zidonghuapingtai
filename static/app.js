@@ -29,6 +29,19 @@ const views = [
 ];
 
 const FLOW_STORAGE_KEY = "dataFactoryFlows";
+const DELETED_BUILTIN_KEY = "dataFactoryDeletedBuiltins";
+const BUILTIN_FLOW_DEFINITIONS = {
+  shopping_cart: { id: "shopping_cart_builtin", name: "\u5546\u54c1\u8d2d\u7269\u8f66" },
+  order_quote: { id: "order_quote_builtin", name: "\u8ba2\u5355\u62a5\u4ef7" },
+  balance_payment: { id: "balance_payment_builtin", name: "\u4f59\u989d\u652f\u4ed8" },
+  bank_payment: { id: "bank_payment_builtin", name: "\u94f6\u884c\u652f\u4ed8" },
+  purchase_to_shelf: { id: "purchase_to_shelf_builtin", name: "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6" },
+  purchase_to_shelf_chain: {
+    id: "purchase_to_shelf_chain_builtin",
+    name: "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6(\u7ec4\u5408\u811a\u672c)",
+  },
+  warehouse_delivery: { id: "warehouse_delivery_builtin", name: "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355" },
+};
 
 const appEl = document.querySelector("#app");
 const toastEl = document.querySelector("#toast");
@@ -293,6 +306,45 @@ function writeFlows(flows) {
   localStorage.setItem(FLOW_STORAGE_KEY, JSON.stringify(flows));
 }
 
+function readDeletedBuiltins() {
+  try {
+    const ids = JSON.parse(localStorage.getItem(DELETED_BUILTIN_KEY) || "[]");
+    return Array.isArray(ids) ? ids : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDeletedBuiltins(ids) {
+  localStorage.setItem(DELETED_BUILTIN_KEY, JSON.stringify(ids));
+}
+
+function isBuiltinDeleted(id) {
+  return readDeletedBuiltins().includes(id);
+}
+
+function markBuiltinDeleted(id) {
+  const ids = readDeletedBuiltins();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    writeDeletedBuiltins(ids);
+  }
+}
+
+function builtinDefinitionForFlow(flow) {
+  if (!flow) return null;
+  const directMatch = Object.values(BUILTIN_FLOW_DEFINITIONS).find((item) => item.id === flow.id);
+  if (directMatch) return directMatch;
+  const typeMatch = BUILTIN_FLOW_DEFINITIONS[flow.scriptType];
+  if (typeMatch && flow.name === typeMatch.name) return typeMatch;
+  return null;
+}
+
+function isDeletedBuiltinFlow(flow) {
+  const definition = builtinDefinitionForFlow(flow);
+  return Boolean(definition && isBuiltinDeleted(definition.id));
+}
+
 function newFlowId() {
   return `flow_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -320,6 +372,7 @@ function listValue(value) {
 }
 
 function ensureShoppingCartScript(flows, projects, envs, cases) {
+  if (isBuiltinDeleted("shopping_cart_builtin")) return flows;
   const scriptName = "\u5546\u54c1\u8d2d\u7269\u8f66";
   const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
   const search = cases.find((item) => item.case_name === "test-\u641c\u7d22\u5546\u54c1");
@@ -397,6 +450,7 @@ function ensureShoppingCartScript(flows, projects, envs, cases) {
 }
 
 function ensureOrderQuoteScript(flows, projects, envs, cases) {
+  if (isBuiltinDeleted("order_quote_builtin")) return flows;
   const scriptName = "\u8ba2\u5355\u62a5\u4ef7";
   const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
   const env = envs.find((item) => item.env_name === "test-\u767b\u5f55") || envs[0];
@@ -478,6 +532,7 @@ function ensureOrderQuoteScript(flows, projects, envs, cases) {
 }
 
 function ensurePaymentScript(flows, projects, envs, cases, config) {
+  if (isBuiltinDeleted(config.id)) return flows;
   const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
   const orderList = cases.find((item) => item.case_name === "\u6570\u636e\u811a\u672c-\u524d\u53f0\u8ba2\u5355\u5217\u8868");
   const payCase = cases.find((item) => item.case_name === config.caseName);
@@ -567,6 +622,7 @@ function ensurePaymentScripts(flows, projects, envs, cases) {
 }
 
 function ensurePurchaseToShelfScript(flows, projects, envs, cases) {
+  if (isBuiltinDeleted("purchase_to_shelf_builtin")) return flows;
   const scriptName = "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6";
   const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
   const env = envs.find((item) => item.env_name === "test-\u767b\u5f55") || envs[0];
@@ -603,6 +659,7 @@ function ensurePurchaseToShelfScript(flows, projects, envs, cases) {
   const defaultVariables = {
     order_sn: "",
     purchase_no: "",
+    link_quote_balance_before_shelf: true,
     purchase_status: "\u5168\u90e8",
     purchase_item_limit: 0,
     purchase_unit_price: "10",
@@ -628,6 +685,9 @@ function ensurePurchaseToShelfScript(flows, projects, envs, cases) {
     backend_code: "wnm666",
   };
   const mergedVariables = { ...defaultVariables, ...existingVariables };
+  if (mergedVariables.link_quote_balance_before_shelf === undefined || mergedVariables.link_quote_balance_before_shelf === null) {
+    mergedVariables.link_quote_balance_before_shelf = true;
+  }
   if (!mergedVariables.purchase_status) mergedVariables.purchase_status = defaultVariables.purchase_status;
   if (!mergedVariables.finance_wait_pay_status) mergedVariables.finance_wait_pay_status = defaultVariables.finance_wait_pay_status;
   if (!mergedVariables.follow_status) mergedVariables.follow_status = defaultVariables.follow_status;
@@ -652,6 +712,197 @@ function ensurePurchaseToShelfScript(flows, projects, envs, cases) {
     ? flows
         .map((flow, index) => (index === existingIndex ? nextFlow : flow))
         .filter((flow, index) => index === existingIndex || flow.id !== "purchase_to_shelf_builtin")
+    : [...flows, nextFlow];
+  writeFlows(next);
+  return next;
+}
+
+function ensurePurchaseToShelfChainScript(flows, projects, envs, cases) {
+  if (isBuiltinDeleted("purchase_to_shelf_chain_builtin")) return flows;
+  const scriptName = "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6(\u7ec4\u5408\u811a\u672c)";
+  const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
+  const env = envs.find((item) => item.env_name === "test-\u767b\u5f55") || envs[0];
+  const projectId = env?.project_id || projects[0]?.id || "";
+  if (!env) return flows;
+  const loginBody = parseJsonText(login?.body || "{}", {});
+  const existingIndex = flows.findIndex((flow) => flow.id === "purchase_to_shelf_chain_builtin") >= 0
+    ? flows.findIndex((flow) => flow.id === "purchase_to_shelf_chain_builtin")
+    : flows.findIndex((flow) => flow.name === scriptName);
+  const existingFlow = existingIndex >= 0 ? flows[existingIndex] : {};
+  let existingVariables = {};
+  try {
+    existingVariables = parseJsonText(existingFlow.variables || "{}", {});
+  } catch {
+    existingVariables = {};
+  }
+  const defaultVariables = {
+    order_item_count: 2,
+    order_item_num: 10,
+    price_cut: "0",
+    logistics_id: "1",
+    client_remark: "\u81ea\u52a8\u5316\u63d0\u51fa\u8ba2\u5355",
+    submit_order: true,
+    run_backend_flow: true,
+    purchase_status: "\u5168\u90e8",
+    purchase_item_limit: 0,
+    purchase_unit_price: "10",
+    purchase_freight: "0",
+    purchase_transition_delay: 1,
+    finance_wait_pay_status: "2",
+    finance_confirm_retries: 8,
+    finance_confirm_delay: 2,
+    finance_days: 30,
+    follow_status: "3",
+    follow_retries: 8,
+    follow_delay: 2,
+    warehouse_index: "2",
+    shelf_type_set: [1, 3],
+    prefer_empty_grid: true,
+    inspection_transition_delay: 1,
+    account: loginBody.account || "12345678990",
+    password: loginBody.password || "123456",
+    client_tool: "1",
+    backend_account: "Y001",
+    backend_password: "raku@123456``",
+    backend_system: "1",
+    backend_code: "wnm666",
+  };
+  const mergedVariables = { ...defaultVariables, ...existingVariables };
+  if (!Array.isArray(mergedVariables.shelf_type_set)) mergedVariables.shelf_type_set = defaultVariables.shelf_type_set;
+  if (mergedVariables.prefer_empty_grid === false) mergedVariables.prefer_empty_grid = true;
+  if (existingVariables.account === "abner" && loginBody.account) mergedVariables.account = loginBody.account;
+  if (existingVariables.password === "12345" && loginBody.password) mergedVariables.password = loginBody.password;
+  const nextFlow = {
+    ...existingFlow,
+    id: "purchase_to_shelf_chain_builtin",
+    name: existingFlow.name || scriptName,
+    scriptType: "purchase_to_shelf_chain",
+    projectId: String(projectId),
+    envId: String(env.id),
+    caseIds: [],
+    variables: JSON.stringify(mergedVariables, null, 2),
+  };
+  const next = existingIndex >= 0
+    ? flows
+        .map((flow, index) => (index === existingIndex ? nextFlow : flow))
+        .filter((flow, index) => index === existingIndex || (flow.id !== "purchase_to_shelf_chain_builtin" && flow.name !== scriptName))
+    : [...flows, nextFlow];
+  writeFlows(next);
+  return next;
+}
+
+function ensureWarehouseDeliveryScript(flows, projects, envs, cases) {
+  if (isBuiltinDeleted("warehouse_delivery_builtin")) return flows;
+  const scriptName = "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355";
+  const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
+  const env = envs.find((item) => item.env_name === "test-\u767b\u5f55") || envs[0];
+  const projectId = env?.project_id || projects[0]?.id || "";
+  if (!env) return flows;
+  const loginBody = parseJsonText(login?.body || "{}", {});
+  const existingIndex = flows.findIndex((flow) => flow.id === "warehouse_delivery_builtin") >= 0
+    ? flows.findIndex((flow) => flow.id === "warehouse_delivery_builtin")
+    : flows.findIndex((flow) => flow.name === scriptName);
+  const existingFlow = existingIndex >= 0 ? flows[existingIndex] : {};
+  let existingVariables = {};
+  try {
+    existingVariables = parseJsonText(existingFlow.variables || "{}", {});
+  } catch {
+    existingVariables = {};
+  }
+  const defaultVariables = {
+    order_detail_id: "",
+    send_num: 1,
+    porder_logistics_id: "14",
+    client_warehouse_list: "/client/wms.stockAutoList",
+    warehouse_keywords: "",
+    warehouse_search_tag: "",
+    children_id: "",
+    for_sn_set: "",
+    tag_set: "",
+    sort_type: "",
+    hasLabel: "",
+    create_type: "send",
+    client_remark: "",
+    porder_suffix: "300001",
+    run_backend_delivery_flow: true,
+    backend_account: "Y001",
+    backend_password: "raku@123456``",
+    backend_system: "1",
+    backend_code: "wnm666",
+    box_count: "1",
+    box_length: "58",
+    box_width: "51",
+    box_height: "50",
+    box_weight: "10",
+    delivery_quote_logistics_id: "25",
+    logistics_price_artificial: "775",
+    account: loginBody.account || "12345678990",
+    password: loginBody.password || "123456",
+    client_tool: "1",
+    receiver_address: {
+      name: "\u6d4b\u8bd5",
+      company: "\u6d4b\u8bd5\u516c\u53f8\u540d",
+      address: "\u4f4f\u6240",
+      zip: "12345678",
+      mobile: "1353214567",
+      tel: "0321-55786",
+      name_rome: "\u30ed\u30fc\u30de\u5b57(\u6c0f\u540d)",
+      address_rome: "\u30ed\u30fc\u30de\u5b57(\u4f4f\u6240)",
+      corporate_name: "1234567891234",
+      account: "1234567889789",
+      standard_code: "1234567891235",
+      title: "\u9648\u54e5\u6700\u7231\u5199bug",
+    },
+    importer_address: {
+      name: "13123",
+      company: "",
+      address: "123123",
+      zip: "1232132",
+      mobile: "123123",
+      tel: "",
+      name_rome: "12312313",
+      address_rome: "123123123",
+      corporate_name: "",
+      account: "\u30ea\u30a2\u30eb\u30bf\u30a4\u30e0\u53e3\u5ea7\u5c0f\u6768",
+      standard_code: "\u6a19\u6e96\u30b3\u30fc\u30c9\u5c0f\u6768",
+      title: "\u6c0f\u540d",
+    },
+  };
+  const mergedVariables = { ...defaultVariables, ...existingVariables };
+  if (!mergedVariables.receiver_address || typeof mergedVariables.receiver_address !== "object") {
+    mergedVariables.receiver_address = defaultVariables.receiver_address;
+  }
+  if (!mergedVariables.importer_address || typeof mergedVariables.importer_address !== "object") {
+    mergedVariables.importer_address = defaultVariables.importer_address;
+  }
+  if (!mergedVariables.send_num) mergedVariables.send_num = defaultVariables.send_num;
+  if (!mergedVariables.porder_logistics_id) mergedVariables.porder_logistics_id = defaultVariables.porder_logistics_id;
+  if (mergedVariables.run_backend_delivery_flow === undefined) mergedVariables.run_backend_delivery_flow = true;
+  if (!mergedVariables.backend_account) mergedVariables.backend_account = defaultVariables.backend_account;
+  if (!mergedVariables.backend_password) mergedVariables.backend_password = defaultVariables.backend_password;
+  if (!mergedVariables.box_count) mergedVariables.box_count = defaultVariables.box_count;
+  if (!mergedVariables.box_length) mergedVariables.box_length = defaultVariables.box_length;
+  if (!mergedVariables.box_width) mergedVariables.box_width = defaultVariables.box_width;
+  if (!mergedVariables.box_height) mergedVariables.box_height = defaultVariables.box_height;
+  if (!mergedVariables.box_weight) mergedVariables.box_weight = defaultVariables.box_weight;
+  if (!mergedVariables.delivery_quote_logistics_id) mergedVariables.delivery_quote_logistics_id = defaultVariables.delivery_quote_logistics_id;
+  if (!mergedVariables.logistics_price_artificial) mergedVariables.logistics_price_artificial = defaultVariables.logistics_price_artificial;
+  if (existingVariables.account === "abner" && loginBody.account) mergedVariables.account = loginBody.account;
+  if (existingVariables.password === "12345" && loginBody.password) mergedVariables.password = loginBody.password;
+  const nextFlow = {
+    ...existingFlow,
+    id: "warehouse_delivery_builtin",
+    name: existingFlow.name || scriptName,
+    scriptType: "warehouse_delivery",
+    projectId: String(projectId),
+    envId: String(env.id),
+    caseIds: [],
+    variables: JSON.stringify(mergedVariables, null, 2),
+  };
+  const next = existingIndex >= 0
+    ? flows
+        .map((flow, index) => (index === existingIndex ? nextFlow : flow))
+        .filter((flow, index) => index === existingIndex || (flow.id !== "warehouse_delivery_builtin" && flow.name !== scriptName))
     : [...flows, nextFlow];
   writeFlows(next);
   return next;
@@ -1113,9 +1364,24 @@ async function renderDataScripts() {
     api("/api/api-cases"),
     api("/api/data-scripts/latest-order-sn"),
   ]);
-  let flows = ensurePurchaseToShelfScript(
-    ensurePaymentScripts(
-      ensureOrderQuoteScript(ensureShoppingCartScript(readFlows(), projects, allEnvs, allCases), projects, allEnvs, allCases),
+  const storedFlows = readFlows();
+  const baseFlows = storedFlows.filter((flow) => !isDeletedBuiltinFlow(flow));
+  if (baseFlows.length !== storedFlows.length) {
+    writeFlows(baseFlows);
+  }
+  let flows = ensureWarehouseDeliveryScript(
+    ensurePurchaseToShelfChainScript(
+      ensurePurchaseToShelfScript(
+        ensurePaymentScripts(
+          ensureOrderQuoteScript(ensureShoppingCartScript(baseFlows, projects, allEnvs, allCases), projects, allEnvs, allCases),
+          projects,
+          allEnvs,
+          allCases,
+        ),
+        projects,
+        allEnvs,
+        allCases,
+      ),
       projects,
       allEnvs,
       allCases,
@@ -1126,7 +1392,7 @@ async function renderDataScripts() {
   );
   if (latestOrder?.order_sn) {
     flows = flows.map((flow) =>
-      ["order_quote", "purchase_to_shelf"].includes(flow.scriptType)
+      ["order_quote", "purchase_to_shelf", "purchase_to_shelf_chain"].includes(flow.scriptType)
         ? { ...flow, lastOrderSn: latestOrder.order_sn, lastRecordId: latestOrder.record_id || flow.lastRecordId || "" }
         : flow,
     );
@@ -1149,7 +1415,14 @@ async function renderDataScripts() {
       return "\u8ba2\u5355\u5217\u8868(\u7b49\u5f85\u4ed8\u6b3e) -> \u94f6\u884c\u8f6c\u8d26 -> \u8d22\u52a1\u786e\u8ba4\u5165\u91d1";
     }
     if (row.scriptType === "purchase_to_shelf") {
+      const variables = parseJsonText(row.variables || "{}", {});
+      if (variables.link_quote_balance_before_shelf !== false && variables.auto_quote_and_pay !== false) {
+        return "\u8ba2\u5355\u62a5\u4ef7 -> \u4f59\u989d\u652f\u4ed8 -> \u5f85\u62cd\u4e0b\u5546\u54c1 -> \u4ea4\u6613\u53f7\u4ed8\u6b3e -> \u5f00\u59cb\u6838\u67e5 -> \u4e0a\u67b6\u5165\u5e93";
+      }
       return "\u5f85\u62cd\u4e0b\u5546\u54c1 -> \u6807\u8bb0\u5f85\u6539\u4ef7 -> \u5f85\u8d22\u52a1\u4ed8\u6b3e -> \u4ea4\u6613\u53f7\u4ed8\u6b3e -> \u5f00\u59cb\u6838\u67e5 -> \u4e0a\u67b6\u5165\u5e93";
+    }
+    if (row.scriptType === "warehouse_delivery") {
+      return "\u4ed3\u5e93\u5546\u54c1\u5217\u8868 -> \u9009\u62e91\u756a -> \u63d0\u51fa\u914d\u9001\u5355 -> \u540e\u53f0\u914d\u8d27 -> \u88c5\u7bb1 -> \u63d0\u4ea4\u4e1a\u52a1 -> \u914d\u9001\u5355\u62a5\u4ef7";
     }
     return (row.caseIds || []).map(caseName).join(" -> ") || "-";
   };
@@ -1178,6 +1451,7 @@ async function renderDataScripts() {
               <button class="btn secondary" data-edit-script="${row.id}">编辑</button>
               ${["order_quote", "balance_payment", "bank_payment", "purchase_to_shelf"].includes(row.scriptType) || row.lastOrderSn ? `<button class="btn secondary" data-copy-order-sn="${row.id}" ${row.lastOrderSn ? "" : "disabled"}>\u590d\u5236\u8ba2\u5355\u53f7</button>` : ""}
               ${row.scriptType === "purchase_to_shelf" ? `<button class="btn secondary" data-copy-purchase-no="${row.id}" ${row.lastPurchaseNo ? "" : "disabled"}>\u590d\u5236\u4ea4\u6613\u53f7</button>` : ""}
+              ${row.scriptType === "warehouse_delivery" ? `<button class="btn secondary" data-copy-porder-sn="${row.id}" ${row.lastPorderSn ? "" : "disabled"}>\u590d\u5236\u914d\u9001\u5355\u53f7</button>` : ""}
               <button class="btn secondary" data-copy-script="${row.id}">复制</button>
               <button class="btn danger" data-delete-script="${row.id}">删除</button>
             </div>
@@ -1222,6 +1496,7 @@ async function renderDataScripts() {
         caseIds: [...(flow.caseIds || [])],
         lastOrderSn: "",
         lastPurchaseNo: "",
+        lastPorderSn: "",
         lastRecordId: "",
       };
       writeFlows([...flows, copied]);
@@ -1241,10 +1516,29 @@ async function renderDataScripts() {
       await copyText(flow?.lastPurchaseNo, "\u4ea4\u6613\u53f7");
     });
   });
+  document.querySelectorAll("[data-copy-porder-sn]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const flow = readFlows().find((item) => item.id === button.dataset.copyPorderSn);
+      await copyText(flow?.lastPorderSn, "\u914d\u9001\u5355\u53f7");
+    });
+  });
   document.querySelectorAll("[data-delete-script]").forEach((button) => {
     button.addEventListener("click", async () => {
       if (!window.confirm("确认删除这个数据脚本？")) return;
-      writeFlows(readFlows().filter((flow) => flow.id !== button.dataset.deleteScript));
+      const deleteId = button.dataset.deleteScript;
+      const flows = readFlows();
+      const targetFlow = flows.find((flow) => flow.id === deleteId);
+      const builtinDefinition = builtinDefinitionForFlow(targetFlow);
+      if (builtinDefinition) {
+        markBuiltinDeleted(builtinDefinition.id);
+      }
+      writeFlows(
+        flows.filter((flow) => {
+          if (flow.id === deleteId) return false;
+          if (!builtinDefinition) return true;
+          return flow.id !== builtinDefinition.id && flow.name !== builtinDefinition.name;
+        }),
+      );
       showToast("已删除");
       await renderDataScripts();
     });
@@ -1403,6 +1697,7 @@ function openSaveFlowForm() {
         variables: state.factory.variables,
         lastOrderSn: (index >= 0 ? flows[index]?.lastOrderSn : flow?.lastOrderSn) || "",
         lastPurchaseNo: (index >= 0 ? flows[index]?.lastPurchaseNo : flow?.lastPurchaseNo) || "",
+        lastPorderSn: (index >= 0 ? flows[index]?.lastPorderSn : flow?.lastPorderSn) || "",
         lastRecordId: (index >= 0 ? flows[index]?.lastRecordId : flow?.lastRecordId) || "",
       };
       if (index >= 0) flows[index] = nextFlow;
@@ -1448,7 +1743,11 @@ function scriptStepEstimate(flow, variables) {
   if (flow.scriptType === "order_quote") return variables?.run_backend_flow === false ? 5 : 9;
   if (flow.scriptType === "balance_payment") return 3;
   if (flow.scriptType === "bank_payment") return variables?.finance_confirm === false ? 3 : 5;
-  if (flow.scriptType === "purchase_to_shelf") return 9;
+  if (flow.scriptType === "purchase_to_shelf") {
+    return variables?.link_quote_balance_before_shelf === false || variables?.auto_quote_and_pay === false ? 9 : 21;
+  }
+  if (flow.scriptType === "purchase_to_shelf_chain") return 21;
+  if (flow.scriptType === "warehouse_delivery") return variables?.run_backend_delivery_flow === false ? 3 : 11;
   if (flow.scriptType !== "shopping_cart") return Math.max((flow.caseIds || []).length, 1);
   const perShopRaw = Number(variables?.per_shop);
   const perShop = Number.isFinite(perShopRaw) && perShopRaw > 0 ? Math.floor(perShopRaw) : 5;
@@ -1537,7 +1836,7 @@ function openScriptProgress(title, initialMessage) {
 }
 
 async function runSavedFlow(flow) {
-  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf"];
+  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery"];
   if (!flow || (!builtInTypes.includes(flow.scriptType) && !(flow.caseIds || []).length)) {
     showToast("脚本没有配置步骤");
     return;
@@ -1628,8 +1927,39 @@ async function runSavedFlow(flow) {
       return;
     }
     if (flow.scriptType === "purchase_to_shelf") {
-      progress.update(24, "\u6b63\u5728\u63a8\u8fdb\u5f85\u62cd\u4e0b\u5546\u54c1\uff1a\u4ea4\u6613\u53f7\u3001\u5f85\u6539\u4ef7\u3001\u4ed8\u6b3e\u3001\u6838\u67e5\u3001\u4e0a\u67b6\u5165\u5e93...");
       const requestVariables = { ...variables };
+      const linkBeforeShelf = requestVariables.link_quote_balance_before_shelf !== false && requestVariables.auto_quote_and_pay !== false;
+      if (linkBeforeShelf) {
+        delete requestVariables.order_sn;
+        delete requestVariables.last_order_sn;
+        progress.update(8, "\u6b63\u5728\u8054\u52a8\u6267\u884c\uff1a\u8ba2\u5355\u62a5\u4ef7\u2192\u4f59\u989d\u652f\u4ed8\u2192\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6...");
+        const result = await api("/api/data-scripts/purchase-to-shelf-chain", {
+          method: "POST",
+          body: {
+            env_id: flow.envId ? Number(flow.envId) : null,
+            variables: requestVariables,
+          },
+        });
+        const orderSn = result.summary?.order_sn || "";
+        const purchaseNo = result.summary?.purchase_no || "";
+        const flows = readFlows().map((item) =>
+          item.id === flow.id
+            ? { ...item, lastOrderSn: orderSn, lastPurchaseNo: purchaseNo, lastRecordId: result.id }
+            : item,
+        );
+        writeFlows(flows);
+        flow.lastOrderSn = orderSn;
+        flow.lastPurchaseNo = purchaseNo;
+        flow.lastRecordId = result.id;
+        progress.success("\u8054\u52a8\u811a\u672c\u6267\u884c\u5b8c\u6210\uff0c\u6b63\u5728\u5c55\u793a\u7ed3\u679c...");
+        await new Promise((resolve) => window.setTimeout(resolve, 180));
+        showFactoryResult({
+          records: [{ id: result.id, case_name: flow.name, result: result.result }],
+          variables: result.summary || {},
+        });
+        return;
+      }
+      progress.update(24, "\u6b63\u5728\u63a8\u8fdb\u5f85\u62cd\u4e0b\u5546\u54c1\uff1a\u4ea4\u6613\u53f7\u3001\u5f85\u6539\u4ef7\u3001\u4ed8\u6b3e\u3001\u6838\u67e5\u3001\u4e0a\u67b6\u5165\u5e93...");
       if (!requestVariables.order_sn && flow.lastOrderSn) requestVariables.order_sn = flow.lastOrderSn;
       const result = await api("/api/data-scripts/purchase-to-shelf", {
         method: "POST",
@@ -1650,6 +1980,60 @@ async function runSavedFlow(flow) {
       flow.lastPurchaseNo = purchaseNo;
       flow.lastRecordId = result.id;
       progress.success("\u811a\u672c\u6267\u884c\u5b8c\u6210\uff0c\u6b63\u5728\u5c55\u793a\u7ed3\u679c...");
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      showFactoryResult({
+        records: [{ id: result.id, case_name: flow.name, result: result.result }],
+        variables: result.summary || {},
+      });
+      return;
+    }
+    if (flow.scriptType === "purchase_to_shelf_chain") {
+      progress.update(8, "\u6b63\u5728\u6267\u884c\u7ec4\u5408\u811a\u672c\uff1a\u8ba2\u5355\u62a5\u4ef7\u2192\u4f59\u989d\u652f\u4ed8\u2192\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6...");
+      const result = await api("/api/data-scripts/purchase-to-shelf-chain", {
+        method: "POST",
+        body: {
+          env_id: flow.envId ? Number(flow.envId) : null,
+          variables,
+        },
+      });
+      const orderSn = result.summary?.order_sn || "";
+      const purchaseNo = result.summary?.purchase_no || "";
+      const flows = readFlows().map((item) =>
+        item.id === flow.id
+          ? { ...item, lastOrderSn: orderSn, lastPurchaseNo: purchaseNo, lastRecordId: result.id }
+          : item,
+      );
+      writeFlows(flows);
+      flow.lastOrderSn = orderSn;
+      flow.lastPurchaseNo = purchaseNo;
+      flow.lastRecordId = result.id;
+      progress.success("\u7ec4\u5408\u811a\u672c\u6267\u884c\u5b8c\u6210\uff0c\u6b63\u5728\u5c55\u793a\u7ed3\u679c...");
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      showFactoryResult({
+        records: [{ id: result.id, case_name: flow.name, result: result.result }],
+        variables: result.summary || {},
+      });
+      return;
+    }
+    if (flow.scriptType === "warehouse_delivery") {
+      progress.update(12, "\u6b63\u5728\u6267\u884c\uff1a\u4ed3\u5e93\u9009\u62e91\u756a -> \u63d0\u51fa\u914d\u9001\u5355 -> \u540e\u53f0\u914d\u8d27\u88c5\u7bb1 -> \u63d0\u4ea4\u4e1a\u52a1\u62a5\u4ef7...");
+      const result = await api("/api/data-scripts/warehouse-delivery", {
+        method: "POST",
+        body: {
+          env_id: flow.envId ? Number(flow.envId) : null,
+          variables,
+        },
+      });
+      const porderSn = result.summary?.porder_sn || "";
+      const flows = readFlows().map((item) =>
+        item.id === flow.id
+          ? { ...item, lastPorderSn: porderSn, lastRecordId: result.id }
+          : item,
+      );
+      writeFlows(flows);
+      flow.lastPorderSn = porderSn;
+      flow.lastRecordId = result.id;
+      progress.success("\u914d\u9001\u5355\u811a\u672c\u6267\u884c\u5b8c\u6210\uff0c\u6b63\u5728\u5c55\u793a\u7ed3\u679c...");
       await new Promise((resolve) => window.setTimeout(resolve, 180));
       showFactoryResult({
         records: [{ id: result.id, case_name: flow.name, result: result.result }],

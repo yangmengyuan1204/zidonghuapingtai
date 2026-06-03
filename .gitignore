@@ -5,3 +5,8 @@ __pycache__/
 auto_test_platform.db
 tests/*.db
 reports/
+logs/
+*.log
+.idea/
+.codex_remote/
+.rakumart_curl_config_*

@@ -20,6 +20,7 @@ ORDER_SCRIPT_NAME = "\u8ba2\u5355\u62a5\u4ef7"
 BALANCE_PAYMENT_SCRIPT_NAME = "\u4f59\u989d\u652f\u4ed8"
 BANK_PAYMENT_SCRIPT_NAME = "\u94f6\u884c\u652f\u4ed8"
 PURCHASE_TO_SHELF_SCRIPT_NAME = "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6"
+WAREHOUSE_DELIVERY_SCRIPT_NAME = "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355"
 KEYWORDS = [
     "\u8863\u670d",
     "\u978b\u5b50",
@@ -2448,6 +2449,969 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
         )
 
 
+def _porder_sn(variables: Dict[str, Any]) -> str:
+    configured = str(variables.get("porder_sn") or "").strip()
+    if configured:
+        return configured
+    suffix = str(variables.get("porder_suffix") or variables.get("operation_id") or "300001").strip() or "300001"
+    return f"P{datetime.now().strftime('%Y%m%d%H%M%S')}{random.randint(0, 99):02d}-{suffix}"
+
+
+def _warehouse_list_fields(variables: Dict[str, Any]) -> OrderedDict[str, Any]:
+    fields: OrderedDict[str, Any] = OrderedDict()
+    for key in ["children_id", "for_sn_set", "tag_set", "client_remark", "sort_type", "hasLabel"]:
+        value = variables.get(key)
+        if value not in (None, ""):
+            fields[key] = value
+    keywords = str(variables.get("warehouse_keywords") or "").strip()
+    tag = str(variables.get("warehouse_search_tag") or "").strip()
+    if keywords:
+        if tag in {"\u7ba1\u7406\u756a\u53f7", "for_sn", "for_sn_set"}:
+            fields["for_sn_set"] = keywords
+        elif tag in {"\u30e9\u30d9\u30eb\u60c5\u5831", "tag", "tag_set"}:
+            fields["tag_set"] = keywords
+        elif tag in {"\u5099\u8003\u6b04", "client_remark"}:
+            fields["client_remark"] = keywords
+    _apply_extra_fields(fields, variables.get("warehouse_list_fields"))
+    return fields
+
+
+def _warehouse_candidate_paths(variables: Dict[str, Any]) -> list[str]:
+    configured = variables.get("client_warehouse_list") or variables.get("warehouse_list_path")
+    paths = []
+    if configured:
+        paths.append(str(configured))
+    api_path = _api_paths(variables).get("client_warehouse_list")
+    if api_path:
+        paths.append(str(api_path))
+    paths.extend(
+        [
+            "/client/wms.stockAutoList",
+            "/client/warehouse.warehouseList",
+            "/client/warehouse.goodsList",
+            "/client/warehouse.goodsWarehouseList",
+            "/client/warehouse.orderDetailList",
+            "/client/porder.warehouseList",
+            "/client/porder.porderWarehouseList",
+            "/client/porder.porderDetailList",
+            "/client/order.warehouseList",
+        ]
+    )
+    result = []
+    for path in paths:
+        if path and path not in result:
+            result.append(path)
+    return result
+
+
+def _nested_rows(value: Any, depth: int = 0) -> list[Dict[str, Any]]:
+    if depth > 5:
+        return []
+    rows: list[Dict[str, Any]] = []
+    if isinstance(value, list):
+        for item in value:
+            rows.extend(_nested_rows(item, depth + 1))
+        return rows
+    if not isinstance(value, dict):
+        return rows
+    if any(key in value for key in ["order_detail_id", "order_detailId", "detail_id", "porder_detail_id", "id"]):
+        rows.append(value)
+    for key in ["data", "list", "rows", "result", "items", "order_detail", "orderDetail", "detail", "details", "goods", "goods_list"]:
+        child = value.get(key)
+        if isinstance(child, (dict, list)):
+            rows.extend(_nested_rows(child, depth + 1))
+    return rows
+
+
+def _field_value(row: Dict[str, Any], keys: list[str]) -> Any:
+    for key in keys:
+        value = row.get(key)
+        if value not in (None, ""):
+            return value
+    return ""
+
+
+def _warehouse_item_id(row: Dict[str, Any]) -> str:
+    return str(_field_value(row, ["order_detail_id", "order_detailId", "detail_id", "porder_detail_id", "id"]) or "").strip()
+
+
+def _warehouse_sendable_num(row: Dict[str, Any]) -> int:
+    value = _field_value(
+        row,
+        [
+            "send_num",
+            "send_await_num",
+            "can_send_num",
+            "canSendNum",
+            "sendable_num",
+            "surplus_num",
+            "surplus",
+            "stock_num",
+            "stock",
+            "num",
+            "available_num",
+            "in_stock_num",
+        ],
+    )
+    return _as_int(value, 0)
+
+
+def _select_warehouse_item(rows: list[Dict[str, Any]], variables: Dict[str, Any]) -> Dict[str, Any] | None:
+    requested_id = str(variables.get("order_detail_id") or variables.get("porder_detail_id") or "").strip()
+    if requested_id:
+        for row in rows:
+            if _warehouse_item_id(row) == requested_id:
+                return row
+        return {"order_detail_id": requested_id, "send_num": _as_int(variables.get("send_num"), 1)}
+    for row in rows:
+        if _warehouse_item_id(row) and _warehouse_sendable_num(row) > 0:
+            return row
+    return None
+
+
+def _address_fields(prefix: str, values: Dict[str, Any]) -> OrderedDict[str, Any]:
+    fields: OrderedDict[str, Any] = OrderedDict()
+    for key in [
+        "name",
+        "company",
+        "address",
+        "zip",
+        "mobile",
+        "tel",
+        "name_rome",
+        "address_rome",
+        "corporate_name",
+        "account",
+        "standard_code",
+        "title",
+    ]:
+        fields[f"{prefix}[{key}]"] = values.get(key, "")
+    return fields
+
+
+def _default_receiver_address() -> Dict[str, Any]:
+    return {
+        "name": "\u6d4b\u8bd5",
+        "company": "\u6d4b\u8bd5\u516c\u53f8\u540d",
+        "address": "\u4f4f\u6240",
+        "zip": "12345678",
+        "mobile": "1353214567",
+        "tel": "0321-55786",
+        "name_rome": "\u30ed\u30fc\u30de\u5b57(\u6c0f\u540d)",
+        "address_rome": "\u30ed\u30fc\u30de\u5b57(\u4f4f\u6240)",
+        "corporate_name": "1234567891234",
+        "account": "1234567889789",
+        "standard_code": "1234567891235",
+        "title": "\u9648\u54e5\u6700\u7231\u5199bug",
+    }
+
+
+def _default_importer_address() -> Dict[str, Any]:
+    return {
+        "name": "13123",
+        "company": "",
+        "address": "123123",
+        "zip": "1232132",
+        "mobile": "123123",
+        "tel": "",
+        "name_rome": "12312313",
+        "address_rome": "123123123",
+        "corporate_name": "",
+        "account": "\u30ea\u30a2\u30eb\u30bf\u30a4\u30e0\u53e3\u5ea7\u5c0f\u6768",
+        "standard_code": "\u6a19\u6e96\u30b3\u30fc\u30c9\u5c0f\u6768",
+        "title": "\u6c0f\u540d",
+    }
+
+
+def _merge_address(defaults: Dict[str, Any], configured: Any) -> Dict[str, Any]:
+    result = dict(defaults)
+    if isinstance(configured, dict):
+        for key, value in configured.items():
+            result[str(key)] = value
+    return result
+
+
+def _porder_create_fields(order_detail_id: str, porder_sn: str, send_num: int, variables: Dict[str, Any]) -> OrderedDict[str, Any]:
+    fields: OrderedDict[str, Any] = OrderedDict()
+    fields["create_type"] = str(variables.get("create_type") or "send")
+    fields["porder_sn"] = porder_sn
+    fields["logistics_id"] = str(variables.get("porder_logistics_id") or variables.get("logistics_id") or "14")
+    fields["client_remark"] = str(variables.get("client_remark") or "")
+    fields["porder_detail[0][order_detail_id]"] = order_detail_id
+    fields["porder_detail[0][send_num]"] = send_num
+    fields["porder_detail[0][client_remark]"] = str(variables.get("porder_detail_remark") or "")
+    receiver = _merge_address(_default_receiver_address(), variables.get("receiver_address"))
+    importer = _merge_address(_default_importer_address(), variables.get("importer_address"))
+    fields.update(_address_fields("receiver_address", receiver))
+    fields.update(_address_fields("importer_address", importer))
+    fields["is_amazon"] = str(variables.get("is_amazon") or "0")
+    _apply_extra_fields(fields, variables.get("porder_create_fields"))
+    return fields
+
+
+def _extract_porder_sn(payload: Dict[str, Any], fallback: str) -> str:
+    data = payload.get("data")
+    if isinstance(data, dict):
+        for key in ["porder_sn", "porderSn", "sn", "order_sn"]:
+            value = data.get(key)
+            if value:
+                return str(value)
+    if isinstance(data, str) and data.strip().startswith("P"):
+        return data.strip()
+    for key in ["porder_sn", "porderSn", "sn"]:
+        value = payload.get(key)
+        if value:
+            return str(value)
+    return fallback
+
+
+def _walk_dicts(value: Any, depth: int = 0) -> list[Dict[str, Any]]:
+    if depth > 8:
+        return []
+    if isinstance(value, list):
+        rows: list[Dict[str, Any]] = []
+        for item in value:
+            rows.extend(_walk_dicts(item, depth + 1))
+        return rows
+    if not isinstance(value, dict):
+        return []
+    rows = [value]
+    for item in value.values():
+        if isinstance(item, (dict, list)):
+            rows.extend(_walk_dicts(item, depth + 1))
+    return rows
+
+
+def _first_deep_value(value: Any, keys: list[str]) -> Any:
+    for row in _walk_dicts(value):
+        for key in keys:
+            item = row.get(key)
+            if item not in (None, "", [], {}):
+                return item
+    return ""
+
+
+def _porder_detail_rows(payload: Dict[str, Any]) -> list[Dict[str, Any]]:
+    data = payload.get("data")
+    roots = [data, payload]
+    rows: list[Dict[str, Any]] = []
+    detail_keys = [
+        "porder_detail",
+        "porderDetail",
+        "porder_detail_list",
+        "porderDetailList",
+        "detail",
+        "details",
+        "list",
+    ]
+    for root in roots:
+        if isinstance(root, dict):
+            for key in detail_keys:
+                child = root.get(key)
+                if isinstance(child, (dict, list)):
+                    rows.extend(_nested_rows(child))
+        elif isinstance(root, list):
+            rows.extend(_nested_rows(root))
+    filtered: list[Dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if _field_value(row, ["porder_detail_id", "porderDetailId", "detail_id", "id"]) in (None, ""):
+            continue
+        if any(key in row for key in ["porder_sn", "goods_id", "goods_name", "send_num", "wait_box_num", "received_num", "order_detail_id"]):
+            filtered.append(row)
+    return filtered or [row for row in rows if isinstance(row, dict)]
+
+
+def _porder_detail_id(row: Dict[str, Any]) -> str:
+    return str(_field_value(row, ["porder_detail_id", "porderDetailId", "detail_id", "id"]) or "").strip()
+
+
+def _porder_wait_box_num(row: Dict[str, Any], fallback: int = 1) -> int:
+    value = _field_value(
+        row,
+        [
+            "wait_box_num",
+            "waitBoxNum",
+            "not_box_num",
+            "notBoxNum",
+            "packing_num",
+            "received_num",
+            "send_num",
+            "num",
+        ],
+    )
+    number = _as_int(value, fallback)
+    return number if number > 0 else fallback
+
+
+def _box_need_num(value: Any, fallback_num: int) -> int:
+    fallback = max(1, _as_int(fallback_num, 1))
+    number = _as_int(value, fallback)
+    if number <= 0:
+        return fallback
+    return min(number, fallback)
+
+
+def _extract_freight_id(*payloads: Dict[str, Any], variables: Dict[str, Any] | None = None) -> str:
+    variables = variables or {}
+    configured = str(variables.get("freight_id") or variables.get("porder_freight_id") or "").strip()
+    if configured:
+        return configured
+    freight_shape_keys = {
+        "freight_id",
+        "freightId",
+        "freightID",
+        "logistics_id",
+        "logisticsId",
+        "length",
+        "width",
+        "height",
+        "weight",
+        "box_no",
+        "boxNo",
+        "box_num",
+        "boxNum",
+        "porder_sn",
+    }
+    for payload in payloads:
+        direct = _first_deep_value(payload, ["freight_id", "freightId", "freightID"])
+        if direct not in (None, ""):
+            return str(direct).strip()
+        freight_set = _first_deep_value(payload, ["freight_id_set", "freightIdSet", "freight_ids"])
+        if isinstance(freight_set, list) and freight_set:
+            return str(freight_set[0]).strip()
+        for row in _walk_dicts(payload):
+            row_id = row.get("id")
+            if row_id in (None, ""):
+                continue
+            if any(key in row and row.get(key) not in (None, "") for key in freight_shape_keys):
+                return str(row_id).strip()
+    return ""
+
+
+def _payload_structure_sample(payload: Dict[str, Any], limit: int = 8) -> list[Dict[str, Any]]:
+    samples: list[Dict[str, Any]] = []
+    for row in _walk_dicts(payload):
+        if not row:
+            continue
+        keys = list(row.keys())[:20]
+        interesting = {
+            key: row.get(key)
+            for key in [
+                "id",
+                "porder_detail_id",
+                "porderDetailId",
+                "stock_id",
+                "stockId",
+                "wms_stock_id",
+                "num",
+                "num_need",
+                "need_num",
+                "stock_num",
+                "storage_num",
+                "send_num",
+                "wait_box_num",
+            ]
+            if key in row
+        }
+        samples.append({"keys": keys, "interesting": interesting})
+        if len(samples) >= limit:
+            break
+    return samples
+
+
+def _freight_box_brief(payload: Dict[str, Any], limit: int = 10) -> list[Dict[str, Any]]:
+    boxes: list[Dict[str, Any]] = []
+    freight_keys = {
+        "number",
+        "status",
+        "length",
+        "width",
+        "height",
+        "weight",
+        "logistics_id",
+        "box_id",
+        "volume",
+        "charge_weight",
+        "freight_id",
+    }
+    for row in _walk_dicts(payload):
+        if row.get("id") in (None, ""):
+            continue
+        if not any(key in row for key in freight_keys):
+            continue
+        boxes.append(
+            {
+                "id": row.get("id"),
+                "porder_sn": row.get("porder_sn"),
+                "number": row.get("number"),
+                "status": row.get("status"),
+                "statusName": row.get("statusName") or row.get("status_name"),
+                "length": row.get("length"),
+                "width": row.get("width"),
+                "height": row.get("height"),
+                "weight": row.get("weight"),
+                "logistics_id": row.get("logistics_id"),
+                "box_id": row.get("box_id"),
+                "freight_id": row.get("freight_id"),
+            }
+        )
+        if len(boxes) >= limit:
+            break
+    return boxes
+
+
+def _extract_stock_item(payload: Dict[str, Any], fallback_num: int, porder_detail_id: str = "") -> Dict[str, Any]:
+    configured_stock_id = str(payload.get("stock_id") or "").strip()
+    if configured_stock_id:
+        return {"stock_id": configured_stock_id, "num_need": _box_need_num(fallback_num, fallback_num)}
+    stock_shape_keys = {
+        "stock_id",
+        "stockId",
+        "wms_stock_id",
+        "wmsStockId",
+        "stock_num",
+        "stockNum",
+        "storage_num",
+        "storageNum",
+        "num_need",
+        "need_num",
+        "grid_id",
+        "warehouse_id",
+        "order_purchase_id",
+        "putaway_at",
+    }
+    for row in _walk_dicts(payload):
+        stock_id = _field_value(row, ["stock_id", "stockId", "wms_stock_id", "wmsStockId", "stockDetailId", "stock_detail_id"])
+        if stock_id not in (None, ""):
+            return {
+                "stock_id": str(stock_id).strip(),
+                "num_need": _box_need_num(
+                    _field_value(row, ["num_need", "need_num", "send_num", "wait_box_num", "stock_num", "storage_num", "num"]),
+                    fallback_num,
+                ),
+            }
+    for row in _walk_dicts(payload):
+        for stock_key in ["stock", "stocks", "stock_list", "stockList", "wms_stock", "wmsStock", "storage", "storage_list", "storageList"]:
+            stock = row.get(stock_key)
+            if not isinstance(stock, list):
+                continue
+            for item in stock:
+                if isinstance(item, dict) and item.get("id") not in (None, ""):
+                    return {
+                        "stock_id": str(item.get("id")).strip(),
+                        "num_need": _box_need_num(
+                            _field_value(item, ["num_need", "need_num", "send_num", "wait_box_num", "stock_num", "storage_num", "num"]),
+                            fallback_num,
+                        ),
+                    }
+    candidate_ids: list[tuple[str, int]] = []
+    for row in _walk_dicts(payload):
+        row_id = row.get("id")
+        if row_id in (None, "") or str(row_id) == str(porder_detail_id):
+            continue
+        if any(key in row and row.get(key) not in (None, "") for key in stock_shape_keys):
+            candidate_ids.append(
+                (
+                    str(row_id).strip(),
+                    _box_need_num(
+                        _field_value(row, ["num_need", "need_num", "send_num", "wait_box_num", "stock_num", "storage_num", "num"]),
+                        fallback_num,
+                    ),
+                )
+            )
+    if len(candidate_ids) == 1:
+        stock_id, num_need = candidate_ids[0]
+        return {"stock_id": stock_id, "num_need": num_need}
+    return {"stock_id": "", "num_need": _box_need_num(fallback_num, fallback_num)}
+
+
+def _porder_detail_payload(
+    session: requests.Session,
+    base_url: str,
+    variables: Dict[str, Any],
+    porder_sn: str,
+    timeout: int,
+    retries: int = 4,
+) -> tuple[Dict[str, Any], list[Dict[str, Any]]]:
+    payload: Dict[str, Any] = {}
+    rows: list[Dict[str, Any]] = []
+    for attempt in range(retries + 1):
+        payload = _post_admin_form(
+            session,
+            base_url,
+            _api_path(variables, "admin_porder_detail", "/porder.detail"),
+            {"porder_sn": porder_sn},
+            timeout,
+        )
+        rows = _porder_detail_rows(payload)
+        if _api_success(payload) and rows:
+            return payload, rows
+        if attempt < retries:
+            time.sleep(0.8 * (attempt + 1))
+    return payload, rows
+
+
+def _porder_detail_brief(payload: Dict[str, Any], rows: list[Dict[str, Any]]) -> Dict[str, Any]:
+    return {
+        **_payload_brief(payload),
+        "detail_count": len(rows),
+        "details": [
+            {
+                "id": _porder_detail_id(row),
+                "goods_id": row.get("goods_id"),
+                "num": row.get("num"),
+                "send_num": row.get("send_num"),
+                "wait_box_num": row.get("wait_box_num"),
+                "received_num": row.get("received_num"),
+                "freight_id": row.get("freight_id"),
+                "status": row.get("status"),
+                "statusName": row.get("statusName") or row.get("status_name"),
+            }
+            for row in rows[:10]
+        ],
+    }
+
+
+def _run_backend_porder_flow(
+    base_url: str,
+    timeout: int,
+    variables: Dict[str, Any],
+    porder_sn: str,
+    log: Dict[str, Any],
+) -> tuple[bool, Dict[str, Any]]:
+    backend_log: Dict[str, Any] = {"porder_sn": porder_sn, "steps": []}
+    log["backend_porder"] = backend_log
+    session = requests.Session()
+
+    login_payload, token = _admin_login(session, base_url, variables, timeout)
+    session.headers.update(
+        {
+            "AdminToken": f"Bearer {token}" if token else "",
+            "adminToken": f"Bearer {token}" if token else "",
+            "Fingerprint": str(variables.get("fingerprint") or "35d3d2dc553624bd3e6cc32688f4e43b"),
+            "PageUrlTrace": f"https://jpmanage.rakumart.cn/#/porderDetail?porder_sn={porder_sn}",
+            "Origin": "https://jpmanage.rakumart.cn",
+            "Referer": "https://jpmanage.rakumart.cn/",
+        }
+    )
+    backend_log["login"] = {
+        **_payload_brief(login_payload),
+        "account": str(variables.get("backend_account") or variables.get("backend_username") or "Y001"),
+        "token_extracted": bool(token),
+    }
+    if not _api_success(login_payload) or not token:
+        return False, {"backend_passed": False, "reason": "后台登录失败"}
+
+    detail_payload, detail_rows = _porder_detail_payload(session, base_url, variables, porder_sn, timeout)
+    backend_log["detail_before"] = _porder_detail_brief(detail_payload, detail_rows)
+    if not _api_success(detail_payload) or not detail_rows:
+        return False, {"backend_passed": False, "reason": "未获取到配送单详情"}
+
+    detail_row = detail_rows[0]
+    porder_detail_id = _porder_detail_id(detail_row)
+    wait_box_num = _porder_wait_box_num(detail_row, _as_int(variables.get("backend_box_num"), 1))
+    if not porder_detail_id:
+        return False, {"backend_passed": False, "reason": "配送单详情缺少 porder_detail_id"}
+
+    translate_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_submit_translate", "/porder.submitTranslate"),
+        {
+            "porder_sn": porder_sn,
+            "client_remark_translate": str(variables.get("client_remark_translate") or ""),
+            "list": [{"id": porder_detail_id, "y_remark": str(variables.get("porder_y_remark") or "")}],
+            "is_temp": str(variables.get("porder_translate_is_temp") or "0"),
+        },
+        timeout,
+    )
+    backend_log["submit_translate"] = {**_payload_brief(translate_payload), "porder_detail_id": porder_detail_id}
+    if not _api_success(translate_payload):
+        return False, {"backend_passed": False, "reason": "配送单提交配货失败", "submit_translate": _payload_brief(translate_payload)}
+
+    _, after_translate_rows = _porder_detail_payload(session, base_url, variables, porder_sn, timeout, retries=2)
+    if after_translate_rows:
+        detail_row = after_translate_rows[0]
+        porder_detail_id = _porder_detail_id(detail_row) or porder_detail_id
+        wait_box_num = _porder_wait_box_num(detail_row, wait_box_num)
+    backend_log["detail_after_translate"] = {"detail_count": len(after_translate_rows), "porder_detail_id": porder_detail_id}
+
+    box_fields = {
+        "porder_sn": porder_sn,
+        "count": str(variables.get("box_count") or "1"),
+        "length": str(variables.get("box_length") or "58"),
+        "width": str(variables.get("box_width") or "51"),
+        "height": str(variables.get("box_height") or "50"),
+        "weight": str(variables.get("box_weight") or "10"),
+    }
+    add_box_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_add_box", "/porder.addBox"),
+        box_fields,
+        timeout,
+    )
+    backend_log["add_box"] = {**_payload_brief(add_box_payload), "request": box_fields}
+    if not _api_success(add_box_payload):
+        return False, {"backend_passed": False, "reason": "配送单添加箱子失败", "add_box": _payload_brief(add_box_payload)}
+
+    freight_before_box_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_freight_list", "/porder.freightList"),
+        {"porder_sn": porder_sn},
+        timeout,
+    )
+    detail_after_box_payload, detail_after_box_rows = _porder_detail_payload(session, base_url, variables, porder_sn, timeout, retries=1)
+    backend_log["freight_list_before_box"] = {
+        **_payload_brief(freight_before_box_payload),
+        "sample": _payload_structure_sample(freight_before_box_payload, limit=4),
+    }
+    backend_log["detail_after_add_box"] = _porder_detail_brief(detail_after_box_payload, detail_after_box_rows)
+
+    preview_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_into_box_preview", "/porder.intoBoxPreview"),
+        {"porderDetailIdS": [porder_detail_id]},
+        timeout,
+    )
+    stock_item = _extract_stock_item(preview_payload, wait_box_num, porder_detail_id)
+    freight_id = _extract_freight_id(
+        freight_before_box_payload,
+        detail_after_box_payload,
+        add_box_payload,
+        preview_payload,
+        detail_payload,
+        variables=variables,
+    )
+    backend_log["into_box_preview"] = {
+        **_payload_brief(preview_payload),
+        "porder_detail_id": porder_detail_id,
+        "freight_id": freight_id,
+        "stock_id": stock_item.get("stock_id"),
+        "num_need": stock_item.get("num_need"),
+        "sample": _payload_structure_sample(preview_payload, limit=8),
+    }
+    if not _api_success(preview_payload):
+        return False, {"backend_passed": False, "reason": "装箱预览失败", "into_box_preview": _payload_brief(preview_payload)}
+    if not freight_id:
+        return False, {"backend_passed": False, "reason": "未拿到箱子 freight_id，无法装箱"}
+    if not stock_item.get("stock_id"):
+        return False, {"backend_passed": False, "reason": "未拿到库存 stock_id，无法装箱"}
+
+    box_num = _box_need_num(stock_item.get("num_need"), wait_box_num)
+    into_box_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_into_box_submit", "/porder.intoBoxSubmit"),
+        {
+            "freight_id_set": [freight_id],
+            "list": [
+                {
+                    "per_num": box_num,
+                    "porder_detail_id": porder_detail_id,
+                    "stock": [{"stock_id": stock_item.get("stock_id"), "num_need": box_num}],
+                }
+            ],
+        },
+        timeout,
+    )
+    backend_log["into_box_submit"] = {**_payload_brief(into_box_payload), "box_num": box_num}
+    if not _api_success(into_box_payload):
+        return False, {"backend_passed": False, "reason": "装箱提交失败", "into_box_submit": _payload_brief(into_box_payload)}
+
+    time.sleep(float(variables.get("after_box_submit_delay") or 0.8))
+    detail_after_into_box_payload = _post_admin_form(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_detail", "/porder.detail"),
+        {"porder_sn": porder_sn, "filterByFreightNum": "false"},
+        timeout,
+    )
+    detail_after_into_box_rows = _porder_detail_rows(detail_after_into_box_payload)
+    freight_after_into_box_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_freight_list", "/porder.freightList"),
+        {"porder_sn": porder_sn, "filterByFreightNum": "false"},
+        timeout,
+    )
+    backend_log["detail_after_into_box"] = _porder_detail_brief(detail_after_into_box_payload, detail_after_into_box_rows)
+    backend_log["freight_list_after_into_box"] = {
+        **_payload_brief(freight_after_into_box_payload),
+        "boxes": _freight_box_brief(freight_after_into_box_payload),
+        "sample": _payload_structure_sample(freight_after_into_box_payload, limit=4),
+    }
+    spot_after_into_box_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_spot_porder_detail", "/spot/spot/check/getSpotPorderDetail"),
+        {"porder_sn": porder_sn, "filterByFreightNum": "false"},
+        timeout,
+    )
+    backend_log["spot_after_into_box"] = _payload_brief(spot_after_into_box_payload)
+
+    to_wait_offer_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_to_wait_offer", "/porder.toWaitOffer"),
+        {"porder_sn": porder_sn},
+        timeout,
+    )
+    backend_log["to_wait_offer"] = _payload_brief(to_wait_offer_payload)
+    if not _api_success(to_wait_offer_payload):
+        time.sleep(float(variables.get("to_wait_offer_retry_delay") or 1))
+        retry_detail_payload = _post_admin_form(
+            session,
+            base_url,
+            _api_path(variables, "admin_porder_detail", "/porder.detail"),
+            {"porder_sn": porder_sn, "filterByFreightNum": "false"},
+            timeout,
+        )
+        retry_detail_rows = _porder_detail_rows(retry_detail_payload)
+        retry_freight_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_porder_freight_list", "/porder.freightList"),
+            {"porder_sn": porder_sn, "filterByFreightNum": "false"},
+            timeout,
+        )
+        retry_spot_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_spot_porder_detail", "/spot/spot/check/getSpotPorderDetail"),
+            {"porder_sn": porder_sn, "filterByFreightNum": "false"},
+            timeout,
+        )
+        retry_to_wait_offer_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_porder_to_wait_offer", "/porder.toWaitOffer"),
+            {"porder_sn": porder_sn},
+            timeout,
+        )
+        backend_log["detail_before_to_wait_offer_retry"] = _porder_detail_brief(retry_detail_payload, retry_detail_rows)
+        backend_log["freight_list_before_to_wait_offer_retry"] = {
+            **_payload_brief(retry_freight_payload),
+            "boxes": _freight_box_brief(retry_freight_payload),
+            "sample": _payload_structure_sample(retry_freight_payload, limit=4),
+        }
+        backend_log["spot_before_to_wait_offer_retry"] = _payload_brief(retry_spot_payload)
+        backend_log["to_wait_offer_retry"] = _payload_brief(retry_to_wait_offer_payload)
+        if _api_success(retry_to_wait_offer_payload):
+            to_wait_offer_payload = retry_to_wait_offer_payload
+            backend_log["to_wait_offer"] = {**_payload_brief(to_wait_offer_payload), "retried": True}
+    if not _api_success(to_wait_offer_payload):
+        return False, {"backend_passed": False, "reason": "配送单提交业务失败", "to_wait_offer": _payload_brief(to_wait_offer_payload)}
+
+    logistics_id = str(variables.get("delivery_quote_logistics_id") or variables.get("quote_logistics_id") or "25")
+    logistics_price = str(variables.get("logistics_price_artificial") or "775")
+    logistics_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_batch_update_freight_logistics", "/porder.batchUpdateFreightLogistics"),
+        {"logistics_id": logistics_id, "freight_id_set": [freight_id]},
+        timeout,
+    )
+    backend_log["batch_update_freight_logistics"] = {
+        **_payload_brief(logistics_payload),
+        "logistics_id": logistics_id,
+        "freight_id": freight_id,
+    }
+    if not _api_success(logistics_payload):
+        return False, {
+            "backend_passed": False,
+            "reason": "配送单选择国际物流失败",
+            "batch_update_freight_logistics": _payload_brief(logistics_payload),
+        }
+
+    freight_list_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_freight_list", "/porder.freightList"),
+        {"porder_sn": porder_sn},
+        timeout,
+    )
+    current_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_amount_current", "/porder.porderAmountCurrent"),
+        {"porder_sn": porder_sn},
+        timeout,
+    )
+    backend_log["freight_list"] = _payload_brief(freight_list_payload)
+    backend_log["amount_current"] = _payload_brief(current_payload)
+
+    offer_payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_submit_offer", "/porder.submitOffer"),
+        {
+            "porder_sn": porder_sn,
+            "y_remark": str(variables.get("porder_offer_remark") or ""),
+            "list": [{"id": porder_detail_id, "y_remark": str(variables.get("porder_y_remark") or ""), "received_num": ""}],
+            "logistics_price_artificial": logistics_price,
+            "fba_complete_num": str(variables.get("fba_complete_num") or "0"),
+            "fba_overstep_reason": str(variables.get("fba_overstep_reason") or ""),
+        },
+        timeout,
+    )
+    backend_log["submit_offer"] = {
+        **_payload_brief(offer_payload),
+        "porder_detail_id": porder_detail_id,
+        "logistics_price_artificial": logistics_price,
+    }
+    if not _api_success(offer_payload):
+        return False, {"backend_passed": False, "reason": "配送单报价失败", "submit_offer": _payload_brief(offer_payload)}
+
+    return True, {
+        "backend_passed": True,
+        "backend_steps": [
+            "login",
+            "porder_detail",
+            "submit_translate",
+            "add_box",
+            "into_box_preview",
+            "into_box_submit",
+            "to_wait_offer",
+            "batch_update_freight_logistics",
+            "freight_list",
+            "submit_offer",
+        ],
+        "porder_detail_id": porder_detail_id,
+        "freight_id": freight_id,
+        "stock_id": stock_item.get("stock_id"),
+        "box_num": box_num,
+        "logistics_id": logistics_id,
+        "logistics_price_artificial": logistics_price,
+    }
+
+
+def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    account = str(variables.get("account") or "").strip()
+    password = str(variables.get("password") or "").strip()
+    client_tool = str(variables.get("client_tool") or "1").strip()
+    if client_tool == "2" and not _as_bool(variables.get("allow_h5_client_tool"), False):
+        client_tool = "1"
+    timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+    base_url = (env.base_url or bulk_cart.BASE_URL).rstrip("/")
+    send_num = _as_int(variables.get("send_num") or variables.get("porder_send_num"), 1)
+    porder_sn = _porder_sn(variables)
+    log: Dict[str, Any] = {
+        "script": WAREHOUSE_DELIVERY_SCRIPT_NAME,
+        "mode": "warehouse_to_delivery_offer",
+        "base_url": base_url,
+        "send_num": send_num,
+        "started_at": datetime.now(),
+        "warehouse_attempts": [],
+    }
+
+    try:
+        client = bulk_cart.RakumartClient(base_url, timeout)
+        _configure_client_api_paths(client, variables)
+        token = _call_with_retry("client login", lambda: client.login(account, password, client_tool))
+        log["login"] = {"success": True, "account": account, "client_tool": client_tool, "token_extracted": bool(token)}
+
+        selected_item: Dict[str, Any] | None = None
+        warehouse_rows: list[Dict[str, Any]] = []
+        requested_id = str(variables.get("order_detail_id") or variables.get("porder_detail_id") or "").strip()
+        if requested_id:
+            selected_item = {"order_detail_id": requested_id, "send_num": send_num}
+        else:
+            list_fields = _warehouse_list_fields(variables)
+            for path in _warehouse_candidate_paths(variables):
+                try:
+                    payload = _call_with_retry("warehouse list", lambda path=path: client.post_form(path, list_fields), attempts=1)
+                except Exception as exc:
+                    log["warehouse_attempts"].append({"path": path, "request": dict(list_fields), "error": str(exc)})
+                    continue
+                rows = _nested_rows(payload)
+                selected = _select_warehouse_item(rows, variables)
+                log["warehouse_attempts"].append(
+                    {
+                        "path": path,
+                        "request": dict(list_fields),
+                        **_payload_brief(payload),
+                        "row_count": len(rows),
+                        "selected_order_detail_id": _warehouse_item_id(selected or {}),
+                    }
+                )
+                if _api_success(payload) and selected:
+                    warehouse_rows = rows
+                    selected_item = selected
+                    break
+
+        order_detail_id = _warehouse_item_id(selected_item or {})
+        if not order_detail_id:
+            return _finish_named(
+                WAREHOUSE_DELIVERY_SCRIPT_NAME,
+                log,
+                False,
+                {
+                    "porder_sn": "",
+                    "order_detail_id": "",
+                    "reason": "\u672a\u627e\u5230\u53ef\u63d0\u51fa\u914d\u9001\u5355\u7684\u4ed3\u5e93\u5546\u54c1\uff0c\u8bf7\u5728\u53d8\u91cf\u4e2d\u914d\u7f6e client_warehouse_list \u6216 order_detail_id",
+                },
+            )
+
+        max_send_num = _warehouse_sendable_num(selected_item or {})
+        actual_send_num = min(send_num, max_send_num) if max_send_num > 0 else send_num
+        fields = _porder_create_fields(order_detail_id, porder_sn, actual_send_num, variables)
+        payload = _call_with_retry(
+            "porder create",
+            lambda: client.post_form(_api_path(variables, "client_porder_create", "/client/porder.porderCreate"), fields),
+        )
+        porder_sn = _extract_porder_sn(payload, porder_sn)
+        log["selected_item"] = {
+            "order_detail_id": order_detail_id,
+            "sendable_num": max_send_num,
+            "send_num": actual_send_num,
+            "row": selected_item,
+        }
+        log["porder_create"] = {
+            **_payload_brief(payload),
+            "request": {
+                "create_type": fields.get("create_type"),
+                "porder_sn": fields.get("porder_sn"),
+                "logistics_id": fields.get("logistics_id"),
+                "order_detail_id": order_detail_id,
+                "send_num": actual_send_num,
+            },
+            "response": payload,
+        }
+        passed = _api_success(payload)
+        summary = {
+            "porder_sn": porder_sn,
+            "order_detail_id": order_detail_id,
+            "send_num": actual_send_num,
+            "warehouse_rows": len(warehouse_rows),
+            "create_passed": passed,
+        }
+        if not passed:
+            summary["reason"] = payload.get("msg") or payload.get("message") or "\u914d\u9001\u5355\u63d0\u51fa\u5931\u8d25"
+            return _finish_named(WAREHOUSE_DELIVERY_SCRIPT_NAME, log, False, summary)
+        if _as_bool(variables.get("run_backend_delivery_flow"), True):
+            backend_passed, backend_summary = _run_backend_porder_flow(base_url, timeout, variables, porder_sn, log)
+            summary.update(backend_summary)
+            passed = backend_passed
+            if not backend_passed and "reason" not in summary:
+                summary["reason"] = backend_summary.get("reason") or "\u914d\u9001\u5355\u540e\u53f0\u6d41\u8f6c\u5931\u8d25"
+        return _finish_named(WAREHOUSE_DELIVERY_SCRIPT_NAME, log, passed, summary)
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _finish_named(
+            WAREHOUSE_DELIVERY_SCRIPT_NAME,
+            log,
+            False,
+            {"porder_sn": "", "order_detail_id": "", "send_num": send_num, "error": str(exc)},
+        )
+
+
 def run_balance_payment_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
     ensure_report_dirs()
     variables = dict(variables or {})
@@ -2881,3 +3845,156 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
                 "error": str(exc),
             },
         )
+
+
+SCRIPT_REGISTRY: Dict[str, Any] = {
+    "shopping_cart": {
+        "name": SCRIPT_NAME,
+        "func": None,
+    },
+    "order_quote": {
+        "name": ORDER_SCRIPT_NAME,
+        "func": None,
+    },
+    "balance_payment": {
+        "name": BALANCE_PAYMENT_SCRIPT_NAME,
+        "func": None,
+    },
+    "bank_payment": {
+        "name": BANK_PAYMENT_SCRIPT_NAME,
+        "func": None,
+    },
+    "purchase_to_shelf": {
+        "name": PURCHASE_TO_SHELF_SCRIPT_NAME,
+        "func": None,
+    },
+    "purchase_to_shelf_chain": {
+        "name": "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6(\u7ec4\u5408\u811a\u672c)",
+        "func": None,
+        "chain": True,
+    },
+    "warehouse_delivery": {
+        "name": WAREHOUSE_DELIVERY_SCRIPT_NAME,
+        "func": None,
+    },
+}
+
+
+def run_purchase_to_shelf_chain(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    chain_log: Dict[str, Any] = {
+        "script": "待拍下到商品上架(组合脚本)",
+        "mode": "chain_execution",
+        "started_at": datetime.now(),
+        "steps": [],
+        "shared_data": {},
+    }
+
+    try:
+        from . import data_scripts as ds
+
+        # Step 1: 订单报价
+        quote_vars = dict(variables)
+        quote_vars.pop("order_sn", None)
+        quote_vars.pop("last_order_sn", None)
+        quote_vars["skip_create_order"] = False
+        quote_vars["backend_only"] = False
+        quote_vars["submit_order"] = True
+        quote_vars["run_backend_flow"] = True
+        quote_result = run_order_quote_script(env, quote_vars)
+        quote_passed, quote_log, quote_report, quote_summary = quote_result
+        chain_log["steps"].append({
+            "step": 1,
+            "script": ORDER_SCRIPT_NAME,
+            "passed": quote_passed,
+            "summary": quote_summary,
+        })
+
+        if not quote_passed or not quote_summary.get("order_sn"):
+            chain_log["finished_at"] = datetime.now()
+            chain_log["summary"] = {
+                "passed": False,
+                "reason": "订单报价脚本失败，未生成订单号",
+                "order_sn": "",
+            }
+            log_text = json.dumps(chain_log, ensure_ascii=False, indent=2, default=str)
+            report_path = write_allure_result("待拍下到商品上架(组合脚本)", "data_script", False, log_text)
+            return False, log_text, report_path, chain_log["summary"]
+
+        order_sn = quote_summary["order_sn"]
+        chain_log["shared_data"]["order_sn"] = order_sn
+
+        # Step 2: 余额支付
+        pay_vars = dict(variables)
+        pay_vars["order_sn"] = order_sn
+        balance_result = run_balance_payment_script(env, pay_vars)
+        balance_passed, balance_log, balance_report, balance_summary = balance_result
+        chain_log["steps"].append({
+            "step": 2,
+            "script": BALANCE_PAYMENT_SCRIPT_NAME,
+            "passed": balance_passed,
+            "summary": balance_summary,
+        })
+
+        if not balance_passed:
+            chain_log["finished_at"] = datetime.now()
+            chain_log["summary"] = {
+                "passed": False,
+                "reason": "余额支付脚本失败",
+                "order_sn": order_sn,
+                "failed_step": "余额支付",
+            }
+            log_text = json.dumps(chain_log, ensure_ascii=False, indent=2, default=str)
+            report_path = write_allure_result("待拍下到商品上架(组合脚本)", "data_script", False, log_text)
+            return False, log_text, report_path, chain_log["summary"]
+
+        # Step 3: 待拍下到商品上架
+        shelf_vars = dict(variables)
+        shelf_vars["order_sn"] = order_sn
+        shelf_vars["purchase_no"] = str(variables.get("purchase_no") or datetime.now().strftime("%Y%m%d%H%M%S"))
+        shelf_vars["link_quote_balance_before_shelf"] = False
+        shelf_vars["auto_quote_and_pay"] = False
+        shelf_result = run_purchase_to_shelf_script(env, shelf_vars)
+        shelf_passed, shelf_log, shelf_report, shelf_summary = shelf_result
+        chain_log["steps"].append({
+            "step": 3,
+            "script": PURCHASE_TO_SHELF_SCRIPT_NAME,
+            "passed": shelf_passed,
+            "summary": shelf_summary,
+        })
+
+        chain_passed = shelf_passed
+        chain_log["finished_at"] = datetime.now()
+        chain_log["summary"] = {
+            "passed": chain_passed,
+            "order_sn": order_sn,
+            "purchase_no": shelf_vars.get("purchase_no", ""),
+            "total_steps": 3,
+            "success_steps": sum(1 for s in chain_log["steps"] if s["passed"]),
+        }
+        if not chain_passed:
+            chain_log["summary"]["reason"] = "待拍下到商品上架脚本失败"
+            chain_log["summary"]["failed_step"] = "待拍下到商品上架"
+
+        log_text = json.dumps(chain_log, ensure_ascii=False, indent=2, default=str)
+        report_path = write_allure_result("待拍下到商品上架(组合脚本)", "data_script", chain_passed, log_text)
+        return chain_passed, log_text, report_path, chain_log["summary"]
+
+    except Exception as exc:
+        chain_log["error"] = str(exc)
+        chain_log["finished_at"] = datetime.now()
+        chain_log["summary"] = {"passed": False, "reason": str(exc)}
+        log_text = json.dumps(chain_log, ensure_ascii=False, indent=2, default=str)
+        report_path = write_allure_result("待拍下到商品上架(组合脚本)", "data_script", False, log_text)
+        return False, log_text, report_path, chain_log["summary"]
+
+
+# 注册脚本函数
+SCRIPT_REGISTRY["shopping_cart"]["func"] = run_shopping_cart_script
+SCRIPT_REGISTRY["order_quote"]["func"] = run_order_quote_script
+SCRIPT_REGISTRY["balance_payment"]["func"] = run_balance_payment_script
+SCRIPT_REGISTRY["bank_payment"]["func"] = run_bank_payment_script
+SCRIPT_REGISTRY["purchase_to_shelf"]["func"] = run_purchase_to_shelf_script
+SCRIPT_REGISTRY["purchase_to_shelf_chain"]["func"] = run_purchase_to_shelf_chain
+SCRIPT_REGISTRY["warehouse_delivery"]["func"] = run_warehouse_delivery_script

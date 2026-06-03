@@ -17,7 +17,9 @@ from .data_scripts import (
     run_bank_payment_script,
     run_order_quote_script,
     run_purchase_to_shelf_script,
+    run_purchase_to_shelf_chain,
     run_shopping_cart_script,
+    run_warehouse_delivery_script,
 )
 from .executors import ensure_report_dirs, execute_api_case, execute_ui_case, parse_json_value, to_json_text
 from .models import ApiCase, Env, Project, TestRecord, UiCase, User
@@ -127,6 +129,85 @@ DATA_SCRIPT_API_CASES = [
         "case_name": "\u6570\u636e\u811a\u672c-\u524d\u53f0\u8ba2\u5355\u5217\u8868",
         "url": "/client/order.orderList",
         "body": {"status_name": "{{order_status_name}}", "page": "{{page}}", "pageSize": "{{page_size}}"},
+    },
+    {
+        "key": "client_warehouse_list",
+        "case_name": "\u6570\u636e\u811a\u672c-\u4ed3\u5e93\u5546\u54c1\u5217\u8868",
+        "url": "/client/wms.stockAutoList",
+        "body": {"children_id": "{{children_id}}", "for_sn_set": "{{for_sn_set}}", "tag_set": "{{tag_set}}", "client_remark": "{{client_remark}}", "sort_type": "{{sort_type}}", "hasLabel": "{{hasLabel}}"},
+    },
+    {
+        "key": "client_porder_create",
+        "case_name": "\u6570\u636e\u811a\u672c-\u63d0\u51fa\u914d\u9001\u5355",
+        "url": "/client/porder.porderCreate",
+        "body": {"create_type": "{{create_type}}", "porder_sn": "{{porder_sn}}", "logistics_id": "{{logistics_id}}", "porder_detail[0][order_detail_id]": "{{order_detail_id}}", "porder_detail[0][send_num]": "{{send_num}}"},
+        "extract": {"porder_sn": "json.data.porder_sn"},
+    },
+    {
+        "key": "admin_porder_detail",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u8be6\u60c5",
+        "url": "/porder.detail",
+        "body": {"porder_sn": "{{porder_sn}}"},
+    },
+    {
+        "key": "admin_porder_submit_translate",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u63d0\u4ea4\u914d\u8d27",
+        "url": "/porder.submitTranslate",
+        "body": {"porder_sn": "{{porder_sn}}", "client_remark_translate": "{{client_remark_translate}}", "list[0][id]": "{{porder_detail_id}}", "list[0][y_remark]": "{{y_remark}}", "is_temp": "{{is_temp}}"},
+    },
+    {
+        "key": "admin_porder_add_box",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u6dfb\u52a0\u7bb1\u5b50",
+        "url": "/porder.addBox",
+        "body": {"porder_sn": "{{porder_sn}}", "count": "{{box_count}}", "length": "{{box_length}}", "width": "{{box_width}}", "height": "{{box_height}}", "weight": "{{box_weight}}"},
+    },
+    {
+        "key": "admin_porder_into_box_preview",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u88c5\u7bb1\u9884\u89c8",
+        "url": "/porder.intoBoxPreview",
+        "body": {"porderDetailIdS[0]": "{{porder_detail_id}}"},
+    },
+    {
+        "key": "admin_porder_into_box_submit",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u88c5\u7bb1\u63d0\u4ea4",
+        "url": "/porder.intoBoxSubmit",
+        "body": {"freight_id_set[0]": "{{freight_id}}", "list[0][per_num]": "{{box_num}}", "list[0][porder_detail_id]": "{{porder_detail_id}}", "list[0][stock][0][stock_id]": "{{stock_id}}", "list[0][stock][0][num_need]": "{{box_num}}"},
+    },
+    {
+        "key": "admin_porder_to_wait_offer",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u63d0\u4ea4\u4e1a\u52a1",
+        "url": "/porder.toWaitOffer",
+        "body": {"porder_sn": "{{porder_sn}}"},
+    },
+    {
+        "key": "admin_porder_batch_update_freight_logistics",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u9009\u62e9\u56fd\u9645\u7269\u6d41",
+        "url": "/porder.batchUpdateFreightLogistics",
+        "body": {"logistics_id": "{{delivery_quote_logistics_id}}", "freight_id_set[0]": "{{freight_id}}"},
+    },
+    {
+        "key": "admin_porder_freight_list",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u56fd\u9645\u8fd0\u8d39\u5217\u8868",
+        "url": "/porder.freightList",
+        "body": {"porder_sn": "{{porder_sn}}"},
+    },
+    {
+        "key": "admin_spot_porder_detail",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u88c5\u7bb1\u540e\u62bd\u68c0\u8be6\u60c5",
+        "url": "/spot/spot/check/getSpotPorderDetail",
+        "body": {"porder_sn": "{{porder_sn}}", "filterByFreightNum": "false"},
+    },
+    {
+        "key": "admin_porder_amount_current",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u91d1\u989d\u8ba1\u7b97",
+        "url": "/porder.porderAmountCurrent",
+        "body": {"porder_sn": "{{porder_sn}}"},
+    },
+    {
+        "key": "admin_porder_submit_offer",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u62a5\u4ef7",
+        "url": "/porder.submitOffer",
+        "body": {"porder_sn": "{{porder_sn}}", "list[0][id]": "{{porder_detail_id}}", "logistics_price_artificial": "{{logistics_price_artificial}}"},
     },
     {
         "key": "client_balance_pay",
@@ -284,6 +365,15 @@ def ensure_data_script_api_cases(db: Session) -> None:
     for item in DATA_SCRIPT_API_CASES:
         exists = db.query(ApiCase).filter(ApiCase.case_name == item["case_name"]).first()
         if exists:
+            key = str(item.get("key", ""))
+            if item.get("key") in {"client_warehouse_list", "client_porder_create"} or key.startswith(("admin_porder_", "admin_spot_")):
+                assert_rule = {"status_code": 200}
+                if item.get("extract"):
+                    assert_rule["extract"] = item["extract"]
+                exists.url = item["url"]
+                exists.body = to_json_text(item["body"], {})
+                exists.assert_rule = to_json_text(assert_rule, {})
+                exists.headers = to_json_text({"Content-Type": "multipart/form-data"}, {})
             continue
         assert_rule = {"status_code": 200}
         if item.get("extract"):
@@ -866,7 +956,51 @@ def run_purchase_to_shelf_data_script(
     if not env:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u8bf7\u5148\u914d\u7f6e\u73af\u5883")
     variables = data_script_variables(db, payload.variables)
-    passed, log_text, report_path, summary = run_purchase_to_shelf_script(env, variables)
+    def enabled(value: Any, default: bool = True) -> bool:
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() not in {"0", "false", "no", "off"}
+
+    if enabled(variables.get("link_quote_balance_before_shelf"), True) and enabled(variables.get("auto_quote_and_pay"), True):
+        passed, log_text, report_path, summary = run_purchase_to_shelf_chain(env, variables)
+    else:
+        passed, log_text, report_path, summary = run_purchase_to_shelf_script(env, variables)
+    record = save_record(db, "api", 0, passed, log_text, report_path)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+@app.post("/api/data-scripts/purchase-to-shelf-chain")
+def run_purchase_to_shelf_chain_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
+    if not env:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u8bf7\u5148\u914d\u7f6e\u73af\u5883")
+    variables = data_script_variables(db, payload.variables)
+    passed, log_text, report_path, summary = run_purchase_to_shelf_chain(env, variables)
+    record = save_record(db, "api", 0, passed, log_text, report_path)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+@app.post("/api/data-scripts/warehouse-delivery")
+def run_warehouse_delivery_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
+    if not env:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u8bf7\u5148\u914d\u7f6e\u73af\u5883")
+    variables = data_script_variables(db, payload.variables)
+    passed, log_text, report_path, summary = run_warehouse_delivery_script(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path)
     data = serialize(record)
     data["summary"] = summary
