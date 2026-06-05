@@ -21,6 +21,8 @@ BALANCE_PAYMENT_SCRIPT_NAME = "\u4f59\u989d\u652f\u4ed8"
 BANK_PAYMENT_SCRIPT_NAME = "\u94f6\u884c\u652f\u4ed8"
 PURCHASE_TO_SHELF_SCRIPT_NAME = "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6"
 WAREHOUSE_DELIVERY_SCRIPT_NAME = "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355"
+POORDER_BALANCE_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u4f59\u989d\u4ed8\u6b3e"
+POORDER_BANK_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u94f6\u884c\u4ed8\u6b3e"
 KEYWORDS = [
     "\u8863\u670d",
     "\u978b\u5b50",
@@ -926,6 +928,53 @@ def _select_cart_items(cart_payload: Dict[str, Any], item_count: int) -> list[Di
     return selected
 
 
+def _cart_shop_key(item: Dict[str, Any]) -> str:
+    shop_id = str(item.get("shop_id") or "").strip()
+    if shop_id:
+        return f"shop_id:{shop_id}"
+    shop_name = str(item.get("shop_name") or "").strip()
+    platform = str(item.get("from_platform") or item.get("shop_type") or "").strip()
+    if shop_name:
+        return f"shop_name:{shop_name}|{platform}"
+    if platform:
+        return f"platform:{platform}"
+    return f"unknown:{item.get('goods_id') or item.get('id') or ''}"
+
+
+def _select_cart_items_by_shop(
+    cart_payload: Dict[str, Any],
+    shop_count: int,
+    per_shop: int,
+) -> tuple[list[Dict[str, Any]], Dict[str, Any]]:
+    grouped: OrderedDict[str, list[Dict[str, Any]]] = OrderedDict()
+    for item in _flatten_cart_goods(cart_payload):
+        if not _cart_item_ready(item):
+            continue
+        grouped.setdefault(_cart_shop_key(item), []).append(item)
+
+    ready_groups = [(shop_key, items) for shop_key, items in grouped.items() if len(items) >= per_shop]
+    selected: list[Dict[str, Any]] = []
+    selected_shop_keys: list[str] = []
+    for shop_key, items in ready_groups[:shop_count]:
+        selected.extend(items[:per_shop])
+        selected_shop_keys.append(shop_key)
+
+    expected_total = shop_count * per_shop
+    meta = {
+        "expected_shop_count": shop_count,
+        "expected_per_shop": per_shop,
+        "expected_total": expected_total,
+        "available_shop_count": len(grouped),
+        "ready_shop_count": len(ready_groups),
+        "selected_shop_count": len(selected_shop_keys),
+        "selected_count": len(selected),
+        "shortage_count": max(0, expected_total - len(selected)),
+        "selected_shop_keys": selected_shop_keys,
+        "shop_counts": {shop_key: len(items) for shop_key, items in grouped.items()},
+    }
+    return selected, meta
+
+
 def _order_item_brief(item: Dict[str, Any]) -> Dict[str, Any]:
     title = str(item.get("goods_title") or "")
     return {
@@ -1507,6 +1556,124 @@ def _common_payment_summary(
     return summary
 
 
+PORDER_AMOUNT_KEYS = [
+    "pay_amount",
+    "total_amount",
+    "need_pay_amount",
+    "wait_pay_amount",
+    "payment_amount",
+    "porder_amount",
+    "porder_price",
+    "delivery_amount",
+    "delivery_price",
+    "logistics_price",
+    "logistics_amount",
+    "international_freight",
+    "freight_price",
+    "freight_amount",
+    "amount",
+    "total",
+]
+
+
+def _first_recursive_positive_decimal(value: Any, keys: list[str]) -> Decimal | None:
+    if isinstance(value, dict):
+        direct = _first_positive_decimal(value, keys)
+        if direct is not None:
+            return direct
+        for child in value.values():
+            found = _first_recursive_positive_decimal(child, keys)
+            if found is not None:
+                return found
+    elif isinstance(value, list):
+        for child in value:
+            found = _first_recursive_positive_decimal(child, keys)
+            if found is not None:
+                return found
+    return None
+
+
+def _porder_payload_matches(payload: Dict[str, Any], porder_sn: str) -> bool:
+    if not porder_sn:
+        return False
+    found = _extract_porder_sn(payload, "")
+    return not found or found == porder_sn or _row_contains_text(payload, porder_sn)
+
+
+def _porder_payment_summary(
+    payment_type: str,
+    porder_sn: str,
+    amount: str,
+    payment_payload: Dict[str, Any],
+    extra: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    data = payment_payload.get("data") if isinstance(payment_payload.get("data"), dict) else {}
+    summary = {
+        "payment_type": payment_type,
+        "porder_sn": porder_sn,
+        "pay_amount": amount,
+        "payment_passed": _api_success(payment_payload),
+        "porder_matched": _porder_payload_matches(payment_payload, porder_sn),
+    }
+    if data.get("order_sn"):
+        summary["order_sn"] = str(data.get("order_sn"))
+    if data.get("serial_number"):
+        summary["serial_number"] = str(data.get("serial_number"))
+    if extra:
+        summary.update(extra)
+    if not summary["payment_passed"] and "reason" not in summary:
+        summary["reason"] = str(payment_payload.get("msg") or payment_payload.get("data") or "配送单支付接口执行失败")
+    if summary["payment_passed"] and not summary["porder_matched"] and "reason" not in summary:
+        summary["reason"] = "配送单支付接口返回单号与输入配送单号不一致"
+    return summary
+
+
+def _porder_payment_amount_from_payload(payload: Dict[str, Any]) -> str:
+    number = _first_recursive_positive_decimal(payload, PORDER_AMOUNT_KEYS)
+    return _decimal_text(number) if number is not None else "0"
+
+
+def _load_porder_payment_amount(client: Any, variables: Dict[str, Any], log: Dict[str, Any], porder_sn: str) -> str:
+    configured = str(variables.get("pay_amount") or "").strip()
+    if _positive_decimal(configured):
+        log["porder_amount"] = {"source": "variables", "pay_amount": configured}
+        return _decimal_text(configured)
+
+    paths = []
+    for key in ["client_porder_pay_detail", "client_porder_detail", "client_porder_list"]:
+        path = _api_paths(variables).get(key)
+        if path:
+            paths.append(str(path))
+    paths.extend(
+        [
+            "/client/porder.porderPayDetail",
+            "/client/porder.payDetail",
+            "/client/porder.paymentDetail",
+            "/client/porder.porderDetail",
+            "/client/porder.detail",
+            "/client/porder.porderList",
+        ]
+    )
+    attempts = []
+    for path in dict.fromkeys(paths):
+        fields = OrderedDict([("porder_sn", porder_sn)])
+        if path.endswith("porderList"):
+            fields["keywords"] = porder_sn
+            fields["page"] = 1
+            fields["pageSize"] = 10
+        try:
+            payload = _call_with_retry("porder payment amount", lambda path=path, fields=fields: client.post_form(path, fields))
+            amount = _porder_payment_amount_from_payload(payload)
+            attempts.append({**_payload_brief(payload), "path": path, "request": dict(fields), "pay_amount": amount})
+            if _api_success(payload) and _positive_decimal(amount):
+                log["porder_amount"] = {"attempts": attempts, "pay_amount": amount}
+                return amount
+        except Exception as exc:
+            attempts.append({"path": path, "request": dict(fields), "error": str(exc)})
+    log["porder_amount"] = {"attempts": attempts, "pay_amount": "0"}
+    return "0"
+
+
 def _apply_extra_fields(fields: OrderedDict[str, Any], extra_fields: Any) -> OrderedDict[str, Any]:
     if isinstance(extra_fields, dict):
         for key, value in extra_fields.items():
@@ -1541,6 +1708,8 @@ def _finance_bill_brief(row: Dict[str, Any] | None) -> Dict[str, Any]:
         "id": row.get("id"),
         "serial_number": row.get("serial_number"),
         "order_sn": row.get("order_sn"),
+        "porder_sn": row.get("porder_sn"),
+        "p_order_sn": row.get("p_order_sn"),
         "pay_amount": row.get("pay_amount"),
         "amount": row.get("amount"),
         "bill_method": row.get("bill_method"),
@@ -1550,12 +1719,21 @@ def _finance_bill_brief(row: Dict[str, Any] | None) -> Dict[str, Any]:
     }
 
 
+def _row_contains_text(row: Dict[str, Any], needle: str) -> bool:
+    return bool(needle) and needle in bulk_cart.json_text(row)
+
+
 def _select_finance_bill(rows: list[Dict[str, Any]], serial_number: str, order_sn: str) -> Dict[str, Any] | None:
     for row in rows:
         if serial_number and str(row.get("serial_number") or "") == serial_number:
             return row
     for row in rows:
         if order_sn and str(row.get("order_sn") or "") == order_sn:
+            return row
+        if order_sn and str(row.get("porder_sn") or row.get("p_order_sn") or row.get("pOrderSn") or "") == order_sn:
+            return row
+    for row in rows:
+        if _row_contains_text(row, order_sn):
             return row
     return rows[0] if rows else None
 
@@ -3703,6 +3881,17 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
     timeout = _as_int(variables.get("timeout"), env.timeout or 25)
     base_url = (env.base_url or bulk_cart.BASE_URL).rstrip("/")
     item_count = _as_int(variables.get("order_item_count") or variables.get("item_count"), 2)
+    order_shop_count_raw = variables.get("order_shop_count")
+    order_per_shop_raw = variables.get("order_per_shop")
+    use_shop_grouping = order_shop_count_raw not in (None, "") or order_per_shop_raw not in (None, "")
+    order_shop_count = _as_int(order_shop_count_raw, 0)
+    order_per_shop = _as_int(order_per_shop_raw, 0)
+    if use_shop_grouping:
+        if order_shop_count <= 0:
+            order_shop_count = _as_int(variables.get("target_shops") or variables.get("shop_count"), 1)
+        if order_per_shop <= 0:
+            order_per_shop = _as_int(variables.get("per_shop"), item_count)
+        item_count = order_shop_count * order_per_shop
     item_quantity = _as_int(variables.get("order_item_num") or variables.get("num"), 10)
     price_cut = str(variables.get("priceCut") or variables.get("price_cut") or "0")
     logistics_id = str(variables.get("logistics_id") or "1")
@@ -3718,6 +3907,9 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
         "mode": "backend_only" if skip_create_order else "cart_to_order_and_backend_quote",
         "base_url": base_url,
         "item_count": item_count,
+        "order_shop_count": order_shop_count if use_shop_grouping else None,
+        "order_per_shop": order_per_shop if use_shop_grouping else None,
+        "use_shop_grouping": use_shop_grouping,
         "item_quantity": item_quantity,
         "price_cut": price_cut,
         "submit_order": submit_order,
@@ -3784,24 +3976,48 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
                 cart_payload = fallback_payload
                 cart_goods = fallback_goods
                 price_cut = "0"
-        selected_items = _select_cart_items(cart_payload, item_count)
+        selection_meta: Dict[str, Any] = {}
+        if use_shop_grouping:
+            selected_items, selection_meta = _select_cart_items_by_shop(cart_payload, order_shop_count, order_per_shop)
+        else:
+            selected_items = _select_cart_items(cart_payload, item_count)
+            selection_meta = {
+                "expected_total": item_count,
+                "selected_count": len(selected_items),
+                "shortage_count": max(0, item_count - len(selected_items)),
+            }
         log["cart_list"] = {
             **_payload_brief(cart_payload),
             "goods_count": len(cart_goods),
             "selected_count": len(selected_items),
+            "selection": selection_meta,
         }
         log["selected_items"] = [_order_item_brief(item) for item in selected_items]
         if len(selected_items) < item_count:
+            shortage_summary = {
+                "order_sn": "",
+                "selected_count": len(selected_items),
+                "expected_count": item_count,
+                "reason_code": "cart_items_shortage",
+                "shortage_count": max(0, item_count - len(selected_items)),
+                "reason": "\u8d2d\u7269\u8f66\u53ef\u63d0\u5355\u5546\u54c1\u4e0d\u8db3",
+            }
+            if use_shop_grouping:
+                shortage_summary.update(
+                    {
+                        "expected_shop_count": order_shop_count,
+                        "expected_per_shop": order_per_shop,
+                        "available_shop_count": selection_meta.get("available_shop_count", 0),
+                        "ready_shop_count": selection_meta.get("ready_shop_count", 0),
+                        "selected_shop_count": selection_meta.get("selected_shop_count", 0),
+                        "shortage_count": selection_meta.get("shortage_count", shortage_summary["shortage_count"]),
+                    }
+                )
             return _finish_named(
                 ORDER_SCRIPT_NAME,
                 log,
                 False,
-                {
-                    "order_sn": "",
-                    "selected_count": len(selected_items),
-                    "expected_count": item_count,
-                    "reason": "\u8d2d\u7269\u8f66\u53ef\u63d0\u5355\u5546\u54c1\u4e0d\u8db3",
-                },
+                shortage_summary,
             )
 
         failed_edits = []
@@ -3878,6 +4094,16 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
             "cart_ids": [item.get("id") for item in selected_items],
             "goods_ids": [item.get("goods_id") for item in selected_items],
         }
+        if use_shop_grouping:
+            summary.update(
+                {
+                    "expected_shop_count": order_shop_count,
+                    "expected_per_shop": order_per_shop,
+                    "selected_shop_count": selection_meta.get("selected_shop_count", 0),
+                    "available_shop_count": selection_meta.get("available_shop_count", 0),
+                    "ready_shop_count": selection_meta.get("ready_shop_count", 0),
+                }
+            )
         if not passed:
             summary["reason"] = "\u6b63\u5f0f\u63d0\u51fa\u8ba2\u5355\u5931\u8d25" if submit_order else "\u8ba2\u5355\u4fdd\u5b58\u5931\u8d25"
         elif run_backend_flow:
@@ -3932,6 +4158,14 @@ SCRIPT_REGISTRY: Dict[str, Any] = {
     },
     "warehouse_delivery": {
         "name": WAREHOUSE_DELIVERY_SCRIPT_NAME,
+        "func": None,
+    },
+    "porder_balance_payment": {
+        "name": POORDER_BALANCE_PAYMENT_SCRIPT_NAME,
+        "func": None,
+    },
+    "porder_bank_payment": {
+        "name": POORDER_BANK_PAYMENT_SCRIPT_NAME,
         "func": None,
     },
 }
@@ -4055,3 +4289,237 @@ SCRIPT_REGISTRY["bank_payment"]["func"] = run_bank_payment_script
 SCRIPT_REGISTRY["purchase_to_shelf"]["func"] = run_purchase_to_shelf_script
 SCRIPT_REGISTRY["purchase_to_shelf_chain"]["func"] = run_purchase_to_shelf_chain
 SCRIPT_REGISTRY["warehouse_delivery"]["func"] = run_warehouse_delivery_script
+
+
+def run_porder_balance_payment_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    porder_sn = _porder_sn(variables)
+    if not porder_sn:
+        return _finish_named(
+            POORDER_BALANCE_PAYMENT_SCRIPT_NAME,
+            {"script": POORDER_BALANCE_PAYMENT_SCRIPT_NAME, "started_at": datetime.now()},
+            False,
+            {"porder_sn": "", "order_sn": "", "reason": "请输入配送单号"},
+        )
+
+    log: Dict[str, Any] = {
+        "script": POORDER_BALANCE_PAYMENT_SCRIPT_NAME,
+        "mode": "porder_balance_payment",
+        "started_at": datetime.now(),
+        "porder_sn": porder_sn,
+        "backend_porder": {},
+        "order_list": {},
+        "payment": {},
+    }
+
+    try:
+        # Step 1: 可选执行后台配送单流程（配货、装箱、报价）
+        base_url = (env.base_url or bulk_cart.BASE_URL).rstrip("/")
+        timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+        if _as_bool(variables.get("run_backend_porder_flow"), False):
+            log["mode"] = "porder_backend_then_balance_payment"
+            backend_passed, backend_summary = _run_backend_porder_flow(base_url, timeout, variables, porder_sn, log)
+            if not backend_passed:
+                return _finish_named(
+                    POORDER_BALANCE_PAYMENT_SCRIPT_NAME,
+                    log,
+                    False,
+                    {"porder_sn": porder_sn, "order_sn": "", "reason": backend_summary.get("reason") or "配送单后台流程失败"},
+                )
+        else:
+            log["backend_porder"] = {"skipped": True, "reason": "配送单已待支付，跳过后台流程"}
+
+        # Step 2: 余额支付
+        client, base_url, _, _ = _login_client_for_payment(env, variables, log)
+        log["base_url"] = base_url
+        amount = _load_porder_payment_amount(client, variables, log, porder_sn)
+
+        fields: OrderedDict[str, Any] = OrderedDict()
+        fields["porder_sn"] = porder_sn
+        fields["discounts_id"] = str(variables.get("discounts_id") or "")
+        fields["merge_pay"] = str(variables.get("merge_pay") or "0")
+        _apply_extra_fields(fields, variables.get("balance_pay_fields"))
+        payment_payload = _call_with_retry(
+            "porder balance payment",
+            lambda: client.post_form(_api_path(variables, "client_porder_balance_pay", "/client/porder.balancePayOrder"), fields),
+        )
+        log["payment"] = {**_payload_brief(payment_payload), "request": dict(fields)}
+        summary = _porder_payment_summary("balance", porder_sn, amount, payment_payload)
+        summary["backend_passed"] = True
+        return _finish_named(POORDER_BALANCE_PAYMENT_SCRIPT_NAME, log, summary["payment_passed"] and summary["porder_matched"], summary)
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _finish_named(
+            POORDER_BALANCE_PAYMENT_SCRIPT_NAME,
+            log,
+            False,
+            {"porder_sn": porder_sn, "payment_type": "balance", "order_sn": "", "pay_amount": "0", "error": str(exc)},
+        )
+
+
+def run_porder_bank_payment_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    porder_sn = _porder_sn(variables)
+    if not porder_sn:
+        return _finish_named(
+            POORDER_BANK_PAYMENT_SCRIPT_NAME,
+            {"script": POORDER_BANK_PAYMENT_SCRIPT_NAME, "started_at": datetime.now()},
+            False,
+            {"porder_sn": "", "order_sn": "", "reason": "请输入配送单号"},
+        )
+
+    log: Dict[str, Any] = {
+        "script": POORDER_BANK_PAYMENT_SCRIPT_NAME,
+        "mode": "porder_bank_payment",
+        "started_at": datetime.now(),
+        "porder_sn": porder_sn,
+        "backend_porder": {},
+        "order_list": {},
+        "payment": {},
+        "finance": {},
+    }
+
+    try:
+        # Step 1: 可选执行后台配送单流程（配货、装箱、报价）
+        base_url = (env.base_url or bulk_cart.BASE_URL).rstrip("/")
+        timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+        if _as_bool(variables.get("run_backend_porder_flow"), False):
+            log["mode"] = "porder_backend_then_bank_payment"
+            backend_passed, backend_summary = _run_backend_porder_flow(base_url, timeout, variables, porder_sn, log)
+            if not backend_passed:
+                return _finish_named(
+                    POORDER_BANK_PAYMENT_SCRIPT_NAME,
+                    log,
+                    False,
+                    {"porder_sn": porder_sn, "order_sn": "", "reason": backend_summary.get("reason") or "配送单后台流程失败"},
+                )
+        else:
+            log["backend_porder"] = {"skipped": True, "reason": "配送单已待支付，跳过后台流程"}
+
+        # Step 2: 银行支付
+        client, base_url, timeout, _ = _login_client_for_payment(env, variables, log)
+        log["base_url"] = base_url
+        amount = _load_porder_payment_amount(client, variables, log, porder_sn)
+        if not _positive_decimal(amount):
+            return _finish_named(
+                POORDER_BANK_PAYMENT_SCRIPT_NAME,
+                log,
+                False,
+                {"porder_sn": porder_sn, "payment_type": "bank", "order_sn": "", "pay_amount": amount, "reason": "未获取到可用的配送单支付金额"},
+            )
+
+        now = datetime.now()
+        fields: OrderedDict[str, Any] = OrderedDict()
+        fields["porder_sn"] = porder_sn
+        fields["pay_bank_method"] = str(variables.get("pay_bank_method") or "1")
+        fields["pay_date"] = str(variables.get("pay_date") or now.strftime("%Y-%m-%d %H:%M:%S"))
+        fields["pay_reach_date"] = _bank_pay_reach_date(variables, now)
+        fields["pay_name"] = str(variables.get("pay_name") or "自动化测试")
+        fields["pay_amount"] = amount
+        fields["pay_remark"] = str(variables.get("pay_remark") or "自动化银行付款")
+        fields["discounts_id"] = str(variables.get("discounts_id") or "")
+        fields["merge_pay"] = str(variables.get("merge_pay") or "0")
+        _apply_extra_fields(fields, variables.get("bank_pay_fields"))
+        payment_payload = _call_with_retry(
+            "porder bank payment",
+            lambda: client.post_form(_api_path(variables, "client_porder_bank_pay", "/client/porder.bankPayOrder"), fields),
+        )
+        payment_ok = _api_success(payment_payload)
+        payment_data = payment_payload.get("data") if isinstance(payment_payload.get("data"), dict) else {}
+        serial_number = str(payment_data.get("serial_number") or variables.get("serial_number") or "")
+        porder_matched = _porder_payload_matches(payment_payload, porder_sn)
+        log["payment"] = {**_payload_brief(payment_payload), "request": dict(fields), "serial_number": serial_number, "porder_matched": porder_matched}
+
+        # Step 3: 财务确认
+        finance_confirm = _as_bool(variables.get("finance_confirm"), True)
+        finance_ok = True
+        if payment_ok and porder_matched and finance_confirm:
+            if not serial_number:
+                finance_ok = False
+                log["finance"] = {"reason": "银行支付未返回流水号"}
+            else:
+                session = requests.Session()
+                login_payload, token = _admin_login(session, base_url, variables, timeout)
+                log["finance"]["login"] = {
+                    **_payload_brief(login_payload),
+                    "account": str(variables.get("backend_account") or variables.get("backend_username") or "Y001"),
+                    "token_extracted": bool(token),
+                }
+                if not _api_success(login_payload) or not token:
+                    finance_ok = False
+                    log["finance"]["reason"] = "后台登录失败"
+                else:
+                    initial_delay = _as_float(variables.get("finance_confirm_initial_delay"), 2.0)
+                    retry_delay = _as_float(variables.get("finance_confirm_delay"), 2.0)
+                    retries = _as_int(variables.get("finance_confirm_retries"), 6)
+                    if initial_delay > 0:
+                        time.sleep(initial_delay)
+                    attempts = []
+                    list_payload: Dict[str, Any] = {}
+                    confirm_payload: Dict[str, Any] = {}
+                    selected_bill: Dict[str, Any] | None = None
+                    for attempt in range(retries):
+                        list_fields = _finance_unconfirm_fields(variables, serial_number, porder_sn)
+                        list_payload = _post_admin_form(
+                            session, base_url,
+                            _api_path(variables, "admin_bill_unconfirm_list", "/bill.unConfirmList"),
+                            list_fields, timeout,
+                        )
+                        rows = _finance_rows_from_payload(list_payload)
+                        selected_bill = _select_finance_bill(rows, serial_number, porder_sn)
+                        attempt_brief = {
+                            **_payload_brief(list_payload),
+                            "request": dict(list_fields),
+                            "row_count": len(rows),
+                            "selected_bill": _finance_bill_brief(selected_bill),
+                            "serial_number": serial_number,
+                            "attempt": attempt + 1,
+                        }
+                        attempts.append(attempt_brief)
+                        if _api_success(list_payload) and selected_bill and selected_bill.get("id") not in (None, ""):
+                            break
+                        if attempt < retries - 1:
+                            time.sleep(retry_delay)
+                    log["finance"]["unconfirm_list_attempts"] = attempts
+                    log["finance"]["unconfirm_list"] = attempts[-1] if attempts else {"serial_number": serial_number}
+                    if _api_success(list_payload) and selected_bill and selected_bill.get("id") not in (None, ""):
+                        confirm_payload = _post_admin_form(
+                            session, base_url,
+                            _api_path(variables, "admin_bill_confirm", "/bill.confirm"),
+                            {"id": selected_bill.get("id")}, timeout,
+                        )
+                        finance_ok = _api_success(confirm_payload)
+                        log["finance"]["confirm"] = {
+                            **_payload_brief(confirm_payload),
+                            "request": {"id": selected_bill.get("id")},
+                            "selected_bill": _finance_bill_brief(selected_bill),
+                        }
+                    else:
+                        finance_ok = False
+                        log["finance"]["confirm"] = {"serial_number": serial_number, "selected_bill": _finance_bill_brief(selected_bill)}
+                    if not finance_ok:
+                        last_payload = confirm_payload or list_payload
+                        last_msg = last_payload.get("msg") or last_payload.get("data") or "财务确认汇款失败"
+                        log["finance"]["reason"] = f"财务确认汇款失败：{last_msg}"
+
+        passed = payment_ok and porder_matched and finance_ok
+        summary = _porder_payment_summary("bank", porder_sn, amount, payment_payload)
+        summary["backend_passed"] = True
+        summary["finance_passed"] = finance_ok
+        if payment_ok and not porder_matched:
+            summary["reason"] = "配送单银行付款接口返回单号与输入配送单号不一致"
+        return _finish_named(POORDER_BANK_PAYMENT_SCRIPT_NAME, log, passed, summary)
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _finish_named(
+            POORDER_BANK_PAYMENT_SCRIPT_NAME,
+            log,
+            False,
+            {"porder_sn": porder_sn, "payment_type": "bank", "order_sn": "", "pay_amount": "0", "error": str(exc)},
+        )
+
+
+SCRIPT_REGISTRY["porder_balance_payment"]["func"] = run_porder_balance_payment_script
+SCRIPT_REGISTRY["porder_bank_payment"]["func"] = run_porder_bank_payment_script

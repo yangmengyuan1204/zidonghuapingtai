@@ -1,9 +1,10 @@
 fastapi==0.115.6
-uvicorn[standard]==0.34.0
+uvicorn[standard]==0.30.6
 sqlalchemy==2.0.36
 python-jose[cryptography]==3.3.0
 requests==2.32.3
-playwright==1.49.1
+playwright==1.60.0
 allure-pytest==2.13.5
 python-multipart==0.0.20
 httpx==0.28.1
+click==8.1.7

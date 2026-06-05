@@ -86,7 +86,7 @@ def main():
         cur,
         project_id,
         env_id,
-        "test-搜索商品",
+        "搜索商品",
         "POST",
         "/mobile/searchGoods",
         multipart,
@@ -106,7 +106,7 @@ def main():
         cur,
         project_id,
         env_id,
-        "test-商品详情",
+        "商品详情",
         "POST",
         "/mobile/goodsParticulars",
         multipart,
@@ -130,7 +130,7 @@ def main():
         cur,
         project_id,
         env_id,
-        "test-加入购物车",
+        "加入购物车",
         "POST",
         "/mobile/cart.goodsToCart",
         token_headers,
@@ -158,7 +158,7 @@ def main():
     )
 
     conn.commit()
-    print(dumps({"project_id": project_id, "env_id": env_id, "seeded": ["test-搜索商品", "test-商品详情", "test-加入购物车"]}))
+    print(dumps({"project_id": project_id, "env_id": env_id, "seeded": ["搜索商品", "商品详情", "加入购物车"]}))
 
 
 if __name__ == "__main__":

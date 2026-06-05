@@ -16,6 +16,7 @@ const state = {
     variables: localStorage.getItem("factoryVariables") || '{\n  "keyword": "test",\n  "account": "abner"\n}',
     editing: false,
   },
+  functionalTaskId: localStorage.getItem("functionalTaskId") || "",
 };
 
 const views = [
@@ -23,6 +24,7 @@ const views = [
   { key: "projects", label: "项目管理" },
   { key: "apiCases", label: "接口管理" },
   { key: "dataScripts", label: "数据脚本" },
+  { key: "functionalTests", label: "功能测试" },
   { key: "uiCases", label: "UI测试" },
   { key: "records", label: "报告中心" },
   { key: "users", label: "用户管理", adminOnly: true },
@@ -30,6 +32,7 @@ const views = [
 
 const FLOW_STORAGE_KEY = "dataFactoryFlows";
 const DELETED_BUILTIN_KEY = "dataFactoryDeletedBuiltins";
+const CASE_NAME_PREFIXES = ["\u6570\u636e\u811a\u672c-", "test-"];
 const BUILTIN_FLOW_DEFINITIONS = {
   shopping_cart: { id: "shopping_cart_builtin", name: "\u5546\u54c1\u8d2d\u7269\u8f66" },
   order_quote: { id: "order_quote_builtin", name: "\u8ba2\u5355\u62a5\u4ef7" },
@@ -41,6 +44,56 @@ const BUILTIN_FLOW_DEFINITIONS = {
     name: "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6(\u7ec4\u5408\u811a\u672c)",
   },
   warehouse_delivery: { id: "warehouse_delivery_builtin", name: "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355" },
+  porder_balance_payment: { id: "porder_balance_payment_builtin", name: "\u914d\u9001\u5355\u4f59\u989d\u4ed8\u6b3e" },
+  porder_bank_payment: { id: "porder_bank_payment_builtin", name: "\u914d\u9001\u5355\u94f6\u884c\u4ed8\u6b3e" },
+};
+
+const SHOP_TYPE_OPTIONS = [
+  { value: "1688", label: "1688" },
+  { value: "taobao", label: "taobao" },
+  { value: "tmall", label: "tmall" },
+  { value: "rakumart", label: "rakumart" },
+];
+
+const SCRIPT_PARAM_SCHEMAS = {
+  shopping_cart: [
+    { name: "keyword", label: "关键词" },
+    { name: "shop_type", label: "商品来源", type: "select", options: SHOP_TYPE_OPTIONS, default: "1688" },
+    { name: "target_shops", label: "目标店铺数", type: "number", default: 4 },
+    { name: "per_shop", label: "每店商品数", type: "number", default: 5 },
+  ],
+  order_quote: [
+    { name: "order_shop_count", label: "目标店铺数", type: "number", default: 1 },
+    { name: "order_per_shop", label: "每店商品数", type: "number", default: 2 },
+    { name: "order_item_num", label: "每个商品数量", type: "number", default: 10 },
+  ],
+  balance_payment: [
+    { name: "order_sns", label: "订单号(多个换行或逗号)", type: "textarea", rows: 4, kind: "list" },
+    { name: "order_sn", label: "单个订单号" },
+  ],
+  bank_payment: [
+    { name: "order_sns", label: "订单号(多个换行或逗号)", type: "textarea", rows: 4, kind: "list" },
+    { name: "order_sn", label: "单个订单号" },
+  ],
+  purchase_to_shelf: [
+    { name: "order_sn", label: "订单号" },
+    { name: "purchase_no", label: "交易号" },
+  ],
+  purchase_to_shelf_chain: [
+    { name: "purchase_no", label: "交易号" },
+  ],
+  warehouse_delivery: [
+    { name: "send_num", label: "提出数量", type: "number", default: 1 },
+  ],
+  porder_balance_payment: [
+    { name: "porder_sn", label: "配送单号" },
+  ],
+  porder_bank_payment: [
+    { name: "porder_sn", label: "配送单号" },
+  ],
+  porder_shipment: [
+    { name: "porder_sn", label: "配送单号" },
+  ],
 };
 
 const appEl = document.querySelector("#app");
@@ -113,6 +166,233 @@ function parseJsonText(text, fallback = {}) {
   const raw = String(text || "").trim();
   if (!raw) return fallback;
   return JSON.parse(raw);
+}
+
+function boolValue(value, fallback = false) {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  return !["0", "false", "no", "off", "否"].includes(String(value).trim().toLowerCase());
+}
+
+function splitParamList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+  return String(value || "")
+    .split(/[\n,，;；]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function isPorderShipmentFlow(flow) {
+  const name = String(flow?.name || "");
+  return name.includes("配送单") && name.includes("出货");
+}
+
+function scriptParamFields(scriptType, flow = null) {
+  if (SCRIPT_PARAM_SCHEMAS[scriptType]) return SCRIPT_PARAM_SCHEMAS[scriptType];
+  if (isPorderShipmentFlow(flow)) return SCRIPT_PARAM_SCHEMAS.porder_shipment;
+  return [];
+}
+
+function safeVariables(text) {
+  try {
+    return parseJsonText(text || "{}", {});
+  } catch {
+    return {};
+  }
+}
+
+function fieldDisplayValue(field, variables) {
+  const value = variables?.[field.name] ?? field.default ?? "";
+  if (field.type === "checkbox") return boolValue(value, boolValue(field.default, false));
+  if (field.kind === "list") return splitParamList(value).join("\n");
+  return value ?? "";
+}
+
+function renderFormField(field, value) {
+  const required = field.required ? "required" : "";
+  const placeholder = field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : "";
+  if (field.type === "select") {
+    const options = (field.options || [])
+      .map((option) => `<option value="${escapeHtml(option.value)}" ${String(option.value) === String(value) ? "selected" : ""}>${escapeHtml(option.label)}</option>`)
+      .join("");
+    return `<div class="field"><label>${escapeHtml(field.label)}</label><select name="${escapeHtml(field.name)}" ${required}>${options}</select></div>`;
+  }
+  if (field.type === "textarea") {
+    return `<div class="field"><label>${escapeHtml(field.label)}</label><textarea name="${escapeHtml(field.name)}" rows="${field.rows || 5}" ${required}>${escapeHtml(value)}</textarea></div>`;
+  }
+  if (field.type === "checkbox") {
+    return `
+      <label class="check-field">
+        <input name="${escapeHtml(field.name)}" type="checkbox" ${value ? "checked" : ""} />
+        <span>${escapeHtml(field.label)}</span>
+      </label>
+    `;
+  }
+  return `<div class="field"><label>${escapeHtml(field.label)}</label><input name="${escapeHtml(field.name)}" type="${field.type || "text"}" value="${escapeHtml(value)}" ${placeholder} ${required} /></div>`;
+}
+
+function paramFormValues(fields, variables) {
+  return Object.fromEntries(fields.map((field) => [field.name, fieldDisplayValue(field, variables)]));
+}
+
+function normalizeParamValue(field, rawValue) {
+  if (field.type === "checkbox") {
+    const checked = boolValue(rawValue, false);
+    return field.kind === "flag" ? (checked ? "1" : "0") : checked;
+  }
+  if (field.kind === "list") return splitParamList(rawValue);
+  if (field.type === "number") {
+    if (rawValue === "" || rawValue === null || rawValue === undefined) return "";
+    const number = Number(rawValue);
+    return Number.isFinite(number) ? number : "";
+  }
+  return String(rawValue ?? "").trim();
+}
+
+function mergeParamValues(variables, fields, formData) {
+  const next = { ...(variables || {}) };
+  fields.forEach((field) => {
+    const value = normalizeParamValue(field, formData[field.name]);
+    const isEmptyList = Array.isArray(value) && value.length === 0;
+    if (value === "" || value === null || value === undefined || isEmptyList) {
+      delete next[field.name];
+    } else {
+      next[field.name] = value;
+    }
+  });
+  return next;
+}
+
+function orderSnListFromVariables(variables) {
+  const fromMany = splitParamList(variables?.order_sns);
+  if (fromMany.length) return fromMany;
+  const single = String(variables?.order_sn || "").trim();
+  return single ? [single] : [];
+}
+
+function lastWarehousePorderSn(flow) {
+  if (flow?.lastPorderSn) return flow.lastPorderSn;
+  const warehouseFlow = readFlows().find((item) => item.id === BUILTIN_FLOW_DEFINITIONS.warehouse_delivery.id);
+  return warehouseFlow?.lastPorderSn || "";
+}
+
+function normalizePositiveInt(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? Math.floor(number) : fallback;
+}
+
+function sanitizePaymentVariables(next, { bank = false } = {}) {
+  next.discounts_id = "";
+  next.predict_logistics_price_is_pay = "0";
+  delete next.pay_amount;
+  delete next.balance_pay_fields;
+  if (bank) {
+    next.pay_bank_method = "1";
+    next.pay_name = "自动化测试";
+    next.pay_remark = "自动化银行付款";
+    next.finance_confirm = true;
+    delete next.pay_date;
+    delete next.pay_reach_date;
+    delete next.bank_pay_fields;
+  } else {
+    next.include_balance_pay_amount = false;
+  }
+}
+
+function sanitizeScriptVariables(scriptType, variables, flow = null) {
+  const next = { ...(variables || {}) };
+  if (scriptType === "shopping_cart") {
+    const shopType = String(next.shop_type || splitParamList(next.shop_types)[0] || "1688").trim() || "1688";
+    next.shop_type = shopType;
+    next.shop_types = [shopType];
+    next.target_shops = normalizePositiveInt(next.target_shops || next.shop_count, 4);
+    next.per_shop = normalizePositiveInt(next.per_shop, 5);
+    next.strict_shop_count = false;
+    delete next.shop_count;
+    return next;
+  }
+
+  if (scriptType === "order_quote") {
+    next.order_shop_count = normalizePositiveInt(next.order_shop_count || next.target_shops || next.shop_count, 1);
+    next.order_per_shop = normalizePositiveInt(next.order_per_shop || next.order_item_count, 2);
+    next.order_item_count = next.order_per_shop;
+    next.order_item_num = normalizePositiveInt(next.order_item_num, 10);
+    next.logistics_id = next.logistics_id || "1";
+    next.shop_type = "1688";
+    next.submit_order = true;
+    next.run_backend_flow = true;
+    next.auto_fill_cart_on_shortage = true;
+    delete next.keyword;
+    delete next.target_shops;
+    delete next.shop_count;
+    return next;
+  }
+
+  if (scriptType === "balance_payment") {
+    sanitizePaymentVariables(next);
+    return next;
+  }
+
+  if (scriptType === "bank_payment") {
+    sanitizePaymentVariables(next, { bank: true });
+    return next;
+  }
+
+  if (scriptType === "purchase_to_shelf") {
+    next.link_quote_balance_before_shelf = true;
+    next.auto_quote_and_pay = true;
+    next.order_shop_count = normalizePositiveInt(next.order_shop_count, 1);
+    next.order_per_shop = normalizePositiveInt(next.order_per_shop, 2);
+    next.order_item_num = normalizePositiveInt(next.order_item_num, 10);
+    next.purchase_unit_price = "10";
+    next.purchase_freight = "0";
+    next.warehouse_index = next.warehouse_index || "2";
+    return next;
+  }
+
+  if (scriptType === "purchase_to_shelf_chain") {
+    next.order_shop_count = normalizePositiveInt(next.order_shop_count, 1);
+    next.order_per_shop = normalizePositiveInt(next.order_per_shop, 2);
+    next.order_item_num = normalizePositiveInt(next.order_item_num, 10);
+    next.purchase_unit_price = "10";
+    next.purchase_freight = "0";
+    next.warehouse_index = next.warehouse_index || "2";
+    return next;
+  }
+
+  if (scriptType === "warehouse_delivery") {
+    next.send_num = normalizePositiveInt(next.send_num, 1);
+    next.porder_logistics_id = "14";
+    next.warehouse_keywords = "";
+    next.run_backend_delivery_flow = true;
+    delete next.order_detail_id;
+    delete next.porder_sn;
+    return next;
+  }
+
+  if (scriptType === "porder_balance_payment") {
+    next.porder_sn = String(next.porder_sn || lastWarehousePorderSn(flow) || "").trim();
+    next.run_backend_porder_flow = false;
+    sanitizePaymentVariables(next);
+    return next;
+  }
+
+  if (scriptType === "porder_bank_payment") {
+    next.porder_sn = String(next.porder_sn || lastWarehousePorderSn(flow) || "").trim();
+    next.run_backend_porder_flow = false;
+    sanitizePaymentVariables(next, { bank: true });
+    return next;
+  }
+
+  if (isPorderShipmentFlow(flow)) {
+    next.porder_sn = String(next.porder_sn || lastWarehousePorderSn(flow) || "").trim();
+    return next;
+  }
+
+  return next;
 }
 
 async function api(path, options = {}) {
@@ -254,12 +534,25 @@ function badge(value) {
     normal: "\u5b50\u8d26\u53f7",
     api: "\u63a5\u53e3",
     ui: "UI",
+    draft: "草稿",
+    uploaded: "已上传",
+    screenshot_uploaded: "截图已上传",
+    screenshot_analyzed: "截图已识别",
+    requirements_updated: "需求已补充",
+    scanned: "已扫描",
+    cases_generated: "已生成测试点",
+    ui_steps_generated: "已生成步骤",
+    approved: "已确认",
   };
   const statusClassMap = {
     passed: "ok",
     failed: "fail",
     active: "ok",
     inactive: "warn",
+    approved: "ok",
+    scanned: "ok",
+    uploaded: "warn",
+    draft: "warn",
   };
   const text = escapeHtml(labels[value] || value || "-");
   const cls = statusClassMap[value] || "";
@@ -371,13 +664,33 @@ function listValue(value) {
   return [];
 }
 
+function stripCaseNamePrefix(value) {
+  let text = String(value || "").trim();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    CASE_NAME_PREFIXES.forEach((prefix) => {
+      if (text.startsWith(prefix)) {
+        text = text.slice(prefix.length).trim();
+        changed = true;
+      }
+    });
+  }
+  return text;
+}
+
+function findCaseByName(cases, name) {
+  const target = stripCaseNamePrefix(name);
+  return (cases || []).find((item) => stripCaseNamePrefix(item.case_name) === target);
+}
+
 function ensureShoppingCartScript(flows, projects, envs, cases) {
   if (isBuiltinDeleted("shopping_cart_builtin")) return flows;
   const scriptName = "\u5546\u54c1\u8d2d\u7269\u8f66";
-  const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
-  const search = cases.find((item) => item.case_name === "test-\u641c\u7d22\u5546\u54c1");
-  const detail = cases.find((item) => item.case_name === "test-\u5546\u54c1\u8be6\u60c5");
-  const cart = cases.find((item) => item.case_name === "test-\u52a0\u5165\u8d2d\u7269\u8f66");
+  const login = findCaseByName(cases, "\u767b\u5f55");
+  const search = findCaseByName(cases, "\u641c\u7d22\u5546\u54c1");
+  const detail = findCaseByName(cases, "\u5546\u54c1\u8be6\u60c5");
+  const cart = findCaseByName(cases, "\u52a0\u5165\u8d2d\u7269\u8f66");
   const env = envs.find((item) => item.env_name === "test-\u767b\u5f55") || envs[0];
   const projectId = env?.project_id || projects[0]?.id || "";
   const caseIds = [login, search, detail, cart].filter(Boolean).map((item) => item.id);
@@ -452,7 +765,7 @@ function ensureShoppingCartScript(flows, projects, envs, cases) {
 function ensureOrderQuoteScript(flows, projects, envs, cases) {
   if (isBuiltinDeleted("order_quote_builtin")) return flows;
   const scriptName = "\u8ba2\u5355\u62a5\u4ef7";
-  const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
+  const login = findCaseByName(cases, "\u767b\u5f55");
   const env = envs.find((item) => item.env_name === "test-\u767b\u5f55") || envs[0];
   const projectId = env?.project_id || projects[0]?.id || "";
   if (!env) return flows;
@@ -533,10 +846,10 @@ function ensureOrderQuoteScript(flows, projects, envs, cases) {
 
 function ensurePaymentScript(flows, projects, envs, cases, config) {
   if (isBuiltinDeleted(config.id)) return flows;
-  const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
-  const orderList = cases.find((item) => item.case_name === "\u6570\u636e\u811a\u672c-\u524d\u53f0\u8ba2\u5355\u5217\u8868");
-  const payCase = cases.find((item) => item.case_name === config.caseName);
-  const financeCase = cases.find((item) => item.case_name === "\u6570\u636e\u811a\u672c-\u8d22\u52a1\u786e\u8ba4\u5165\u91d1");
+  const login = findCaseByName(cases, "\u767b\u5f55");
+  const orderList = findCaseByName(cases, "\u524d\u53f0\u8ba2\u5355\u5217\u8868");
+  const payCase = findCaseByName(cases, config.caseName);
+  const financeCase = findCaseByName(cases, "\u8d22\u52a1\u786e\u8ba4\u5165\u91d1");
   const env = envs.find((item) => item.env_name === "test-\u767b\u5f55") || envs[0];
   const projectId = env?.project_id || projects[0]?.id || "";
   if (!env) return flows;
@@ -624,7 +937,7 @@ function ensurePaymentScripts(flows, projects, envs, cases) {
 function ensurePurchaseToShelfScript(flows, projects, envs, cases) {
   if (isBuiltinDeleted("purchase_to_shelf_builtin")) return flows;
   const scriptName = "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6";
-  const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
+  const login = findCaseByName(cases, "\u767b\u5f55");
   const env = envs.find((item) => item.env_name === "test-\u767b\u5f55") || envs[0];
   const projectId = env?.project_id || projects[0]?.id || "";
   if (!env) return flows;
@@ -642,7 +955,7 @@ function ensurePurchaseToShelfScript(flows, projects, envs, cases) {
     "\u6570\u636e\u811a\u672c-\u4e0a\u67b6\u5165\u5e93",
   ];
   const caseIds = caseNames
-    .map((name) => cases.find((item) => item.case_name === name))
+    .map((name) => findCaseByName(cases, name))
     .filter(Boolean)
     .map((item) => item.id);
   const loginBody = parseJsonText(login?.body || "{}", {});
@@ -720,7 +1033,7 @@ function ensurePurchaseToShelfScript(flows, projects, envs, cases) {
 function ensurePurchaseToShelfChainScript(flows, projects, envs, cases) {
   if (isBuiltinDeleted("purchase_to_shelf_chain_builtin")) return flows;
   const scriptName = "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6(\u7ec4\u5408\u811a\u672c)";
-  const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
+  const login = findCaseByName(cases, "\u767b\u5f55");
   const env = envs.find((item) => item.env_name === "test-\u767b\u5f55") || envs[0];
   const projectId = env?.project_id || projects[0]?.id || "";
   if (!env) return flows;
@@ -794,7 +1107,7 @@ function ensurePurchaseToShelfChainScript(flows, projects, envs, cases) {
 function ensureWarehouseDeliveryScript(flows, projects, envs, cases) {
   if (isBuiltinDeleted("warehouse_delivery_builtin")) return flows;
   const scriptName = "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355";
-  const login = cases.find((item) => item.case_name === "test-\u767b\u5f55");
+  const login = findCaseByName(cases, "\u767b\u5f55");
   const env = envs.find((item) => item.env_name === "test-\u767b\u5f55") || envs[0];
   const projectId = env?.project_id || projects[0]?.id || "";
   if (!env) return flows;
@@ -927,28 +1240,20 @@ function loadFlowToDraft(flow) {
 
 function readForm(form) {
   const data = {};
-  new FormData(form).forEach((value, key) => {
-    const input = form.elements[key];
-    data[key] = input && input.type === "number" ? (value === "" ? null : Number(value)) : value;
+  Array.from(form.elements).forEach((input) => {
+    if (!input.name || input.disabled || ["submit", "button"].includes(input.type)) return;
+    if (input.type === "checkbox") {
+      data[input.name] = input.checked;
+      return;
+    }
+    data[input.name] = input.type === "number" ? (input.value === "" ? null : Number(input.value)) : input.value;
   });
   return data;
 }
 
 function openForm(title, fields, values, onSubmit, submitLabel = "保存") {
   const body = fields
-    .map((field) => {
-      const value = values?.[field.name] ?? field.default ?? "";
-      if (field.type === "select") {
-        const options = (field.options || [])
-          .map((option) => `<option value="${escapeHtml(option.value)}" ${String(option.value) === String(value) ? "selected" : ""}>${escapeHtml(option.label)}</option>`)
-          .join("");
-        return `<div class="field"><label>${escapeHtml(field.label)}</label><select name="${escapeHtml(field.name)}" ${field.required ? "required" : ""}>${options}</select></div>`;
-      }
-      if (field.type === "textarea") {
-        return `<div class="field"><label>${escapeHtml(field.label)}</label><textarea name="${escapeHtml(field.name)}" rows="${field.rows || 5}" ${field.required ? "required" : ""}>${escapeHtml(value)}</textarea></div>`;
-      }
-      return `<div class="field"><label>${escapeHtml(field.label)}</label><input name="${escapeHtml(field.name)}" type="${field.type || "text"}" value="${escapeHtml(value)}" ${field.required ? "required" : ""} /></div>`;
-    })
+    .map((field) => renderFormField(field, values?.[field.name] ?? field.default ?? ""))
     .join("");
 
   modalEl.innerHTML = `
@@ -971,8 +1276,8 @@ function openForm(title, fields, values, onSubmit, submitLabel = "保存") {
   document.querySelector("#modalForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
-      await onSubmit(readForm(event.currentTarget));
-      modalEl.close();
+      const shouldClose = await onSubmit(readForm(event.currentTarget));
+      if (shouldClose !== false) modalEl.close();
     } catch (error) {
       showToast(error.message);
     }
@@ -996,6 +1301,7 @@ async function renderCurrentView() {
   if (state.view === "envs") return renderEnvs();
   if (state.view === "apiCases") return renderApiCases();
   if (state.view === "dataScripts") return state.factory.editing ? renderDataScriptEditor() : renderDataScripts();
+  if (state.view === "functionalTests") return renderFunctionalTests();
   if (state.view === "uiCases") return renderUiCases();
   if (state.view === "records") return renderRecords();
   if (state.view === "users") return renderUsers();
@@ -1478,7 +1784,7 @@ async function renderDataScripts() {
   document.querySelectorAll("[data-run-script]").forEach((button) => {
     button.addEventListener("click", async () => {
       const flow = readFlows().find((item) => item.id === button.dataset.runScript);
-      await runSavedFlow(flow);
+      openRunScriptForm(flow);
     });
   });
   document.querySelectorAll("[data-copy-script]").forEach((button) => {
@@ -1565,6 +1871,9 @@ async function renderDataScriptEditor() {
     .map((id) => allCases.find((item) => item.id === id))
     .filter(Boolean);
   const selectedFlow = flows.find((flow) => flow.id === state.factory.flowId);
+  const paramFields = scriptParamFields(selectedFlow?.scriptType || "", selectedFlow);
+  const draftVariables = sanitizeScriptVariables(selectedFlow?.scriptType || "", safeVariables(state.factory.variables), selectedFlow);
+  const paramValues = paramFormValues(paramFields, draftVariables);
 
   contentEl().innerHTML = `
     <div class="toolbar">
@@ -1617,12 +1926,26 @@ async function renderDataScriptEditor() {
         )}
       </section>
     </div>
-    <section class="panel factory-vars">
-      <div class="panel-title"><h3>运行时变量</h3></div>
+    ${
+      paramFields.length
+        ? `
+          <section class="panel factory-vars">
+            <div class="panel-title"><h3>常用参数</h3></div>
+            <div class="panel-body">
+              <form id="factoryParamForm" class="param-grid">
+                ${paramFields.map((field) => renderFormField(field, paramValues[field.name])).join("")}
+              </form>
+            </div>
+          </section>
+        `
+        : ""
+    }
+    <details class="panel factory-vars advanced-vars">
+      <summary>高级参数</summary>
       <div class="panel-body">
         <textarea id="factoryVariables" spellcheck="false">${escapeHtml(state.factory.variables)}</textarea>
       </div>
-    </section>
+    </details>
   `;
 
   document.querySelector("#backScripts").addEventListener("click", async () => {
@@ -1644,6 +1967,26 @@ async function renderDataScriptEditor() {
     state.factory.variables = event.target.value;
     persistFactoryDraft();
   });
+  const paramForm = document.querySelector("#factoryParamForm");
+  if (paramForm) {
+    const syncParamForm = () => {
+      const textarea = document.querySelector("#factoryVariables");
+      let variables = {};
+      try {
+        variables = parseJsonText(textarea.value || "{}", {});
+      } catch {
+        showToast("运行时变量不是合法 JSON，先修正 JSON 后再改常用参数");
+        return;
+      }
+      const merged = sanitizeScriptVariables(selectedFlow?.scriptType || "", mergeParamValues(variables, paramFields, readForm(paramForm)), selectedFlow);
+      state.factory.variables = JSON.stringify(merged, null, 2);
+      textarea.value = state.factory.variables;
+      persistFactoryDraft();
+    };
+    paramForm.querySelectorAll("input, select, textarea").forEach((input) => {
+      input.addEventListener(input.type === "checkbox" || input.tagName === "SELECT" ? "change" : "input", syncParamForm);
+    });
+  }
   document.querySelector("#saveFlow").addEventListener("click", () => openSaveFlowForm());
   document.querySelectorAll("[data-add-flow-case]").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -1738,6 +2081,51 @@ async function runFactoryFlow() {
   }
 }
 
+function saveFlowVariables(flow, variables) {
+  const text = JSON.stringify(variables || {}, null, 2);
+  const flows = readFlows();
+  const next = flows.map((item) => (item.id === flow.id ? { ...item, variables: text } : item));
+  writeFlows(next);
+  flow.variables = text;
+}
+
+function openRunScriptForm(flow) {
+  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery", "porder_balance_payment", "porder_bank_payment"];
+  if (!flow || (!builtInTypes.includes(flow.scriptType) && !(flow.caseIds || []).length)) {
+    showToast("脚本没有配置步骤");
+    return;
+  }
+  const fields = scriptParamFields(flow.scriptType, flow);
+  if (!fields.length) {
+    runSavedFlow(flow);
+    return;
+  }
+  let variables = {};
+  try {
+    variables = parseJsonText(flow.variables || "{}", {});
+  } catch {
+    showToast("脚本变量不是合法 JSON");
+    return;
+  }
+  variables = sanitizeScriptVariables(flow.scriptType, variables, flow);
+  const values = {
+    ...paramFormValues(fields, variables),
+    __save_defaults: false,
+  };
+  openForm(
+    `执行 ${flow.name || "数据脚本"}`,
+    [...fields, { name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false }],
+    values,
+    async (data) => {
+      const runtimeVariables = sanitizeScriptVariables(flow.scriptType, mergeParamValues(variables, fields, data), flow);
+      if (data.__save_defaults) saveFlowVariables(flow, runtimeVariables);
+      await runSavedFlow(flow, runtimeVariables);
+      return false;
+    },
+    "执行",
+  );
+}
+
 function scriptStepEstimate(flow, variables) {
   if (!flow) return 1;
   if (flow.scriptType === "order_quote") return variables?.run_backend_flow === false ? 5 : 9;
@@ -1748,9 +2136,12 @@ function scriptStepEstimate(flow, variables) {
   }
   if (flow.scriptType === "purchase_to_shelf_chain") return 21;
   if (flow.scriptType === "warehouse_delivery") return variables?.run_backend_delivery_flow === false ? 3 : 11;
+  if (flow.scriptType === "porder_balance_payment") return 14;
+  if (flow.scriptType === "porder_bank_payment") return variables?.finance_confirm === false ? 14 : 16;
   if (flow.scriptType !== "shopping_cart") return Math.max((flow.caseIds || []).length, 1);
   const perShopRaw = Number(variables?.per_shop);
   const perShop = Number.isFinite(perShopRaw) && perShopRaw > 0 ? Math.floor(perShopRaw) : 5;
+  const targetShopsRaw = Number(variables?.target_shops || variables?.shop_count);
   const rawShopTypes = variables?.shop_types;
   const shopTypes = Array.isArray(rawShopTypes)
     ? rawShopTypes
@@ -1758,7 +2149,7 @@ function scriptStepEstimate(flow, variables) {
         .split(",")
         .map((item) => item.trim())
         .filter(Boolean);
-  const shopCount = Math.max(shopTypes.length || 4, 1);
+  const shopCount = Number.isFinite(targetShopsRaw) && targetShopsRaw > 0 ? Math.floor(targetShopsRaw) : Math.max(shopTypes.length || 1, 1);
   return 1 + shopCount * perShop;
 }
 
@@ -1835,19 +2226,159 @@ function openScriptProgress(title, initialMessage) {
   };
 }
 
-async function runSavedFlow(flow) {
-  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery"];
+function scriptResultRecord(result, caseName) {
+  return { id: result?.id || "", case_name: caseName || "数据脚本", result: result?.result || "failed" };
+}
+
+function updateFlowLastOrder(flow, orderSn, recordId) {
+  if (!orderSn) return;
+  const flows = readFlows().map((item) =>
+    item.id === flow.id ? { ...item, lastOrderSn: orderSn, lastRecordId: recordId || item.lastRecordId || "" } : item,
+  );
+  writeFlows(flows);
+  flow.lastOrderSn = orderSn;
+  flow.lastRecordId = recordId || flow.lastRecordId || "";
+}
+
+function buildCartAutofillVariables(variables, shortageSummary) {
+  const targetShops = Number(shortageSummary?.expected_shop_count || variables.order_shop_count || variables.target_shops || variables.shop_count || 1);
+  const perShop = Number(shortageSummary?.expected_per_shop || variables.order_per_shop || variables.per_shop || variables.order_item_count || 1);
+  const next = {
+    ...variables,
+    target_shops: Number.isFinite(targetShops) && targetShops > 0 ? targetShops : 1,
+    per_shop: Number.isFinite(perShop) && perShop > 0 ? perShop : 1,
+  };
+  if (!next.shop_type) {
+    const shopTypes = splitParamList(next.shop_types);
+    next.shop_type = shopTypes[0] || "1688";
+  }
+  return sanitizeScriptVariables("shopping_cart", next);
+}
+
+async function runMultiPaymentFlow(flow, variables, progress) {
+  const orderSns = orderSnListFromVariables(variables);
+  const isBank = flow.scriptType === "bank_payment";
+  const endpoint = isBank ? "/api/data-scripts/bank-payment" : "/api/data-scripts/balance-payment";
+  const records = [];
+  const orders = [];
+  for (const [index, orderSn] of orderSns.entries()) {
+    progress.update(18 + Math.round((index / orderSns.length) * 70), `正在执行第 ${index + 1}/${orderSns.length} 个订单：${orderSn}`);
+    const requestVariables = { ...variables, order_sn: orderSn };
+    delete requestVariables.order_sns;
+    if (orderSns.length > 1) delete requestVariables.serial_number;
+    try {
+      const result = await api(endpoint, {
+        method: "POST",
+        body: {
+          env_id: flow.envId ? Number(flow.envId) : null,
+          variables: requestVariables,
+        },
+      });
+      const summary = result.summary || {};
+      const finalOrderSn = summary.order_sn || orderSn;
+      records.push(scriptResultRecord(result, `${flow.name || "支付脚本"}-${finalOrderSn}`));
+      orders.push({ order_sn: finalOrderSn, result: result.result, summary });
+      updateFlowLastOrder(flow, finalOrderSn, result.id);
+    } catch (error) {
+      records.push({ id: "", case_name: `${flow.name || "支付脚本"}-${orderSn}`, result: "failed" });
+      orders.push({ order_sn: orderSn, result: "failed", error: error.message });
+    }
+  }
+  const failed = orders.filter((item) => item.result !== "passed");
+  if (failed.length) {
+    progress.fail("多订单支付执行完成，存在失败订单");
+  } else {
+    progress.success("多订单支付执行完成，正在展示汇总...");
+  }
+  await new Promise((resolve) => window.setTimeout(resolve, 180));
+  showFactoryResult({
+    records,
+    variables: {
+      total: orders.length,
+      passed: orders.length - failed.length,
+      failed: failed.length,
+      orders,
+    },
+  });
+}
+
+async function runOrderQuoteWithAutofill(flow, variables, progress) {
+  const records = [];
+  const executeQuote = async (label) => {
+    const result = await api("/api/data-scripts/order-quote", {
+      method: "POST",
+      body: {
+        env_id: flow.envId ? Number(flow.envId) : null,
+        variables,
+      },
+    });
+    records.push(scriptResultRecord(result, label || flow.name));
+    updateFlowLastOrder(flow, result.summary?.order_sn || "", result.id);
+    return result;
+  };
+
+  progress.update(24, "正在执行前台提单与后台报价...");
+  let result = await executeQuote(flow.name);
+  let summary = result.summary || {};
+
+  if (summary.reason_code === "cart_items_shortage" && boolValue(variables.auto_fill_cart_on_shortage, true)) {
+    const targetShops = summary.expected_shop_count || variables.order_shop_count || 1;
+    const perShop = summary.expected_per_shop || variables.order_per_shop || variables.order_item_count || 1;
+    const shortage = summary.shortage_count || Math.max(0, (Number(targetShops) || 1) * (Number(perShop) || 1) - (Number(summary.selected_count) || 0));
+    progress.update(42, "购物车可提单商品不足，等待确认是否补货...");
+    const confirmed = window.confirm(`购物车商品不足，还差 ${shortage} 个。是否自动执行加购物车脚本补到 ${targetShops} 个店铺、每店 ${perShop} 个商品后重新提单？`);
+    if (confirmed) {
+      progress.update(48, "正在自动补充购物车商品...");
+      const cartVariables = buildCartAutofillVariables(variables, summary);
+      const cartResult = await api("/api/data-scripts/shopping-cart", {
+        method: "POST",
+        body: {
+          env_id: flow.envId ? Number(flow.envId) : null,
+          variables: cartVariables,
+        },
+      });
+      records.push(scriptResultRecord(cartResult, "自动补充购物车"));
+      if (cartResult.result === "passed") {
+        progress.update(70, "补货完成，正在重新执行订单报价...");
+        result = await executeQuote(`${flow.name || "订单报价"}-重试`);
+        summary = result.summary || {};
+      } else {
+        summary = {
+          order_quote: summary,
+          autofill: cartResult.summary || {},
+          reason: "自动补充购物车失败",
+        };
+      }
+    }
+  }
+
+  if (records[records.length - 1]?.result !== "passed") {
+    progress.fail("脚本执行完成，存在失败步骤");
+  } else {
+    progress.success("脚本执行完成，正在展示结果...");
+  }
+  await new Promise((resolve) => window.setTimeout(resolve, 180));
+  showFactoryResult({ records, variables: summary });
+}
+
+async function runSavedFlow(flow, runtimeVariables = null, options = {}) {
+  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery", "porder_balance_payment", "porder_bank_payment"];
   if (!flow || (!builtInTypes.includes(flow.scriptType) && !(flow.caseIds || []).length)) {
     showToast("脚本没有配置步骤");
     return;
   }
   let variables = {};
-  try {
-    variables = parseJsonText(flow.variables, {});
-  } catch {
-    showToast("脚本变量不是合法 JSON");
-    return;
+  if (runtimeVariables) {
+    variables = { ...runtimeVariables };
+  } else {
+    try {
+      variables = parseJsonText(flow.variables, {});
+    } catch {
+      showToast("脚本变量不是合法 JSON");
+      return;
+    }
   }
+  variables = sanitizeScriptVariables(flow.scriptType, variables, flow);
   const progress = openScriptProgress("\u6570\u636e\u811a\u672c\u6267\u884c\u8fdb\u5ea6", `\u9884\u8ba1\u6267\u884c ${scriptStepEstimate(flow, variables)} \u4e2a\u6b65\u9aa4`);
   try {
     showToast("脚本执行中，请稍候");
@@ -1869,33 +2400,20 @@ async function runSavedFlow(flow) {
       return;
     }
     if (flow.scriptType === "order_quote") {
-      progress.update(24, "\u6b63\u5728\u6267\u884c\u524d\u53f0\u63d0\u5355\u4e0e\u540e\u53f0\u7ffb\u8bd1\u3001\u91c7\u8d2d\u8c03\u67e5\u3001\u4e1a\u52a1\u62a5\u4ef7...");
-      const result = await api("/api/data-scripts/order-quote", {
-        method: "POST",
-        body: {
-          env_id: flow.envId ? Number(flow.envId) : null,
-          variables,
-        },
-      });
-      const orderSn = result.summary?.order_sn || "";
-      if (orderSn) {
-        const flows = readFlows().map((item) =>
-          item.id === flow.id ? { ...item, lastOrderSn: orderSn, lastRecordId: result.id } : item,
-        );
-        writeFlows(flows);
-        flow.lastOrderSn = orderSn;
-        flow.lastRecordId = result.id;
-      }
-      progress.success("\u811a\u672c\u6267\u884c\u5b8c\u6210\uff0c\u6b63\u5728\u5c55\u793a\u7ed3\u679c...");
-      await new Promise((resolve) => window.setTimeout(resolve, 180));
-      showFactoryResult({
-        records: [{ id: result.id, case_name: flow.name, result: result.result }],
-        variables: result.summary || {},
-      });
+      await runOrderQuoteWithAutofill(flow, variables, progress);
       return;
     }
     if (flow.scriptType === "balance_payment" || flow.scriptType === "bank_payment") {
       const isBank = flow.scriptType === "bank_payment";
+      const orderSns = orderSnListFromVariables(variables);
+      if (orderSns.length > 1) {
+        await runMultiPaymentFlow(flow, variables, progress);
+        return;
+      }
+      if (orderSns.length === 1 && variables.order_sns) {
+        variables = { ...variables, order_sn: orderSns[0] };
+        delete variables.order_sns;
+      }
       progress.update(
         24,
         isBank
@@ -1928,7 +2446,9 @@ async function runSavedFlow(flow) {
     }
     if (flow.scriptType === "purchase_to_shelf") {
       const requestVariables = { ...variables };
-      const linkBeforeShelf = requestVariables.link_quote_balance_before_shelf !== false && requestVariables.auto_quote_and_pay !== false;
+      const linkBeforeShelf = !String(requestVariables.order_sn || "").trim()
+        && requestVariables.link_quote_balance_before_shelf !== false
+        && requestVariables.auto_quote_and_pay !== false;
       if (linkBeforeShelf) {
         delete requestVariables.order_sn;
         delete requestVariables.last_order_sn;
@@ -2041,6 +2561,40 @@ async function runSavedFlow(flow) {
       });
       return;
     }
+    if (flow.scriptType === "porder_balance_payment") {
+      progress.update(12, "正在执行：配送单后台流程 -> 余额支付...");
+      const result = await api("/api/data-scripts/porder-balance-payment", {
+        method: "POST",
+        body: {
+          env_id: flow.envId ? Number(flow.envId) : null,
+          variables,
+        },
+      });
+      progress.success("配送单余额付款脚本执行完成，正在展示结果...");
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      showFactoryResult({
+        records: [{ id: result.id, case_name: flow.name, result: result.result }],
+        variables: result.summary || {},
+      });
+      return;
+    }
+    if (flow.scriptType === "porder_bank_payment") {
+      progress.update(12, "正在执行：配送单后台流程 -> 银行支付 -> 财务确认...");
+      const result = await api("/api/data-scripts/porder-bank-payment", {
+        method: "POST",
+        body: {
+          env_id: flow.envId ? Number(flow.envId) : null,
+          variables,
+        },
+      });
+      progress.success("配送单银行付款脚本执行完成，正在展示结果...");
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      showFactoryResult({
+        records: [{ id: result.id, case_name: flow.name, result: result.result }],
+        variables: result.summary || {},
+      });
+      return;
+    }
     progress.update(24, `\u6b63\u5728\u987a\u5e8f\u6267\u884c ${Math.max((flow.caseIds || []).length, 1)} \u4e2a\u63a5\u53e3\u7528\u4f8b...`);
     const payload = {
       case_ids: flow.caseIds,
@@ -2088,6 +2642,738 @@ function showFactoryResult(result) {
     state.view = "records";
     await renderShell();
   });
+}
+
+async function renderFunctionalTests() {
+  const projects = await api("/api/projects");
+  const tasks = await api(`/api/functional-tasks${queryString({ project_id: state.filters.projectId })}`);
+  if (state.functionalTaskId && !tasks.some((item) => String(item.id) === String(state.functionalTaskId))) {
+    state.functionalTaskId = "";
+    localStorage.removeItem("functionalTaskId");
+  }
+  const selectedId = state.functionalTaskId || (tasks[0]?.id ? String(tasks[0].id) : "");
+  const selected = selectedId ? await api(`/api/functional-tasks/${selectedId}`) : null;
+  const projectName = (id) => (projects.find((item) => String(item.id) === String(id)) || {}).name || id;
+  contentEl().innerHTML = `
+    <div class="toolbar">
+      <div class="filters">
+        <div class="field compact"><label>项目</label><select id="functionalProjectFilter">${optionList(projects, "id", "name", state.filters.projectId)}</select></div>
+      </div>
+      <div class="actions">
+        ${isAdmin() ? `<button class="btn secondary" id="aiConfigBtn">AI配置</button><button class="btn" id="newFunctionalTask">新增迭代任务</button>` : ""}
+      </div>
+    </div>
+    <div class="functional-layout">
+      <section class="panel functional-list">
+        <div class="panel-title"><h3>迭代/需求任务</h3></div>
+        ${renderTable(
+          [
+            { key: "iteration_name", label: "迭代" },
+            { key: "project_id", label: "项目", render: (row) => escapeHtml(projectName(row.project_id)) },
+            { key: "status", label: "状态", render: (row) => badge(row.status) },
+            { key: "actions", label: "操作", render: (row) => `<button class="btn secondary" data-open-functional="${row.id}">查看</button>` },
+          ],
+          tasks,
+          false,
+        )}
+      </section>
+      <section class="panel functional-detail">
+        ${selected ? renderFunctionalTaskDetail(selected) : `<div class="empty">暂无功能测试任务</div>`}
+      </section>
+    </div>
+  `;
+  document.querySelector("#functionalProjectFilter").addEventListener("change", async (event) => {
+    state.filters.projectId = event.target.value;
+    localStorage.setItem("projectId", state.filters.projectId);
+    state.functionalTaskId = "";
+    localStorage.removeItem("functionalTaskId");
+    await renderFunctionalTests();
+  });
+  document.querySelectorAll("[data-open-functional]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      state.functionalTaskId = button.dataset.openFunctional;
+      localStorage.setItem("functionalTaskId", state.functionalTaskId);
+      await renderFunctionalTests();
+    });
+  });
+  if (isAdmin()) {
+    document.querySelector("#newFunctionalTask")?.addEventListener("click", () => openFunctionalTaskForm(projects));
+    document.querySelector("#aiConfigBtn")?.addEventListener("click", openAiConfigForm);
+  }
+  bindFunctionalActions(selected);
+}
+
+function renderFunctionalTaskDetail(task) {
+  const latestSnapshot = task.snapshots?.[0];
+  const cases = task.cases || [];
+  const runs = task.runs || [];
+  const executable = cases.some((item) => item.automation_status === "approved" && item.ui_case_id);
+  return `
+    <div class="panel-title">
+      <h3>${escapeHtml(task.iteration_name)}</h3>
+      <div class="actions">
+        ${isAdmin() ? `<button class="btn secondary" id="uploadAxureBtn">上传Axure</button><button class="btn secondary" id="uploadScreenshotBtn">上传截图</button><button class="btn secondary" id="addRequirementNoteBtn">补充需求</button><button class="btn secondary" id="scanPageBtn">扫描页面</button><button class="btn secondary" id="generateCasesBtn">生成测试点</button>` : ""}
+        <button class="btn" id="executeFunctionalBtn" ${executable ? "" : "disabled"}>执行已确认用例</button>
+      </div>
+    </div>
+    <div class="functional-summary">
+      <div><span>项目</span><strong>${escapeHtml(task.project_name || task.project_id)}</strong></div>
+      <div><span>状态</span><strong>${badge(task.status)}</strong></div>
+      <div><span>目标页面</span><strong>${escapeHtml(task.target_url)}</strong></div>
+      <div><span>Axure</span><strong>${task.axure_path ? "已上传" : "未上传"}</strong></div>
+    </div>
+    <details class="functional-requirement" open>
+      <summary>初始需求说明</summary>
+      <pre>${escapeHtml(task.requirement_text || "暂无需求说明")}</pre>
+    </details>
+    ${renderFunctionalMaterials(task)}
+    <div class="panel-title"><h3>测试点草稿</h3></div>
+    ${renderTable(
+      [
+        { key: "title", label: "测试点" },
+        { key: "priority", label: "优先级", render: (row) => badge(row.priority) },
+        { key: "automation_status", label: "自动化状态", render: (row) => badge(row.automation_status) },
+        { key: "ui_case_id", label: "UI用例", render: (row) => (row.ui_case_id ? `#${row.ui_case_id}` : "-") },
+        {
+          key: "actions",
+          label: "操作",
+          render: (row) => `
+            <div class="actions">
+              <button class="btn secondary" data-functional-case-detail="${row.id}">详情</button>
+              <button class="btn" data-execute-functional-case="${row.id}" ${row.automation_status === "approved" && row.ui_case_id ? "" : "disabled"}>执行</button>
+              ${isAdmin() ? `<button class="btn secondary" data-edit-functional-case="${row.id}">编辑</button><button class="btn secondary" data-generate-ui="${row.id}">生成步骤</button><button class="btn" data-approve-functional="${row.id}" ${row.ui_case_id ? "" : "disabled"}>确认</button>` : ""}
+            </div>
+          `,
+        },
+      ],
+      cases,
+      false,
+    )}
+    <div class="functional-two-col">
+      <section>
+        <div class="panel-title"><h3>页面快照</h3></div>
+        ${latestSnapshot ? `<pre class="mini-log">${escapeHtml(short(latestSnapshot.dom_summary || "", 1600))}</pre>` : `<div class="empty">还没有扫描真实页面 DOM</div>`}
+      </section>
+      <section>
+        <div class="panel-title"><h3>执行记录</h3></div>
+        ${renderTable(
+          [
+            { key: "id", label: "ID" },
+            { key: "result", label: "结果", render: (row) => badge(row.result) },
+            { key: "passed_count", label: "通过" },
+            { key: "failed_count", label: "失败" },
+            {
+              key: "actions",
+              label: "操作",
+              render: (row) => `<div class="actions"><button class="btn secondary" data-functional-run-log="${row.id}">日志</button><button class="btn secondary" data-functional-diagnose="${row.id}" ${row.result === "failed" ? "" : "disabled"}>诊断</button></div>`,
+            },
+          ],
+          runs,
+          false,
+        )}
+      </section>
+    </div>
+  `;
+}
+
+function renderFunctionalMaterials(task) {
+  const screenshots = task.screenshots || [];
+  const notes = task.requirement_notes || [];
+  return `
+    <section class="functional-materials">
+      <div class="panel-title"><h3>需求材料</h3></div>
+      <div class="functional-two-col">
+        <section>
+          <div class="panel-title"><h3>产品截图</h3></div>
+          ${
+            screenshots.length
+              ? screenshots
+                  .map(
+                    (item) => `
+                      <div class="material-item">
+                        <div class="material-head">
+                          <strong>截图 #${item.id}</strong>
+                          <div class="actions">
+                            <button class="btn secondary" data-functional-shot="${item.id}">查看截图</button>
+                            ${isAdmin() ? `<button class="btn secondary" data-analyze-functional-shot="${item.id}">识别截图</button>` : ""}
+                          </div>
+                        </div>
+                        <pre class="mini-log">${escapeHtml(item.analysis_result ? short(item.analysis_result, 1600) : "未识别")}</pre>
+                      </div>
+                    `,
+                  )
+                  .join("")
+              : `<div class="empty">还没有上传产品截图</div>`
+          }
+        </section>
+        <section>
+          <div class="panel-title"><h3>补充需求</h3></div>
+          ${
+            notes.length
+              ? notes
+                  .map(
+                    (item) => `
+                      <div class="material-item">
+                        <div class="material-head">
+                          <strong>#${item.id} ${escapeHtml(item.create_time || "")}</strong>
+                          ${
+                            isAdmin()
+                              ? `<div class="actions"><button class="btn secondary" data-edit-requirement-note="${item.id}">编辑</button><button class="btn danger" data-delete-requirement-note="${item.id}">删除</button></div>`
+                              : ""
+                          }
+                        </div>
+                        <pre class="mini-log">${escapeHtml(item.note_text || "")}</pre>
+                      </div>
+                    `,
+                  )
+                  .join("")
+              : `<div class="empty">还没有补充需求</div>`
+          }
+        </section>
+      </div>
+    </section>
+  `;
+}
+
+function bindFunctionalActions(task) {
+  if (!task) return;
+  document.querySelector("#executeFunctionalBtn")?.addEventListener("click", () => openFunctionalExecuteForm(task));
+  document.querySelectorAll("[data-functional-case-detail]").forEach((button) => {
+    const item = (task.cases || []).find((row) => row.id === Number(button.dataset.functionalCaseDetail));
+    button.addEventListener("click", () => showFunctionalCaseDetail(item));
+  });
+  document.querySelectorAll("[data-execute-functional-case]").forEach((button) => {
+    const item = (task.cases || []).find((row) => row.id === Number(button.dataset.executeFunctionalCase));
+    button.addEventListener("click", () => openFunctionalExecuteForm(task, item));
+  });
+  document.querySelectorAll("[data-functional-run-log]").forEach((button) => {
+    const item = (task.runs || []).find((row) => row.id === Number(button.dataset.functionalRunLog));
+    button.addEventListener("click", () => showFunctionalRunLog(item));
+  });
+  document.querySelectorAll("[data-functional-diagnose]").forEach((button) => {
+    button.addEventListener("click", () => diagnoseFunctionalRun(Number(button.dataset.functionalDiagnose)));
+  });
+  document.querySelectorAll("[data-functional-shot]").forEach((button) => {
+    button.addEventListener("click", () => openProtectedFile(`/api/functional-screenshots/${button.dataset.functionalShot}/file`));
+  });
+  if (!isAdmin()) return;
+  document.querySelector("#uploadAxureBtn")?.addEventListener("click", () => openAxureUpload(task.id));
+  document.querySelector("#uploadScreenshotBtn")?.addEventListener("click", () => openFunctionalScreenshotUpload(task.id));
+  document.querySelector("#addRequirementNoteBtn")?.addEventListener("click", () => openRequirementNoteForm(task.id));
+  document.querySelector("#scanPageBtn")?.addEventListener("click", () => runFunctionalAction(`/api/functional-tasks/${task.id}/scan-page`, "页面扫描完成"));
+  document.querySelector("#generateCasesBtn")?.addEventListener("click", () => generateFunctionalCases(task.id));
+  document.querySelectorAll("[data-analyze-functional-shot]").forEach((button) => {
+    button.addEventListener("click", () => analyzeFunctionalScreenshot(Number(button.dataset.analyzeFunctionalShot)));
+  });
+  document.querySelectorAll("[data-edit-requirement-note]").forEach((button) => {
+    const item = (task.requirement_notes || []).find((row) => row.id === Number(button.dataset.editRequirementNote));
+    button.addEventListener("click", () => openRequirementNoteForm(task.id, item));
+  });
+  document.querySelectorAll("[data-delete-requirement-note]").forEach((button) => {
+    button.addEventListener("click", () => deleteItem(`/api/functional-requirement-notes/${button.dataset.deleteRequirementNote}`, renderFunctionalTests));
+  });
+  document.querySelectorAll("[data-edit-functional-case]").forEach((button) => {
+    const item = (task.cases || []).find((row) => row.id === Number(button.dataset.editFunctionalCase));
+    button.addEventListener("click", () => openFunctionalCaseForm(item));
+  });
+  document.querySelectorAll("[data-generate-ui]").forEach((button) => {
+    button.addEventListener("click", () => generateFunctionalUiSteps(Number(button.dataset.generateUi)));
+  });
+  document.querySelectorAll("[data-approve-functional]").forEach((button) => {
+    button.addEventListener("click", () => approveFunctionalCase(Number(button.dataset.approveFunctional)));
+  });
+}
+
+function openFunctionalTaskForm(projects) {
+  const projectOptions = projects.map((item) => ({ value: item.id, label: item.name }));
+  openForm(
+    "新增功能测试任务",
+    [
+      { name: "project_id", label: "项目", type: "select", options: projectOptions, required: true },
+      { name: "iteration_name", label: "迭代/需求名称", required: true },
+      { name: "target_url", label: "真实测试页面URL", required: true },
+      { name: "requirement_text", label: "需求说明", type: "textarea", rows: 8 },
+    ],
+    { project_id: state.filters.projectId || projects[0]?.id || "" },
+    async (data) => {
+      const task = await api("/api/functional-tasks", { method: "POST", body: data });
+      state.functionalTaskId = String(task.id);
+      localStorage.setItem("functionalTaskId", state.functionalTaskId);
+      showToast("功能测试任务已创建");
+      await renderFunctionalTests();
+    },
+  );
+}
+
+async function openAiConfigForm() {
+  const config = await api("/api/ai-config");
+  openForm(
+    "本地模型配置",
+    [
+      {
+        name: "provider",
+        label: "服务类型",
+        type: "select",
+        options: [
+          { value: "openai_compatible", label: "OpenAI兼容" },
+          { value: "ollama", label: "Ollama" },
+        ],
+      },
+      { name: "base_url", label: "Base URL", default: "http://127.0.0.1:11434" },
+      { name: "model", label: "模型名称" },
+      { name: "api_key", label: "API Key(可选)", type: "password" },
+    ],
+    config,
+    async (data) => {
+      await api("/api/ai-config", { method: "PUT", body: data });
+      showToast("AI配置已保存");
+    },
+  );
+}
+
+function openAxureUpload(taskId) {
+  modalEl.innerHTML = `
+    <form id="axureUploadForm">
+      <div class="modal-head">
+        <h3>上传 Axure .rp 文件</h3>
+        <button class="btn secondary" type="button" id="closeModal">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="field"><label>Axure文件</label><input type="file" id="axureFile" accept=".rp,.zip,.html,.htm,.txt" required /></div>
+      </div>
+      <div class="modal-foot"><span></span><button class="btn" type="submit">上传</button></div>
+    </form>
+  `;
+  modalEl.showModal();
+  document.querySelector("#closeModal").addEventListener("click", () => modalEl.close());
+  document.querySelector("#axureUploadForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const file = document.querySelector("#axureFile").files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const response = await fetch(`/api/functional-tasks/${taskId}/upload-axure`, {
+        method: "POST",
+        headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
+        body: formData,
+      });
+      if (!response.ok) throw new Error((await response.json()).detail || response.statusText);
+      modalEl.close();
+      showToast("Axure上传完成");
+      await renderFunctionalTests();
+    } catch (error) {
+      showToast(error.message);
+    }
+  });
+}
+
+function functionalScreenshotFilesFromList(fileList) {
+  return Array.from(fileList || []).filter((file) => {
+    const name = file.name || "";
+    return file.type?.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(name);
+  });
+}
+
+async function uploadFunctionalScreenshotFiles(taskId, files) {
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch(`/api/functional-tasks/${taskId}/upload-screenshot`, {
+      method: "POST",
+      headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || response.statusText);
+    }
+  }
+}
+
+function openFunctionalScreenshotUpload(taskId) {
+  let selectedFiles = [];
+  modalEl.innerHTML = `
+    <form id="functionalScreenshotUploadForm">
+      <div class="modal-head">
+        <h3>上传产品截图</h3>
+        <button class="btn secondary" type="button" id="closeModal">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="screenshot-upload-zone" id="functionalScreenshotDropZone" tabindex="0">
+          <strong>拖拽图片到这里，或点击选择图片</strong>
+          <span>支持 PNG/JPG/WebP，可一次选择多张，也可以复制图片后按 Ctrl+V 粘贴</span>
+          <input type="file" id="functionalScreenshotFile" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" multiple hidden />
+        </div>
+        <div class="screenshot-upload-list" id="functionalScreenshotList">暂未选择图片</div>
+      </div>
+      <div class="modal-foot"><span></span><button class="btn" type="submit">上传</button></div>
+    </form>
+  `;
+  modalEl.showModal();
+
+  const input = document.querySelector("#functionalScreenshotFile");
+  const dropZone = document.querySelector("#functionalScreenshotDropZone");
+  const listEl = document.querySelector("#functionalScreenshotList");
+
+  function renderSelectedFiles() {
+    if (!selectedFiles.length) {
+      listEl.textContent = "暂未选择图片";
+      return;
+    }
+    listEl.innerHTML = selectedFiles
+      .map((file, index) => `<div><span>${index + 1}. ${escapeHtml(file.name || "clipboard-image.png")}</span><strong>${Math.ceil(file.size / 1024)} KB</strong></div>`)
+      .join("");
+  }
+
+  function addFiles(files) {
+    const imageFiles = functionalScreenshotFilesFromList(files);
+    if (!imageFiles.length) {
+      showToast("没有找到可上传的图片");
+      return;
+    }
+    const existing = new Set(selectedFiles.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
+    imageFiles.forEach((file) => {
+      const key = `${file.name}-${file.size}-${file.lastModified}`;
+      if (!existing.has(key)) {
+        existing.add(key);
+        selectedFiles.push(file);
+      }
+    });
+    renderSelectedFiles();
+    showToast(`已选择 ${selectedFiles.length} 张截图`);
+  }
+
+  function pasteHandler(event) {
+    const files = functionalScreenshotFilesFromList(event.clipboardData?.files);
+    const itemFiles = Array.from(event.clipboardData?.items || [])
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+      .filter(Boolean);
+    const pastedFiles = [...files, ...functionalScreenshotFilesFromList(itemFiles)];
+    if (pastedFiles.length) {
+      event.preventDefault();
+      addFiles(pastedFiles);
+    }
+  }
+
+  function cleanup() {
+    document.removeEventListener("paste", pasteHandler);
+  }
+
+  document.addEventListener("paste", pasteHandler);
+  modalEl.addEventListener("close", cleanup, { once: true });
+  document.querySelector("#closeModal").addEventListener("click", () => modalEl.close());
+  dropZone.addEventListener("click", () => input.click());
+  dropZone.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      input.click();
+    }
+  });
+  input.addEventListener("change", () => addFiles(input.files));
+  ["dragenter", "dragover"].forEach((eventName) => {
+    dropZone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropZone.classList.add("drag-over");
+    });
+  });
+  ["dragleave", "drop"].forEach((eventName) => {
+    dropZone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropZone.classList.remove("drag-over");
+    });
+  });
+  dropZone.addEventListener("drop", (event) => addFiles(event.dataTransfer?.files));
+
+  document.querySelector("#functionalScreenshotUploadForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!selectedFiles.length) {
+      showToast("请先选择、拖入或粘贴图片");
+      return;
+    }
+    try {
+      showToast(`正在上传 ${selectedFiles.length} 张截图`);
+      await uploadFunctionalScreenshotFiles(taskId, selectedFiles);
+      modalEl.close();
+      showToast(`已上传 ${selectedFiles.length} 张截图`);
+      await renderFunctionalTests();
+    } catch (error) {
+      showToast(error.message);
+    }
+  });
+}
+
+async function analyzeFunctionalScreenshot(screenshotId) {
+  try {
+    showToast("正在识别截图，请稍候");
+    await api(`/api/functional-screenshots/${screenshotId}/analyze`, { method: "POST" });
+    showToast("截图识别完成");
+    await renderFunctionalTests();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+function openRequirementNoteForm(taskId, item = null) {
+  openForm(
+    item ? "编辑补充需求" : "补充需求",
+    [{ name: "note_text", label: "补充需求内容", type: "textarea", rows: 8, required: true }],
+    item || {},
+    async (data) => {
+      const path = item ? `/api/functional-requirement-notes/${item.id}` : `/api/functional-tasks/${taskId}/requirement-notes`;
+      await api(path, { method: item ? "PUT" : "POST", body: data });
+      showToast("补充需求已保存");
+      await renderFunctionalTests();
+    },
+  );
+}
+
+async function runFunctionalAction(path, message) {
+  try {
+    showToast("处理中，请稍候");
+    await api(path, { method: "POST" });
+    showToast(message);
+    await renderFunctionalTests();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function generateFunctionalCases(taskId) {
+  try {
+    showToast("正在生成测试点");
+    const result = await api(`/api/functional-tasks/${taskId}/generate-cases`, { method: "POST" });
+    showToast(result.warning || "测试点已生成");
+    await renderFunctionalTests();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function generateFunctionalUiSteps(caseId) {
+  try {
+    showToast("正在生成UI步骤");
+    const result = await api(`/api/functional-cases/${caseId}/generate-ui-steps`, { method: "POST" });
+    showToast(result.warning || "UI步骤已生成，确认后可执行");
+    await renderFunctionalTests();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function approveFunctionalCase(caseId) {
+  try {
+    await api(`/api/functional-cases/${caseId}`, { method: "PUT", body: { automation_status: "approved" } });
+    showToast("已确认可执行");
+    await renderFunctionalTests();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+function openFunctionalCaseForm(item) {
+  openForm(
+    "编辑测试点",
+    [
+      { name: "title", label: "测试点", required: true },
+      { name: "precondition", label: "前置条件", type: "textarea", rows: 3 },
+      { name: "steps", label: "测试步骤", type: "textarea", rows: 6 },
+      { name: "expected", label: "预期结果", type: "textarea", rows: 4 },
+      { name: "priority", label: "优先级", type: "select", options: ["P0", "P1", "P2"].map((value) => ({ value, label: value })) },
+      {
+        name: "automation_status",
+        label: "自动化状态",
+        type: "select",
+        options: [
+          { value: "draft", label: "草稿" },
+          { value: "approved", label: "已确认" },
+        ],
+      },
+    ],
+    item,
+    async (data) => {
+      await api(`/api/functional-cases/${item.id}`, { method: "PUT", body: data });
+      showToast("测试点已保存");
+      await renderFunctionalTests();
+    },
+  );
+}
+
+const FUNCTIONAL_RUNTIME_FIELD_META = {
+  username: { label: "登录账号", placeholder: "请输入登录账号" },
+  password: { label: "登录密码", type: "password", placeholder: "请输入登录密码" },
+  code: { label: "验证码", placeholder: "请输入验证码" },
+  phone: { label: "手机号", placeholder: "请输入手机号" },
+  email: { label: "邮箱", placeholder: "请输入邮箱" },
+  account: { label: "账号", placeholder: "请输入账号" },
+};
+
+function collectFunctionalRuntimeVariableNames(task, singleCase = null) {
+  const textParts = [];
+  const cases = singleCase ? [singleCase] : task?.cases || [];
+  cases.forEach((item) => {
+    if (item.automation_status !== "approved") return;
+    ["steps", "expected", "precondition"].forEach((key) => {
+      if (item[key]) textParts.push(String(item[key]));
+    });
+    if (item.ui_case_id) {
+      const uiText = JSON.stringify(item);
+      textParts.push(uiText);
+    }
+  });
+  const text = textParts.join("\n");
+  const names = new Set();
+  text.replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_$]*)\s*\}\}/g, (_, name) => {
+    names.add(name.replace(/^\$/, ""));
+    return "";
+  });
+  ["username", "password", "code"].forEach((name) => names.add(name));
+  return [...names].filter((name) => !["timestamp", "datetime", "date", "uuid", "random_int", "random_str", "random_phone", "random_email"].includes(name));
+}
+
+function functionalRuntimeFields(task, singleCase = null) {
+  return collectFunctionalRuntimeVariableNames(task, singleCase).map((name) => {
+    const meta = FUNCTIONAL_RUNTIME_FIELD_META[name] || {};
+    return {
+      name,
+      label: meta.label || name,
+      type: meta.type || "text",
+      placeholder: meta.placeholder || "",
+    };
+  });
+}
+
+function openFunctionalExecuteForm(task, singleCase = null) {
+  const fields = functionalRuntimeFields(task, singleCase);
+  const title = singleCase ? `执行 ${singleCase.title}` : `执行 ${task.iteration_name}`;
+  const path = singleCase ? `/api/functional-cases/${singleCase.id}/execute` : `/api/functional-tasks/${task.id}/execute`;
+  openForm(
+    title,
+    fields,
+    {},
+    async (data) => {
+      const variables = Object.fromEntries(Object.entries(data).filter(([, value]) => String(value ?? "").trim() !== ""));
+      const run = await api(path, {
+        method: "POST",
+        body: { variables },
+      });
+      showToast(`执行完成：${run.result === "passed" ? "成功" : "失败"}`);
+      await renderFunctionalTests();
+    },
+    "执行",
+  );
+}
+
+function showFunctionalCaseDetail(item) {
+  modalEl.innerHTML = `
+    <div class="modal-head">
+      <h3>${escapeHtml(item?.title || "测试点详情")}</h3>
+      <button class="btn secondary" type="button" id="closeModal">关闭</button>
+    </div>
+    <div class="modal-body"><pre class="log-view">${escapeHtml(JSON.stringify(item || {}, null, 2))}</pre></div>
+  `;
+  modalEl.showModal();
+  document.querySelector("#closeModal").addEventListener("click", () => modalEl.close());
+}
+
+function showFunctionalRunLog(item) {
+  modalEl.innerHTML = `
+    <div class="modal-head">
+      <h3>功能测试执行日志 #${item?.id || ""}</h3>
+      <button class="btn secondary" type="button" id="closeModal">关闭</button>
+    </div>
+    <div class="modal-body"><pre class="log-view">${escapeHtml(item?.log || "")}</pre></div>
+  `;
+  modalEl.showModal();
+  document.querySelector("#closeModal").addEventListener("click", () => modalEl.close());
+}
+
+function parseFunctionalDiagnosis(raw) {
+  if (!raw) return null;
+  if (typeof raw === "object") return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function renderFunctionalDiagnosis(raw) {
+  const data = parseFunctionalDiagnosis(raw);
+  if (!data || !Array.isArray(data.failed_cases)) {
+    return `<pre class="log-view">${escapeHtml(raw || "")}</pre>`;
+  }
+  const failedCases = data.failed_cases.length
+    ? data.failed_cases
+        .map(
+          (item, index) => `
+            <section class="diagnosis-card">
+              <div class="diagnosis-card-head">
+                <span>失败用例 ${index + 1}</span>
+                <strong>${escapeHtml(item.case_title || "未知用例")}</strong>
+              </div>
+              <div class="diagnosis-grid">
+                <div><span>失败步骤</span><strong>${escapeHtml(item.failed_step_no ? `第 ${item.failed_step_no} 步` : "未定位到具体步骤")}</strong></div>
+                <div><span>失败现象</span><strong>${escapeHtml(item.failure || "-")}</strong></div>
+              </div>
+              <div class="diagnosis-block">
+                <span>步骤内容</span>
+                <p>${escapeHtml(item.failed_step || "-")}</p>
+              </div>
+              <div class="diagnosis-block">
+                <span>可能原因</span>
+                <p>${escapeHtml(item.likely_reason || "-")}</p>
+              </div>
+              ${
+                item.suggested_actions?.length
+                  ? `<div class="diagnosis-block"><span>建议排查</span><ul>${item.suggested_actions.map((action) => `<li>${escapeHtml(action)}</li>`).join("")}</ul></div>`
+                  : ""
+              }
+              ${item.error_detail ? `<details class="diagnosis-detail"><summary>查看原始错误</summary><pre>${escapeHtml(item.error_detail)}</pre></details>` : ""}
+            </section>
+          `,
+        )
+        .join("")
+    : `<div class="empty">没有失败用例</div>`;
+  return `
+    <div class="diagnosis-view">
+      <section class="diagnosis-summary">
+        <strong>${escapeHtml(data.summary || "诊断完成")}</strong>
+        <div><span>通过：${escapeHtml(data.passed_count ?? 0)}</span><span>失败：${escapeHtml(data.failed_count ?? 0)}</span></div>
+      </section>
+      ${failedCases}
+      ${
+        data.overall_suggestions?.length
+          ? `<section class="diagnosis-card"><div class="diagnosis-card-head"><span>整体建议</span></div><ul>${data.overall_suggestions
+              .map((item) => `<li>${escapeHtml(item)}</li>`)
+              .join("")}</ul></section>`
+          : ""
+      }
+      ${data.model_warning ? `<p class="diagnosis-warning">${escapeHtml(data.model_warning)}</p>` : ""}
+    </div>
+  `;
+}
+
+async function diagnoseFunctionalRun(runId) {
+  try {
+    showToast("正在生成失败诊断");
+    const result = await api(`/api/functional-runs/${runId}/diagnose`, { method: "POST" });
+    modalEl.innerHTML = `
+      <div class="modal-head">
+        <h3>失败诊断 #${runId}</h3>
+        <button class="btn secondary" type="button" id="closeModal">关闭</button>
+      </div>
+      <div class="modal-body">${renderFunctionalDiagnosis(result.diagnosis || "")}</div>
+    `;
+    modalEl.showModal();
+    document.querySelector("#closeModal").addEventListener("click", async () => {
+      modalEl.close();
+      await renderFunctionalTests();
+    });
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 async function renderUiCases() {

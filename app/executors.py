@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import os
 from pathlib import Path
 import random
 import re
@@ -24,6 +25,69 @@ SCREENSHOT_DIR = REPORT_DIR / "screenshots"
 def ensure_report_dirs() -> None:
     ALLURE_DIR.mkdir(parents=True, exist_ok=True)
     SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _browser_executable_candidates() -> list[str]:
+    candidates = [
+        os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"),
+        os.getenv("CHROME_PATH"),
+        os.getenv("EDGE_PATH"),
+    ]
+    for env_name, relative in [
+        ("ProgramFiles", r"Google\Chrome\Application\chrome.exe"),
+        ("ProgramFiles(x86)", r"Google\Chrome\Application\chrome.exe"),
+        ("LOCALAPPDATA", r"Google\Chrome\Application\chrome.exe"),
+        ("ProgramFiles", r"Microsoft\Edge\Application\msedge.exe"),
+        ("ProgramFiles(x86)", r"Microsoft\Edge\Application\msedge.exe"),
+        ("LOCALAPPDATA", r"Microsoft\Edge\Application\msedge.exe"),
+    ]:
+        root = os.getenv(env_name)
+        if root:
+            candidates.append(str(Path(root) / relative))
+    for command in ["chrome", "chrome.exe", "msedge", "msedge.exe"]:
+        found = shutil.which(command)
+        if found:
+            candidates.append(found)
+
+    result = []
+    seen = set()
+    for item in candidates:
+        if not item:
+            continue
+        path = str(item)
+        key = path.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        if Path(path).exists():
+            result.append(path)
+    return result
+
+
+def launch_chromium_browser(playwright: Any, headless: bool = True) -> Any:
+    errors = []
+    for launcher in [
+        lambda: playwright.chromium.launch(headless=headless),
+        lambda: playwright.chromium.launch(channel="chrome", headless=headless),
+        lambda: playwright.chromium.launch(channel="msedge", headless=headless),
+    ]:
+        try:
+            return launcher()
+        except Exception as exc:
+            errors.append(str(exc))
+
+    for executable_path in _browser_executable_candidates():
+        try:
+            return playwright.chromium.launch(executable_path=executable_path, headless=headless)
+        except Exception as exc:
+            errors.append(f"{executable_path}: {exc}")
+
+    install_cmd = f'set PLAYWRIGHT_BROWSERS_PATH={BASE_DIR / "ms-playwright"} && python -m playwright install chromium'
+    raise RuntimeError(
+        "Playwright 浏览器不可用，且未找到可用的本机 Chrome/Edge。"
+        f"请执行：{install_cmd}。"
+        f"原始错误：{errors[0] if errors else 'unknown'}"
+    )
 
 
 def parse_json_value(value: Any, fallback: Any) -> Any:
@@ -277,10 +341,27 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str]) -> Non
         page.fill(locator, str(value or ""))
     elif action == "click":
         page.click(locator)
+    elif action == "select":
+        page.select_option(locator, str(value or ""))
+    elif action == "check":
+        page.check(locator)
+    elif action == "uncheck":
+        page.uncheck(locator)
     elif action == "wait":
         page.wait_for_timeout(int(value or 1000))
     elif action == "wait_for_selector":
         page.wait_for_selector(locator)
+    elif action == "assert_visible":
+        if not page.locator(locator).first.is_visible():
+            raise AssertionError(f"assert_visible failed: locator {locator!r} is not visible")
+    elif action == "assert_url":
+        current_url = page.url
+        if str(value) not in current_url:
+            raise AssertionError(f"assert_url failed: expected contains {value!r}, actual {current_url!r}")
+    elif action == "assert_value":
+        actual = page.locator(locator).input_value()
+        if str(value) != str(actual):
+            raise AssertionError(f"assert_value failed: expected {value!r}, actual {actual!r}")
     elif action == "text_assert":
         text = page.locator(locator).inner_text()
         if str(value) not in text:
@@ -294,21 +375,27 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str]) -> Non
         raise ValueError(f"Unsupported UI action: {action}")
 
 
-def execute_ui_case(case: UiCase) -> Tuple[bool, str, str, str]:
+def execute_ui_case(case: UiCase, runtime_vars: Dict[str, Any] | None = None) -> Tuple[bool, str, str, str]:
     ensure_report_dirs()
     timeout = case.timeout or 30
-    steps = parse_json_value(case.steps, [])
+    variables = builtin_variables()
+    if runtime_vars:
+        variables.update(runtime_vars)
+    steps = render_template(parse_json_value(case.steps, []), variables)
     if not isinstance(steps, Iterable) or isinstance(steps, (str, bytes, dict)):
         steps = []
 
     log_parts: Dict[str, Any] = {
         "case_name": case.case_name,
-        "page_url": case.page_url,
+        "page_url": render_template(case.page_url, variables),
         "steps": steps,
         "timeout": timeout,
+        "variables": {key: ("***" if "password" in str(key).lower() else value) for key, value in variables.items()},
         "started_at": datetime.now(),
     }
     screenshots: list[str] = []
+    current_step_index = 0
+    current_step: Dict[str, Any] | None = None
 
     try:
         from playwright.sync_api import sync_playwright
@@ -328,12 +415,14 @@ def execute_ui_case(case: UiCase) -> Tuple[bool, str, str, str]:
     page = None
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = launch_chromium_browser(p, headless=True)
             page = browser.new_page()
             page.set_default_timeout(timeout * 1000)
             if case.page_url:
-                page.goto(case.page_url)
-            for step in steps:
+                page.goto(render_template(case.page_url, variables))
+            for index, step in enumerate(steps, start=1):
+                current_step_index = index
+                current_step = step if isinstance(step, dict) else {"raw": step}
                 _run_ui_step(page, step, screenshots)
             if not screenshots:
                 screenshot = SCREENSHOT_DIR / f"{uuid4()}.png"
@@ -354,12 +443,19 @@ def execute_ui_case(case: UiCase) -> Tuple[bool, str, str, str]:
                 screenshot = str(screenshot_path)
             except Exception:
                 screenshot = ""
-        try:
-            if browser:
+        if browser:
+            try:
                 browser.close()
-        finally:
-            pass
-        log_parts.update({"error": str(exc), "finished_at": datetime.now()})
+            except Exception:
+                pass
+        log_parts.update(
+            {
+                "error": str(exc),
+                "failed_step_index": current_step_index or None,
+                "failed_step": current_step,
+                "finished_at": datetime.now(),
+            }
+        )
         log_text = _json_dump_log(log_parts)
         report_path = write_allure_result(case.case_name, "ui", False, log_text, screenshot)
         return False, log_text, screenshot, report_path

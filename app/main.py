@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, Type
 
-from fastapi import Body, Depends, FastAPI, HTTPException, Query, status
+from fastapi import Body, Depends, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,12 +18,39 @@ from .data_scripts import (
     run_order_quote_script,
     run_purchase_to_shelf_script,
     run_purchase_to_shelf_chain,
+    run_porder_balance_payment_script,
+    run_porder_bank_payment_script,
     run_shopping_cart_script,
     run_warehouse_delivery_script,
 )
 from .executors import ensure_report_dirs, execute_api_case, execute_ui_case, parse_json_value, to_json_text
-from .models import ApiCase, Env, Project, TestRecord, UiCase, User
+from .functional_testing import (
+    analyze_functional_screenshot,
+    diagnose_failure,
+    generate_functional_cases,
+    generate_ui_steps,
+    read_axure_text,
+    scan_page_dom,
+    store_axure_file,
+    store_functional_screenshot_file,
+)
+from .models import (
+    AiConfig,
+    ApiCase,
+    Env,
+    FunctionalCase,
+    FunctionalRequirementNote,
+    FunctionalRun,
+    FunctionalScreenshot,
+    FunctionalTask,
+    PageSnapshot,
+    Project,
+    TestRecord,
+    UiCase,
+    User,
+)
 from .schemas import (
+    AiConfigUpdate,
     ApiCaseCreate,
     ApiBatchExecuteRequest,
     ApiCaseUpdate,
@@ -31,6 +58,11 @@ from .schemas import (
     DataScriptExecuteRequest,
     EnvCreate,
     EnvUpdate,
+    FunctionalCaseUpdate,
+    FunctionalExecuteRequest,
+    FunctionalRequirementNoteCreate,
+    FunctionalRequirementNoteUpdate,
+    FunctionalTaskCreate,
     LoginRequest,
     ProjectCreate,
     ProjectUpdate,
@@ -65,6 +97,13 @@ TABLE_FIELDS = {
     ],
     UiCase: ["id", "project_id", "case_name", "page_url", "steps", "timeout", "status", "create_time"],
     TestRecord: ["id", "case_type", "case_id", "result", "log", "screenshot", "report_path", "execute_time"],
+    FunctionalTask: ["id", "project_id", "iteration_name", "requirement_text", "axure_path", "target_url", "status", "create_time"],
+    FunctionalCase: ["id", "task_id", "title", "precondition", "steps", "expected", "priority", "automation_status", "ui_case_id", "create_time"],
+    PageSnapshot: ["id", "task_id", "page_url", "dom_summary", "screenshot_path", "scan_time"],
+    FunctionalScreenshot: ["id", "task_id", "image_path", "analysis_result", "create_time"],
+    FunctionalRequirementNote: ["id", "task_id", "note_text", "create_time", "update_time"],
+    FunctionalRun: ["id", "task_id", "result", "log", "passed_count", "failed_count", "execute_time"],
+    AiConfig: ["id", "provider", "base_url", "model", "api_key", "create_time"],
 }
 
 JSON_FIELD_DEFAULTS = {
@@ -76,8 +115,51 @@ JSON_FIELD_DEFAULTS = {
     "steps": [],
 }
 
-LOGIN_CASE_NAME = "test-\u767b\u5f55"
-CART_CASE_NAME = "test-\u52a0\u5165\u8d2d\u7269\u8f66"
+CASE_NAME_PREFIXES = ("\u6570\u636e\u811a\u672c-", "test-")
+
+
+def strip_case_name_prefix(value: Any) -> str:
+    text = str(value or "").strip()
+    changed = True
+    while changed:
+        changed = False
+        for prefix in CASE_NAME_PREFIXES:
+            if text.startswith(prefix):
+                text = text[len(prefix) :].strip()
+                changed = True
+    return text
+
+
+def normalize_api_case_names(db: Session) -> None:
+    changed = False
+    for case in db.query(ApiCase).all():
+        normalized = strip_case_name_prefix(case.case_name)
+        if normalized and normalized != case.case_name:
+            case.case_name = normalized
+            changed = True
+    if changed:
+        db.commit()
+
+
+def find_data_script_api_case(db: Session, item: Dict[str, Any]) -> ApiCase | None:
+    case_name = strip_case_name_prefix(item["case_name"])
+    legacy_name = item["case_name"]
+    url = item["url"]
+    queries = [
+        db.query(ApiCase).filter(ApiCase.case_name == legacy_name),
+        db.query(ApiCase).filter(ApiCase.case_name == case_name, ApiCase.url == url),
+        db.query(ApiCase).filter(ApiCase.url == url),
+        db.query(ApiCase).filter(ApiCase.case_name == case_name),
+    ]
+    for query in queries:
+        case = query.order_by(ApiCase.id.asc()).first()
+        if case:
+            return case
+    return None
+
+
+LOGIN_CASE_NAME = "\u767b\u5f55"
+CART_CASE_NAME = "\u52a0\u5165\u8d2d\u7269\u8f66"
 
 DATA_SCRIPT_API_CASES = [
     {
@@ -230,6 +312,20 @@ DATA_SCRIPT_API_CASES = [
         "extract": {"order_sn": "json.data.order_sn", "serial_number": "json.data.serial_number"},
     },
     {
+        "key": "client_porder_balance_pay",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u4f59\u989d\u4ed8\u6b3e",
+        "url": "/client/porder.balancePayOrder",
+        "body": {"porder_sn": "{{porder_sn}}", "discounts_id": "{{discounts_id}}", "merge_pay": "{{merge_pay}}"},
+        "extract": {"porder_sn": "json.data.porder_sn"},
+    },
+    {
+        "key": "client_porder_bank_pay",
+        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u94f6\u884c\u4ed8\u6b3e",
+        "url": "/client/porder.bankPayOrder",
+        "body": {"porder_sn": "{{porder_sn}}", "pay_bank_method": "{{pay_bank_method}}", "pay_date": "{{pay_date}}", "pay_reach_date": "{{pay_reach_date}}", "pay_name": "{{pay_name}}", "pay_amount": "{{pay_amount}}", "pay_remark": "{{pay_remark}}", "discounts_id": "{{discounts_id}}", "merge_pay": "{{merge_pay}}"},
+        "extract": {"porder_sn": "json.data.porder_sn", "serial_number": "json.data.serial_number"},
+    },
+    {
         "key": "admin_login",
         "case_name": "\u6570\u636e\u811a\u672c-\u540e\u53f0\u767b\u5f55",
         "url": "/admin.login",
@@ -369,8 +465,10 @@ def ensure_data_script_api_cases(db: Session) -> None:
         db.refresh(env)
 
     for item in DATA_SCRIPT_API_CASES:
-        exists = db.query(ApiCase).filter(ApiCase.case_name == item["case_name"]).first()
+        case_name = strip_case_name_prefix(item["case_name"])
+        exists = find_data_script_api_case(db, item)
         if exists:
+            exists.case_name = case_name
             key = str(item.get("key", ""))
             if item.get("key") in {"client_warehouse_list", "client_porder_create"} or key.startswith(("admin_porder_", "admin_spot_")):
                 assert_rule = {"status_code": 200}
@@ -388,7 +486,7 @@ def ensure_data_script_api_cases(db: Session) -> None:
             ApiCase(
                 project_id=env.project_id,
                 env_id=env.id,
-                case_name=item["case_name"],
+                case_name=case_name,
                 method="POST",
                 url=item["url"],
                 headers=to_json_text({"Content-Type": "multipart/form-data"}, {}),
@@ -418,6 +516,7 @@ def init_app() -> None:
                 )
             )
             db.commit()
+        normalize_api_case_names(db)
         ensure_data_script_api_cases(db)
     finally:
         db.close()
@@ -520,6 +619,53 @@ def safe_file_response(raw_path: str | None) -> FileResponse:
     if not resolved.exists() or not resolved.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件不存在")
     return FileResponse(resolved)
+
+
+def latest_ai_config(db: Session) -> AiConfig | None:
+    return db.query(AiConfig).order_by(AiConfig.id.desc()).first()
+
+
+def serialize_ai_config(config: AiConfig | None) -> Dict[str, Any]:
+    if not config:
+        return {"provider": "openai_compatible", "base_url": "", "model": "", "api_key": ""}
+    data = serialize(config)
+    data["api_key"] = ""
+    return data
+
+
+def functional_task_detail(db: Session, task: FunctionalTask) -> Dict[str, Any]:
+    data = serialize(task)
+    project = db.get(Project, task.project_id)
+    data["project_name"] = project.name if project else task.project_id
+    data["cases"] = serialize_many(db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id).order_by(FunctionalCase.id.asc()).all())
+    data["snapshots"] = serialize_many(db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).all())
+    data["screenshots"] = serialize_many(
+        db.query(FunctionalScreenshot).filter(FunctionalScreenshot.task_id == task.id).order_by(FunctionalScreenshot.id.desc()).all()
+    )
+    data["requirement_notes"] = serialize_many(
+        db.query(FunctionalRequirementNote)
+        .filter(FunctionalRequirementNote.task_id == task.id)
+        .order_by(FunctionalRequirementNote.id.desc())
+        .all()
+    )
+    data["runs"] = serialize_many(db.query(FunctionalRun).filter(FunctionalRun.task_id == task.id).order_by(FunctionalRun.id.desc()).limit(20).all())
+    return data
+
+
+def save_ui_record(db: Session, case: UiCase, passed: bool, log_text: str, report_path: str, screenshot_path: str = "") -> TestRecord:
+    record = TestRecord(
+        case_type="ui",
+        case_id=case.id,
+        result="passed" if passed else "failed",
+        log=log_text,
+        screenshot=screenshot_path,
+        report_path=report_path,
+        execute_time=datetime.now(),
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
 
 
 @app.post("/api/auth/login")
@@ -747,6 +893,9 @@ def create_api_case(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     data = normalize_json_fields(schema_data(payload))
+    data["case_name"] = strip_case_name_prefix(data["case_name"])
+    if not data["case_name"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u7528\u4f8b\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a")
     ensure_project_exists(db, data["project_id"])
     ensure_env_exists(db, data["env_id"])
     case = ApiCase(**data, create_time=datetime.now())
@@ -765,6 +914,10 @@ def update_api_case(
 ) -> Dict[str, Any]:
     case = get_or_404(db, ApiCase, case_id)
     data = normalize_json_fields(schema_data(payload, exclude_unset=True))
+    if "case_name" in data:
+        data["case_name"] = strip_case_name_prefix(data["case_name"])
+        if not data["case_name"]:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u7528\u4f8b\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a")
     if "project_id" in data:
         ensure_project_exists(db, data["project_id"])
     if "env_id" in data:
@@ -865,7 +1018,7 @@ def data_script_variables(db: Session, variables: Dict[str, Any] | None) -> Dict
     merged = dict(variables or {})
     configured_paths = {}
     for item in DATA_SCRIPT_API_CASES:
-        case = db.query(ApiCase).filter(ApiCase.case_name == item["case_name"]).first()
+        case = find_data_script_api_case(db, item)
         configured_paths[item["key"]] = case.url if case else item["url"]
     custom_paths = merged.get("api_paths") if isinstance(merged.get("api_paths"), dict) else {}
     merged["api_paths"] = {**configured_paths, **custom_paths}
@@ -1013,6 +1166,40 @@ def run_warehouse_delivery_data_script(
     return data
 
 
+@app.post("/api/data-scripts/porder-balance-payment")
+def run_porder_balance_payment_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
+    if not env:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
+    variables = data_script_variables(db, payload.variables)
+    passed, log_text, report_path, summary = run_porder_balance_payment_script(env, variables)
+    record = save_record(db, "api", 0, passed, log_text, report_path)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+@app.post("/api/data-scripts/porder-bank-payment")
+def run_porder_bank_payment_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
+    if not env:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
+    variables = data_script_variables(db, payload.variables)
+    passed, log_text, report_path, summary = run_porder_bank_payment_script(env, variables)
+    record = save_record(db, "api", 0, passed, log_text, report_path)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
 @app.get("/api/data-scripts/latest-order-sn")
 def get_latest_order_sn(
     db: Session = Depends(get_db),
@@ -1092,22 +1279,487 @@ def delete_ui_case(case_id: int, db: Session = Depends(get_db), current_user: Us
 
 
 @app.post("/api/ui-cases/{case_id}/execute")
-def run_ui_case(case_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
+def run_ui_case(
+    case_id: int,
+    payload: FunctionalExecuteRequest | None = Body(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
     case = get_or_404(db, UiCase, case_id)
-    passed, log_text, screenshot_path, report_path = execute_ui_case(case)
-    record = TestRecord(
-        case_type="ui",
-        case_id=case.id,
-        result="passed" if passed else "failed",
-        log=log_text,
-        screenshot=screenshot_path,
-        report_path=report_path,
+    passed, log_text, screenshot_path, report_path = execute_ui_case(case, payload.variables if payload else {})
+    record = save_ui_record(db, case, passed, log_text, report_path, screenshot_path)
+    return serialize(record)
+
+
+@app.get("/api/ai-config")
+def get_ai_config(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
+    return serialize_ai_config(latest_ai_config(db))
+
+
+@app.put("/api/ai-config")
+def update_ai_config(
+    payload: AiConfigUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    data = schema_data(payload)
+    config = latest_ai_config(db)
+    if not config:
+        config = AiConfig(
+            provider=data.get("provider") or "openai_compatible",
+            base_url=data.get("base_url") or "",
+            model=data.get("model") or "",
+            api_key=data.get("api_key") or "",
+            create_time=datetime.now(),
+        )
+        db.add(config)
+    else:
+        config.provider = data.get("provider") or "openai_compatible"
+        config.base_url = data.get("base_url") or ""
+        config.model = data.get("model") or ""
+        config.api_key = data.get("api_key") or ""
+    db.commit()
+    db.refresh(config)
+    return serialize_ai_config(config)
+
+
+@app.get("/api/functional-tasks")
+def list_functional_tasks(
+    project_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[Dict[str, Any]]:
+    query = db.query(FunctionalTask)
+    if project_id is not None:
+        query = query.filter(FunctionalTask.project_id == project_id)
+    return [functional_task_detail(db, item) for item in query.order_by(FunctionalTask.id.desc()).all()]
+
+
+@app.post("/api/functional-tasks")
+def create_functional_task(
+    payload: FunctionalTaskCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    data = schema_data(payload)
+    ensure_project_exists(db, data["project_id"])
+    task = FunctionalTask(
+        project_id=data["project_id"],
+        iteration_name=data["iteration_name"].strip(),
+        requirement_text=data.get("requirement_text") or "",
+        axure_path="",
+        target_url=data["target_url"].strip(),
+        status=data.get("status") or "draft",
+        create_time=datetime.now(),
+    )
+    if not task.iteration_name or not task.target_url:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="迭代名称和目标页面不能为空")
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return functional_task_detail(db, task)
+
+
+@app.get("/api/functional-tasks/{task_id}")
+def get_functional_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
+    return functional_task_detail(db, get_or_404(db, FunctionalTask, task_id))
+
+
+@app.post("/api/functional-tasks/{task_id}/upload-axure")
+async def upload_functional_axure(
+    task_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="上传文件不能为空")
+    task.axure_path = store_axure_file(file.filename or "prototype.rp", content)
+    task.status = "uploaded"
+    db.commit()
+    db.refresh(task)
+    axure_text = read_axure_text(task.axure_path)
+    data = functional_task_detail(db, task)
+    data["axure_text_preview"] = axure_text[:2000]
+    return data
+
+
+@app.post("/api/functional-tasks/{task_id}/upload-screenshot")
+async def upload_functional_screenshot(
+    task_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="上传截图不能为空")
+    try:
+        image_path = store_functional_screenshot_file(file.filename or "screenshot.png", content)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    screenshot = FunctionalScreenshot(
+        task_id=task.id,
+        image_path=image_path,
+        analysis_result="",
+        create_time=datetime.now(),
+    )
+    task.status = "screenshot_uploaded"
+    db.add(screenshot)
+    db.commit()
+    db.refresh(screenshot)
+    return {"screenshot": serialize(screenshot), "task": functional_task_detail(db, task)}
+
+
+@app.get("/api/functional-screenshots/{screenshot_id}/file")
+def get_functional_screenshot_file(
+    screenshot_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> FileResponse:
+    screenshot = get_or_404(db, FunctionalScreenshot, screenshot_id)
+    return safe_file_response(screenshot.image_path)
+
+
+@app.post("/api/functional-screenshots/{screenshot_id}/analyze")
+def analyze_uploaded_functional_screenshot(
+    screenshot_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    screenshot = get_or_404(db, FunctionalScreenshot, screenshot_id)
+    task = get_or_404(db, FunctionalTask, screenshot.task_id)
+    try:
+        screenshot.analysis_result = analyze_functional_screenshot(task, screenshot, latest_ai_config(db))
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    task.status = "screenshot_analyzed"
+    db.commit()
+    db.refresh(screenshot)
+    return {"screenshot": serialize(screenshot), "task": functional_task_detail(db, task)}
+
+
+@app.post("/api/functional-tasks/{task_id}/requirement-notes")
+def create_functional_requirement_note(
+    task_id: int,
+    payload: FunctionalRequirementNoteCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    data = schema_data(payload)
+    note_text = (data.get("note_text") or "").strip()
+    if not note_text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="补充需求不能为空")
+    note = FunctionalRequirementNote(
+        task_id=task.id,
+        note_text=note_text,
+        create_time=datetime.now(),
+        update_time=None,
+    )
+    task.status = "requirements_updated"
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+    return {"note": serialize(note), "task": functional_task_detail(db, task)}
+
+
+@app.put("/api/functional-requirement-notes/{note_id}")
+def update_functional_requirement_note(
+    note_id: int,
+    payload: FunctionalRequirementNoteUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    note = get_or_404(db, FunctionalRequirementNote, note_id)
+    data = schema_data(payload)
+    note_text = (data.get("note_text") or "").strip()
+    if not note_text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="补充需求不能为空")
+    note.note_text = note_text
+    note.update_time = datetime.now()
+    db.commit()
+    db.refresh(note)
+    return serialize(note)
+
+
+@app.delete("/api/functional-requirement-notes/{note_id}")
+def delete_functional_requirement_note(
+    note_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, str]:
+    note = get_or_404(db, FunctionalRequirementNote, note_id)
+    db.delete(note)
+    db.commit()
+    return {"message": "deleted"}
+
+
+@app.post("/api/functional-tasks/{task_id}/scan-page")
+def scan_functional_page(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    try:
+        scanned = scan_page_dom(task.target_url)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    snapshot = PageSnapshot(
+        task_id=task.id,
+        page_url=task.target_url,
+        dom_summary=scanned["dom_summary"],
+        screenshot_path=scanned["screenshot_path"],
+        scan_time=datetime.now(),
+    )
+    task.status = "scanned"
+    db.add(snapshot)
+    db.commit()
+    db.refresh(snapshot)
+    return serialize(snapshot)
+
+
+@app.post("/api/functional-tasks/{task_id}/generate-cases")
+def generate_functional_task_cases(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    axure_text = read_axure_text(task.axure_path)
+    snapshot = db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).first()
+    screenshots = db.query(FunctionalScreenshot).filter(FunctionalScreenshot.task_id == task.id).order_by(FunctionalScreenshot.id.asc()).all()
+    notes = (
+        db.query(FunctionalRequirementNote)
+        .filter(FunctionalRequirementNote.task_id == task.id)
+        .order_by(FunctionalRequirementNote.id.asc())
+        .all()
+    )
+    generated = generate_functional_cases(task, axure_text, snapshot, latest_ai_config(db), screenshots, notes)
+
+    for old_case in db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id, FunctionalCase.automation_status != "approved").all():
+        db.delete(old_case)
+    db.flush()
+
+    for item in generated.items:
+        db.add(
+            FunctionalCase(
+                task_id=task.id,
+                title=item["title"],
+                precondition=item.get("precondition", ""),
+                steps=item.get("steps", ""),
+                expected=item.get("expected", ""),
+                priority=item.get("priority", "P1"),
+                automation_status=item.get("automation_status", "draft"),
+                ui_case_id=None,
+                create_time=datetime.now(),
+            )
+        )
+    task.status = "cases_generated"
+    db.commit()
+    return {"source": generated.source, "warning": generated.warning, "task": functional_task_detail(db, task)}
+
+
+@app.put("/api/functional-cases/{case_id}")
+def update_functional_case(
+    case_id: int,
+    payload: FunctionalCaseUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    case = get_or_404(db, FunctionalCase, case_id)
+    data = schema_data(payload, exclude_unset=True)
+    for field in ["title", "precondition", "steps", "expected", "priority", "automation_status"]:
+        if field in data and data[field] is not None:
+            setattr(case, field, data[field])
+    db.commit()
+    db.refresh(case)
+    return serialize(case)
+
+
+@app.post("/api/functional-cases/{case_id}/generate-ui-steps")
+def generate_functional_case_ui_steps(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    case = get_or_404(db, FunctionalCase, case_id)
+    task = get_or_404(db, FunctionalTask, case.task_id)
+    snapshot = db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).first()
+    generated = generate_ui_steps(case, task, snapshot, latest_ai_config(db))
+    steps_text = to_json_text(generated.items, [])
+    if case.ui_case_id:
+        ui_case = db.get(UiCase, case.ui_case_id)
+        if ui_case:
+            ui_case.case_name = case.title
+            ui_case.page_url = task.target_url
+            ui_case.steps = steps_text
+            ui_case.status = "draft"
+        else:
+            case.ui_case_id = None
+    if not case.ui_case_id:
+        ui_case = UiCase(
+            project_id=task.project_id,
+            case_name=case.title,
+            page_url=task.target_url,
+            steps=steps_text,
+            timeout=30,
+            status="draft",
+            create_time=datetime.now(),
+        )
+        db.add(ui_case)
+        db.flush()
+        case.ui_case_id = ui_case.id
+    case.automation_status = "draft"
+    task.status = "ui_steps_generated"
+    db.commit()
+    db.refresh(case)
+    return {"source": generated.source, "warning": generated.warning, "case": serialize(case), "steps": generated.items}
+
+
+def execute_functional_case_for_run(db: Session, functional_case: FunctionalCase, variables: Dict[str, Any]) -> tuple[Dict[str, Any], int, int]:
+    ui_case = db.get(UiCase, functional_case.ui_case_id) if functional_case.ui_case_id else None
+    if not ui_case:
+        return (
+            {
+                "functional_case_id": functional_case.id,
+                "title": functional_case.title,
+                "result": "failed",
+                "error": "关联UI用例不存在",
+            },
+            0,
+            1,
+        )
+    try:
+        passed, log_text, screenshot_path, report_path = execute_ui_case(ui_case, variables)
+    except Exception as exc:
+        passed = False
+        screenshot_path = ""
+        report_path = ""
+        log_text = json.dumps(
+            {
+                "case_name": ui_case.case_name,
+                "page_url": ui_case.page_url,
+                "error": str(exc),
+                "finished_at": datetime.now(),
+            },
+            ensure_ascii=False,
+            indent=2,
+            default=str,
+        )
+    record = save_ui_record(db, ui_case, passed, log_text, report_path, screenshot_path)
+    return (
+        {
+            "functional_case_id": functional_case.id,
+            "ui_case_id": ui_case.id,
+            "record_id": record.id,
+            "title": functional_case.title,
+            "result": record.result,
+            "screenshot": screenshot_path,
+            "log": log_text,
+        },
+        1 if passed else 0,
+        0 if passed else 1,
+    )
+
+
+def save_functional_run(
+    db: Session,
+    task: FunctionalTask,
+    variables: Dict[str, Any],
+    records: list[Dict[str, Any]],
+    passed_count: int,
+    failed_count: int,
+) -> FunctionalRun:
+    result = "passed" if failed_count == 0 else "failed"
+    log_payload = {
+        "task_id": task.id,
+        "task": task.iteration_name,
+        "variables": {key: ("***" if "password" in str(key).lower() else value) for key, value in variables.items()},
+        "records": records,
+        "passed_count": passed_count,
+        "failed_count": failed_count,
+    }
+    run = FunctionalRun(
+        task_id=task.id,
+        result=result,
+        log=json.dumps(log_payload, ensure_ascii=False, indent=2, default=str),
+        passed_count=passed_count,
+        failed_count=failed_count,
         execute_time=datetime.now(),
     )
-    db.add(record)
+    task.status = result
+    db.add(run)
     db.commit()
-    db.refresh(record)
-    return serialize(record)
+    db.refresh(run)
+    return run
+
+
+@app.post("/api/functional-cases/{case_id}/execute")
+def execute_functional_case(
+    case_id: int,
+    payload: FunctionalExecuteRequest | None = Body(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    functional_case = get_or_404(db, FunctionalCase, case_id)
+    task = get_or_404(db, FunctionalTask, functional_case.task_id)
+    if functional_case.automation_status != "approved" or not functional_case.ui_case_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该用例未确认或还没有生成UI步骤")
+    variables = payload.variables if payload else {}
+    record, passed_count, failed_count = execute_functional_case_for_run(db, functional_case, variables)
+    run = save_functional_run(db, task, variables, [record], passed_count, failed_count)
+    return serialize(run)
+
+
+@app.post("/api/functional-tasks/{task_id}/execute")
+def execute_functional_task(
+    task_id: int,
+    payload: FunctionalExecuteRequest | None = Body(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    variables = payload.variables if payload else {}
+    cases = (
+        db.query(FunctionalCase)
+        .filter(FunctionalCase.task_id == task.id, FunctionalCase.automation_status == "approved", FunctionalCase.ui_case_id.isnot(None))
+        .order_by(FunctionalCase.id.asc())
+        .all()
+    )
+    if not cases:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="没有已确认且可执行的UI步骤")
+
+    records = []
+    passed_count = 0
+    failed_count = 0
+    for functional_case in cases:
+        record, case_passed_count, case_failed_count = execute_functional_case_for_run(db, functional_case, variables)
+        records.append(record)
+        passed_count += case_passed_count
+        failed_count += case_failed_count
+
+    run = save_functional_run(db, task, variables, records, passed_count, failed_count)
+    return serialize(run)
+
+
+@app.post("/api/functional-runs/{run_id}/diagnose")
+def diagnose_functional_run(run_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
+    run = get_or_404(db, FunctionalRun, run_id)
+    diagnosis = diagnose_failure(run, latest_ai_config(db))
+    try:
+        payload = json.loads(run.log or "{}")
+    except json.JSONDecodeError:
+        payload = {"log": run.log or ""}
+    payload["diagnosis"] = diagnosis
+    run.log = json.dumps(payload, ensure_ascii=False, indent=2, default=str)
+    db.commit()
+    db.refresh(run)
+    return {"run": serialize(run), "diagnosis": diagnosis}
 
 
 @app.get("/api/test-records")

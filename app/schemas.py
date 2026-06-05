@@ -109,3 +109,39 @@ class UiCaseUpdate(BaseModel):
     steps: Any = None
     timeout: Optional[int] = None
     status: Optional[str] = None
+
+
+class FunctionalTaskCreate(BaseModel):
+    project_id: int
+    iteration_name: str
+    requirement_text: Optional[str] = ""
+    target_url: str
+    status: Optional[str] = "draft"
+
+
+class FunctionalCaseUpdate(BaseModel):
+    title: Optional[str] = None
+    precondition: Optional[str] = None
+    steps: Optional[str] = None
+    expected: Optional[str] = None
+    priority: Optional[str] = None
+    automation_status: Optional[str] = None
+
+
+class FunctionalRequirementNoteCreate(BaseModel):
+    note_text: str
+
+
+class FunctionalRequirementNoteUpdate(BaseModel):
+    note_text: str
+
+
+class FunctionalExecuteRequest(BaseModel):
+    variables: Dict[str, Any] = {}
+
+
+class AiConfigUpdate(BaseModel):
+    provider: str = "openai_compatible"
+    base_url: Optional[str] = ""
+    model: Optional[str] = ""
+    api_key: Optional[str] = ""
