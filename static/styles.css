@@ -972,6 +972,33 @@ tr:last-child td {
   font-size: 13px;
 }
 
+.scan-progress {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--soft);
+}
+
+.scan-progress[hidden] {
+  display: none;
+}
+
+.scan-progress-log {
+  max-height: 180px;
+  margin: 0;
+  overflow: auto;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  color: #e2e8f0;
+  background: #0f172a;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
 .modal-foot {
   border-top: 1px solid var(--line);
 }
@@ -1054,6 +1081,13 @@ tr:last-child td {
   margin-top: 12px;
 }
 
+.diagnosis-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 .diagnosis-block p {
   margin: 0;
   padding: 10px 12px;
@@ -1089,6 +1123,41 @@ tr:last-child td {
 
 .diagnosis-warning {
   margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.run-screenshot-list {
+  display: grid;
+  gap: 12px;
+}
+
+.run-screenshot-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+}
+
+.run-screenshot-item > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+.run-screenshot-item strong {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.muted-text {
   color: var(--muted);
   font-size: 13px;
 }

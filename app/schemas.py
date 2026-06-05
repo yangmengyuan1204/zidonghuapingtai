@@ -136,6 +136,22 @@ class FunctionalRequirementNoteUpdate(BaseModel):
     note_text: str
 
 
+class FunctionalScanAuth(BaseModel):
+    enabled: bool = False
+    login_url: Optional[str] = ""
+    username: Optional[str] = ""
+    password: Optional[str] = ""
+    username_locator: Optional[str] = ""
+    password_locator: Optional[str] = ""
+    submit_locator: Optional[str] = ""
+    success_url_contains: Optional[str] = ""
+    success_selector: Optional[str] = ""
+
+
+class FunctionalScanRequest(BaseModel):
+    auth: Optional[FunctionalScanAuth] = None
+
+
 class FunctionalExecuteRequest(BaseModel):
     variables: Dict[str, Any] = {}
 

@@ -32,6 +32,7 @@ const views = [
 
 const FLOW_STORAGE_KEY = "dataFactoryFlows";
 const DELETED_BUILTIN_KEY = "dataFactoryDeletedBuiltins";
+const FUNCTIONAL_SCAN_AUTH_PREFIX = "functionalScanAuth:";
 const CASE_NAME_PREFIXES = ["\u6570\u636e\u811a\u672c-", "test-"];
 const BUILTIN_FLOW_DEFINITIONS = {
   shopping_cart: { id: "shopping_cart_builtin", name: "\u5546\u54c1\u8d2d\u7269\u8f66" },
@@ -2765,7 +2766,7 @@ function renderFunctionalTaskDetail(task) {
             {
               key: "actions",
               label: "操作",
-              render: (row) => `<div class="actions"><button class="btn secondary" data-functional-run-log="${row.id}">日志</button><button class="btn secondary" data-functional-diagnose="${row.id}" ${row.result === "failed" ? "" : "disabled"}>诊断</button></div>`,
+              render: (row) => `<div class="actions"><button class="btn secondary" data-functional-run-log="${row.id}">日志</button><button class="btn secondary" data-functional-run-shots="${row.id}">截图</button><button class="btn secondary" data-functional-diagnose="${row.id}" ${row.result === "failed" ? "" : "disabled"}>诊断</button></div>`,
             },
           ],
           runs,
@@ -2850,6 +2851,10 @@ function bindFunctionalActions(task) {
     const item = (task.runs || []).find((row) => row.id === Number(button.dataset.functionalRunLog));
     button.addEventListener("click", () => showFunctionalRunLog(item));
   });
+  document.querySelectorAll("[data-functional-run-shots]").forEach((button) => {
+    const item = (task.runs || []).find((row) => row.id === Number(button.dataset.functionalRunShots));
+    button.addEventListener("click", () => showFunctionalRunScreenshots(item));
+  });
   document.querySelectorAll("[data-functional-diagnose]").forEach((button) => {
     button.addEventListener("click", () => diagnoseFunctionalRun(Number(button.dataset.functionalDiagnose)));
   });
@@ -2860,7 +2865,7 @@ function bindFunctionalActions(task) {
   document.querySelector("#uploadAxureBtn")?.addEventListener("click", () => openAxureUpload(task.id));
   document.querySelector("#uploadScreenshotBtn")?.addEventListener("click", () => openFunctionalScreenshotUpload(task.id));
   document.querySelector("#addRequirementNoteBtn")?.addEventListener("click", () => openRequirementNoteForm(task.id));
-  document.querySelector("#scanPageBtn")?.addEventListener("click", () => runFunctionalAction(`/api/functional-tasks/${task.id}/scan-page`, "页面扫描完成"));
+  document.querySelector("#scanPageBtn")?.addEventListener("click", () => openFunctionalScanForm(task));
   document.querySelector("#generateCasesBtn")?.addEventListener("click", () => generateFunctionalCases(task.id));
   document.querySelectorAll("[data-analyze-functional-shot]").forEach((button) => {
     button.addEventListener("click", () => analyzeFunctionalScreenshot(Number(button.dataset.analyzeFunctionalShot)));
@@ -3129,6 +3134,196 @@ function openRequirementNoteForm(taskId, item = null) {
   );
 }
 
+function functionalScanAuthKey(task) {
+  try {
+    return `${FUNCTIONAL_SCAN_AUTH_PREFIX}${new URL(task.target_url).origin}`;
+  } catch {
+    return `${FUNCTIONAL_SCAN_AUTH_PREFIX}${task.id}`;
+  }
+}
+
+function inferLoginUrl(targetUrl) {
+  try {
+    const url = new URL(targetUrl);
+    if (url.pathname.toLowerCase().includes("login")) return url.toString();
+    return `${url.origin}/login`;
+  } catch {
+    return "";
+  }
+}
+
+function loadFunctionalScanAuth(task) {
+  let saved = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(functionalScanAuthKey(task)) || "{}");
+  } catch {
+    saved = {};
+  }
+  return {
+    enabled: saved.enabled ?? true,
+    login_url: saved.login_url || inferLoginUrl(task.target_url),
+    username: saved.username || "",
+    password: saved.remember_password ? saved.password || "" : "",
+    remember_password: Boolean(saved.remember_password),
+    username_locator:
+      saved.username_locator ||
+      'input[name="username"]\ninput[name="account"]\ninput[placeholder*="账号"]\ninput[placeholder*="用户名"]\ninput[type="text"]',
+    password_locator:
+      saved.password_locator ||
+      'input[type="password"]\ninput[name="password"]\ninput[placeholder*="密码"]',
+    submit_locator:
+      saved.submit_locator ||
+      'button[type="submit"]\ntext=登录\ntext=Login\ntext=ログイン',
+    success_url_contains: saved.success_url_contains || "",
+    success_selector: saved.success_selector || "",
+  };
+}
+
+function saveFunctionalScanAuth(task, data) {
+  const value = {
+    enabled: data.enabled,
+    login_url: data.login_url,
+    username: data.username,
+    remember_password: data.remember_password,
+    username_locator: data.username_locator,
+    password_locator: data.password_locator,
+    submit_locator: data.submit_locator,
+    success_url_contains: data.success_url_contains,
+    success_selector: data.success_selector,
+    password: data.remember_password ? data.password : "",
+  };
+  localStorage.setItem(functionalScanAuthKey(task), JSON.stringify(value));
+}
+
+function openFunctionalScanForm(task) {
+  const values = loadFunctionalScanAuth(task);
+  const basicFields = [
+    { name: "enabled", label: "启用登录后扫描", type: "checkbox", default: true },
+    { name: "login_url", label: "登录页 URL" },
+    { name: "username", label: "登录账号" },
+    { name: "password", label: "登录密码", type: "password" },
+    { name: "remember_password", label: "记住到本机浏览器", type: "checkbox" },
+  ];
+  const advancedFields = [
+    { name: "username_locator", label: "账号输入框 locator(多个换行)", type: "textarea", rows: 4 },
+    { name: "password_locator", label: "密码输入框 locator(多个换行)", type: "textarea", rows: 3 },
+    { name: "submit_locator", label: "登录按钮 locator(多个换行)", type: "textarea", rows: 4 },
+    { name: "success_url_contains", label: "登录成功 URL 包含(可选)" },
+    { name: "success_selector", label: "登录成功页面元素 locator(可选)" },
+  ];
+  modalEl.innerHTML = `
+    <form id="functionalScanForm">
+      <div class="modal-head">
+        <h3>扫描页面登录配置</h3>
+        <button class="btn secondary" value="cancel" formmethod="dialog" type="button" id="closeModal">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>目标页面</label>
+            <input value="${escapeHtml(task.target_url)}" disabled />
+          </div>
+          ${basicFields.map((field) => renderFormField(field, values[field.name])).join("")}
+          <details class="advanced-vars">
+            <summary>高级配置</summary>
+            <div class="form-grid">
+              ${advancedFields.map((field) => renderFormField(field, values[field.name])).join("")}
+            </div>
+          </details>
+          <section class="scan-progress" id="functionalScanProgress" hidden>
+            <div class="progress-meta">
+              <strong id="functionalScanStage">准备扫描</strong>
+              <span id="functionalScanPercent">0%</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" id="functionalScanFill" style="width: 0%"></div></div>
+            <pre class="scan-progress-log" id="functionalScanLog"></pre>
+          </section>
+        </div>
+      </div>
+      <div class="modal-foot"><span></span><button class="btn" type="submit">开始扫描</button></div>
+    </form>
+  `;
+  modalEl.showModal();
+  document.querySelector("#closeModal").addEventListener("click", () => modalEl.close());
+  document.querySelector("#functionalScanForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = readForm(event.currentTarget);
+    if (data.enabled && (!data.login_url || !data.username || !data.password)) {
+      showToast("请填写登录页URL、登录账号和登录密码");
+      return;
+    }
+    saveFunctionalScanAuth(task, data);
+    const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+    const progressEl = document.querySelector("#functionalScanProgress");
+    const stageEl = document.querySelector("#functionalScanStage");
+    const percentEl = document.querySelector("#functionalScanPercent");
+    const fillEl = document.querySelector("#functionalScanFill");
+    const logEl = document.querySelector("#functionalScanLog");
+    const logs = [];
+    const setProgress = (percent, stage, logLine = "", failed = false) => {
+      progressEl.hidden = false;
+      const safePercent = Math.max(0, Math.min(100, percent));
+      stageEl.textContent = stage;
+      percentEl.textContent = `${safePercent}%`;
+      fillEl.style.width = `${safePercent}%`;
+      fillEl.classList.toggle("failed", failed);
+      if (logLine) logs.push(logLine);
+      logEl.textContent = logs.join("\n");
+      logEl.scrollTop = logEl.scrollHeight;
+    };
+    const stages = [
+      [8, "准备扫描", "准备登录配置"],
+      [18, "打开登录页", "正在打开登录页"],
+      [34, "填写账号密码", "正在定位账号框、密码框"],
+      [48, "提交登录", "正在点击登录按钮"],
+      [64, "进入目标页面", "正在带登录态进入目标页面"],
+      [78, "提取DOM", "正在提取页面按钮、输入框、文本结构"],
+      [88, "保存截图", "正在保存页面快照"],
+    ];
+    let stageIndex = 0;
+    setProgress(5, "准备扫描", "扫描任务已提交");
+    const timer = window.setInterval(() => {
+      if (stageIndex >= stages.length) return;
+      const [percent, stage, line] = stages[stageIndex];
+      setProgress(percent, stage, line);
+      stageIndex += 1;
+    }, 1200);
+    submitButton.disabled = true;
+    submitButton.textContent = "扫描中";
+    try {
+      showToast("正在登录并扫描页面");
+      const result = await api(`/api/functional-tasks/${task.id}/scan-page`, {
+        method: "POST",
+        body: {
+          auth: {
+            enabled: data.enabled,
+            login_url: data.login_url,
+            username: data.username,
+            password: data.password,
+            username_locator: data.username_locator,
+            password_locator: data.password_locator,
+            submit_locator: data.submit_locator,
+            success_url_contains: data.success_url_contains,
+            success_selector: data.success_selector,
+          },
+        },
+      });
+      window.clearInterval(timer);
+      (result.scan_trace || []).forEach((line) => logs.push(line));
+      setProgress(100, "扫描完成", "页面扫描完成");
+      showToast("页面扫描完成");
+      await renderFunctionalTests();
+    } catch (error) {
+      window.clearInterval(timer);
+      setProgress(100, "扫描失败", error.message, true);
+      showToast(error.message);
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = "重新扫描";
+    }
+  });
+}
+
 async function runFunctionalAction(path, message) {
   try {
     showToast("处理中，请稍候");
@@ -3289,6 +3484,66 @@ function showFunctionalRunLog(item) {
   document.querySelector("#closeModal").addEventListener("click", () => modalEl.close());
 }
 
+function parseFunctionalRunLog(item) {
+  if (!item?.log) return {};
+  if (typeof item.log === "object") return item.log;
+  try {
+    return JSON.parse(item.log);
+  } catch {
+    return {};
+  }
+}
+
+function functionalRunScreenshotRows(item) {
+  const payload = parseFunctionalRunLog(item);
+  const records = Array.isArray(payload.records) ? payload.records : [];
+  return records.map((record, index) => ({
+    title: record.title || record.case_name || `用例 ${index + 1}`,
+    result: record.result || "unknown",
+    recordId: record.record_id,
+    screenshot: record.screenshot || "",
+  }));
+}
+
+function showFunctionalRunScreenshots(item) {
+  const rows = functionalRunScreenshotRows(item);
+  const body = rows.length
+    ? `
+      <div class="run-screenshot-list">
+        ${rows
+          .map(
+            (row) => `
+              <div class="run-screenshot-item">
+                <div>
+                  <strong>${escapeHtml(row.title)}</strong>
+                  <span>${badge(row.result)}</span>
+                </div>
+                ${
+                  row.recordId && row.screenshot
+                    ? `<button class="btn secondary" data-run-shot-record="${row.recordId}">查看截图</button>`
+                    : `<span class="muted-text">暂无截图</span>`
+                }
+              </div>
+            `,
+          )
+          .join("")}
+      </div>
+    `
+    : `<div class="empty">暂无截图</div>`;
+  modalEl.innerHTML = `
+    <div class="modal-head">
+      <h3>执行截图 #${item?.id || ""}</h3>
+      <button class="btn secondary" type="button" id="closeModal">关闭</button>
+    </div>
+    <div class="modal-body">${body}</div>
+  `;
+  modalEl.showModal();
+  document.querySelector("#closeModal").addEventListener("click", () => modalEl.close());
+  document.querySelectorAll("[data-run-shot-record]").forEach((button) => {
+    button.addEventListener("click", () => openProtectedFile(`/api/test-records/${button.dataset.runShotRecord}/screenshot`));
+  });
+}
+
 function parseFunctionalDiagnosis(raw) {
   if (!raw) return null;
   if (typeof raw === "object") return raw;
@@ -3330,6 +3585,11 @@ function renderFunctionalDiagnosis(raw) {
                   ? `<div class="diagnosis-block"><span>建议排查</span><ul>${item.suggested_actions.map((action) => `<li>${escapeHtml(action)}</li>`).join("")}</ul></div>`
                   : ""
               }
+              ${
+                item.record_id && item.screenshot
+                  ? `<div class="diagnosis-actions"><button class="btn secondary" data-diagnosis-shot="${item.record_id}">查看失败截图</button></div>`
+                  : `<div class="diagnosis-actions"><span class="muted-text">暂无失败截图</span></div>`
+              }
               ${item.error_detail ? `<details class="diagnosis-detail"><summary>查看原始错误</summary><pre>${escapeHtml(item.error_detail)}</pre></details>` : ""}
             </section>
           `,
@@ -3370,6 +3630,9 @@ async function diagnoseFunctionalRun(runId) {
     document.querySelector("#closeModal").addEventListener("click", async () => {
       modalEl.close();
       await renderFunctionalTests();
+    });
+    document.querySelectorAll("[data-diagnosis-shot]").forEach((button) => {
+      button.addEventListener("click", () => openProtectedFile(`/api/test-records/${button.dataset.diagnosisShot}/screenshot`));
     });
   } catch (error) {
     showToast(error.message);

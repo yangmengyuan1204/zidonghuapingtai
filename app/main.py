@@ -62,6 +62,7 @@ from .schemas import (
     FunctionalExecuteRequest,
     FunctionalRequirementNoteCreate,
     FunctionalRequirementNoteUpdate,
+    FunctionalScanRequest,
     FunctionalTaskCreate,
     LoginRequest,
     ProjectCreate,
@@ -536,6 +537,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def no_cache_frontend_assets(request, call_next):
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
+
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
@@ -1501,14 +1513,20 @@ def delete_functional_requirement_note(
 @app.post("/api/functional-tasks/{task_id}/scan-page")
 def scan_functional_page(
     task_id: int,
+    payload: FunctionalScanRequest | None = Body(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     task = get_or_404(db, FunctionalTask, task_id)
     try:
-        scanned = scan_page_dom(task.target_url)
+        auth_config = schema_data(payload.auth, exclude_unset=True) if payload and payload.auth else None
+        scanned = scan_page_dom(task.target_url, auth=auth_config)
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        trace = getattr(exc, "trace", None)
+        detail = str(exc)
+        if trace:
+            detail = f"{detail}\n\n扫描过程：\n" + "\n".join(f"- {item}" for item in trace)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
     snapshot = PageSnapshot(
         task_id=task.id,
         page_url=task.target_url,
@@ -1520,7 +1538,9 @@ def scan_functional_page(
     db.add(snapshot)
     db.commit()
     db.refresh(snapshot)
-    return serialize(snapshot)
+    data = serialize(snapshot)
+    data["scan_trace"] = scanned.get("scan_trace", [])
+    return data
 
 
 @app.post("/api/functional-tasks/{task_id}/generate-cases")
