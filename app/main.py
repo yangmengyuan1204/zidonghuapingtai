@@ -1,4 +1,6 @@
-﻿from contextlib import asynccontextmanager
+import base64
+import hashlib
+from contextlib import asynccontextmanager
 from datetime import datetime
 import json
 from pathlib import Path
@@ -9,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import or_
+from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy.orm import Session
 
 from .database import Base, engine, get_db
@@ -48,6 +51,8 @@ from .models import (
     TestRecord,
     UiCase,
     User,
+    TestAccountBinding,
+    TestAccountProfile,
 )
 from .schemas import (
     AiConfigUpdate,
@@ -71,8 +76,11 @@ from .schemas import (
     UiCaseUpdate,
     UserCreate,
     UserUpdate,
+    TestAccountBindingUpdate,
+    TestAccountProfileCreate,
+    TestAccountProfileUpdate,
 )
-from .security import create_access_token, get_current_user, hash_password, require_admin, verify_password
+from .security import SECRET_KEY, create_access_token, get_current_user, hash_password, require_admin, verify_password
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -105,6 +113,14 @@ TABLE_FIELDS = {
     FunctionalRequirementNote: ["id", "task_id", "note_text", "create_time", "update_time"],
     FunctionalRun: ["id", "task_id", "result", "log", "passed_count", "failed_count", "execute_time"],
     AiConfig: ["id", "provider", "base_url", "model", "api_key", "create_time"],
+    TestAccountProfile: [
+        "id", "project_id", "profile_name", "variables",
+        "sensitive_variables", "status", "create_time", "update_time",
+    ],
+    TestAccountBinding: [
+        "id", "target_type", "target_id", "account_profile_id",
+        "create_time", "update_time",
+    ],
 }
 
 JSON_FIELD_DEFAULTS = {
@@ -832,6 +848,237 @@ def delete_project(
     db.delete(project)
     db.commit()
     return {"message": "deleted"}
+
+import re
+
+SENSITIVE_ACCOUNT_KEY_RE = re.compile(r"(password|passwd|pwd|captcha|token|secret|authorization|auth|密码|验证码)", re.I)
+SENSITIVE_ACCOUNT_KEY_NAMES = {"code", "verify_code", "verification_code", "captcha_code"}
+
+
+def is_sensitive_account_key(key: Any) -> bool:
+    text = str(key or "").strip()
+    return text.lower() in SENSITIVE_ACCOUNT_KEY_NAMES or bool(SENSITIVE_ACCOUNT_KEY_RE.search(text))
+
+
+def mask_variables(variables: Dict[str, Any]) -> Dict[str, Any]:
+    return {key: ("***" if is_sensitive_account_key(key) else value) for key, value in (variables or {}).items()}
+
+
+def account_cipher() -> Fernet:
+    key = base64.urlsafe_b64encode(hashlib.sha256(str(SECRET_KEY).encode("utf-8")).digest())
+    return Fernet(key)
+
+
+def encrypt_account_payload(values: Dict[str, Any]) -> str:
+    if not values:
+        return ""
+    raw = json.dumps(values, ensure_ascii=False, default=str).encode("utf-8")
+    return account_cipher().encrypt(raw).decode("utf-8")
+
+
+def decrypt_account_payload(value: str | None) -> Dict[str, Any]:
+    if not value:
+        return {}
+    try:
+        decrypted = account_cipher().decrypt(str(value).encode("utf-8")).decode("utf-8")
+        return parse_json_value(decrypted, {})
+    except (InvalidToken, ValueError, TypeError):
+        legacy = parse_json_value(str(value), {})
+        return legacy if isinstance(legacy, dict) else {}
+
+
+def normalize_account_payload(db: Session, data: Dict[str, Any], existing: TestAccountProfile | None = None) -> Dict[str, Any]:
+    if "profile_name" in data and data["profile_name"] is not None:
+        data["profile_name"] = str(data["profile_name"]).strip()
+        if not data["profile_name"]:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="账号档案名称不能为空")
+    if "project_id" in data and data["project_id"] is not None:
+        ensure_project_exists(db, int(data["project_id"]))
+        data["project_id"] = int(data["project_id"])
+    public_source = data.pop("variables", None)
+    sensitive_source = data.pop("sensitive_variables", None)
+    if public_source is not None or sensitive_source is not None:
+        public_values: Dict[str, Any] = (
+            parse_json_value(existing.variables or "", {}) if existing is not None and public_source is None else {}
+        )
+        if not isinstance(public_values, dict):
+            public_values = {}
+        sensitive_values: Dict[str, Any] = (
+            decrypt_account_payload(existing.sensitive_variables) if existing is not None and sensitive_source is None else {}
+        )
+        sensitive_changed = sensitive_source is not None
+        if public_source is not None:
+            for key, value in dict(public_source or {}).items():
+                if value is None:
+                    continue
+                if is_sensitive_account_key(key):
+                    sensitive_values[str(key)] = value
+                    sensitive_changed = True
+                else:
+                    public_values[str(key)] = value
+        for key, value in dict(sensitive_source or {}).items():
+            if value is not None:
+                sensitive_values[str(key)] = value
+        data["variables"] = to_json_text(public_values, {})
+        if sensitive_changed:
+            data["sensitive_variables"] = encrypt_account_payload(sensitive_values)
+    elif existing is not None:
+        data.pop("variables", None)
+        data.pop("sensitive_variables", None)
+    if "status" in data and data["status"]:
+        data["status"] = str(data["status"])
+    return data
+
+
+def serialize_account_profile(profile: TestAccountProfile) -> Dict[str, Any]:
+    public_values = parse_json_value(profile.variables or "", {})
+    if not isinstance(public_values, dict):
+        public_values = {}
+    sensitive_values = decrypt_account_payload(profile.sensitive_variables)
+    masked = {**public_values, **{key: "***" for key in sensitive_values.keys()}}
+    return {
+        "id": profile.id,
+        "project_id": profile.project_id,
+        "profile_name": profile.profile_name,
+        "variables": public_values,
+        "masked_variables": masked,
+        "sensitive_keys": sorted(sensitive_values.keys()),
+        "status": profile.status,
+        "create_time": profile.create_time.strftime("%Y-%m-%d %H:%M:%S") if profile.create_time else "",
+        "update_time": profile.update_time.strftime("%Y-%m-%d %H:%M:%S") if profile.update_time else "",
+    }
+
+
+def account_profile_variables(db: Session, profile_id: int, project_id: int | None) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    profile = get_or_404(db, TestAccountProfile, profile_id)
+    if profile.status != "active":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="账号档案未启用")
+    if profile.project_id is not None and project_id is not None and profile.project_id != project_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="账号档案不属于当前项目")
+    public_values = parse_json_value(profile.variables or "", {})
+    if not isinstance(public_values, dict):
+        public_values = {}
+    variables = {**public_values, **decrypt_account_payload(profile.sensitive_variables)}
+    return variables, {"id": profile.id, "profile_name": profile.profile_name}
+
+
+def account_target_project_id(db: Session, target_type: str, target_id: int) -> int:
+    if target_type == "project":
+        return target_id
+    elif target_type == "functional_task":
+        item = get_or_404(db, FunctionalTask, target_id)
+        return item.project_id
+    elif target_type == "functional_case":
+        item = get_or_404(db, FunctionalCase, target_id)
+        return item.project_id
+    return target_id
+
+
+def save_test_account_binding(db: Session, target_type: str, target_id: int, account_profile_id: int | None) -> None:
+    existing = db.query(TestAccountBinding).filter(
+        TestAccountBinding.target_type == target_type,
+        TestAccountBinding.target_id == target_id,
+    ).first()
+    if existing and account_profile_id is not None:
+        existing.account_profile_id = account_profile_id
+        existing.update_time = datetime.now()
+    elif existing and account_profile_id is None:
+        db.delete(existing)
+    elif not existing and account_profile_id is not None:
+        db.add(TestAccountBinding(
+            target_type=target_type,
+            target_id=target_id,
+            account_profile_id=account_profile_id,
+            create_time=datetime.now(),
+            update_time=None,
+        ))
+    else:
+        return
+    db.flush()
+
+
+@app.get("/api/test-accounts")
+def list_test_accounts(
+    project_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[Dict[str, Any]]:
+    query = db.query(TestAccountProfile)
+    if project_id is not None:
+        ensure_project_exists(db, project_id)
+        query = query.filter(TestAccountProfile.project_id == project_id)
+    if current_user.role != "admin":
+        query = query.filter(TestAccountProfile.status == "active")
+    return [serialize_account_profile(item) for item in query.order_by(TestAccountProfile.project_id.asc(), TestAccountProfile.id.desc()).all()]
+
+
+@app.post("/api/test-accounts")
+def create_test_account(
+    payload: TestAccountProfileCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    data = normalize_account_payload(db, schema_data(payload))
+    profile = TestAccountProfile(
+        project_id=data.get("project_id"),
+        profile_name=data["profile_name"],
+        variables=data.get("variables") or "{}",
+        sensitive_variables=data.get("sensitive_variables") or "",
+        status=data.get("status") or "active",
+        create_time=datetime.now(),
+        update_time=None,
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return serialize_account_profile(profile)
+
+
+@app.put("/api/test-accounts/{account_id}")
+def update_test_account(
+    account_id: int,
+    payload: TestAccountProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    profile = get_or_404(db, TestAccountProfile, account_id)
+    data = normalize_account_payload(db, schema_data(payload, exclude_unset=True), profile)
+    for field, value in data.items():
+        setattr(profile, field, value)
+    profile.update_time = datetime.now()
+    db.commit()
+    db.refresh(profile)
+    return serialize_account_profile(profile)
+
+
+@app.delete("/api/test-accounts/{account_id}")
+def delete_test_account(
+    account_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, str]:
+    profile = get_or_404(db, TestAccountProfile, account_id)
+    db.query(TestAccountBinding).filter(TestAccountBinding.account_profile_id == profile.id).delete(synchronize_session=False)
+    db.delete(profile)
+    db.commit()
+    return {"message": "deleted"}
+
+
+@app.put("/api/test-account-bindings")
+def update_test_account_binding(
+    payload: TestAccountBindingUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    data = schema_data(payload)
+    target_type = str(data["target_type"])
+    target_id = int(data["target_id"])
+    project_id = account_target_project_id(db, target_type, target_id)
+    profile_id = data.get("account_profile_id")
+    save_test_account_binding(db, target_type, target_id, profile_id)
+    db.commit()
+    profile = db.get(TestAccountProfile, profile_id) if profile_id else None
+    return {"profile": serialize_account_profile(profile) if profile else None}
 
 
 @app.get("/api/envs")

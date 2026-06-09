@@ -157,3 +157,27 @@ class AiConfig(Base):
     model = Column(String(160), nullable=True)
     api_key = Column(String(500), nullable=True)
     create_time = Column(DateTime, nullable=False)
+
+class TestAccountProfile(Base):
+    __tablename__ = "test_account_profile"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=True, index=True)
+    profile_name = Column(String(160), nullable=False)
+    variables = Column(Text, nullable=True)
+    sensitive_variables = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class TestAccountBinding(Base):
+    __tablename__ = "test_account_binding"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    target_type = Column(String(40), nullable=False, index=True)
+    target_id = Column(Integer, nullable=False, index=True)
+    account_profile_id = Column(Integer, nullable=True, index=True)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
