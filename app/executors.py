@@ -8,7 +8,7 @@ import shutil
 import string
 import time
 from typing import Any, Dict, Iterable, Tuple
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse, urlunparse
 from uuid import uuid4
 
 import requests
@@ -330,72 +330,870 @@ def execute_api_case(case: ApiCase, env: Env, runtime_vars: Dict[str, Any] | Non
         return False, log_text, report_path, {}
 
 
-def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str]) -> None:
-    action = step.get("action")
-    locator = step.get("locator")
-    value = step.get("value")
+UI_ACTION_LABELS = {
+    "goto": "打开页面",
+    "input": "输入",
+    "click": "点击",
+    "select": "选择",
+    "check": "勾选",
+    "uncheck": "取消勾选",
+    "wait": "等待",
+    "wait_for_selector": "等待元素",
+    "assert_visible": "检查元素可见",
+    "assert_url": "检查页面地址",
+    "assert_value": "检查输入值",
+    "text_assert": "检查页面文案",
+    "screenshot": "截图",
+}
 
-    if action == "goto":
-        page.goto(value)
-    elif action == "input":
-        page.fill(locator, str(value or ""))
-    elif action == "click":
-        page.click(locator)
-    elif action == "select":
-        page.select_option(locator, str(value or ""))
-    elif action == "check":
-        page.check(locator)
-    elif action == "uncheck":
-        page.uncheck(locator)
-    elif action == "wait":
-        page.wait_for_timeout(int(value or 1000))
-    elif action == "wait_for_selector":
-        page.wait_for_selector(locator)
-    elif action == "assert_visible":
-        if not page.locator(locator).first.is_visible():
-            raise AssertionError(f"assert_visible failed: locator {locator!r} is not visible")
-    elif action == "assert_url":
-        current_url = page.url
-        if str(value) not in current_url:
-            raise AssertionError(f"assert_url failed: expected contains {value!r}, actual {current_url!r}")
-    elif action == "assert_value":
-        actual = page.locator(locator).input_value()
-        if str(value) != str(actual):
-            raise AssertionError(f"assert_value failed: expected {value!r}, actual {actual!r}")
-    elif action == "text_assert":
-        text = page.locator(locator).inner_text()
-        if str(value) not in text:
-            raise AssertionError(f"text_assert failed: expected {value!r}, actual {text!r}")
-    elif action == "screenshot":
-        ensure_report_dirs()
-        screenshot = SCREENSHOT_DIR / f"{uuid4()}.png"
-        page.screenshot(path=str(screenshot), full_page=True)
-        screenshots.append(str(screenshot))
+UI_LOCATOR_REQUIRED = {"input", "click", "wait_for_selector", "text_assert", "select", "check", "uncheck", "assert_visible", "assert_value"}
+UI_VALUE_REQUIRED = {"goto", "input", "wait", "text_assert", "select", "assert_url", "assert_value"}
+BUILTIN_VAR_NAMES = {"timestamp", "datetime", "date", "uuid", "random_int", "random_str", "random_phone", "random_email"}
+LOGIN_URL_MARKERS = ("login", "signin")
+LOGIN_TEXT_MARKERS = ("登录", "登入", "登陆", "login", "sign in", "ログイン")
+REGISTER_TEXT_MARKERS = ("立即注册", "马上注册", "去注册", "register", "sign up", "新規登録")
+
+
+class UiStepExecutionError(RuntimeError):
+    def __init__(self, message: str, detail: Dict[str, Any]):
+        super().__init__(message)
+        self.detail = detail
+
+
+class UiAuthPreparationError(RuntimeError):
+    def __init__(self, message: str, trace: list[str]):
+        suffix = f"\n登录过程：\n- " + "\n- ".join(trace) if trace else ""
+        super().__init__(message + suffix)
+        self.message = message
+        self.trace = trace
+
+
+def _mask_variables(variables: Dict[str, Any]) -> Dict[str, Any]:
+    sensitive = re.compile(r"(password|passwd|pwd|captcha|token|secret|authorization|auth|密码|验证码)", re.I)
+    sensitive_names = {"code", "verify_code", "verification_code", "captcha_code"}
+    return {key: ("***" if str(key).lower() in sensitive_names or sensitive.search(str(key)) else value) for key, value in variables.items()}
+
+
+def _normalize_text(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def _quote_locator_text(value: str) -> str:
+    return str(value or "").replace('"', '\\"')
+
+
+def _step_timeout_ms(step: Dict[str, Any], default_seconds: int, cap_seconds: int = 12) -> int:
+    raw = step.get("timeout")
+    if raw in (None, ""):
+        return min(default_seconds, cap_seconds) * 1000
+    try:
+        value = int(float(raw))
+    except (TypeError, ValueError):
+        return min(default_seconds, cap_seconds) * 1000
+    if value <= 0:
+        return min(default_seconds, cap_seconds) * 1000
+    return value if value > 100 else value * 1000
+
+
+def _split_locator_values(value: Any) -> list[str]:
+    if isinstance(value, list):
+        items = value
     else:
-        raise ValueError(f"Unsupported UI action: {action}")
+        items = re.split(r"[\r\n]+", str(value or ""))
+    result = []
+    for item in items:
+        text_value = str(item or "").strip()
+        if text_value and text_value not in result:
+            result.append(text_value)
+    return result
 
 
-def execute_ui_case(case: UiCase, runtime_vars: Dict[str, Any] | None = None) -> Tuple[bool, str, str, str]:
+def _text_locator_value(locator: str) -> str:
+    text_value = str(locator or "").strip()
+    if text_value.startswith("text="):
+        return text_value[5:].strip().strip('"').strip("'")
+    match = re.match(r"^(?:button|a|\[role=['\"]?button['\"]?\]):has-text\(['\"](.+?)['\"]\)$", text_value)
+    return match.group(1) if match else ""
+
+
+def _locator_candidates(step: Dict[str, Any]) -> list[str]:
+    primary = str(step.get("locator") or "").strip()
+    candidates = []
+    for item in [primary, *_split_locator_values(step.get("fallback_locators"))]:
+        if item and item not in candidates:
+            candidates.append(item)
+    if primary:
+        placeholder_match = re.match(r"^placeholder\s*=\s*(.+)$", primary, flags=re.I)
+        if placeholder_match:
+            value = _quote_locator_text(placeholder_match.group(1).strip())
+            candidates.extend([f'input[placeholder*="{value}"]', f'textarea[placeholder*="{value}"]'])
+        name_match = re.match(r"^name\s*=\s*(.+)$", primary, flags=re.I)
+        if name_match:
+            value = _quote_locator_text(name_match.group(1).strip())
+            candidates.extend([f'[name="{value}"]', f'input[name="{value}"]'])
+        text_value = _text_locator_value(primary)
+        if text_value:
+            quoted = _quote_locator_text(text_value)
+            candidates.extend(
+                [
+                    f'button:has-text("{quoted}")',
+                    f'a:has-text("{quoted}")',
+                    f'[role="button"]:has-text("{quoted}")',
+                    f'input[type="button"][value*="{quoted}"]',
+                    f'input[type="submit"][value*="{quoted}"]',
+                ]
+            )
+    result = []
+    for item in candidates:
+        if item and item not in result:
+            result.append(item)
+    return result
+
+
+def _classify_ui_error(error: str, step: Dict[str, Any], current_url: str = "") -> Dict[str, Any]:
+    error_lower = str(error or "").lower()
+    action = step.get("action") or ""
+    if "unknown engine" in error_lower or "unexpected token" in error_lower:
+        category = "定位器写法错误"
+        reason = "locator 写法不符合 Playwright 规则。"
+        suggestion = "重新扫描页面 DOM 后生成步骤，或改成 id/name/placeholder/text 这类稳定定位。"
+    elif "strict mode violation" in error_lower:
+        category = "定位器不唯一"
+        reason = "locator 匹配到了多个元素，执行器无法确定要操作哪一个。"
+        suggestion = "把 locator 改得更唯一，例如增加 id、name、placeholder 或更精确的按钮文案。"
+    elif "timeout" in error_lower or "waiting for" in error_lower:
+        category = "定位器找不到"
+        reason = "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。"
+        suggestion = "先看失败截图确认页面停留位置，再检查前一步操作和 locator。"
+    elif "not visible" in error_lower or "visible" in error_lower and "failed" in error_lower:
+        category = "元素不可见/不可点击"
+        reason = "元素存在但不可见或不可点击，可能被遮挡、折叠、未滚动到视图内或页面尚未渲染完成。"
+        suggestion = "补充展开/等待步骤，或使用更准确的可见元素 locator。"
+    elif "assert_url failed" in error:
+        category = "页面未跳转或跳转地址不符合预期"
+        reason = "执行后当前 URL 和预期不一致。"
+        suggestion = "确认提交是否成功、登录态是否有效、预期跳转地址是否正确。"
+    elif "text_assert failed" in error:
+        category = "文案断言失败"
+        reason = "页面实际文案和预期不一致，或当前页面不是预期页面。"
+        suggestion = "确认产品文案是否变更，避免把弱文案作为主流程强断言。"
+    elif "assert_value failed" in error:
+        category = "输入值断言失败"
+        reason = "输入框实际值和预期不一致，可能是输入未生效、控件自动格式化或定位到了错误输入框。"
+        suggestion = "检查输入框 locator 是否唯一，并确认页面是否会自动格式化输入内容。"
+    elif "login" in str(current_url or "").lower() and action != "goto":
+        category = "登录态失效"
+        reason = "执行时页面停留在登录页，后续业务步骤无法继续。"
+        suggestion = "检查运行时账号密码、登录步骤和目标页面是否需要先登录。"
+    else:
+        category = "未知异常"
+        reason = "执行过程中出现未分类异常。"
+        suggestion = "结合失败截图、当前 URL 和失败步骤继续判断。"
+    return {"category": category, "reason": reason, "suggestion": suggestion}
+
+
+def _resolve_locator(page: Any, candidates: list[str], timeout_ms: int, state: str = "visible") -> tuple[Any, str, int]:
+    errors = []
+    for locator in candidates:
+        try:
+            target = page.locator(locator).first
+            target.wait_for(state=state, timeout=timeout_ms)
+            count = page.locator(locator).count()
+            return target, locator, count
+        except Exception as exc:
+            errors.append(f"{locator}: {exc}")
+            continue
+    raise TimeoutError("未找到可用定位器：" + "；".join(errors[-4:]))
+
+
+def _wait_for_url_contains(page: Any, expected: str, timeout_ms: int) -> None:
+    deadline = time.time() + timeout_ms / 1000
+    while time.time() < deadline:
+        if expected in (page.url or ""):
+            return
+        page.wait_for_timeout(300)
+    raise AssertionError(f"assert_url failed: expected contains {expected!r}, actual {page.url!r}")
+
+
+def _guess_login_url(target_url: str | None) -> str:
+    raw = str(target_url or "").strip()
+    if not raw:
+        return ""
+    parsed = urlparse(raw)
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+    return urlunparse((parsed.scheme, parsed.netloc, "/login", "", "", ""))
+
+
+def _first_runtime_value(variables: Dict[str, Any], keys: Iterable[str]) -> str:
+    for key in keys:
+        value = str(variables.get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _step_text(step: Dict[str, Any]) -> str:
+    values = [step.get("name"), step.get("locator"), step.get("value"), " ".join(_split_locator_values(step.get("fallback_locators")))]
+    return " ".join(str(item or "") for item in values).lower()
+
+
+def _looks_like_login_url(value: Any) -> bool:
+    url = str(value or "").strip().lower()
+    return any(marker in url for marker in LOGIN_URL_MARKERS)
+
+
+def _looks_like_login_page(page: Any, expected_url: str = "") -> bool:
+    current_url = str(getattr(page, "url", "") or "").lower()
+    expected = str(expected_url or "").lower()
+    if current_url and current_url != expected and any(marker in current_url for marker in LOGIN_URL_MARKERS):
+        return True
+    try:
+        password_visible = any(
+            page.locator(locator).first.is_visible(timeout=300)
+            for locator in ['input[type="password"]', 'input[name="password"]']
+        )
+    except Exception:
+        password_visible = False
+    if not password_visible:
+        return False
+    for locator in [
+        'button:has-text("登录")',
+        '[role="button"]:has-text("登录")',
+        "text=登录",
+        'input[placeholder*="账号"]',
+        'input[placeholder*="邮箱"]',
+        'input[placeholder*="手机号"]',
+    ]:
+        try:
+            if page.locator(locator).first.is_visible(timeout=200):
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _visible_login_error(page: Any) -> str:
+    for locator in [
+        ".error, .ant-form-item-explain-error, .el-form-item__error, .ant-message-error",
+        "text=密码错误",
+        "text=账号或密码错误",
+        "text=登录失败",
+        "text=验证码错误",
+    ]:
+        try:
+            target = page.locator(locator).first
+            if target.is_visible(timeout=200):
+                text = _normalize_text(target.inner_text(timeout=500))
+                if text:
+                    return text[:200]
+        except Exception:
+            continue
+    return ""
+
+
+def _is_login_related_step(step: Dict[str, Any]) -> bool:
+    action = str(step.get("action") or "").strip().lower()
+    text = _step_text(step)
+    if action == "goto" and _looks_like_login_url(step.get("value")):
+        return True
+    if action == "input" and any(keyword in text for keyword in ["username", "account", "email", "mobile", "phone", "密码", "password", "账号", "邮箱", "手机", "验证码", "captcha", "code"]):
+        return True
+    if action == "click" and any(keyword in text for keyword in [*LOGIN_TEXT_MARKERS, *REGISTER_TEXT_MARKERS]):
+        return True
+    if action in {"wait_for_selector", "assert_visible", "text_assert"} and any(keyword in text for keyword in [*LOGIN_TEXT_MARKERS, "验证码", "captcha"]):
+        return True
+    return False
+
+
+def _strip_leading_login_steps(steps: list[Dict[str, Any]]) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
+    kept: list[Dict[str, Any]] = []
+    removed: list[Dict[str, Any]] = []
+    stripping = True
+    for step in steps:
+        if not isinstance(step, dict):
+            kept.append(step)
+            stripping = False
+            continue
+        action = str(step.get("action") or "").strip().lower()
+        if stripping and (_is_login_related_step(step) or (removed and action == "wait")):
+            removed.append(step)
+            continue
+        if action == "goto" and _looks_like_login_url(step.get("value")):
+            removed.append(step)
+            continue
+        kept.append(step)
+        stripping = False
+    return kept or [{"name": "等待页面加载", "action": "wait_for_selector", "locator": "body"}], removed
+
+
+def _prepare_authenticated_page(page: Any, execution_context: Dict[str, Any], variables: Dict[str, Any], timeout_seconds: int) -> Dict[str, Any]:
+    auth = dict(execution_context.get("login_config") or {})
+    target_url = str(execution_context.get("target_url") or "").strip()
+    login_url = str(auth.get("login_url") or "").strip() or _guess_login_url(target_url)
+    username = _first_runtime_value(variables, ["username", "account", "email", "mobile", "phone"])
+    password = _first_runtime_value(variables, ["password"])
+    code = _first_runtime_value(variables, ["code", "captcha", "captcha_code", "verify_code", "verification_code"])
+    trace: list[str] = [f"打开登录页：{login_url}"]
+    if not login_url or not username or not password:
+        raise UiAuthPreparationError("登录前置失败：缺少登录页 URL、登录账号或登录密码。", trace)
+
+    username_candidates = _split_locator_values(auth.get("username_locator")) or [
+        'input[placeholder="邮箱/手机号"]',
+        'input[name="username"]',
+        'input[name="account"]',
+        'input[name="mobile"]',
+        'input[name="email"]',
+        'input[type="text"]',
+    ]
+    password_candidates = _split_locator_values(auth.get("password_locator")) or [
+        'input[placeholder="请输入密码"]',
+        'input[type="password"]',
+        'input[name="password"]',
+    ]
+    submit_candidates = _split_locator_values(auth.get("submit_locator")) or [
+        'button[type="submit"]',
+        'button:has-text("登录")',
+        '[role="button"]:has-text("登录")',
+        "text=登录",
+    ]
+    code_candidates = [
+        'input[placeholder*="验证码"]',
+        'input[name="code"]',
+        'input[name="captcha"]',
+        'input[placeholder*="captcha" i]',
+    ]
+
+    trace: list[str] = [f"打开登录页：{login_url}"]
+    page.goto(login_url, wait_until="domcontentloaded", timeout=max(timeout_seconds, 10) * 1000)
+    page.set_default_timeout(timeout_seconds * 1000)
+
+    username_target, username_locator, _ = _resolve_locator(page, username_candidates, 4000)
+    username_target.fill("", timeout=4000)
+    username_target.fill(username, timeout=4000)
+    trace.append(f"已填写登录账号：{username_locator}")
+
+    password_target, password_locator, _ = _resolve_locator(page, password_candidates, 4000)
+    password_target.fill("", timeout=4000)
+    password_target.fill(password, timeout=4000)
+    trace.append(f"已填写登录密码：{password_locator}")
+
+    if code:
+        try:
+            code_target, code_locator, _ = _resolve_locator(page, code_candidates, 2000)
+            code_target.fill("", timeout=2000)
+            code_target.fill(code, timeout=2000)
+            trace.append(f"已填写验证码：{code_locator}")
+        except Exception:
+            trace.append("未定位到验证码输入框，跳过验证码自动填写")
+
+    submit_target, submit_locator, _ = _resolve_locator(page, submit_candidates, 5000)
+    try:
+        submit_target.scroll_into_view_if_needed(timeout=1000)
+    except Exception:
+        pass
+    submit_target.click(timeout=5000)
+    trace.append(f"已点击登录按钮：{submit_locator}")
+
+    success_selector = str(auth.get("success_selector") or "").strip()
+    success_url_contains = str(auth.get("success_url_contains") or "").strip()
+    def wait_after_submit(label: str) -> None:
+        try:
+            page.wait_for_load_state("networkidle", timeout=6000)
+        except Exception:
+            page.wait_for_timeout(1500)
+        trace.append(f"{label}后当前页面：{page.url}")
+
+    wait_after_submit("首次提交")
+    if success_selector:
+        page.wait_for_selector(success_selector, timeout=max(timeout_seconds, 8) * 1000)
+        trace.append(f"检测到登录成功元素：{success_selector}")
+    elif success_url_contains:
+        _wait_for_url_contains(page, success_url_contains, max(timeout_seconds, 8) * 1000)
+        trace.append(f"检测到登录成功地址：{page.url}")
+    else:
+        if _looks_like_login_page(page, expected_url=login_url):
+            try:
+                password_target.press("Enter", timeout=2000)
+                trace.append("首次点击后仍在登录页，已尝试按 Enter 再次提交")
+                wait_after_submit("Enter 提交")
+            except Exception as exc:
+                trace.append(f"Enter 提交失败：{str(exc)[:200]}")
+        if _looks_like_login_page(page, expected_url=login_url):
+            try:
+                submit_target.click(timeout=3000, force=True)
+                trace.append("Enter 提交后仍在登录页，已尝试强制点击登录按钮")
+                wait_after_submit("强制点击")
+            except Exception as exc:
+                trace.append(f"强制点击失败：{str(exc)[:200]}")
+        if _looks_like_login_page(page, expected_url=login_url):
+            error_text = _visible_login_error(page)
+            detail = f"登录前置失败：提交后仍停留在登录页，当前页面 {page.url}"
+            if error_text:
+                detail += f"；页面提示：{error_text}"
+                trace.append(f"页面错误提示：{error_text}")
+            raise UiAuthPreparationError(detail, trace)
+        trace.append(f"登录后当前页面：{page.url}")
+    return {"trace": trace, "login_url": login_url, "submit_locator": submit_locator}
+
+
+def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int) -> Dict[str, Any]:
+    started = time.time()
+    action = str(step.get("action") or "").strip()
+    locator = str(step.get("locator") or "").strip()
+    value = step.get("value")
+    name = str(step.get("name") or UI_ACTION_LABELS.get(action) or action or "未命名步骤")
+    timeout_ms = _step_timeout_ms(step, default_timeout)
+    candidates = _locator_candidates(step)
+    detail: Dict[str, Any] = {
+        "name": name,
+        "action": action,
+        "locator": locator,
+        "fallback_locators": [item for item in candidates if item != locator],
+        "value": "***" if "password" in name.lower() or "password" in locator.lower() else value,
+        "started_at": datetime.now(),
+        "status": "running",
+    }
+
+    try:
+        if action == "goto":
+            if value in (None, ""):
+                raise ValueError("goto 步骤缺少 value")
+            page.goto(str(value), wait_until="domcontentloaded", timeout=timeout_ms)
+            try:
+                page.wait_for_load_state("networkidle", timeout=min(timeout_ms, 5000))
+            except Exception:
+                page.wait_for_timeout(500)
+        elif action == "wait":
+            page.wait_for_timeout(int(value or 1000))
+        elif action == "screenshot":
+            ensure_report_dirs()
+            screenshot = SCREENSHOT_DIR / f"{uuid4()}.png"
+            page.screenshot(path=str(screenshot), full_page=True)
+            screenshots.append(str(screenshot))
+            detail["screenshot"] = str(screenshot)
+        elif action == "assert_url":
+            _wait_for_url_contains(page, str(value or ""), timeout_ms)
+        else:
+            if action in UI_LOCATOR_REQUIRED and not candidates:
+                raise ValueError(f"{action} 步骤缺少 locator")
+            last_error = None
+            for attempt in range(1, 4):
+                try:
+                    target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
+                    detail["used_locator"] = used_locator
+                    detail["matched_count"] = matched_count
+                    try:
+                        target.scroll_into_view_if_needed(timeout=1500)
+                    except Exception:
+                        pass
+                    if action == "input":
+                        try:
+                            target.fill("", timeout=timeout_ms)
+                            target.fill(str(value or ""), timeout=timeout_ms)
+                        except Exception:
+                            target.click(timeout=timeout_ms)
+                            page.keyboard.press("Control+A")
+                            page.keyboard.type(str(value or ""))
+                    elif action == "click":
+                        target.click(timeout=timeout_ms)
+                    elif action == "select":
+                        target.select_option(str(value or ""), timeout=timeout_ms)
+                    elif action == "check":
+                        target.check(timeout=timeout_ms)
+                    elif action == "uncheck":
+                        target.uncheck(timeout=timeout_ms)
+                    elif action == "wait_for_selector":
+                        target.wait_for(state="visible", timeout=timeout_ms)
+                    elif action == "assert_visible":
+                        if not target.is_visible(timeout=timeout_ms):
+                            raise AssertionError(f"assert_visible failed: locator {used_locator!r} is not visible")
+                    elif action == "assert_value":
+                        actual = target.input_value(timeout=timeout_ms)
+                        if _normalize_text(value) != _normalize_text(actual):
+                            raise AssertionError(f"assert_value failed: expected {value!r}, actual {actual!r}")
+                    elif action == "text_assert":
+                        text_value = target.inner_text(timeout=timeout_ms)
+                        if _normalize_text(value) not in _normalize_text(text_value):
+                            raise AssertionError(f"text_assert failed: expected {value!r}, actual {text_value!r}")
+                    else:
+                        raise ValueError(f"Unsupported UI action: {action}")
+                    if attempt > 1:
+                        detail["retry_count"] = attempt - 1
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    if attempt >= 3:
+                        raise
+                    page.wait_for_timeout(350 * attempt)
+            if last_error and not detail.get("used_locator") and action not in {"goto", "wait", "screenshot", "assert_url"}:
+                raise last_error
+        detail["status"] = "passed"
+        detail["current_url"] = page.url
+        detail["duration_ms"] = int((time.time() - started) * 1000)
+        detail["finished_at"] = datetime.now()
+        return detail
+    except Exception as exc:
+        error_text = str(exc)
+        classified = _classify_ui_error(error_text, step, getattr(page, "url", ""))
+        detail.update(
+            {
+                "status": "skipped" if step.get("optional") else "failed",
+                "current_url": getattr(page, "url", ""),
+                "duration_ms": int((time.time() - started) * 1000),
+                "finished_at": datetime.now(),
+                "error": error_text,
+                **classified,
+            }
+        )
+        if step.get("optional"):
+            return detail
+        message = f"{name}失败：{classified['category']}。{classified['reason']}"
+        raise UiStepExecutionError(message, detail) from exc
+
+
+def _validate_ui_steps_for_execution(steps: Any) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
+    issues: list[Dict[str, Any]] = []
+    if not isinstance(steps, Iterable) or isinstance(steps, (str, bytes, dict)):
+        return [], [{"severity": "error", "message": "UI steps 必须是数组"}]
+    normalized: list[Dict[str, Any]] = []
+    for index, raw_step in enumerate(steps, start=1):
+        if not isinstance(raw_step, dict):
+            issues.append({"severity": "error", "step": index, "message": f"第{index}步不是对象"})
+            continue
+        step = dict(raw_step)
+        action = str(step.get("action") or "").strip()
+        if action not in UI_ACTION_LABELS:
+            issues.append({"severity": "error", "step": index, "message": f"第{index}步 action 不支持：{action or '空'}"})
+        if action in UI_LOCATOR_REQUIRED and not _locator_candidates(step):
+            issues.append({"severity": "error", "step": index, "message": f"第{index}步缺少 locator"})
+        if action in UI_VALUE_REQUIRED and step.get("value") in (None, ""):
+            issues.append({"severity": "error", "step": index, "message": f"第{index}步缺少 value"})
+        normalized.append(step)
+    return normalized, issues
+
+
+def execute_ui_case_in_page(
+    case: UiCase,
+    page: Any,
+    runtime_vars: Dict[str, Any] | None = None,
+    execution_context: Dict[str, Any] | None = None,
+) -> Tuple[bool, str, str, str]:
     ensure_report_dirs()
     timeout = case.timeout or 30
     variables = builtin_variables()
     if runtime_vars:
         variables.update(runtime_vars)
     steps = render_template(parse_json_value(case.steps, []), variables)
-    if not isinstance(steps, Iterable) or isinstance(steps, (str, bytes, dict)):
-        steps = []
+    execution_context = dict(execution_context or {})
+    removed_login_steps: list[Dict[str, Any]] = []
+    login_trace: list[str] = list(execution_context.get("login_trace") or [])
+    if execution_context.get("login_required"):
+        steps, removed_login_steps = _strip_leading_login_steps(steps)
+    steps, validation_issues = _validate_ui_steps_for_execution(steps)
 
     log_parts: Dict[str, Any] = {
         "case_name": case.case_name,
         "page_url": render_template(case.page_url, variables),
         "steps": steps,
         "timeout": timeout,
-        "variables": {key: ("***" if "password" in str(key).lower() else value) for key, value in variables.items()},
+        "variables": _mask_variables(variables),
+        "validation_issues": validation_issues,
+        "step_logs": [],
         "started_at": datetime.now(),
+        "auth_context": {
+            "login_required": bool(execution_context.get("login_required")),
+            "account_profile_id": execution_context.get("account_profile_id"),
+            "login_url": (execution_context.get("login_config") or {}).get("login_url") or "",
+            "removed_login_step_count": len(removed_login_steps),
+        },
     }
+    if login_trace:
+        log_parts["auth_context"]["login_trace"] = login_trace
+    if any(item.get("severity") == "error" for item in validation_issues):
+        log_parts.update(
+            {
+                "error": "UI steps validation failed: " + "; ".join(item.get("message", "") for item in validation_issues),
+                "error_category": "step_validation_failed",
+                "finished_at": datetime.now(),
+            }
+        )
+        log_text = _json_dump_log(log_parts)
+        report_path = write_allure_result(case.case_name, "ui", False, log_text)
+        return False, log_text, "", report_path
+
     screenshots: list[str] = []
     current_step_index = 0
     current_step: Dict[str, Any] | None = None
+    failed_step_detail: Dict[str, Any] | None = None
+
+    try:
+        page.set_default_timeout(timeout * 1000)
+        if execution_context.get("login_required") and not execution_context.get("preauthenticated"):
+            try:
+                auth_result = _prepare_authenticated_page(page, execution_context, variables, timeout)
+            except UiAuthPreparationError as exc:
+                login_trace = list(exc.trace or [])
+                log_parts["auth_context"]["login_trace"] = login_trace
+                raise
+            login_trace = auth_result.get("trace") or []
+            log_parts["auth_context"]["login_trace"] = login_trace
+            execution_context["preauthenticated"] = True
+        if case.page_url:
+            page.goto(render_template(case.page_url, variables), wait_until="domcontentloaded")
+        for index, step in enumerate(steps, start=1):
+            current_step_index = index
+            current_step = step if isinstance(step, dict) else {"raw": step}
+            try:
+                step_detail = _run_ui_step(page, current_step, screenshots, timeout)
+                step_detail["index"] = index
+                log_parts["step_logs"].append(step_detail)
+            except UiStepExecutionError as exc:
+                failed_step_detail = exc.detail
+                failed_step_detail["index"] = index
+                log_parts["step_logs"].append(failed_step_detail)
+                raise
+        if not screenshots:
+            screenshot = SCREENSHOT_DIR / f"{uuid4()}.png"
+            page.screenshot(path=str(screenshot), full_page=True)
+            screenshots.append(str(screenshot))
+        log_parts.update({"finished_at": datetime.now()})
+        log_text = _json_dump_log(log_parts)
+        report_path = write_allure_result(case.case_name, "ui", True, log_text, screenshots[-1])
+        return True, log_text, screenshots[-1], report_path
+    except Exception as exc:
+        screenshot = ""
+        try:
+            screenshot_path = SCREENSHOT_DIR / f"{uuid4()}.png"
+            page.screenshot(path=str(screenshot_path), full_page=True)
+            screenshot = str(screenshot_path)
+        except Exception:
+            screenshot = ""
+        log_parts.update(
+            {
+                "error": str(exc),
+                "error_category": failed_step_detail.get("category") if failed_step_detail else None,
+                "failure_reason": failed_step_detail.get("reason") if failed_step_detail else None,
+                "suggestion": failed_step_detail.get("suggestion") if failed_step_detail else None,
+                "failed_step_index": current_step_index or None,
+                "failed_step": current_step,
+                "failed_step_detail": failed_step_detail,
+                "current_url": getattr(page, "url", "") if page else "",
+                "screenshot": screenshot,
+                "auth_context": {**log_parts.get("auth_context", {}), "login_trace": login_trace},
+                "finished_at": datetime.now(),
+            }
+        )
+        log_text = _json_dump_log(log_parts)
+        report_path = write_allure_result(case.case_name, "ui", False, log_text, screenshot)
+        return False, log_text, screenshot, report_path
+
+
+def execute_ui_cases_batch(
+    items: Iterable[Dict[str, Any]],
+    on_case_start: Any | None = None,
+    on_case_finish: Any | None = None,
+) -> list[Tuple[bool, str, str, str]]:
+    ensure_report_dirs()
+    batch_items = list(items)
+    results: list[Tuple[bool, str, str, str]] = []
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception:
+        for item in batch_items:
+            if on_case_start:
+                on_case_start(item)
+            result = execute_ui_case(item["case"], item.get("variables"), item.get("execution_context"))
+            results.append(result)
+            if on_case_finish:
+                on_case_finish(item, result)
+        return results
+
+    browser = None
+    pages: Dict[str, Any] = {}
+    contexts: Dict[str, Any] = {}
+    try:
+        with sync_playwright() as p:
+            browser = launch_chromium_browser(p, headless=True)
+            for item in batch_items:
+                if on_case_start:
+                    on_case_start(item)
+                execution_context = dict(item.get("execution_context") or {})
+                case = item["case"]
+                session_key = "guest"
+                if execution_context.get("login_required"):
+                    functional_case = item.get("functional_case")
+                    session_key = str(execution_context.get("session_key") or f"auth:{getattr(functional_case, 'id', case.id)}")
+                page = pages.get(session_key)
+                if page is None:
+                    context = browser.new_context()
+                    page = context.new_page()
+                    contexts[session_key] = context
+                    pages[session_key] = page
+                    if execution_context.get("login_required"):
+                        execution_context["target_url"] = execution_context.get("target_url") or case.page_url or ""
+                        auth_result = _prepare_authenticated_page(page, execution_context, item.get("variables") or {}, case.timeout or 30)
+                        execution_context["login_trace"] = auth_result.get("trace") or []
+                        execution_context["preauthenticated"] = True
+                elif execution_context.get("login_required"):
+                    execution_context["preauthenticated"] = True
+                item["execution_context"] = execution_context
+                result = execute_ui_case_in_page(case, page, item.get("variables"), execution_context)
+                results.append(result)
+                if on_case_finish:
+                    on_case_finish(item, result)
+    except Exception:
+        if results:
+            raise
+        processed_count = len(results)
+        for item in batch_items[processed_count:]:
+            if on_case_start:
+                on_case_start(item)
+            result = execute_ui_case(item["case"], item.get("variables"), item.get("execution_context"))
+            results.append(result)
+            if on_case_finish:
+                on_case_finish(item, result)
+    finally:
+        for page in pages.values():
+            try:
+                page.close()
+            except Exception:
+                pass
+        for context in contexts.values():
+            try:
+                context.close()
+            except Exception:
+                pass
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
+    return results
+
+
+def preflight_ui_case(case: UiCase, runtime_vars: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    ensure_report_dirs()
+    variables = builtin_variables()
+    if runtime_vars:
+        variables.update(runtime_vars)
+    steps = render_template(parse_json_value(case.steps, []), variables)
+    page_url = render_template(case.page_url, variables)
+    steps, issues = _validate_ui_steps_for_execution(steps)
+    raw_text = json.dumps({"page_url": case.page_url, "steps": parse_json_value(case.steps, [])}, ensure_ascii=False)
+    required_vars = sorted(set(VAR_PATTERN.findall(raw_text)) - BUILTIN_VAR_NAMES - {f"${key}" for key in BUILTIN_VAR_NAMES})
+    missing_vars = [name for name in required_vars if name not in variables or str(variables.get(name, "")).startswith("{{")]
+    locator_checks: list[Dict[str, Any]] = []
+    auth_risk = False
+
+    if missing_vars:
+        issues.append({"severity": "error", "message": "缺少运行时变量：" + "、".join(missing_vars)})
+    if any(item.get("severity") == "error" for item in issues):
+        return {"status": "missing_variables" if missing_vars else "not_recommended", "issues": issues, "locator_checks": locator_checks, "missing_variables": missing_vars}
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception as exc:
+        return {"status": "not_recommended", "issues": [{"severity": "error", "message": f"Playwright不可用：{exc}"}], "locator_checks": locator_checks}
+
+    browser = None
+    try:
+        with sync_playwright() as p:
+            browser = launch_chromium_browser(p, headless=True)
+            page = browser.new_page()
+            page.set_default_timeout(8000)
+            first_goto = next((step.get("value") for step in steps if step.get("action") == "goto" and step.get("value")), page_url)
+            if first_goto:
+                page.goto(str(first_goto), wait_until="domcontentloaded", timeout=12000)
+                page.wait_for_timeout(800)
+            auth_risk = "login" in (page.url or "").lower() and "login" not in str(first_goto or "").lower()
+            for index, step in enumerate(steps, start=1):
+                if step.get("action") not in UI_LOCATOR_REQUIRED:
+                    continue
+                candidates = _locator_candidates(step)
+                check = {"step": index, "name": step.get("name") or UI_ACTION_LABELS.get(step.get("action"), step.get("action")), "locator": step.get("locator"), "status": "failed", "matched_count": 0, "visible": False}
+                for locator in candidates:
+                    try:
+                        count = page.locator(locator).count()
+                        visible = count > 0 and page.locator(locator).first.is_visible(timeout=600)
+                        if count:
+                            check.update({"status": "ok" if visible else "not_visible", "used_locator": locator, "matched_count": count, "visible": visible})
+                            break
+                    except Exception as exc:
+                        check["error"] = str(exc)
+                if check["status"] != "ok":
+                    issues.append({"severity": "warning", "step": index, "message": f"第{index}步定位器可能不可用：{step.get('locator') or '-'}"})
+                locator_checks.append(check)
+            browser.close()
+            browser = None
+    except Exception as exc:
+        issues.append({"severity": "warning", "message": f"页面试跑检查未完成：{exc}"})
+    finally:
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
+
+    warning_count = sum(1 for item in issues if item.get("severity") == "warning")
+    if auth_risk:
+        status_value = "auth_risk"
+    elif missing_vars:
+        status_value = "missing_variables"
+    elif warning_count:
+        status_value = "locator_risk"
+    else:
+        status_value = "executable"
+    return {
+        "status": status_value,
+        "issues": issues,
+        "locator_checks": locator_checks,
+        "missing_variables": missing_vars,
+        "auth_risk": auth_risk,
+        "summary": "可执行" if status_value == "executable" else "存在执行风险，请查看检查详情",
+    }
+
+
+def execute_ui_case(
+    case: UiCase,
+    runtime_vars: Dict[str, Any] | None = None,
+    execution_context: Dict[str, Any] | None = None,
+) -> Tuple[bool, str, str, str]:
+    ensure_report_dirs()
+    timeout = case.timeout or 30
+    variables = builtin_variables()
+    if runtime_vars:
+        variables.update(runtime_vars)
+    steps = render_template(parse_json_value(case.steps, []), variables)
+    steps, validation_issues = _validate_ui_steps_for_execution(steps)
+
+    log_parts: Dict[str, Any] = {
+        "case_name": case.case_name,
+        "page_url": render_template(case.page_url, variables),
+        "steps": steps,
+        "timeout": timeout,
+        "variables": _mask_variables(variables),
+        "validation_issues": validation_issues,
+        "step_logs": [],
+        "started_at": datetime.now(),
+    }
+    if any(item.get("severity") == "error" for item in validation_issues):
+        log_parts.update(
+            {
+                "error": "UI步骤校验失败：" + "；".join(item.get("message", "") for item in validation_issues),
+                "error_category": "步骤结构错误",
+                "finished_at": datetime.now(),
+            }
+        )
+        log_text = _json_dump_log(log_parts)
+        report_path = write_allure_result(case.case_name, "ui", False, log_text)
+        return False, log_text, "", report_path
+
+    screenshots: list[str] = []
+    current_step_index = 0
+    current_step: Dict[str, Any] | None = None
+    failed_step_detail: Dict[str, Any] | None = None
 
     try:
         from playwright.sync_api import sync_playwright
@@ -417,23 +1215,10 @@ def execute_ui_case(case: UiCase, runtime_vars: Dict[str, Any] | None = None) ->
         with sync_playwright() as p:
             browser = launch_chromium_browser(p, headless=True)
             page = browser.new_page()
-            page.set_default_timeout(timeout * 1000)
-            if case.page_url:
-                page.goto(render_template(case.page_url, variables))
-            for index, step in enumerate(steps, start=1):
-                current_step_index = index
-                current_step = step if isinstance(step, dict) else {"raw": step}
-                _run_ui_step(page, step, screenshots)
-            if not screenshots:
-                screenshot = SCREENSHOT_DIR / f"{uuid4()}.png"
-                page.screenshot(path=str(screenshot), full_page=True)
-                screenshots.append(str(screenshot))
+            passed, log_text, screenshot_path, report_path = execute_ui_case_in_page(case, page, runtime_vars, execution_context)
             browser.close()
             browser = None
-            log_parts.update({"finished_at": datetime.now()})
-            log_text = _json_dump_log(log_parts)
-            report_path = write_allure_result(case.case_name, "ui", True, log_text, screenshots[-1])
-            return True, log_text, screenshots[-1], report_path
+            return passed, log_text, screenshot_path, report_path
     except Exception as exc:
         screenshot = ""
         if page:
@@ -451,8 +1236,14 @@ def execute_ui_case(case: UiCase, runtime_vars: Dict[str, Any] | None = None) ->
         log_parts.update(
             {
                 "error": str(exc),
+                "error_category": failed_step_detail.get("category") if failed_step_detail else None,
+                "failure_reason": failed_step_detail.get("reason") if failed_step_detail else None,
+                "suggestion": failed_step_detail.get("suggestion") if failed_step_detail else None,
                 "failed_step_index": current_step_index or None,
                 "failed_step": current_step,
+                "failed_step_detail": failed_step_detail,
+                "current_url": getattr(page, "url", "") if page else "",
+                "screenshot": screenshot,
                 "finished_at": datetime.now(),
             }
         )

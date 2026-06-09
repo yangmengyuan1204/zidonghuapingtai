@@ -1,4 +1,4 @@
-from contextlib import asynccontextmanager
+﻿from contextlib import asynccontextmanager
 from datetime import datetime
 import json
 from pathlib import Path
@@ -1375,6 +1375,26 @@ def create_functional_task(
 @app.get("/api/functional-tasks/{task_id}")
 def get_functional_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     return functional_task_detail(db, get_or_404(db, FunctionalTask, task_id))
+
+@app.delete("/api/functional-tasks/{task_id}")
+def delete_functional_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, str]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    for case in db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id).all():
+        if case.ui_case_id:
+            db.query(UiCase).filter(UiCase.id == case.ui_case_id).delete(synchronize_session=False)
+    db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id).delete(synchronize_session=False)
+    db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).delete(synchronize_session=False)
+    db.query(FunctionalScreenshot).filter(FunctionalScreenshot.task_id == task.id).delete(synchronize_session=False)
+    db.query(FunctionalRequirementNote).filter(FunctionalRequirementNote.task_id == task.id).delete(synchronize_session=False)
+    db.query(FunctionalRun).filter(FunctionalRun.task_id == task.id).delete(synchronize_session=False)
+    db.delete(task)
+    db.commit()
+    return {"message": "deleted"}
+
 
 
 @app.post("/api/functional-tasks/{task_id}/upload-axure")

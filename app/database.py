@@ -1,13 +1,23 @@
-import os
+﻿import os
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./auto_test_platform.db")
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+connect_args = {"check_same_thread": False, "timeout": 30} if DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
+
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA busy_timeout=30000")
+    cursor.close()
+
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

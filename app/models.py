@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String, Text
+﻿from sqlalchemy import Column, DateTime, Integer, String, Text
 
 from .database import Base
 
@@ -26,7 +26,7 @@ class Env(Base):
     __tablename__ = "env"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    project_id = Column(Integer, nullable=False)
+    project_id = Column(Integer, nullable=False, index=True)
     env_name = Column(String(120), nullable=False)
     base_url = Column(String(500), nullable=False)
     global_headers = Column(Text, nullable=True)
@@ -38,8 +38,8 @@ class ApiCase(Base):
     __tablename__ = "api_case"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    project_id = Column(Integer, nullable=False)
-    env_id = Column(Integer, nullable=False)
+    project_id = Column(Integer, nullable=False, index=True)
+    env_id = Column(Integer, nullable=False, index=True)
     case_name = Column(String(160), nullable=False)
     method = Column(String(16), nullable=False)
     url = Column(String(500), nullable=False)
@@ -55,7 +55,7 @@ class UiCase(Base):
     __tablename__ = "ui_case"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    project_id = Column(Integer, nullable=False)
+    project_id = Column(Integer, nullable=False, index=True)
     case_name = Column(String(160), nullable=False)
     page_url = Column(String(500), nullable=False)
     steps = Column(Text, nullable=True)
@@ -68,8 +68,8 @@ class TestRecord(Base):
     __tablename__ = "test_record"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    case_type = Column(String(16), nullable=False)
-    case_id = Column(Integer, nullable=False)
+    case_type = Column(String(16), nullable=False, index=True)
+    case_id = Column(Integer, nullable=False, index=True)
     result = Column(String(32), nullable=False)
     log = Column(Text, nullable=True)
     screenshot = Column(String(500), nullable=True)
@@ -81,7 +81,7 @@ class FunctionalTask(Base):
     __tablename__ = "functional_task"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    project_id = Column(Integer, nullable=False)
+    project_id = Column(Integer, nullable=False, index=True)
     iteration_name = Column(String(160), nullable=False)
     requirement_text = Column(Text, nullable=True)
     axure_path = Column(String(500), nullable=True)
@@ -94,7 +94,7 @@ class FunctionalCase(Base):
     __tablename__ = "functional_case"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    task_id = Column(Integer, nullable=False)
+    task_id = Column(Integer, nullable=False, index=True)
     title = Column(String(200), nullable=False)
     precondition = Column(Text, nullable=True)
     steps = Column(Text, nullable=True)
@@ -109,7 +109,7 @@ class PageSnapshot(Base):
     __tablename__ = "page_snapshot"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    task_id = Column(Integer, nullable=False)
+    task_id = Column(Integer, nullable=False, index=True)
     page_url = Column(String(500), nullable=False)
     dom_summary = Column(Text, nullable=True)
     screenshot_path = Column(String(500), nullable=True)
@@ -120,7 +120,7 @@ class FunctionalScreenshot(Base):
     __tablename__ = "functional_screenshot"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    task_id = Column(Integer, nullable=False)
+    task_id = Column(Integer, nullable=False, index=True)
     image_path = Column(String(500), nullable=False)
     analysis_result = Column(Text, nullable=True)
     create_time = Column(DateTime, nullable=False)
@@ -130,7 +130,7 @@ class FunctionalRequirementNote(Base):
     __tablename__ = "functional_requirement_note"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    task_id = Column(Integer, nullable=False)
+    task_id = Column(Integer, nullable=False, index=True)
     note_text = Column(Text, nullable=False)
     create_time = Column(DateTime, nullable=False)
     update_time = Column(DateTime, nullable=True)
@@ -140,7 +140,7 @@ class FunctionalRun(Base):
     __tablename__ = "functional_run"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    task_id = Column(Integer, nullable=False)
+    task_id = Column(Integer, nullable=False, index=True)
     result = Column(String(32), nullable=False)
     log = Column(Text, nullable=True)
     passed_count = Column(Integer, nullable=False)

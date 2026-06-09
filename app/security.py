@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from .database import get_db
@@ -16,15 +17,32 @@ SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "720"))
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+    return pwd_context.hash(password)
 
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    return hash_password(password) == hashed_password
+    stored = str(hashed_password or "")
+    try:
+        return pwd_context.verify(password, stored)
+    except Exception:
+        pass
+    if not stored:
+        return False
+    if stored == password:
+        return True
+    normalized = stored.lower()
+    raw = str(password or "").encode("utf-8")
+    legacy_hashes = {
+        hashlib.md5(raw).hexdigest(),
+        hashlib.sha1(raw).hexdigest(),
+        hashlib.sha256(raw).hexdigest(),
+    }
+    return normalized in legacy_hashes
 
 
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:

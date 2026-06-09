@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 
 RoleName = Literal["admin", "normal"]
+AccountBindingTarget = Literal["project", "functional_task", "functional_case", "ui_case"]
 
 
 class LoginRequest(BaseModel):
@@ -111,12 +112,50 @@ class UiCaseUpdate(BaseModel):
     status: Optional[str] = None
 
 
+class TestAccountProfileCreate(BaseModel):
+    project_id: Optional[int] = None
+    profile_name: str
+    variables: Dict[str, Any] = {}
+    sensitive_variables: Dict[str, Any] = {}
+    login_url: Optional[str] = ""
+    username_locator: Optional[str] = ""
+    password_locator: Optional[str] = ""
+    submit_locator: Optional[str] = ""
+    success_url_contains: Optional[str] = ""
+    success_selector: Optional[str] = ""
+    status: Optional[str] = "active"
+
+
+class TestAccountProfileUpdate(BaseModel):
+    project_id: Optional[int] = None
+    profile_name: Optional[str] = None
+    variables: Optional[Dict[str, Any]] = None
+    sensitive_variables: Optional[Dict[str, Any]] = None
+    login_url: Optional[str] = None
+    username_locator: Optional[str] = None
+    password_locator: Optional[str] = None
+    submit_locator: Optional[str] = None
+    success_url_contains: Optional[str] = None
+    success_selector: Optional[str] = None
+    status: Optional[str] = None
+
+
+class TestAccountBindingUpdate(BaseModel):
+    target_type: AccountBindingTarget
+    target_id: int
+    account_profile_id: Optional[int] = None
+
+
 class FunctionalTaskCreate(BaseModel):
     project_id: int
     iteration_name: str
     requirement_text: Optional[str] = ""
     target_url: str
     status: Optional[str] = "draft"
+
+
+class FunctionalTaskAxureBindingUpdate(BaseModel):
+    page_ids: list[str] = []
 
 
 class FunctionalCaseUpdate(BaseModel):
@@ -152,8 +191,14 @@ class FunctionalScanRequest(BaseModel):
     auth: Optional[FunctionalScanAuth] = None
 
 
+class FunctionalScreenshotOrderUpdate(BaseModel):
+    screenshot_ids: list[int]
+
+
 class FunctionalExecuteRequest(BaseModel):
     variables: Dict[str, Any] = {}
+    account_profile_id: Optional[int] = None
+    account_mode: Optional[str] = "default"
 
 
 class AiConfigUpdate(BaseModel):
