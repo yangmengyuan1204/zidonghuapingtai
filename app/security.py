@@ -1,7 +1,10 @@
 from datetime import datetime, timedelta, timezone
 import hashlib
 import os
+from pathlib import Path
+import secrets
 from typing import Optional
+import warnings
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -13,7 +16,37 @@ from .database import get_db
 from .models import User
 
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret-key")
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def load_secret_key() -> str:
+    configured = os.getenv("SECRET_KEY")
+    if configured:
+        return configured
+    secret_file = BASE_DIR / ".secret_key"
+    try:
+        if secret_file.exists():
+            value = secret_file.read_text(encoding="utf-8").strip()
+            if value:
+                return value
+        value = secrets.token_urlsafe(48)
+        secret_file.write_text(value + "\n", encoding="utf-8")
+        warnings.warn(
+            "SECRET_KEY is not set. Generated local .secret_key; set SECRET_KEY in production.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return value
+    except OSError:
+        warnings.warn(
+            "SECRET_KEY is not set and local .secret_key could not be written; using a process-local secret.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return secrets.token_urlsafe(48)
+
+
+SECRET_KEY = load_secret_key()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "720"))
 

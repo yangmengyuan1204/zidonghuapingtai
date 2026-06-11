@@ -1,4 +1,4 @@
-from typing import Any, Dict, Literal, Optional
+﻿from typing import Any, Dict, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -151,7 +151,12 @@ class FunctionalTaskCreate(BaseModel):
     iteration_name: str
     requirement_text: Optional[str] = ""
     target_url: str
+    context: Optional[str] = ""
     status: Optional[str] = "draft"
+
+
+class FunctionalTaskContextUpdate(BaseModel):
+    context: str
 
 
 class FunctionalTaskAxureBindingUpdate(BaseModel):
@@ -195,10 +200,29 @@ class FunctionalScreenshotOrderUpdate(BaseModel):
     screenshot_ids: list[int]
 
 
+class FunctionalCaseStatusUpdate(BaseModel):
+    test_result: str = "untested"
+
+
+class FunctionalCaseBatchStatusUpdate(BaseModel):
+    case_ids: list[int]
+    test_result: str = "untested"
+
+
+class FunctionalCaseStats(BaseModel):
+    total: int = 0
+    untested: int = 0
+    passed: int = 0
+    failed: int = 0
+    blocked: int = 0
+    skipped: int = 0
+
+
 class FunctionalExecuteRequest(BaseModel):
     variables: Dict[str, Any] = {}
     account_profile_id: Optional[int] = None
     account_mode: Optional[str] = "default"
+    case_id: Optional[int] = None
 
 
 class AiConfigUpdate(BaseModel):
@@ -206,3 +230,40 @@ class AiConfigUpdate(BaseModel):
     base_url: Optional[str] = ""
     model: Optional[str] = ""
     api_key: Optional[str] = ""
+
+
+class QuickRunRequest(BaseModel):
+    method: str = "GET"
+    url: str
+    headers: Dict[str, str] = {}
+    body: str = ""
+
+
+class ActionTemplateCreate(BaseModel):
+    project_id: int
+    name: str
+    description: Optional[str] = ""
+    trigger_keywords: Any = None
+    steps: Any = None
+    variables: Any = None
+    locator_fallbacks: Any = None
+
+
+class ActionTemplateUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    trigger_keywords: Any = None
+    steps: Any = None
+    variables: Any = None
+    locator_fallbacks: Any = None
+
+
+class LocatorHealLogConfirm(BaseModel):
+    confirmed: int = 1
+
+
+class PreflightResult(BaseModel):
+    passed: bool
+    warnings: list[str] = []
+    errors: list[str] = []
+

@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, DateTime, Integer, String, Text
+﻿from sqlalchemy import Column, DateTime, Index, Integer, String, Text
 
 from .database import Base
 
@@ -36,6 +36,9 @@ class Env(Base):
 
 class ApiCase(Base):
     __tablename__ = "api_case"
+    __table_args__ = (
+        Index("ix_api_case_project_env", "project_id", "env_id"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     project_id = Column(Integer, nullable=False, index=True)
@@ -66,6 +69,9 @@ class UiCase(Base):
 
 class TestRecord(Base):
     __tablename__ = "test_record"
+    __table_args__ = (
+        Index("ix_test_record_type_case", "case_type", "case_id"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     case_type = Column(String(16), nullable=False, index=True)
@@ -86,12 +92,17 @@ class FunctionalTask(Base):
     requirement_text = Column(Text, nullable=True)
     axure_path = Column(String(500), nullable=True)
     target_url = Column(String(500), nullable=False)
+    context = Column(Text, nullable=True)
     status = Column(String(32), nullable=False)
     create_time = Column(DateTime, nullable=False)
 
 
 class FunctionalCase(Base):
     __tablename__ = "functional_case"
+    __table_args__ = (
+        Index("ix_func_case_task_status", "task_id", "automation_status"),
+        Index("ix_func_case_task_result", "task_id", "test_result"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     task_id = Column(Integer, nullable=False, index=True)
@@ -101,6 +112,7 @@ class FunctionalCase(Base):
     expected = Column(Text, nullable=True)
     priority = Column(String(20), nullable=True)
     automation_status = Column(String(32), nullable=False)
+    test_result = Column(String(20), nullable=True, default="untested")
     ui_case_id = Column(Integer, nullable=True)
     create_time = Column(DateTime, nullable=False)
 
@@ -166,6 +178,12 @@ class TestAccountProfile(Base):
     profile_name = Column(String(160), nullable=False)
     variables = Column(Text, nullable=True)
     sensitive_variables = Column(Text, nullable=True)
+    login_url = Column(String(500), nullable=True)
+    username_locator = Column(Text, nullable=True)
+    password_locator = Column(Text, nullable=True)
+    submit_locator = Column(Text, nullable=True)
+    success_url_contains = Column(String(500), nullable=True)
+    success_selector = Column(String(500), nullable=True)
     status = Column(String(32), nullable=False)
     create_time = Column(DateTime, nullable=False)
     update_time = Column(DateTime, nullable=True)
@@ -180,4 +198,31 @@ class TestAccountBinding(Base):
     account_profile_id = Column(Integer, nullable=True, index=True)
     create_time = Column(DateTime, nullable=False)
     update_time = Column(DateTime, nullable=True)
+
+
+class ActionTemplate(Base):
+    __tablename__ = "action_template"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=False, index=True)
+    name = Column(String(120), nullable=False)
+    description = Column(Text, nullable=True)
+    trigger_keywords = Column(Text, nullable=True)
+    steps = Column(Text, nullable=False)
+    variables = Column(Text, nullable=True)
+    locator_fallbacks = Column(Text, nullable=True)
+    create_time = Column(DateTime, nullable=False)
+
+
+class LocatorHealLog(Base):
+    __tablename__ = "locator_heal_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    case_id = Column(Integer, nullable=False, index=True)
+    old_locator = Column(String(500), nullable=False)
+    new_locator = Column(String(500), nullable=False)
+    page_url = Column(String(500), nullable=True)
+    screenshot_path = Column(String(500), nullable=True)
+    confirmed = Column(Integer, nullable=False, default=0)
+    create_time = Column(DateTime, nullable=False)
 

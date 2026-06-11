@@ -22,14 +22,14 @@ set "PYTHON_CMD="
 set "PY314=%LOCALAPPDATA%\Programs\Python\Python314\python.exe"
 set "VENV_PY=%~dp0.venv\Scripts\python.exe"
 
-if exist "%PY314%" (
-    "%PY314%" -c "import sys" >nul 2>nul
-    if not errorlevel 1 set "PYTHON_CMD=%PY314%"
-)
-
-if not defined PYTHON_CMD if exist "%VENV_PY%" (
+if exist "%VENV_PY%" (
     "%VENV_PY%" -c "import sys" >nul 2>nul
     if not errorlevel 1 set "PYTHON_CMD=%VENV_PY%"
+)
+
+if not defined PYTHON_CMD if exist "%PY314%" (
+    "%PY314%" -c "import sys" >nul 2>nul
+    if not errorlevel 1 set "PYTHON_CMD=%PY314%"
 )
 
 if defined PYTHON_CMD (

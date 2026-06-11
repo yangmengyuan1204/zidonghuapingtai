@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>操作模板管理</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <style>
+    body { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .page-head h1 { margin: 0; font-size: 24px; }
+    .back-link { margin-bottom: 16px; display: inline-block; }
+    .template-card { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .template-card h3 { margin: 0 0 8px; }
+    .template-card .meta { color: var(--text-dim); font-size: 13px; margin-bottom: 8px; }
+    .template-card .steps-preview { background: var(--bg); padding: 8px; border-radius: 4px; font: 12px monospace; max-height: 120px; overflow: auto; white-space: pre-wrap; }
+    .template-card .actions { margin-top: 8px; }
+    .template-card .actions button { margin-right: 8px; }
+    .toast { position: fixed; top: 20px; right: 20px; background: #333; color: #fff; padding: 12px 20px; border-radius: 6px; z-index: 9999; }
+    .field-group { border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+    .field-group h4 { margin: 0 0 8px; font-size: 14px; }
+    .step-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; }
+    .step-row input, .step-row select { flex: 1; }
+    .step-row .btn-remove { flex: 0 0 30px; }
+    .step-list { margin: 8px 0; }
+    .keyword-tag { display: inline-block; background: var(--accent-bg); color: var(--accent); padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px; }
+  </style>
+</head>
+<body>
+  <a href="/" class="back-link">← 返回平台</a>
+  <div class="page-head">
+    <h1>操作模板库</h1>
+    <div>
+      <button class="btn" id="newTemplateBtn">新建模板</button>
+    </div>
+  </div>
+
+  <div class="toolbar" style="margin-bottom:16px">
+    <div class="filters">
+      <div class="field compact">
+        <label>项目</label>
+        <select id="projectFilter"><option value="">全部</option></select>
+      </div>
+    </div>
+  </div>
+
+  <div id="templateList"></div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <dialog id="templateModal" class="modal" style="width:700px;max-width:90vw">
+    <form id="templateForm">
+      <div class="modal-head">
+        <h3 id="modalTitle">新建模板</h3>
+        <button class="btn secondary" type="button" id="closeModal">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>模板名称 *</label><input name="name" required placeholder="如：登录操作" /></div>
+          <div class="field"><label>描述</label><textarea name="description" rows="2" placeholder="描述这个模板的用途"></textarea></div>
+          <div class="field"><label>所属项目 *</label><select name="project_id" required></select></div>
+          <div class="field"><label>触发关键词（每行一个）</label>
+            <textarea name="trigger_keywords" rows="4" placeholder="登录&#10;sign in&#10;login&#10;账号密码"></textarea>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">匹配到这些关键词的用例会自动使用此模板</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <h4>步骤编辑</h4>
+          <div id="stepEditor" class="step-list"></div>
+          <button class="btn secondary" type="button" id="addStepBtn">+ 添加步骤</button>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span></span>
+        <button class="btn" type="submit">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    const API = (path, opts = {}) => {
+      const token = localStorage.getItem("token") || "";
+      const headers = { ...(opts.headers || {}) };
+      if (token) headers["Authorization"] = "Bearer " + token;
+      if (opts.body && typeof opts.body !== "string") {
+        headers["Content-Type"] = "application/json";
+        opts.body = JSON.stringify(opts.body);
+      }
+      return fetch("/api" + path, { ...opts, headers }).then(r => {
+        if (r.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; throw new Error("登录失效"); }
+        if (!r.ok) return r.json().then(e => { throw new Error(e.detail || r.statusText); });
+        if (r.status === 204) return null;
+        return r.json();
+      });
+    };
+
+    const STEPS_ACTIONS = ["goto","input","click","wait","wait_for_selector","text_assert","screenshot","select","check","uncheck","assert_visible","assert_url","assert_value"];
+
+    let currentTemplateId = null;
+    let projects = [];
+    let allTemplates = [];
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.hidden = false;
+      setTimeout(() => el.hidden = true, 2600);
+    }
+
+    async function loadProjects() {
+      projects = await API("/projects");
+      const sel = document.querySelector("#projectFilter");
+      sel.innerHTML = '<option value="">全部</option>' + projects.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+      const modalSel = document.querySelector("#templateForm [name=project_id]");
+      modalSel.innerHTML = projects.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+    }
+
+    async function loadTemplates() {
+      const pid = document.querySelector("#projectFilter").value;
+      const url = pid ? `/action-templates?project_id=${pid}` : "/action-templates";
+      allTemplates = await API(url);
+      renderTemplates();
+    }
+
+    function renderStepEditor(steps) {
+      const container = document.querySelector("#stepEditor");
+      if (!steps || steps.length === 0) {
+        container.innerHTML = '<div class="empty" style="padding:16px">暂无步骤，点击下方按钮添加</div>';
+        return;
+      }
+      container.innerHTML = steps.map((step, i) => {
+        const actionOpts = STEPS_ACTIONS.map(a => `<option value="${a}" ${a === (step.action||'') ? 'selected' : ''}>${a}</option>`).join("");
+        return `<div class="step-row">
+          <select class="step-action" data-index="${i}">${actionOpts}</select>
+          <input class="step-name" data-index="${i}" value="${step.name || ''}" placeholder="步骤名称" />
+          <input class="step-locator" data-index="${i}" value="${step.locator || ''}" placeholder="locator" />
+          <input class="step-value" data-index="${i}" value="${step.value || ''}" placeholder="value" />
+          <input class="step-fallback" data-index="${i}" value="${(step.fallback_locators||[]).join(' | ')}" placeholder="fallback（| 分隔）" />
+          <button class="btn secondary step-remove" data-index="${i}" type="button" style="flex:0 0 auto">×</button>
+        </div>`;
+      }).join("");
+      container.querySelectorAll(".step-remove").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = parseInt(btn.dataset.index);
+          const steps = getStepsFromEditor();
+          steps.splice(idx, 1);
+          renderStepEditor(steps);
+        });
+      });
+    }
+
+    function getStepsFromEditor() {
+      const rows = document.querySelectorAll(".step-row");
+      return Array.from(rows).map(row => {
+        const step = {};
+        const action = row.querySelector(".step-action");
+        const name = row.querySelector(".step-name");
+        const locator = row.querySelector(".step-locator");
+        const value = row.querySelector(".step-value");
+        const fallback = row.querySelector(".step-fallback");
+        if (action) step.action = action.value;
+        if (name && name.value) step.name = name.value;
+        if (locator && locator.value) step.locator = locator.value;
+        if (value && value.value) step.value = value.value;
+        if (fallback && fallback.value) step.fallback_locators = fallback.value.split("|").map(s => s.trim()).filter(Boolean);
+        return step;
+      }).filter(s => s.action);
+    }
+
+    function renderTemplates() {
+      const container = document.querySelector("#templateList");
+      if (!allTemplates.length) {
+        container.innerHTML = '<div class="panel"><div class="empty">暂无模板，点击上方"新建模板"创建</div></div>';
+        return;
+      }
+      container.innerHTML = allTemplates.map(t => {
+        const keywords = Array.isArray(t.trigger_keywords) ? t.trigger_keywords.map(k => `<span class="keyword-tag">${k}</span>`).join("") : "";
+        const steps = Array.isArray(t.steps) ? t.steps.map(s => `${s.action}${s.name ? ' - ' + s.name : ''}${s.locator ? ' [' + s.locator + ']' : ''}`).join("\\n") : "";
+        return `<div class="template-card">
+          <h3>${t.name}</h3>
+          <div class="meta">${t.description || "无描述"} · 项目 #${t.project_id} · 创建于 ${t.create_time || ""}</div>
+          <div>${keywords}</div>
+          <div class="steps-preview">${steps || "无步骤"}</div>
+          <div class="actions">
+            <button class="btn secondary" onclick="editTemplate(${t.id})">编辑</button>
+            <button class="btn secondary" onclick="testTemplate(${t.id})">测试运行</button>
+            <button class="btn secondary" onclick="deleteTemplate(${t.id})">删除</button>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    function openModal(title, template) {
+      currentTemplateId = template?.id || null;
+      document.querySelector("#modalTitle").textContent = title;
+      const form = document.querySelector("#templateForm");
+      form.querySelector("[name=name]").value = template?.name || "";
+      form.querySelector("[name=description]").value = template?.description || "";
+      form.querySelector("[name=project_id]").value = template?.project_id || projects[0]?.id || "";
+      const kws = Array.isArray(template?.trigger_keywords) ? template.trigger_keywords.join("\\n") : "";
+      form.querySelector("[name=trigger_keywords]").value = kws;
+      renderStepEditor(template?.steps || []);
+      document.querySelector("#templateModal").showModal();
+    }
+
+    async function editTemplate(id) {
+      const t = allTemplates.find(x => x.id === id);
+      if (t) openModal("编辑模板", t);
+    }
+
+    async function testTemplate(id) {
+      try {
+        const result = await API(`/action-templates/${id}/test-run`);
+        showToast(result.passed ? "测试执行通过" : "测试执行失败，请查看详情");
+        console.log("Test result:", result);
+      } catch (e) {
+        showToast("测试失败: " + e.message);
+      }
+    }
+
+    async function deleteTemplate(id) {
+      if (!confirm("确定删除此模板？")) return;
+      await API(`/action-templates/${id}`, { method: "DELETE" });
+      showToast("已删除");
+      await loadTemplates();
+    }
+
+    // Event handlers
+    document.querySelector("#newTemplateBtn").addEventListener("click", () => openModal("新建模板", null));
+    document.querySelector("#closeModal").addEventListener("click", () => document.querySelector("#templateModal").close());
+    document.querySelector("#projectFilter").addEventListener("change", loadTemplates);
+
+    document.querySelector("#addStepBtn").addEventListener("click", () => {
+      const steps = getStepsFromEditor();
+      steps.push({ action: "click", name: "", locator: "", value: "", fallback_locators: [] });
+      renderStepEditor(steps);
+    });
+
+    document.querySelector("#templateForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      const triggerRaw = (form.get("trigger_keywords") || "").split("\\n").map(s => s.trim()).filter(Boolean);
+      const data = {
+        project_id: parseInt(form.get("project_id")),
+        name: form.get("name"),
+        description: form.get("description") || "",
+        trigger_keywords: triggerRaw,
+        steps: getStepsFromEditor(),
+        variables: {},
+        locator_fallbacks: {},
+      };
+      try {
+        if (currentTemplateId) {
+          await API(`/action-templates/${currentTemplateId}`, { method: "PUT", body: data });
+          showToast("模板已更新");
+        } else {
+          await API("/action-templates", { method: "POST", body: data });
+          showToast("模板已创建");
+        }
+        document.querySelector("#templateModal").close();
+        await loadTemplates();
+      } catch (e) {
+        showToast("保存失败: " + e.message);
+      }
+    });
+
+    // Init
+    (async () => {
+      const token = localStorage.getItem("token");
+      if (!token) { document.body.innerHTML = '<p style="padding:40px;text-align:center">请先登录平台</p>'; return; }
+      await loadProjects();
+      await loadTemplates();
+    })();
+  </script>
+</body>
+</html>

@@ -10,3 +10,6 @@ logs/
 .idea/
 .codex_remote/
 .rakumart_curl_config_*
+.secret_key
+.codex_test_deps/
+ms-playwright/

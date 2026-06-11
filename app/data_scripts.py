@@ -257,7 +257,7 @@ def _finish(log: Dict[str, Any], passed: bool, summary: Dict[str, Any]) -> Tuple
     return _finish_named(SCRIPT_NAME, log, passed, summary)
 
 
-def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+def _legacy_run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
     ensure_report_dirs()
     variables = dict(variables or {})
     timeout = env.timeout or 30

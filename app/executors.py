@@ -13,13 +13,80 @@ from uuid import uuid4
 
 import requests
 
-from .models import ApiCase, Env, UiCase
+from .models import ActionTemplate, ApiCase, Env, LocatorHealLog, UiCase
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPORT_DIR = BASE_DIR / "reports"
 ALLURE_DIR = REPORT_DIR / "allure-results"
 SCREENSHOT_DIR = REPORT_DIR / "screenshots"
+
+
+# ─── 截图验证工具 ──────────────────────────────────────
+
+ERROR_PAGE_PATTERNS = [
+    "404 Not Found",
+    "500 Internal Server Error",
+    "502 Bad Gateway",
+    "503 Service Unavailable",
+    "504 Gateway Timeout",
+    "Whitelabel Error Page",
+    "Internal Server Error",
+    "An error occurred",
+    "Page not found",
+    "无法访问此网站",
+    "无法访问",
+    "页面不存在",
+    "系统错误",
+    "服务器内部错误",
+]
+
+
+def _quick_screenshot_check(screenshot_path: str) -> dict:
+    """
+    快速检查截图是否有效。
+    返回 {"ok": bool, "reason": str, "checks": dict}
+    """
+    result = {"ok": True, "reason": "", "checks": {}}
+    path = Path(screenshot_path)
+    if not path.exists():
+        result["ok"] = False
+        result["reason"] = "截图文件不存在"
+        return result
+
+    size = path.stat().st_size
+    result["checks"]["file_size_bytes"] = size
+
+    if size < 500:
+        result["ok"] = False
+        result["reason"] = f"截图文件过小 ({size} bytes)，可能为空白页"
+        return result
+
+    if size > 50 * 1024 * 1024:
+        result["ok"] = False
+        result["reason"] = f"截图文件异常过大 ({size // 1024 // 1024}MB)"
+        return result
+
+    # 检查截图文件名中是否包含错误内容
+    # 如果图片内容有常见错误文本，通过 OCR 检查（高级功能暂不实现）
+    # 这里简单检查文件名和时间戳
+    return result
+
+
+def _url_looks_reasonable(url: str, expected_base: str = "") -> bool:
+    """
+    检查最终 URL 是否合理（非空白、非错误页）。
+    """
+    if not url or url in ("about:blank", "data:", ""):
+        return False
+    url_lower = url.lower()
+    error_markers = ["404", "500", "error", "exception", "timeout", "notfound", "accessdenied"]
+    if any(marker in url_lower for marker in error_markers):
+        return False
+    if expected_base and not url_lower.startswith(expected_base.lower().rstrip("/")):
+        # 如果不包含期望 base，但不包含错误标记也算合理
+        pass
+    return True
 
 
 def ensure_report_dirs() -> None:
@@ -33,6 +100,7 @@ def _browser_executable_candidates() -> list[str]:
         os.getenv("CHROME_PATH"),
         os.getenv("EDGE_PATH"),
     ]
+    # 系统环境变量路径
     for env_name, relative in [
         ("ProgramFiles", r"Google\Chrome\Application\chrome.exe"),
         ("ProgramFiles(x86)", r"Google\Chrome\Application\chrome.exe"),
@@ -40,14 +108,28 @@ def _browser_executable_candidates() -> list[str]:
         ("ProgramFiles", r"Microsoft\Edge\Application\msedge.exe"),
         ("ProgramFiles(x86)", r"Microsoft\Edge\Application\msedge.exe"),
         ("LOCALAPPDATA", r"Microsoft\Edge\Application\msedge.exe"),
+        # 额外常见路径
+        ("LOCALAPPDATA", r"Chromium\Application\chrome.exe"),
+        ("LOCALAPPDATA", r"Google\Chrome Beta\Application\chrome.exe"),
+        ("LOCALAPPDATA", r"Google\Chrome SxS\Application\chrome.exe"),
     ]:
         root = os.getenv(env_name)
         if root:
             candidates.append(str(Path(root) / relative))
-    for command in ["chrome", "chrome.exe", "msedge", "msedge.exe"]:
+    # 环境 PATH 查找
+    for command in ["chrome", "chrome.exe", "msedge", "msedge.exe", "chromium", "chromium.exe", "google-chrome", "google-chrome-stable"]:
         found = shutil.which(command)
         if found:
             candidates.append(found)
+    # Playwright 内置浏览器路径
+    playwright_browsers = os.getenv("PLAYWRIGHT_BROWSERS_PATH", str(Path.home() / "AppData" / "Local" / "ms-playwright"))
+    for channel_dir in ["chromium", "chrome", "msedge"]:
+        p = Path(playwright_browsers) / channel_dir
+        if p.is_dir():
+            for exe in ["chrome.exe", "chrome-win" / "chrome.exe", "chrome-win64" / "chrome.exe"]:
+                full = p / exe
+                if full.exists():
+                    candidates.append(str(full))
 
     result = []
     seen = set()
@@ -64,29 +146,57 @@ def _browser_executable_candidates() -> list[str]:
     return result
 
 
-def launch_chromium_browser(playwright: Any, headless: bool = True) -> Any:
-    errors = []
-    for launcher in [
-        lambda: playwright.chromium.launch(headless=headless),
-        lambda: playwright.chromium.launch(channel="chrome", headless=headless),
-        lambda: playwright.chromium.launch(channel="msedge", headless=headless),
-    ]:
-        try:
-            return launcher()
-        except Exception as exc:
-            errors.append(str(exc))
+def _get_proxy_from_env() -> str | None:
+    """从环境变量读取代理地址，优先级：HTTPS_PROXY > HTTP_PROXY > ALL_PROXY"""
+    return (
+        os.environ.get("HTTPS_PROXY")
+        or os.environ.get("https_proxy")
+        or os.environ.get("HTTP_PROXY")
+        or os.environ.get("http_proxy")
+        or os.environ.get("ALL_PROXY")
+        or os.environ.get("all_proxy")
+    )
 
+
+def launch_chromium_browser(playwright: Any, headless: bool = True, proxy: str | None = None) -> Any:
+    args = [
+        "--no-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-setuid-sandbox",
+    ]
+    launch_kwargs = {"headless": headless, "args": args}
+    proxy = proxy or _get_proxy_from_env()
+    if proxy:
+        launch_kwargs["proxy"] = {"server": proxy}
+    errors = []
+    # 1) 无参数默认启动（会尝试 Playwright 内置浏览器）
+    try:
+        return playwright.chromium.launch(**launch_kwargs)
+    except Exception as exc:
+        errors.append(f"default: {exc}")
+    # 2) 指定通道启动
+    for channel in ["chrome", "msedge"]:
+        try:
+            return playwright.chromium.launch(channel=channel, **launch_kwargs)
+        except Exception as exc:
+            errors.append(f"channel={channel}: {exc}")
+    # 3) 逐一路径尝试
     for executable_path in _browser_executable_candidates():
         try:
-            return playwright.chromium.launch(executable_path=executable_path, headless=headless)
+            return playwright.chromium.launch(executable_path=executable_path, **launch_kwargs)
         except Exception as exc:
-            errors.append(f"{executable_path}: {exc}")
+            errors.append(f"{Path(executable_path).name}: {exc}")
 
-    install_cmd = f'set PLAYWRIGHT_BROWSERS_PATH={BASE_DIR / "ms-playwright"} && python -m playwright install chromium'
+    # 4) 最终：尝试安装提示
+    import subprocess
+    suggested_install = f"python -m playwright install chromium"
     raise RuntimeError(
-        "Playwright 浏览器不可用，且未找到可用的本机 Chrome/Edge。"
-        f"请执行：{install_cmd}。"
-        f"原始错误：{errors[0] if errors else 'unknown'}"
+        "浏览器启动失败，未找到可用的 Chrome/Edge/Chromium。\n"
+        f"请尝试：\n"
+        f"  1. {suggested_install}\n"
+        f"  2. 或安装 Chrome/Edge 浏览器\n"
+        f"最后 3 个错误：{'; '.join(errors[-3:])}"
     )
 
 
@@ -506,13 +616,19 @@ def _resolve_locator(page: Any, candidates: list[str], timeout_ms: int, state: s
     raise TimeoutError("未找到可用定位器：" + "；".join(errors[-4:]))
 
 
-def _wait_for_url_contains(page: Any, expected: str, timeout_ms: int) -> None:
+def _wait_for_url_contains(page: Any, expected: str, timeout_ms: int, exact: bool = False) -> None:
     deadline = time.time() + timeout_ms / 1000
     while time.time() < deadline:
-        if expected in (page.url or ""):
-            return
+        current = page.url or ""
+        if exact:
+            if current.rstrip("/") == expected.rstrip("/"):
+                return
+        else:
+            if expected in current:
+                return
         page.wait_for_timeout(300)
-    raise AssertionError(f"assert_url failed: expected contains {expected!r}, actual {page.url!r}")
+    mode = "精确匹配" if exact else "包含"
+    raise AssertionError(f"assert_url failed: expected {mode} {expected!r}, actual {page.url!r}")
 
 
 def _guess_login_url(target_url: str | None) -> str:
@@ -753,7 +869,12 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
         "value": "***" if "password" in name.lower() or "password" in locator.lower() else value,
         "started_at": datetime.now(),
         "status": "running",
+        "current_url_before": getattr(page, "url", ""),
+        "visible_text_before": _page_text_excerpt(page, limit=800),
     }
+    before_shot = _capture_evidence_screenshot(page, "step-before", screenshots)
+    if before_shot:
+        detail["before_screenshot"] = before_shot
 
     try:
         if action == "goto":
@@ -773,7 +894,8 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
             screenshots.append(str(screenshot))
             detail["screenshot"] = str(screenshot)
         elif action == "assert_url":
-            _wait_for_url_contains(page, str(value or ""), timeout_ms)
+            exact = bool(step.get("exact", False))
+            _wait_for_url_contains(page, str(value or ""), timeout_ms, exact=exact)
         else:
             if action in UI_LOCATOR_REQUIRED and not candidates:
                 raise ValueError(f"{action} 步骤缺少 locator")
@@ -783,6 +905,10 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                     target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
                     detail["used_locator"] = used_locator
                     detail["matched_count"] = matched_count
+                    if locator and used_locator != locator:
+                        detail["healed"] = True
+                        detail["original_locator"] = locator
+                        detail["suggested_locator"] = used_locator
                     try:
                         target.scroll_into_view_if_needed(timeout=1500)
                     except Exception:
@@ -824,12 +950,50 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                 except Exception as exc:
                     last_error = exc
                     if attempt >= 3:
+                        # 自愈尝试：解析定位器失败时尝试自愈
+                        try:
+                            healed = _heal_locator(page, candidates[0] if candidates else "", str(exc))
+                            if healed and healed not in candidates:
+                                candidates.insert(0, healed)
+                                detail["healed"] = True
+                                detail["healed_locator"] = healed
+                                # 用新定位器再试一次
+                                target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
+                                detail["used_locator"] = used_locator
+                                detail["matched_count"] = matched_count
+                                target.scroll_into_view_if_needed(timeout=1500)
+                                if action == "input":
+                                    try:
+                                        target.fill("", timeout=timeout_ms)
+                                        target.fill(str(value or ""), timeout=timeout_ms)
+                                    except Exception:
+                                        target.click(timeout=timeout_ms)
+                                        page.keyboard.press("Control+A")
+                                        page.keyboard.type(str(value or ""))
+                                elif action == "click":
+                                    target.click(timeout=timeout_ms)
+                                elif action == "select":
+                                    target.select_option(str(value or ""), timeout=timeout_ms)
+                                elif action == "assert_visible":
+                                    if not target.is_visible(timeout=timeout_ms):
+                                        raise AssertionError(f"assert_visible failed: locator {used_locator!r} is not visible")
+                                elif action == "wait_for_selector":
+                                    target.wait_for(state="visible", timeout=timeout_ms)
+                                detail["retry_count"] = attempt
+                                break
+                        except Exception:
+                            raise last_error
                         raise
                     page.wait_for_timeout(350 * attempt)
             if last_error and not detail.get("used_locator") and action not in {"goto", "wait", "screenshot", "assert_url"}:
                 raise last_error
         detail["status"] = "passed"
         detail["current_url"] = page.url
+        detail["current_url_after"] = getattr(page, "url", "")
+        detail["visible_text_after"] = _page_text_excerpt(page, limit=800)
+        after_shot = _capture_evidence_screenshot(page, "step-after", screenshots)
+        if after_shot:
+            detail["after_screenshot"] = after_shot
         detail["duration_ms"] = int((time.time() - started) * 1000)
         detail["finished_at"] = datetime.now()
         return detail
@@ -840,12 +1004,17 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
             {
                 "status": "skipped" if step.get("optional") else "failed",
                 "current_url": getattr(page, "url", ""),
+                "current_url_after": getattr(page, "url", ""),
+                "visible_text_after": _page_text_excerpt(page, limit=800),
                 "duration_ms": int((time.time() - started) * 1000),
                 "finished_at": datetime.now(),
                 "error": error_text,
                 **classified,
             }
         )
+        failure_shot = _capture_evidence_screenshot(page, "step-failed", screenshots)
+        if failure_shot:
+            detail["failure_screenshot"] = failure_shot
         if step.get("optional"):
             return detail
         message = f"{name}失败：{classified['category']}。{classified['reason']}"
@@ -870,6 +1039,11 @@ def _validate_ui_steps_for_execution(steps: Any) -> tuple[list[Dict[str, Any]], 
         if action in UI_VALUE_REQUIRED and step.get("value") in (None, ""):
             issues.append({"severity": "error", "step": index, "message": f"第{index}步缺少 value"})
         normalized.append(step)
+    if normalized and not _case_has_business_assertion(normalized):
+        issues.append({
+            "severity": "warning",
+            "message": "用例缺少业务断言，执行器会跑完整步骤，但不会把结果判定为可信成功",
+        })
     return normalized, issues
 
 
@@ -892,6 +1066,10 @@ def execute_ui_case_in_page(
         steps, removed_login_steps = _strip_leading_login_steps(steps)
     steps, validation_issues = _validate_ui_steps_for_execution(steps)
 
+    # 读取重试配置
+    retry_count = execution_context.get("retry_count", 2)
+    retry_interval_ms = execution_context.get("retry_interval_ms", 1000)
+
     log_parts: Dict[str, Any] = {
         "case_name": case.case_name,
         "page_url": render_template(case.page_url, variables),
@@ -901,6 +1079,7 @@ def execute_ui_case_in_page(
         "validation_issues": validation_issues,
         "step_logs": [],
         "started_at": datetime.now(),
+        "retry_config": {"retry_count": retry_count, "retry_interval_ms": retry_interval_ms},
         "auth_context": {
             "login_required": bool(execution_context.get("login_required")),
             "account_profile_id": execution_context.get("account_profile_id"),
@@ -944,23 +1123,93 @@ def execute_ui_case_in_page(
         for index, step in enumerate(steps, start=1):
             current_step_index = index
             current_step = step if isinstance(step, dict) else {"raw": step}
+            # 智能等待：操作前等待页面稳定
+            action = (current_step or {}).get("action", "")
+            if action not in ("goto", "wait", "screenshot"):
+                _wait_page_stable(page)
+
             try:
                 step_detail = _run_ui_step(page, current_step, screenshots, timeout)
                 step_detail["index"] = index
                 log_parts["step_logs"].append(step_detail)
+                # 智能等待：操作后等待页面响应
+                _wait_after_action(page, action)
             except UiStepExecutionError as exc:
+                # 失败自动重试
+                if retry_count > 0 and action not in ("text_assert", "assert_url", "assert_value", "assert_visible"):
+                    retried = False
+                    for attempt in range(retry_count):
+                        page.wait_for_timeout(retry_interval_ms)
+                        _wait_page_stable(page)
+                        try:
+                            step_detail = _run_ui_step(page, current_step, screenshots, timeout)
+                            step_detail["index"] = index
+                            step_detail["retry_attempt"] = attempt + 1
+                            log_parts["step_logs"].append(step_detail)
+                            # 重试成功后截一张确认图，作为"步骤恢复"的证据
+                            confirm_shot = SCREENSHOT_DIR / f"retry-confirm-{uuid4()}.png"
+                            try:
+                                page.screenshot(path=str(confirm_shot), full_page=True)
+                                step_detail["retry_confirmation_screenshot"] = str(confirm_shot)
+                                screenshots.append(str(confirm_shot))
+                            except Exception:
+                                pass
+                            retried = True
+                            break
+                        except UiStepExecutionError:
+                            continue
+                    if retried:
+                        continue
                 failed_step_detail = exc.detail
                 failed_step_detail["index"] = index
                 log_parts["step_logs"].append(failed_step_detail)
                 raise
-        if not screenshots:
-            screenshot = SCREENSHOT_DIR / f"{uuid4()}.png"
-            page.screenshot(path=str(screenshot), full_page=True)
-            screenshots.append(str(screenshot))
-        log_parts.update({"finished_at": datetime.now()})
+        # 最终验证：强制截图 + URL + 截图质量检查
+        final_screenshot = SCREENSHOT_DIR / f"{uuid4()}.png"
+        try:
+            page.screenshot(path=str(final_screenshot), full_page=True)
+            screenshots.append(str(final_screenshot))
+        except Exception as exc:
+            final_screenshot = Path(screenshots[-1]) if screenshots else None
+
+        # 三级验证
+        final_url = getattr(page, "url", "")
+        screenshot_check = _quick_screenshot_check(str(final_screenshot)) if final_screenshot else {"ok": False, "reason": "无法获取截图"}
+        url_ok = _url_looks_reasonable(final_url, _expected_origin(str(case.page_url or "")))
+        business_ok, business_issues, business_evidence = _final_business_verification(page, steps, timeout)
+
+        verification_issues = []
+        if not url_ok:
+            verification_issues.append(f"最终 URL 异常：{final_url}")
+        if not screenshot_check["ok"]:
+            verification_issues.append(f"截图验证失败：{screenshot_check['reason']}")
+        if not business_ok:
+            verification_issues.extend(business_issues)
+
+        if verification_issues:
+            # 三级验证未通过 → 标记为 failed
+            log_parts.update({
+                "finished_at": datetime.now(),
+                "verification_issues": verification_issues,
+                "verification_status": "failed_verification",
+                "business_verification": business_evidence,
+                "verification_screenshot": str(final_screenshot) if final_screenshot else "",
+                "warning": "所有步骤执行通过，但最终验证未通过：" + "; ".join(verification_issues),
+            })
+            log_text = _json_dump_log(log_parts)
+            report_path = write_allure_result(case.case_name, "ui", False, log_text, str(final_screenshot) if final_screenshot else "")
+            return False, log_text, str(final_screenshot) if final_screenshot else "", report_path
+
+        log_parts.update({
+            "finished_at": datetime.now(),
+            "verification": {"screenshot_ok": True, "url_ok": True, "business_ok": True},
+            "verification_status": "trusted_passed",
+            "business_verification": business_evidence,
+            "verification_screenshot": str(final_screenshot) if final_screenshot else "",
+        })
         log_text = _json_dump_log(log_parts)
-        report_path = write_allure_result(case.case_name, "ui", True, log_text, screenshots[-1])
-        return True, log_text, screenshots[-1], report_path
+        report_path = write_allure_result(case.case_name, "ui", True, log_text, str(final_screenshot) if final_screenshot else screenshots[-1])
+        return True, log_text, str(final_screenshot) if final_screenshot else screenshots[-1], report_path
     except Exception as exc:
         screenshot = ""
         try:
@@ -1250,3 +1499,278 @@ def execute_ui_case(
         log_text = _json_dump_log(log_parts)
         report_path = write_allure_result(case.case_name, "ui", False, log_text, screenshot)
         return False, log_text, screenshot, report_path
+
+
+# ═══════════════════════════════════════════════════════════
+# 操作模板匹配
+# ═══════════════════════════════════════════════════════════
+
+
+def _template_match_keywords(text: str, keywords: list[str]) -> int:
+    """计算文本与关键词列表的匹配分"""
+    text_lower = text.lower()
+    score = 0
+    for kw in keywords:
+        kw_lower = kw.lower().strip()
+        if not kw_lower:
+            continue
+        if kw_lower in text_lower:
+            score += 10
+            if text_lower.startswith(kw_lower) or text_lower.endswith(kw_lower):
+                score += 5
+    return score
+
+
+def match_action_template(
+    case_title: str,
+    case_steps: str,
+    templates: list[ActionTemplate],
+) -> ActionTemplate | None:
+    """根据用例标题和步骤文本匹配最佳操作模板"""
+    if not templates:
+        return None
+    best_score = 0
+    best_template = None
+    for template in templates:
+        try:
+            keywords = json.loads(template.trigger_keywords) if isinstance(template.trigger_keywords, str) else (template.trigger_keywords or [])
+        except (json.JSONDecodeError, TypeError):
+            keywords = []
+        if not keywords:
+            continue
+        title_score = _template_match_keywords(case_title, keywords) * 2
+        steps_score = _template_match_keywords(case_steps or "", keywords)
+        total = title_score + steps_score
+        if total > best_score:
+            best_score = total
+            best_template = template
+    return best_template if best_score > 0 else None
+
+
+# ═══════════════════════════════════════════════════════════
+# 执行前预检
+# ═══════════════════════════════════════════════════════════
+
+
+def _extract_variables_from_text(text: str) -> set[str]:
+    if not text:
+        return set()
+    return set(re.findall(r"\{\{(\w+)\}\}", text))
+
+
+def preflight_check(case: UiCase) -> tuple[list[str], list[str]]:
+    """执行前预检，返回 (errors, warnings)"""
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if not case.steps:
+        errors.append("用例没有步骤")
+        return errors, warnings
+
+    steps = parse_json_value(case.steps, [])
+    if not isinstance(steps, list) or len(steps) == 0:
+        errors.append("步骤格式无效或为空")
+        return errors, warnings
+
+    page_url = case.page_url or ""
+    if page_url:
+        try:
+            resp = requests.head(page_url, timeout=5, allow_redirects=True)
+            if resp.status_code >= 500:
+                errors.append(f"目标页面返回服务端错误 HTTP {resp.status_code}")
+            elif resp.status_code >= 400:
+                warnings.append(f"目标页面返回 HTTP {resp.status_code}，可能存在访问问题")
+        except requests.ConnectionError:
+            errors.append(f"目标页面不可达: {page_url}")
+        except Exception as exc:
+            warnings.append(f"URL 检查失败: {exc}")
+
+    needed_vars: set[str] = set()
+    for step in steps:
+        if isinstance(step, dict):
+            for field in ("locator", "value", "name"):
+                needed_vars |= _extract_variables_from_text(str(step.get(field, "")))
+
+    builtin = {"username", "password", "code", "captcha", "timestamp", "datetime", "date", "uuid", "random_int", "random_str", "random_phone", "random_email"}
+    external_needed = needed_vars - builtin
+    if external_needed:
+        warnings.append(f"步骤中使用的外部变量（需确保运行时提供）: {', '.join(sorted(external_needed))}")
+
+    try:
+        import playwright  # noqa: F401
+    except ImportError:
+        errors.append("Playwright 未安装，请执行: pip install playwright && python -m playwright install")
+
+    return errors, warnings
+
+
+# ═══════════════════════════════════════════════════════════
+# Locator 自愈
+# ═══════════════════════════════════════════════════════════
+
+
+def _heal_locator(page: Any, failed_locator: str, error_text: str) -> str | None:
+    """尝试修复失败的定位器，返回新定位器或 None"""
+    heal_candidates: list[str] = []
+
+    # 策略 1: text=xxx → 尝试包含匹配 / partial text
+    if failed_locator.startswith("text="):
+        target_text = failed_locator[5:].strip().strip("\"'")
+        if target_text:
+            try:
+                contains = page.locator(f"text={target_text}")
+                if contains.count() > 0:
+                    heal_candidates.append(f"text={target_text}")
+                partial = page.locator(f":has-text(\"{target_text}\")")
+                if partial.count() > 0:
+                    heal_candidates.append(f":has-text(\"{target_text}\")")
+                for tag in ["button", "a", "span", "div"]:
+                    exact = page.locator(f"{tag}:has-text(\"{target_text}\")")
+                    if exact.count() > 0:
+                        heal_candidates.append(f"{tag}:has-text(\"{target_text}\")")
+            except Exception:
+                pass
+
+    # 策略 2: CSS 选择器 → 简化
+    if not failed_locator.startswith("text="):
+        simplified = re.sub(r"\.[a-zA-Z][\w-]*", "", failed_locator)
+        if simplified != failed_locator:
+            try:
+                el = page.locator(simplified)
+                if el.count() > 0:
+                    heal_candidates.append(simplified)
+            except Exception:
+                pass
+        ids = re.findall(r"#([a-zA-Z][\w-]*)", failed_locator)
+        if ids:
+            try:
+                el = page.locator(f"#{ids[-1]}")
+                if el.count() > 0:
+                    heal_candidates.append(f"#{ids[-1]}")
+            except Exception:
+                pass
+
+    return heal_candidates[0] if heal_candidates else None
+
+
+# ═══════════════════════════════════════════════════════════
+# 智能等待
+# ═══════════════════════════════════════════════════════════
+
+
+def _wait_page_stable(page: Any, timeout: int = 5000) -> None:
+    """等待页面加载稳定"""
+    try:
+        page.wait_for_load_state("networkidle", timeout=timeout)
+    except Exception:
+        pass
+    try:
+        page.wait_for_load_state("domcontentloaded", timeout=timeout)
+    except Exception:
+        pass
+    page.wait_for_timeout(300)
+
+
+def _wait_after_action(page: Any, action: str) -> None:
+    """根据操作类型等待页面响应"""
+    if action in ("click", "select", "check", "uncheck"):
+        try:
+            page.wait_for_load_state("networkidle", timeout=5000)
+        except Exception:
+            page.wait_for_timeout(500)
+    elif action == "input":
+        page.wait_for_timeout(100)
+    elif action == "goto":
+        try:
+            page.wait_for_load_state("networkidle", timeout=8000)
+        except Exception:
+            page.wait_for_timeout(500)
+
+
+def _capture_evidence_screenshot(page: Any, prefix: str, screenshots: list[str]) -> str:
+    ensure_report_dirs()
+    target = SCREENSHOT_DIR / f"{prefix}-{uuid4()}.png"
+    try:
+        page.screenshot(path=str(target), full_page=True)
+        screenshots.append(str(target))
+        return str(target)
+    except Exception:
+        return ""
+
+
+def _page_text_excerpt(page: Any, limit: int = 1200) -> str:
+    try:
+        text = page.locator("body").inner_text(timeout=1200)
+    except Exception:
+        return ""
+    text = _normalize_text(text)
+    return text[:limit]
+
+
+def _expected_origin(url: str) -> str:
+    parsed = urlparse(str(url or ""))
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _step_has_business_assertion(step: Dict[str, Any]) -> bool:
+    if not isinstance(step, dict):
+        return False
+    if step.get("action") in {"assert_url", "assert_visible", "assert_value", "text_assert"}:
+        return True
+    return bool(step.get("assertions") or step.get("success_condition"))
+
+
+def _case_has_business_assertion(steps: list[Dict[str, Any]]) -> bool:
+    return any(_step_has_business_assertion(step) for step in steps if isinstance(step, dict))
+
+
+def _check_success_condition(page: Any, condition: Any, timeout_ms: int) -> list[str]:
+    if not condition:
+        return []
+    conditions = condition if isinstance(condition, list) else [condition]
+    failures: list[str] = []
+    for item in conditions:
+        if isinstance(item, str):
+            item = {"text_contains": item}
+        if not isinstance(item, dict):
+            continue
+        if item.get("url_contains"):
+            expected = str(item.get("url_contains") or "")
+            if expected not in str(getattr(page, "url", "")):
+                failures.append(f"URL 未包含预期片段：{expected}")
+        if item.get("url_exact"):
+            expected = str(item.get("url_exact") or "").rstrip("/")
+            if str(getattr(page, "url", "")).rstrip("/") != expected:
+                failures.append(f"URL 未精确匹配：{expected}")
+        if item.get("text_contains"):
+            expected = str(item.get("text_contains") or "")
+            if expected not in _page_text_excerpt(page, limit=8000):
+                failures.append(f"页面文本未包含：{expected}")
+        selector = item.get("selector_visible") or item.get("locator_visible")
+        if selector:
+            try:
+                page.locator(str(selector)).first.wait_for(state="visible", timeout=timeout_ms)
+            except Exception:
+                failures.append(f"未看到成功元素：{selector}")
+    return failures
+
+
+def _final_business_verification(page: Any, steps: list[Dict[str, Any]], timeout_seconds: int) -> tuple[bool, list[str], dict[str, Any]]:
+    issues: list[str] = []
+    assertion_count = sum(1 for step in steps if _step_has_business_assertion(step))
+    if assertion_count == 0:
+        issues.append("用例缺少业务断言：没有 assert_url/assert_visible/assert_value/text_assert/success_condition，不能判定为可信成功")
+    timeout_ms = max(1000, min(timeout_seconds, 12) * 1000)
+    for index, step in enumerate(steps, start=1):
+        if not isinstance(step, dict):
+            continue
+        failures = _check_success_condition(page, step.get("success_condition") or step.get("assertions"), timeout_ms)
+        issues.extend(f"第{index}步成功条件失败：{item}" for item in failures)
+    evidence = {
+        "business_assertion_count": assertion_count,
+        "final_url": getattr(page, "url", ""),
+        "final_text_excerpt": _page_text_excerpt(page),
+    }
+    return not issues, issues, evidence

@@ -1,16 +1,26 @@
-import base64
+﻿import base64
 import hashlib
+import ipaddress
+import os
+import queue
+import re
+import secrets
+import socket
+import threading
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, Type
+from urllib.parse import urljoin, urlparse
 
+import requests
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import or_
+from sqlalchemy import func, or_, text
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy.orm import Session
 
@@ -28,6 +38,7 @@ from .data_scripts import (
 )
 from .executors import ensure_report_dirs, execute_api_case, execute_ui_case, parse_json_value, to_json_text
 from .functional_testing import (
+    FunctionalScanError,
     analyze_functional_screenshot,
     diagnose_failure,
     generate_functional_cases,
@@ -40,12 +51,14 @@ from .functional_testing import (
 from .models import (
     AiConfig,
     ApiCase,
+    ActionTemplate,
     Env,
     FunctionalCase,
     FunctionalRequirementNote,
     FunctionalRun,
     FunctionalScreenshot,
     FunctionalTask,
+    LocatorHealLog,
     PageSnapshot,
     Project,
     TestRecord,
@@ -55,6 +68,8 @@ from .models import (
     TestAccountProfile,
 )
 from .schemas import (
+    ActionTemplateCreate,
+    ActionTemplateUpdate,
     AiConfigUpdate,
     ApiCaseCreate,
     ApiBatchExecuteRequest,
@@ -63,22 +78,29 @@ from .schemas import (
     DataScriptExecuteRequest,
     EnvCreate,
     EnvUpdate,
+    FunctionalCaseBatchStatusUpdate,
+    FunctionalCaseStats,
+    FunctionalCaseStatusUpdate,
     FunctionalCaseUpdate,
     FunctionalExecuteRequest,
     FunctionalRequirementNoteCreate,
     FunctionalRequirementNoteUpdate,
     FunctionalScanRequest,
+    FunctionalTaskContextUpdate,
     FunctionalTaskCreate,
+    LocatorHealLogConfirm,
     LoginRequest,
+    PreflightResult,
     ProjectCreate,
     ProjectUpdate,
+    QuickRunRequest,
+    TestAccountBindingUpdate,
+    TestAccountProfileCreate,
+    TestAccountProfileUpdate,
     UiCaseCreate,
     UiCaseUpdate,
     UserCreate,
     UserUpdate,
-    TestAccountBindingUpdate,
-    TestAccountProfileCreate,
-    TestAccountProfileUpdate,
 )
 from .security import SECRET_KEY, create_access_token, get_current_user, hash_password, require_admin, verify_password
 
@@ -106,8 +128,8 @@ TABLE_FIELDS = {
     ],
     UiCase: ["id", "project_id", "case_name", "page_url", "steps", "timeout", "status", "create_time"],
     TestRecord: ["id", "case_type", "case_id", "result", "log", "screenshot", "report_path", "execute_time"],
-    FunctionalTask: ["id", "project_id", "iteration_name", "requirement_text", "axure_path", "target_url", "status", "create_time"],
-    FunctionalCase: ["id", "task_id", "title", "precondition", "steps", "expected", "priority", "automation_status", "ui_case_id", "create_time"],
+    FunctionalTask: ["id", "project_id", "iteration_name", "requirement_text", "axure_path", "target_url", "context", "status", "create_time"],
+    FunctionalCase: ["id", "task_id", "title", "precondition", "steps", "expected", "priority", "automation_status", "test_result", "ui_case_id", "create_time"],
     PageSnapshot: ["id", "task_id", "page_url", "dom_summary", "screenshot_path", "scan_time"],
     FunctionalScreenshot: ["id", "task_id", "image_path", "analysis_result", "create_time"],
     FunctionalRequirementNote: ["id", "task_id", "note_text", "create_time", "update_time"],
@@ -115,7 +137,9 @@ TABLE_FIELDS = {
     AiConfig: ["id", "provider", "base_url", "model", "api_key", "create_time"],
     TestAccountProfile: [
         "id", "project_id", "profile_name", "variables",
-        "sensitive_variables", "status", "create_time", "update_time",
+        "sensitive_variables", "login_url", "username_locator", "password_locator",
+        "submit_locator", "success_url_contains", "success_selector",
+        "status", "create_time", "update_time",
     ],
     TestAccountBinding: [
         "id", "target_type", "target_id", "account_profile_id",
@@ -131,6 +155,15 @@ JSON_FIELD_DEFAULTS = {
     "assert_rule": {},
     "steps": [],
 }
+
+ACCOUNT_CONFIG_FIELDS = (
+    "login_url",
+    "username_locator",
+    "password_locator",
+    "submit_locator",
+    "success_url_contains",
+    "success_selector",
+)
 
 CASE_NAME_PREFIXES = ("\u6570\u636e\u811a\u672c-", "test-")
 
@@ -519,20 +552,62 @@ def ensure_data_script_api_cases(db: Session) -> None:
 
 def init_app() -> None:
     Base.metadata.create_all(bind=engine)
+    # 轻量迁移：补齐历史 SQLite 数据库缺失列。
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        migrations = {
+            "functional_case": {
+                "test_result": "ALTER TABLE functional_case ADD COLUMN test_result VARCHAR(20) DEFAULT 'untested'",
+            },
+            "test_account_profile": {
+                "login_url": "ALTER TABLE test_account_profile ADD COLUMN login_url VARCHAR(500)",
+                "username_locator": "ALTER TABLE test_account_profile ADD COLUMN username_locator TEXT",
+                "password_locator": "ALTER TABLE test_account_profile ADD COLUMN password_locator TEXT",
+                "submit_locator": "ALTER TABLE test_account_profile ADD COLUMN submit_locator TEXT",
+                "success_url_contains": "ALTER TABLE test_account_profile ADD COLUMN success_url_contains VARCHAR(500)",
+                "success_selector": "ALTER TABLE test_account_profile ADD COLUMN success_selector VARCHAR(500)",
+            },
+        }
+        with engine.begin() as conn:
+            for table_name, table_migrations in migrations.items():
+                existing_columns = {c["name"] for c in inspector.get_columns(table_name)}
+                for column_name, sql in table_migrations.items():
+                    if column_name not in existing_columns:
+                        conn.execute(text(sql))
+    except Exception:
+        pass  # 迁移失败不影响启动
     ensure_report_dirs()
     db = next(get_db())
     try:
         admin = db.query(User).filter(User.username == "admin").first()
         if not admin:
+            admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD") or secrets.token_urlsafe(12)
             db.add(
                 User(
                     username="admin",
-                    password=hash_password("admin123"),
+                    password=hash_password(admin_password),
                     role="admin",
                     create_time=datetime.now(),
                 )
             )
             db.commit()
+            if not os.getenv("DEFAULT_ADMIN_PASSWORD"):
+                print(
+                    "Created default admin user. Password: "
+                    f"{admin_password}. Set DEFAULT_ADMIN_PASSWORD to control this value.",
+                    flush=True,
+                )
+        elif verify_password("admin123", admin.password) and os.getenv("ALLOW_DEFAULT_ADMIN_PASSWORD", "").strip() != "1":
+            replacement_password = os.getenv("DEFAULT_ADMIN_PASSWORD") or secrets.token_urlsafe(12)
+            if replacement_password != "admin123":
+                admin.password = hash_password(replacement_password)
+                db.commit()
+                print(
+                    "Rotated insecure default admin password. New password: "
+                    f"{replacement_password}. Set DEFAULT_ADMIN_PASSWORD to control this value.",
+                    flush=True,
+                )
         normalize_api_case_names(db)
         ensure_data_script_api_cases(db)
     finally:
@@ -546,9 +621,11 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="接口 + UI 自动化测试平台", lifespan=lifespan)
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "").strip()
+allowed_origins = [origin.strip() for origin in CORS_ORIGINS.split(",") if origin.strip()] if CORS_ORIGINS else ["http://localhost:8000", "http://127.0.0.1:8000"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -561,6 +638,9 @@ async def no_cache_frontend_assets(request, call_next):
     if request.url.path == "/" or request.url.path.startswith("/static/"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
+    ct = response.headers.get("content-type", "")
+    if "application/json" in ct and "charset" not in ct.lower():
+        response.headers["content-type"] = ct.replace("application/json", "application/json; charset=utf-8")
     return response
 
 
@@ -665,7 +745,13 @@ def functional_task_detail(db: Session, task: FunctionalTask) -> Dict[str, Any]:
     data = serialize(task)
     project = db.get(Project, task.project_id)
     data["project_name"] = project.name if project else task.project_id
-    data["cases"] = serialize_many(db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id).order_by(FunctionalCase.id.asc()).all())
+    data.update(account_profile_summary(default_account_profile_for_target(db, "functional_task", task.id, task.project_id)))
+    cases = []
+    for case in db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id).order_by(FunctionalCase.id.asc()).all():
+        item = serialize(case)
+        item.update(account_profile_summary(default_account_profile_for_target(db, "functional_case", case.id, task.project_id)))
+        cases.append(item)
+    data["cases"] = cases
     data["snapshots"] = serialize_many(db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).all())
     data["screenshots"] = serialize_many(
         db.query(FunctionalScreenshot).filter(FunctionalScreenshot.task_id == task.id).order_by(FunctionalScreenshot.id.desc()).all()
@@ -804,7 +890,12 @@ def delete_user(
 
 @app.get("/api/projects")
 def list_projects(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[Dict[str, Any]]:
-    return serialize_many(db.query(Project).order_by(Project.id.desc()).all())
+    projects = []
+    for project in db.query(Project).order_by(Project.id.desc()).all():
+        item = serialize(project)
+        item.update(account_profile_summary(default_account_profile_for_target(db, "project", project.id, project.id)))
+        projects.append(item)
+    return projects
 
 
 @app.post("/api/projects")
@@ -845,11 +936,59 @@ def delete_project(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, str]:
     project = get_or_404(db, Project, project_id)
+    task_ids = [row[0] for row in db.query(FunctionalTask.id).filter(FunctionalTask.project_id == project_id).all()]
+    functional_case_rows = (
+        db.query(FunctionalCase.id, FunctionalCase.ui_case_id)
+        .filter(FunctionalCase.task_id.in_(task_ids))
+        .all()
+        if task_ids
+        else []
+    )
+    functional_case_ids = [row[0] for row in functional_case_rows]
+    generated_ui_ids = [row[1] for row in functional_case_rows if row[1]]
+    direct_ui_ids = [row[0] for row in db.query(UiCase.id).filter(UiCase.project_id == project_id).all()]
+    ui_ids = sorted(set(direct_ui_ids + generated_ui_ids))
+    api_ids = [row[0] for row in db.query(ApiCase.id).filter(ApiCase.project_id == project_id).all()]
+    profile_ids = [row[0] for row in db.query(TestAccountProfile.id).filter(TestAccountProfile.project_id == project_id).all()]
+
+    if api_ids:
+        db.query(TestRecord).filter(TestRecord.case_type == "api", TestRecord.case_id.in_(api_ids)).delete(synchronize_session=False)
+    if ui_ids:
+        db.query(TestRecord).filter(TestRecord.case_type == "ui", TestRecord.case_id.in_(ui_ids)).delete(synchronize_session=False)
+        db.query(LocatorHealLog).filter(LocatorHealLog.case_id.in_(ui_ids)).delete(synchronize_session=False)
+
+    binding_filters = [
+        (TestAccountBinding.target_type == "project") & (TestAccountBinding.target_id == project_id),
+    ]
+    if task_ids:
+        binding_filters.append((TestAccountBinding.target_type == "functional_task") & TestAccountBinding.target_id.in_(task_ids))
+    if functional_case_ids:
+        binding_filters.append((TestAccountBinding.target_type == "functional_case") & TestAccountBinding.target_id.in_(functional_case_ids))
+    if ui_ids:
+        binding_filters.append((TestAccountBinding.target_type == "ui_case") & TestAccountBinding.target_id.in_(ui_ids))
+    if profile_ids:
+        db.query(TestAccountBinding).filter(TestAccountBinding.account_profile_id.in_(profile_ids)).delete(synchronize_session=False)
+    db.query(TestAccountBinding).filter(or_(*binding_filters)).delete(synchronize_session=False)
+
+    if task_ids:
+        db.query(PageSnapshot).filter(PageSnapshot.task_id.in_(task_ids)).delete(synchronize_session=False)
+        db.query(FunctionalScreenshot).filter(FunctionalScreenshot.task_id.in_(task_ids)).delete(synchronize_session=False)
+        db.query(FunctionalRequirementNote).filter(FunctionalRequirementNote.task_id.in_(task_ids)).delete(synchronize_session=False)
+        db.query(FunctionalRun).filter(FunctionalRun.task_id.in_(task_ids)).delete(synchronize_session=False)
+        db.query(FunctionalCase).filter(FunctionalCase.task_id.in_(task_ids)).delete(synchronize_session=False)
+        db.query(FunctionalTask).filter(FunctionalTask.id.in_(task_ids)).delete(synchronize_session=False)
+    if ui_ids:
+        db.query(UiCase).filter(UiCase.id.in_(ui_ids)).delete(synchronize_session=False)
+    if api_ids:
+        db.query(ApiCase).filter(ApiCase.id.in_(api_ids)).delete(synchronize_session=False)
+    if profile_ids:
+        db.query(TestAccountProfile).filter(TestAccountProfile.id.in_(profile_ids)).delete(synchronize_session=False)
+
+    db.query(Env).filter(Env.project_id == project_id).delete(synchronize_session=False)
+    db.query(ActionTemplate).filter(ActionTemplate.project_id == project_id).delete(synchronize_session=False)
     db.delete(project)
     db.commit()
     return {"message": "deleted"}
-
-import re
 
 SENSITIVE_ACCOUNT_KEY_RE = re.compile(r"(password|passwd|pwd|captcha|token|secret|authorization|auth|密码|验证码)", re.I)
 SENSITIVE_ACCOUNT_KEY_NAMES = {"code", "verify_code", "verification_code", "captcha_code"}
@@ -895,6 +1034,9 @@ def normalize_account_payload(db: Session, data: Dict[str, Any], existing: TestA
     if "project_id" in data and data["project_id"] is not None:
         ensure_project_exists(db, int(data["project_id"]))
         data["project_id"] = int(data["project_id"])
+    for field in ACCOUNT_CONFIG_FIELDS:
+        if field in data and data[field] is not None:
+            data[field] = str(data[field]).strip()
     public_source = data.pop("variables", None)
     sensitive_source = data.pop("sensitive_variables", None)
     if public_source is not None or sensitive_source is not None:
@@ -943,6 +1085,12 @@ def serialize_account_profile(profile: TestAccountProfile) -> Dict[str, Any]:
         "variables": public_values,
         "masked_variables": masked,
         "sensitive_keys": sorted(sensitive_values.keys()),
+        "login_url": profile.login_url or "",
+        "username_locator": profile.username_locator or "",
+        "password_locator": profile.password_locator or "",
+        "submit_locator": profile.submit_locator or "",
+        "success_url_contains": profile.success_url_contains or "",
+        "success_selector": profile.success_selector or "",
         "status": profile.status,
         "create_time": profile.create_time.strftime("%Y-%m-%d %H:%M:%S") if profile.create_time else "",
         "update_time": profile.update_time.strftime("%Y-%m-%d %H:%M:%S") if profile.update_time else "",
@@ -959,19 +1107,98 @@ def account_profile_variables(db: Session, profile_id: int, project_id: int | No
     if not isinstance(public_values, dict):
         public_values = {}
     variables = {**public_values, **decrypt_account_payload(profile.sensitive_variables)}
-    return variables, {"id": profile.id, "profile_name": profile.profile_name}
+    login_config = {field: getattr(profile, field) or "" for field in ACCOUNT_CONFIG_FIELDS}
+    return variables, {"id": profile.id, "profile_name": profile.profile_name, "login_config": login_config}
 
 
 def account_target_project_id(db: Session, target_type: str, target_id: int) -> int:
     if target_type == "project":
+        ensure_project_exists(db, target_id)
         return target_id
     elif target_type == "functional_task":
         item = get_or_404(db, FunctionalTask, target_id)
         return item.project_id
     elif target_type == "functional_case":
         item = get_or_404(db, FunctionalCase, target_id)
+        task = get_or_404(db, FunctionalTask, item.task_id)
+        return task.project_id
+    elif target_type == "ui_case":
+        item = get_or_404(db, UiCase, target_id)
         return item.project_id
-    return target_id
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不支持的账号绑定目标")
+
+
+def account_binding_profile(db: Session, target_type: str, target_id: int) -> TestAccountProfile | None:
+    binding = db.query(TestAccountBinding).filter(
+        TestAccountBinding.target_type == target_type,
+        TestAccountBinding.target_id == target_id,
+    ).first()
+    if not binding or not binding.account_profile_id:
+        return None
+    return db.get(TestAccountProfile, binding.account_profile_id)
+
+
+def account_profile_summary(profile: TestAccountProfile | None) -> Dict[str, Any]:
+    if not profile:
+        return {"account_profile_id": None, "account_profile_name": ""}
+    return {"account_profile_id": profile.id, "account_profile_name": profile.profile_name}
+
+
+def default_account_profile_for_target(
+    db: Session,
+    target_type: str,
+    target_id: int,
+    project_id: int | None,
+) -> TestAccountProfile | None:
+    if target_type == "functional_case":
+        case_profile = account_binding_profile(db, "functional_case", target_id)
+        if case_profile:
+            return case_profile
+        functional_case = db.get(FunctionalCase, target_id)
+        if functional_case:
+            task_profile = account_binding_profile(db, "functional_task", functional_case.task_id)
+            if task_profile:
+                return task_profile
+    elif target_type in {"functional_task", "ui_case"}:
+        direct_profile = account_binding_profile(db, target_type, target_id)
+        if direct_profile:
+            return direct_profile
+    if project_id is not None:
+        return account_binding_profile(db, "project", project_id)
+    return None
+
+
+def resolve_execution_account(
+    db: Session,
+    payload: FunctionalExecuteRequest | None,
+    target_type: str,
+    target_id: int,
+    project_id: int | None,
+    target_url: str,
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    runtime_vars = dict(payload.variables if payload else {})
+    account_mode = (payload.account_mode if payload else "default") or "default"
+    if account_mode == "none":
+        return runtime_vars, {}
+    profile: TestAccountProfile | None = None
+    if account_mode == "override":
+        if payload and payload.account_profile_id:
+            profile = get_or_404(db, TestAccountProfile, payload.account_profile_id)
+        else:
+            return runtime_vars, {}
+    else:
+        profile = default_account_profile_for_target(db, target_type, target_id, project_id)
+    if not profile:
+        return runtime_vars, {}
+    account_vars, meta = account_profile_variables(db, profile.id, project_id)
+    variables = {**account_vars, **runtime_vars}
+    execution_context = {
+        "login_required": True,
+        "account_profile_id": profile.id,
+        "login_config": meta.get("login_config") or {},
+        "target_url": target_url,
+    }
+    return variables, execution_context
 
 
 def save_test_account_binding(db: Session, target_type: str, target_id: int, account_profile_id: int | None) -> None:
@@ -1006,7 +1233,7 @@ def list_test_accounts(
     query = db.query(TestAccountProfile)
     if project_id is not None:
         ensure_project_exists(db, project_id)
-        query = query.filter(TestAccountProfile.project_id == project_id)
+        query = query.filter(or_(TestAccountProfile.project_id == project_id, TestAccountProfile.project_id.is_(None)))
     if current_user.role != "admin":
         query = query.filter(TestAccountProfile.status == "active")
     return [serialize_account_profile(item) for item in query.order_by(TestAccountProfile.project_id.asc(), TestAccountProfile.id.desc()).all()]
@@ -1024,6 +1251,12 @@ def create_test_account(
         profile_name=data["profile_name"],
         variables=data.get("variables") or "{}",
         sensitive_variables=data.get("sensitive_variables") or "",
+        login_url=data.get("login_url") or "",
+        username_locator=data.get("username_locator") or "",
+        password_locator=data.get("password_locator") or "",
+        submit_locator=data.get("submit_locator") or "",
+        success_url_contains=data.get("success_url_contains") or "",
+        success_selector=data.get("success_selector") or "",
         status=data.get("status") or "active",
         create_time=datetime.now(),
         update_time=None,
@@ -1075,10 +1308,187 @@ def update_test_account_binding(
     target_id = int(data["target_id"])
     project_id = account_target_project_id(db, target_type, target_id)
     profile_id = data.get("account_profile_id")
+    if profile_id is not None:
+        account_profile_variables(db, int(profile_id), project_id)
     save_test_account_binding(db, target_type, target_id, profile_id)
     db.commit()
     profile = db.get(TestAccountProfile, profile_id) if profile_id else None
     return {"profile": serialize_account_profile(profile) if profile else None}
+
+
+# ─── 操作模板库 ──────────────────────────────────────────
+
+
+def _serialize_template(template: ActionTemplate) -> Dict[str, Any]:
+    return {
+        "id": template.id,
+        "project_id": template.project_id,
+        "name": template.name,
+        "description": template.description or "",
+        "trigger_keywords": parse_json_value(template.trigger_keywords, []),
+        "steps": parse_json_value(template.steps, []),
+        "variables": parse_json_value(template.variables, {}),
+        "locator_fallbacks": parse_json_value(template.locator_fallbacks, {}),
+        "create_time": template.create_time.isoformat(),
+    }
+
+
+@app.get("/api/action-templates")
+def list_action_templates(
+    project_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[Dict[str, Any]]:
+    query = db.query(ActionTemplate)
+    if project_id is not None:
+        query = query.filter(ActionTemplate.project_id == project_id)
+    return [_serialize_template(t) for t in query.order_by(ActionTemplate.id.desc()).all()]
+
+
+@app.post("/api/action-templates")
+def create_action_template(
+    payload: ActionTemplateCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    data = schema_data(payload)
+    template = ActionTemplate(
+        project_id=data["project_id"],
+        name=data["name"],
+        description=data.get("description", ""),
+        trigger_keywords=to_json_text(data.get("trigger_keywords", [])),
+        steps=to_json_text(data.get("steps", [])),
+        variables=to_json_text(data.get("variables", {})),
+        locator_fallbacks=to_json_text(data.get("locator_fallbacks", {})),
+        create_time=datetime.now(),
+    )
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return _serialize_template(template)
+
+
+@app.put("/api/action-templates/{template_id}")
+def update_action_template(
+    template_id: int,
+    payload: ActionTemplateUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    template = get_or_404(db, ActionTemplate, template_id)
+    data = schema_data(payload, exclude_unset=True)
+    for field in ["name", "description"]:
+        if field in data:
+            setattr(template, field, data[field])
+    for json_field in ["trigger_keywords", "steps", "variables", "locator_fallbacks"]:
+        if json_field in data:
+            setattr(template, json_field, to_json_text(data[json_field]))
+    db.commit()
+    db.refresh(template)
+    return _serialize_template(template)
+
+
+@app.delete("/api/action-templates/{template_id}")
+def delete_action_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, str]:
+    template = get_or_404(db, ActionTemplate, template_id)
+    db.delete(template)
+    db.commit()
+    return {"message": "deleted"}
+
+
+@app.get("/api/action-templates/{template_id}/test-run")
+def test_run_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    template = get_or_404(db, ActionTemplate, template_id)
+    steps = parse_json_value(template.steps, [])
+    if not steps:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="模板没有步骤")
+    try:
+        from .executors import execute_ui_case
+        ui_case = UiCase(
+            id=0,
+            project_id=template.project_id,
+            case_name=f"[模板测试] {template.name}",
+            page_url="",
+            steps=to_json_text(steps),
+            timeout=30,
+            status="active",
+            create_time=datetime.now(),
+        )
+        passed, log_text, screenshot_path, report_path = execute_ui_case(ui_case, {})
+        return {"passed": passed, "log": log_text, "screenshot": screenshot_path}
+    except Exception as exc:
+        return {"passed": False, "log": str(exc), "screenshot": ""}
+
+
+# ─── Locator 自愈记录 ─────────────────────────────────────
+
+
+@app.get("/api/locator-heal-logs")
+def list_heal_logs(
+    case_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[Dict[str, Any]]:
+    query = db.query(LocatorHealLog)
+    if case_id is not None:
+        query = query.filter(LocatorHealLog.case_id == case_id)
+    return [
+        {
+            "id": log.id,
+            "case_id": log.case_id,
+            "old_locator": log.old_locator,
+            "new_locator": log.new_locator,
+            "page_url": log.page_url or "",
+            "screenshot_path": log.screenshot_path or "",
+            "confirmed": log.confirmed,
+            "create_time": log.create_time.isoformat(),
+        }
+        for log in query.order_by(LocatorHealLog.id.desc()).limit(100).all()
+    ]
+
+
+@app.put("/api/locator-heal-logs/{log_id}")
+def confirm_heal_log(
+    log_id: int,
+    payload: LocatorHealLogConfirm,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    log = get_or_404(db, LocatorHealLog, log_id)
+    log.confirmed = payload.confirmed
+    db.commit()
+    return {"message": "updated"}
+
+
+# ─── 执行前预检 ──────────────────────────────────────────
+
+
+@app.post("/api/functional-cases/{case_id}/preflight")
+def preflight_check_case(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PreflightResult:
+    functional_case = get_or_404(db, FunctionalCase, case_id)
+    if not functional_case.ui_case_id:
+        return PreflightResult(passed=False, errors=["该用例未关联 UI 步骤，无法执行"])
+    ui_case = db.get(UiCase, functional_case.ui_case_id)
+    if not ui_case:
+        return PreflightResult(passed=False, errors=["关联的 UI 用例不存在"])
+    try:
+        from .executors import preflight_check
+        errors, warnings = preflight_check(ui_case)
+        return PreflightResult(passed=len(errors) == 0, errors=errors, warnings=warnings)
+    except Exception as exc:
+        return PreflightResult(passed=False, errors=[str(exc)])
 
 
 @app.get("/api/envs")
@@ -1090,7 +1500,7 @@ def list_envs(
     query = db.query(Env)
     if project_id is not None:
         query = query.filter(Env.project_id == project_id)
-    return serialize_many(query.order_by(Env.id.desc()).all())
+    return serialize_many(query.order_by(Env.id.asc()).all())
 
 
 @app.post("/api/envs")
@@ -1493,7 +1903,12 @@ def list_ui_cases(
     query = db.query(UiCase)
     if project_id is not None:
         query = query.filter(UiCase.project_id == project_id)
-    return serialize_many(query.order_by(UiCase.id.desc()).all())
+    rows = []
+    for case in query.order_by(UiCase.id.desc()).all():
+        item = serialize(case)
+        item.update(account_profile_summary(default_account_profile_for_target(db, "ui_case", case.id, case.project_id)))
+        rows.append(item)
+    return rows
 
 
 @app.post("/api/ui-cases")
@@ -1537,6 +1952,38 @@ def delete_ui_case(case_id: int, db: Session = Depends(get_db), current_user: Us
     return {"message": "deleted"}
 
 
+@app.post("/api/ui-cases/{case_id}/heal-steps")
+def heal_ui_case_steps(
+    case_id: int,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    """接受执行日志中的 healing 建议，更新用例的 locator"""
+    case = get_or_404(db, UiCase, case_id)
+    heal_map = payload.get("heal_map")
+    if not isinstance(heal_map, dict):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="heal_map 必须是对象")
+    current_steps = parse_json_value(case.steps, [])
+    if not isinstance(current_steps, list):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用例步骤格式不正确")
+    updated_count = 0
+    for step in current_steps:
+        if not isinstance(step, dict):
+            continue
+        step_locator = step.get("locator", "")
+        for old_locator, new_locator in heal_map.items():
+            if step_locator == old_locator:
+                step["locator"] = new_locator
+                step["healed_at"] = datetime.now().isoformat()
+                updated_count += 1
+    if updated_count:
+        case.steps = to_json_text(current_steps, [])
+        db.commit()
+        db.refresh(case)
+    return {"updated_count": updated_count, "case": serialize(case)}
+
+
 @app.post("/api/ui-cases/{case_id}/execute")
 def run_ui_case(
     case_id: int,
@@ -1545,7 +1992,8 @@ def run_ui_case(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     case = get_or_404(db, UiCase, case_id)
-    passed, log_text, screenshot_path, report_path = execute_ui_case(case, payload.variables if payload else {})
+    variables, execution_context = resolve_execution_account(db, payload, "ui_case", case.id, case.project_id, case.page_url)
+    passed, log_text, screenshot_path, report_path = execute_ui_case(case, variables, execution_context)
     record = save_ui_record(db, case, passed, log_text, report_path, screenshot_path)
     return serialize(record)
 
@@ -1606,6 +2054,7 @@ def create_functional_task(
         project_id=data["project_id"],
         iteration_name=data["iteration_name"].strip(),
         requirement_text=data.get("requirement_text") or "",
+        context=data.get("context") or "",
         axure_path="",
         target_url=data["target_url"].strip(),
         status=data.get("status") or "draft",
@@ -1622,6 +2071,22 @@ def create_functional_task(
 @app.get("/api/functional-tasks/{task_id}")
 def get_functional_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     return functional_task_detail(db, get_or_404(db, FunctionalTask, task_id))
+
+
+@app.put("/api/functional-tasks/{task_id}/context")
+def update_functional_task_context(
+    task_id: int,
+    payload: FunctionalTaskContextUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    data = schema_data(payload)
+    task.context = (data.get("context") or "").strip()
+    db.commit()
+    db.refresh(task)
+    return functional_task_detail(db, task)
+
 
 @app.delete("/api/functional-tasks/{task_id}")
 def delete_functional_task(
@@ -1691,6 +2156,42 @@ async def upload_functional_screenshot(
     db.commit()
     db.refresh(screenshot)
     return {"screenshot": serialize(screenshot), "task": functional_task_detail(db, task)}
+
+
+@app.post("/api/functional-tasks/{task_id}/upload-screenshots")
+async def upload_functional_screenshots_batch(
+    task_id: int,
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    uploaded: list[Dict[str, Any]] = []
+    errors: list[str] = []
+    for file in files:
+        content = await file.read()
+        if not content:
+            errors.append(f"{file.filename}: 文件为空")
+            continue
+        try:
+            image_path = store_functional_screenshot_file(file.filename or "screenshot.png", content)
+        except ValueError as exc:
+            errors.append(f"{file.filename}: {exc}")
+            continue
+        screenshot = FunctionalScreenshot(
+            task_id=task.id,
+            image_path=image_path,
+            analysis_result="",
+            create_time=datetime.now(),
+        )
+        task.status = "screenshot_uploaded"
+        db.add(screenshot)
+        db.commit()
+        db.refresh(screenshot)
+        uploaded.append(serialize(screenshot))
+    if not uploaded and errors:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="；".join(errors[:5]))
+    return {"uploaded": uploaded, "errors": errors, "task": functional_task_detail(db, task)}
 
 
 @app.get("/api/functional-screenshots/{screenshot_id}/file")
@@ -1785,15 +2286,23 @@ def scan_functional_page(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     task = get_or_404(db, FunctionalTask, task_id)
+    scanned: Dict[str, Any] = {}
     try:
         auth_config = schema_data(payload.auth, exclude_unset=True) if payload and payload.auth else None
         scanned = scan_page_dom(task.target_url, auth=auth_config)
-    except Exception as exc:
-        trace = getattr(exc, "trace", None)
+    except FunctionalScanError as exc:
+        trace = getattr(exc, "trace", None) or scanned.get("scan_trace", [])
         detail = str(exc)
         if trace:
             detail = f"{detail}\n\n扫描过程：\n" + "\n".join(f"- {item}" for item in trace)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
+    except Exception as exc:
+        trace = scanned.get("scan_trace", [])
+        detail = f"扫描异常中断：{exc}"
+        if trace:
+            detail += "\n\n扫描过程：\n" + "\n".join(f"- {item}" for item in trace)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
+
     snapshot = PageSnapshot(
         task_id=task.id,
         page_url=task.target_url,
@@ -1801,13 +2310,191 @@ def scan_functional_page(
         screenshot_path=scanned["screenshot_path"],
         scan_time=datetime.now(),
     )
+    # 即使部分失败也保存已获取的数据
     task.status = "scanned"
     db.add(snapshot)
     db.commit()
     db.refresh(snapshot)
     data = serialize(snapshot)
     data["scan_trace"] = scanned.get("scan_trace", [])
+    # 传递错误步骤信息以便前端展示
+    dom_data = json.loads(scanned.get("dom_summary", "{}"))
+    if dom_data.get("error_step"):
+        data["scan_error_step"] = dom_data["error_step"]
+        data["scan_error"] = dom_data.get("error", "")
     return data
+
+
+def ui_steps_have_strong_assertion(steps: Any) -> bool:
+    parsed = parse_json_value(steps, steps)
+    if isinstance(parsed, str):
+        parsed = parse_json_value(parsed, [])
+    if not isinstance(parsed, list):
+        return False
+    strong_actions = {"assert_url", "assert_visible", "assert_value", "text_assert"}
+    for step in parsed:
+        if not isinstance(step, dict):
+            continue
+        if step.get("action") in strong_actions:
+            return True
+        if step.get("success_condition") or step.get("assertions"):
+            return True
+    return False
+
+
+@app.post("/api/functional-tasks/{task_id}/quick-start")
+def quick_start_functional_task(
+    task_id: int,
+    payload: FunctionalScanRequest | None = Body(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    """
+    一键快速开始：扫描页面 → 生成测试用例 → 生成UI步骤 → 自动确认
+    
+    将原本需要 5-8 步的操作合并为一步。
+    返回完整任务详情 + 每个步骤的执行状态。
+    """
+    task = get_or_404(db, FunctionalTask, task_id)
+    steps_status = {}
+
+    # ─── 步骤 1：扫描页面（带超时保护）─────────────────
+    try:
+        auth_config = schema_data(payload.auth, exclude_unset=True) if payload and payload.auth else None
+        # 如果目标 URL 明显不可达（如 example.com），跳过扫描减少等待
+        skip_scan = any(domain in task.target_url.lower() for domain in ["example.com", "test.com", "localhost", "127.0.0.1"])
+        if skip_scan:
+            steps_status["scan"] = {"ok": False, "error": "目标URL不可达，跳过扫描", "skipped": True}
+        else:
+            # 带超时的扫描
+            scanned_holder = {}
+            def do_scan():
+                scanned_holder["result"] = scan_page_dom(task.target_url, timeout=15, auth=auth_config)
+            t = threading.Thread(target=do_scan, daemon=True)
+            t.start()
+            t.join(timeout=25)
+            if t.is_alive():
+                steps_status["scan"] = {"ok": False, "error": "扫描超时（25s），已跳过"}
+            else:
+                scanned = scanned_holder.get("result")
+                if scanned:
+                    snapshot = PageSnapshot(
+                        task_id=task.id,
+                        page_url=task.target_url,
+                        dom_summary=scanned["dom_summary"],
+                        screenshot_path=scanned["screenshot_path"],
+                        scan_time=datetime.now(),
+                    )
+                    db.add(snapshot)
+                    db.flush()
+                    steps_status["scan"] = {"ok": True, "snapshot_id": snapshot.id}
+                    task.status = "scanned"
+                    db.commit()
+    except Exception as exc:
+        db.rollback()
+        steps_status["scan"] = {"ok": False, "error": str(exc)[:300]}
+        # 即使扫描失败也继续生成
+
+    # ─── 步骤 2：生成测试用例 ─────────────────────────
+    try:
+        task = get_or_404(db, FunctionalTask, task_id)
+        axure_text = read_axure_text(task.axure_path)
+        latest_snapshot = db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).first()
+        screenshots = db.query(FunctionalScreenshot).filter(FunctionalScreenshot.task_id == task.id).order_by(FunctionalScreenshot.id.asc()).all()
+        notes = db.query(FunctionalRequirementNote).filter(FunctionalRequirementNote.task_id == task.id).order_by(FunctionalRequirementNote.id.asc()).all()
+        generated = generate_functional_cases(task, axure_text, latest_snapshot, latest_ai_config(db), screenshots, notes)
+
+        # 删除旧的未确认用例
+        for old_case in db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id, FunctionalCase.automation_status != "approved").all():
+            db.delete(old_case)
+        db.flush()
+
+        for item in generated.items:
+            db.add(FunctionalCase(
+                task_id=task.id,
+                title=item["title"],
+                precondition=item.get("precondition", ""),
+                steps=item.get("steps", ""),
+                expected=item.get("expected", ""),
+                priority=item.get("priority", "P1"),
+                automation_status="draft",
+                ui_case_id=None,
+                create_time=datetime.now(),
+            ))
+        db.flush()
+        steps_status["generate_cases"] = {"ok": True, "count": len(generated.items), "source": generated.source}
+        task.status = "cases_generated"
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        steps_status["generate_cases"] = {"ok": False, "error": str(exc)[:300]}
+
+    # ─── 步骤 3：生成 UI 步骤 + 自动确认 ──────────────
+    task = get_or_404(db, FunctionalTask, task_id)
+    cases = db.query(FunctionalCase).filter(
+        FunctionalCase.task_id == task.id,
+        FunctionalCase.automation_status.in_(["draft", "ui_steps_generated"]),
+    ).order_by(FunctionalCase.id.asc()).all()
+
+    ui_generated_count = 0
+    ui_failed_count = 0
+    latest_snapshot = db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).first()
+
+    for fc in cases:
+        try:
+            generated_ui = generate_ui_steps(fc, task, latest_snapshot, latest_ai_config(db))
+            steps_text = to_json_text(generated_ui.items, [])
+            if fc.ui_case_id:
+                ui_case = db.get(UiCase, fc.ui_case_id)
+                if ui_case:
+                    ui_case.case_name = fc.title
+                    ui_case.page_url = task.target_url
+                    ui_case.steps = steps_text
+                else:
+                    fc.ui_case_id = None
+            if not fc.ui_case_id:
+                ui_case = UiCase(
+                    project_id=task.project_id,
+                    case_name=fc.title,
+                    page_url=task.target_url,
+                    steps=steps_text,
+                    timeout=30,
+                    status="active",
+                    create_time=datetime.now(),
+                )
+                db.add(ui_case)
+                db.flush()
+                fc.ui_case_id = ui_case.id
+            # 只有具备业务断言的步骤才自动确认；否则保留待人工确认，避免假阳性。
+            fc.automation_status = "approved" if ui_steps_have_strong_assertion(generated_ui.items) else "ui_steps_generated"
+            ui_generated_count += 1
+        except Exception as exc:
+            fc.automation_status = "draft"
+            ui_failed_count += 1
+
+    approved_count = sum(1 for item in cases if item.automation_status == "approved")
+    if approved_count > 0:
+        task.status = "approved"
+    elif ui_generated_count > 0:
+        task.status = "ui_steps_generated"
+    db.commit()
+
+    steps_status["generate_ui"] = {
+        "ok": ui_failed_count == 0,
+        "total": len(cases),
+        "generated": ui_generated_count,
+        "approved": approved_count,
+        "needs_review": max(ui_generated_count - approved_count, 0),
+        "failed": ui_failed_count,
+    }
+
+    return {
+        "task": functional_task_detail(db, task),
+        "steps": steps_status,
+        "summary": f"扫描{'✅' if steps_status.get('scan',{}).get('ok') else '❌'} → "
+                   f"生成用例{'✅' if steps_status.get('generate_cases',{}).get('ok') else '❌'} → "
+                   f"生成步骤{'✅' if steps_status.get('generate_ui',{}).get('ok') else '❌'}",
+    }
 
 
 @app.post("/api/functional-tasks/{task_id}/generate-cases")
@@ -1848,7 +2535,8 @@ def generate_functional_task_cases(
         )
     task.status = "cases_generated"
     db.commit()
-    return {"source": generated.source, "warning": generated.warning, "task": functional_task_detail(db, task)}
+    result = {"source": generated.source, "warning": generated.warning, "task": functional_task_detail(db, task)}
+    return result
 
 
 @app.put("/api/functional-cases/{case_id}")
@@ -1866,6 +2554,69 @@ def update_functional_case(
     db.commit()
     db.refresh(case)
     return serialize(case)
+
+
+@app.put("/api/functional-cases/{case_id}/status")
+def update_functional_case_status(
+    case_id: int,
+    payload: FunctionalCaseStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    """更新单个用例的测试执行状态"""
+    case = get_or_404(db, FunctionalCase, case_id)
+    valid_statuses = {"untested", "passed", "failed", "blocked", "skipped"}
+    if payload.test_result not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"无效的状态值，可选: {', '.join(sorted(valid_statuses))}")
+    case.test_result = payload.test_result
+    db.commit()
+    db.refresh(case)
+    return serialize(case)
+
+
+@app.post("/api/functional-tasks/{task_id}/cases/batch-status")
+def batch_update_functional_case_status(
+    task_id: int,
+    payload: FunctionalCaseBatchStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    """批量更新用例的测试执行状态"""
+    get_or_404(db, FunctionalTask, task_id)
+    valid_statuses = {"untested", "passed", "failed", "blocked", "skipped"}
+    if payload.test_result not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"无效的状态值，可选: {', '.join(sorted(valid_statuses))}")
+    updated = (
+        db.query(FunctionalCase)
+        .filter(FunctionalCase.task_id == task_id, FunctionalCase.id.in_(payload.case_ids))
+        .update({"test_result": payload.test_result}, synchronize_session="fetch")
+    )
+    db.commit()
+    return {"updated": updated, "test_result": payload.test_result}
+
+
+@app.get("/api/functional-tasks/{task_id}/cases/stats")
+def get_functional_case_stats(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> FunctionalCaseStats:
+    """获取任务的用例状态统计"""
+    get_or_404(db, FunctionalTask, task_id)
+    total = db.query(FunctionalCase).filter(FunctionalCase.task_id == task_id).count()
+    counts = {row[0]: row[1] for row in
+              db.query(FunctionalCase.test_result, func.count(FunctionalCase.id))
+              .filter(FunctionalCase.task_id == task_id)
+              .group_by(FunctionalCase.test_result)
+              .all()}
+    return FunctionalCaseStats(
+        total=total,
+        untested=counts.get("untested", 0),
+        passed=counts.get("passed", 0),
+        failed=counts.get("failed", 0),
+        blocked=counts.get("blocked", 0),
+        skipped=counts.get("skipped", 0),
+    )
 
 
 @app.post("/api/functional-cases/{case_id}/generate-ui-steps")
@@ -1908,7 +2659,12 @@ def generate_functional_case_ui_steps(
     return {"source": generated.source, "warning": generated.warning, "case": serialize(case), "steps": generated.items}
 
 
-def execute_functional_case_for_run(db: Session, functional_case: FunctionalCase, variables: Dict[str, Any]) -> tuple[Dict[str, Any], int, int]:
+def execute_functional_case_for_run(
+    db: Session,
+    functional_case: FunctionalCase,
+    variables: Dict[str, Any],
+    payload: FunctionalExecuteRequest | None = None,
+) -> tuple[Dict[str, Any], int, int]:
     ui_case = db.get(UiCase, functional_case.ui_case_id) if functional_case.ui_case_id else None
     if not ui_case:
         return (
@@ -1921,8 +2677,17 @@ def execute_functional_case_for_run(db: Session, functional_case: FunctionalCase
             0,
             1,
         )
+    case_variables, execution_context = resolve_execution_account(
+        db,
+        payload,
+        "functional_case",
+        functional_case.id,
+        ui_case.project_id,
+        ui_case.page_url,
+    )
+    case_variables = {**variables, **case_variables}
     try:
-        passed, log_text, screenshot_path, report_path = execute_ui_case(ui_case, variables)
+        passed, log_text, screenshot_path, report_path = execute_ui_case(ui_case, case_variables, execution_context)
     except Exception as exc:
         passed = False
         screenshot_path = ""
@@ -1952,6 +2717,33 @@ def execute_functional_case_for_run(db: Session, functional_case: FunctionalCase
         1 if passed else 0,
         0 if passed else 1,
     )
+
+
+def execute_functional_case_for_run_isolated(
+    functional_case_id: int,
+    variables: Dict[str, Any],
+    payload_data: Dict[str, Any] | None = None,
+) -> tuple[Dict[str, Any], int, int]:
+    from .database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        functional_case = db.get(FunctionalCase, functional_case_id)
+        if not functional_case:
+            return (
+                {
+                    "functional_case_id": functional_case_id,
+                    "title": f"#{functional_case_id}",
+                    "result": "failed",
+                    "error": "功能用例不存在",
+                },
+                0,
+                1,
+            )
+        payload = FunctionalExecuteRequest(**payload_data) if payload_data else None
+        return execute_functional_case_for_run(db, functional_case, variables, payload)
+    finally:
+        db.close()
 
 
 def save_functional_run(
@@ -1986,25 +2778,8 @@ def save_functional_run(
     return run
 
 
-@app.post("/api/functional-cases/{case_id}/execute")
-def execute_functional_case(
-    case_id: int,
-    payload: FunctionalExecuteRequest | None = Body(default=None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
-    functional_case = get_or_404(db, FunctionalCase, case_id)
-    task = get_or_404(db, FunctionalTask, functional_case.task_id)
-    if functional_case.automation_status != "approved" or not functional_case.ui_case_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该用例未确认或还没有生成UI步骤")
-    variables = payload.variables if payload else {}
-    record, passed_count, failed_count = execute_functional_case_for_run(db, functional_case, variables)
-    run = save_functional_run(db, task, variables, [record], passed_count, failed_count)
-    return serialize(run)
-
-
-@app.post("/api/functional-tasks/{task_id}/execute")
-def execute_functional_task(
+@app.post("/api/functional-tasks/{task_id}/execute-async")
+def execute_functional_task_async(
     task_id: int,
     payload: FunctionalExecuteRequest | None = Body(default=None),
     db: Session = Depends(get_db),
@@ -2012,26 +2787,194 @@ def execute_functional_task(
 ) -> Dict[str, Any]:
     task = get_or_404(db, FunctionalTask, task_id)
     variables = payload.variables if payload else {}
-    cases = (
-        db.query(FunctionalCase)
-        .filter(FunctionalCase.task_id == task.id, FunctionalCase.automation_status == "approved", FunctionalCase.ui_case_id.isnot(None))
-        .order_by(FunctionalCase.id.asc())
-        .all()
+    cases_query = db.query(FunctionalCase).filter(
+        FunctionalCase.task_id == task.id,
+        FunctionalCase.automation_status == "approved",
+        FunctionalCase.ui_case_id.isnot(None),
     )
+    if payload and payload.case_id:
+        cases_query = cases_query.filter(FunctionalCase.id == payload.case_id)
+    cases = cases_query.order_by(FunctionalCase.id.asc()).all()
     if not cases:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="没有已确认且可执行的UI步骤")
 
-    records = []
-    passed_count = 0
-    failed_count = 0
-    for functional_case in cases:
-        record, case_passed_count, case_failed_count = execute_functional_case_for_run(db, functional_case, variables)
-        records.append(record)
-        passed_count += case_passed_count
-        failed_count += case_failed_count
+    # 1) 先创建 run 记录，标记为 running
+    initial_log = {
+        "task_id": task.id,
+        "task": task.iteration_name,
+        "variables": {key: ("***" if "password" in str(key).lower() else value) for key, value in variables.items()},
+        "records": [],
+        "passed_count": 0,
+        "failed_count": 0,
+        "total": len(cases),
+        "completed": 0,
+        "current_case_title": "初始化执行器...",
+    }
+    run = FunctionalRun(
+        task_id=task.id,
+        result="running",
+        log=json.dumps(initial_log, ensure_ascii=False, indent=2, default=str),
+        passed_count=0,
+        failed_count=0,
+        execute_time=datetime.now(),
+    )
+    db.add(run)
+    db.commit()
+    db.refresh(run)
 
-    run = save_functional_run(db, task, variables, records, passed_count, failed_count)
-    return serialize(run)
+    # 2) 后台线程执行
+    run_id = run.id
+    payload_data = schema_data(payload) if payload else None
+    payload_case_id = payload_data.get("case_id") if payload_data else None
+
+    def _background_execute():
+        import concurrent.futures
+        from .database import SessionLocal
+
+        bg_db = SessionLocal()
+        try:
+            bg_task = bg_db.query(FunctionalTask).filter(FunctionalTask.id == task_id).first()
+            bg_run = bg_db.query(FunctionalRun).filter(FunctionalRun.id == run_id).first()
+            if not bg_task or not bg_run:
+                return
+
+            bg_cases_query = bg_db.query(FunctionalCase).filter(
+                FunctionalCase.task_id == task_id,
+                FunctionalCase.automation_status == "approved",
+                FunctionalCase.ui_case_id.isnot(None),
+            )
+            if payload_case_id:
+                bg_cases_query = bg_cases_query.filter(FunctionalCase.id == payload_case_id)
+            bg_cases = bg_cases_query.order_by(FunctionalCase.id.asc()).all()
+
+            gathered_records: list[Dict[str, Any]] = []
+            total_passed = 0
+            total_failed = 0
+            _cached_vars = dict(variables)
+
+            for idx, fc in enumerate(bg_cases):
+                # 更新进度：正在执行（先写入状态，让前端能看到）
+                bg_run.log = json.dumps({
+                    **json.loads(bg_run.log or "{}"),
+                    "current_case_title": fc.title,
+                    "completed": idx,
+                }, ensure_ascii=False, default=str)
+                bg_db.commit()
+
+                exec_start = datetime.now()
+                record: Dict[str, Any] = {}
+                case_passed = 0
+                case_failed = 1
+
+                # 每个 case 带超时（默认 60s，防止无限卡死）
+                case_timeout = max((fc.steps or "").count('"action"') * 10 if fc.steps else 30, 60)
+
+                # 每个 case 使用独立 DB session，避免跨线程复用 SQLAlchemy Session。
+                pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                fut = pool.submit(execute_functional_case_for_run_isolated, fc.id, _cached_vars, payload_data)
+                try:
+                    result_tuple = fut.result(timeout=case_timeout)
+                    if result_tuple:
+                        record, case_passed, case_failed = result_tuple
+                    pool.shutdown(wait=True, cancel_futures=True)
+                except concurrent.futures.TimeoutError:
+                    fut.cancel()
+                    pool.shutdown(wait=False, cancel_futures=True)
+                    elapsed_ms = int((datetime.now() - exec_start).total_seconds() * 1000)
+                    record = {
+                        "case_id": fc.id, "title": fc.title,
+                        "result": "failed", "status": "timeout",
+                        "error": f"执行超时 ({case_timeout}s)",
+                        "duration_ms": elapsed_ms,
+                    }
+                except Exception as exc:
+                    pool.shutdown(wait=False, cancel_futures=True)
+                    record = {
+                        "case_id": fc.id, "title": fc.title,
+                        "result": "failed", "status": "error",
+                        "error": str(exc), "duration_ms": 0,
+                    }
+
+                gathered_records.append(record)
+                total_passed += case_passed
+                total_failed += case_failed
+
+                # 更新进度：执行完成
+                bg_run.log = json.dumps({
+                    **json.loads(bg_run.log or "{}"),
+                    "records": gathered_records,
+                    "passed_count": total_passed,
+                    "failed_count": total_failed,
+                    "completed": idx + 1,
+                    "current_case_title": fc.title if case_failed == 0 else fc.title + " ❌",
+                }, ensure_ascii=False, default=str)
+                bg_run.passed_count = total_passed
+                bg_run.failed_count = total_failed
+                bg_db.commit()
+
+            final_result = "passed" if total_failed == 0 else "failed"
+            bg_run.result = final_result
+            bg_run.log = json.dumps({
+                **json.loads(bg_run.log or "{}"),
+                "current_case_title": "执行完毕",
+                "status": final_result,
+            }, ensure_ascii=False, default=str)
+            bg_task.status = final_result
+            bg_db.commit()
+        except Exception:
+            import traceback
+            try:
+                error_run = bg_db.query(FunctionalRun).filter(FunctionalRun.id == run_id).first()
+                if error_run:
+                    error_run.result = "error"
+                    error_run.log = json.dumps({
+                        **json.loads(error_run.log or "{}"),
+                        "current_case_title": "执行异常",
+                        "status": "error",
+                        "error": traceback.format_exc(),
+                    }, ensure_ascii=False, default=str)
+                    bg_db.commit()
+            except Exception:
+                pass
+        finally:
+            bg_db.close()
+
+    thread = threading.Thread(target=_background_execute, daemon=True)
+    thread.start()
+
+    return {
+        "job_id": run.id,
+        "status": "running",
+        "total": len(cases),
+        "completed": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "current_case_title": "启动中...",
+        "records": [],
+        "task_name": task.iteration_name,
+    }
+
+
+@app.get("/api/functional-executions/{job_id}")
+def get_functional_execution(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    run = get_or_404(db, FunctionalRun, job_id)
+    log_data = parse_json_value(run.log, {})
+    return {
+        "job_id": run.id,
+        "status": run.result,
+        "total": log_data.get("total", 0),
+        "completed": log_data.get("completed", 0),
+        "passed_count": run.passed_count,
+        "failed_count": run.failed_count,
+        "current_case_title": log_data.get("current_case_title", ""),
+        "records": log_data.get("records", []),
+        "task_name": log_data.get("task", ""),
+        "error": log_data.get("error", None),
+    }
 
 
 @app.post("/api/functional-runs/{run_id}/diagnose")
@@ -2047,6 +2990,177 @@ def diagnose_functional_run(run_id: int, db: Session = Depends(get_db), current_
     db.commit()
     db.refresh(run)
     return {"run": serialize(run), "diagnosis": diagnosis}
+
+
+@app.post("/api/functional-runs/{run_id}/heal")
+def heal_functional_run_steps(
+    run_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    """从执行日志提取 healed locator，批量更新关联 UI 用例"""
+    run = get_or_404(db, FunctionalRun, run_id)
+    run_log = parse_json_value(run.log, {})
+    records = run_log.get("records") if isinstance(run_log.get("records"), list) else []
+    heal_map: Dict[str, str] = {}
+    updated_cases: list[int] = []
+
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        ui_log = parse_json_value(record.get("log"), {})
+        step_logs = ui_log.get("step_logs") if isinstance(ui_log.get("step_logs"), list) else []
+        for step in step_logs:
+            if isinstance(step, dict) and step.get("healed") and step.get("original_locator") and step.get("suggested_locator"):
+                old_loc = step.get("original_locator")
+                new_loc = step.get("suggested_locator")
+                if old_loc and new_loc and old_loc != new_loc:
+                    heal_map[old_loc] = new_loc
+        case_id = record.get("case_id") or ui_log.get("case_id")
+        if case_id and heal_map:
+            try:
+                case = db.get(UiCase, case_id)
+                if case:
+                    current_steps = parse_json_value(case.steps, [])
+                    updated = 0
+                    for step in current_steps:
+                        if isinstance(step, dict):
+                            step_locator = step.get("locator", "")
+                            for old_loc, new_loc in heal_map.items():
+                                if step_locator == old_loc:
+                                    step["locator"] = new_loc
+                                    step["healed_at"] = datetime.now().isoformat()
+                                    updated += 1
+                    if updated:
+                        case.steps = to_json_text(current_steps, [])
+                        updated_cases.append(case.id)
+            except Exception:
+                continue
+
+    if updated_cases:
+        db.commit()
+
+    return {
+        "heal_map": heal_map,
+        "updated_cases": updated_cases,
+        "updated_count": len(heal_map),
+    }
+
+
+PROXY_ALLOWED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+PROXY_ALLOW_PRIVATE_URLS = os.getenv("ALLOW_PROXY_PRIVATE_URLS", "").strip().lower() in {"1", "true", "yes", "on"}
+PROXY_MAX_REDIRECTS = 5
+
+
+def proxy_ip_is_blocked(ip_value: str) -> bool:
+    ip = ipaddress.ip_address(ip_value)
+    return any(
+        (
+            ip.is_loopback,
+            ip.is_private,
+            ip.is_link_local,
+            ip.is_reserved,
+            ip.is_multicast,
+            ip.is_unspecified,
+        )
+    )
+
+
+def validate_proxy_target(method: str, url: str) -> None:
+    if method not in PROXY_ALLOWED_METHODS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不支持的请求方法")
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="仅支持 HTTP/HTTPS URL")
+    if not parsed.hostname:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="URL host 不能为空")
+    if PROXY_ALLOW_PRIVATE_URLS:
+        return
+
+    hostname = parsed.hostname.rstrip(".").lower()
+    if hostname in {"localhost", "localhost.localdomain"} or hostname.endswith(".localhost") or hostname.endswith(".local"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="代理请求禁止访问本机或内网地址")
+
+    try:
+        if proxy_ip_is_blocked(hostname):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="代理请求禁止访问本机或内网地址")
+        return
+    except ValueError:
+        pass
+
+    try:
+        resolved = socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == "https" else 80), type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        return
+    for item in resolved:
+        address = item[4][0]
+        try:
+            if proxy_ip_is_blocked(address):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="代理请求禁止访问本机或内网地址")
+        except ValueError:
+            continue
+
+
+def guarded_proxy_request(method: str, url: str, headers: Dict[str, Any], body: str, timeout: int) -> requests.Response:
+    current_method = method
+    current_url = url
+    current_body = body
+    for _ in range(PROXY_MAX_REDIRECTS + 1):
+        validate_proxy_target(current_method, current_url)
+        response = requests.request(
+            current_method,
+            current_url,
+            headers=headers,
+            data=current_body,
+            timeout=timeout,
+            allow_redirects=False,
+        )
+        if not response.is_redirect:
+            return response
+        location = response.headers.get("Location")
+        if not location:
+            return response
+        current_url = urljoin(current_url, location)
+        if response.status_code in {301, 302, 303}:
+            current_method = "GET"
+            current_body = ""
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="重定向次数过多")
+
+
+@app.post("/api/proxy/request")
+def proxy_http_request(
+    payload: QuickRunRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    method = payload.method.upper().strip()
+    url = payload.url.strip()
+    if not url:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="URL不能为空")
+    headers = dict(payload.headers or {})
+    body = payload.body or ""
+    start = time.time()
+    try:
+        resp = guarded_proxy_request(method, url, headers, body, timeout=30)
+    except HTTPException:
+        raise
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="请求超时（30s）")
+    except requests.exceptions.ConnectionError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"连接失败: {exc}")
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    elapsed = int((time.time() - start) * 1000)
+    content_type = resp.headers.get("Content-Type", "")
+    body_text = resp.text
+    preview = body_text[:5000]
+    return {
+        "status_code": resp.status_code,
+        "headers": dict(resp.headers),
+        "body_preview": preview,
+        "body_truncated": len(body_text) > 5000,
+        "elapsed_ms": elapsed,
+    }
 
 
 @app.get("/api/test-records")

@@ -6,6 +6,7 @@ from datetime import datetime
 from html import unescape
 import json
 import mimetypes
+import os
 from pathlib import Path
 import re
 import time
@@ -285,68 +286,6 @@ def selected_axure_text(task: FunctionalTask) -> str:
     return "\n\n".join(parts)
 
 
-def evaluate_material_quality(
-    task: FunctionalTask,
-    axure_text: str,
-    snapshot: PageSnapshot | None = None,
-    screenshots: Iterable[FunctionalScreenshot] | None = None,
-    notes: Iterable[FunctionalRequirementNote] | None = None,
-) -> Dict[str, Any]:
-    screenshot_items = list(screenshots or [])
-    note_items = list(notes or [])
-    pages = _json_list(getattr(task, "axure_pages", "") or "")
-    selected_ids = _json_list(getattr(task, "bound_axure_pages", "") or "")
-    analyzed_screenshots = [item for item in screenshot_items if getattr(item, "analysis_result", "")]
-    notes_text_len = sum(len(getattr(item, "note_text", "") or "") for item in note_items)
-    dom_text_len = len(snapshot.dom_summary or "") if snapshot else 0
-
-    def status(label: str, detail: str, suggestion: str = "") -> Dict[str, str]:
-        return {"status": label, "detail": detail, "suggestion": suggestion}
-
-    axure_status = status(
-        "缺失",
-        "未上传或未解析到 Axure 页面",
-        "上传 Axure HTML 导出包，或上传截图/补充需求",
-    )
-    if pages:
-        if selected_ids and len(axure_text) >= 300:
-            axure_status = status("充分", f"已绑定 {len(selected_ids)} 个 Axure 页面")
-        elif selected_ids:
-            axure_status = status("不足", "已绑定页面，但可用文本较少", "建议补充截图或需求说明")
-        else:
-            axure_status = status("不足", f"识别到 {len(pages)} 个页面，但未绑定本次迭代页面", "请勾选本次要测试的 Axure 页面")
-
-    screenshot_status = status("缺失", "未上传产品截图", "可上传关键页面截图或流程截图")
-    if screenshot_items:
-        if analyzed_screenshots:
-            screenshot_status = status("充分", f"已上传 {len(screenshot_items)} 张截图，已识别 {len(analyzed_screenshots)} 张")
-        else:
-            screenshot_status = status("不足", f"已上传 {len(screenshot_items)} 张截图但未识别", "点击识别截图后再生成测试点")
-
-    dom_status = status("缺失", "未扫描真实页面 DOM", "建议先扫描页面，提高 UI 步骤定位准确率")
-    if snapshot:
-        dom_status = status("充分" if dom_text_len >= 1000 else "不足", "已扫描真实页面 DOM")
-
-    note_status = status("缺失", "未补充产品沟通后的规则", "复杂业务规则建议手动补充")
-    if note_items:
-        note_status = status("充分" if notes_text_len >= 30 else "不足", f"已有 {len(note_items)} 条补充需求")
-
-    sufficient_count = sum(1 for item in [axure_status, screenshot_status, dom_status, note_status] if item["status"] == "充分")
-    missing_count = sum(1 for item in [axure_status, screenshot_status, dom_status, note_status] if item["status"] == "缺失")
-    overall = "充分" if sufficient_count >= 2 and note_status["status"] != "缺失" else ("不足" if missing_count < 4 else "缺失")
-    if overall != "充分" and screenshot_status["status"] == "充分" and note_status["status"] == "缺失":
-        overall = "需人工确认"
-    return {
-        "overall": overall,
-        "axure": axure_status,
-        "screenshot": screenshot_status,
-        "dom": dom_status,
-        "requirement_note": note_status,
-        "selected_axure_page_ids": selected_ids,
-        "axure_page_count": len(pages),
-    }
-
-
 def compact_requirement(
     task: FunctionalTask,
     axure_text: str,
@@ -359,6 +298,9 @@ def compact_requirement(
         f"目标页面：{task.target_url}",
         f"初始需求说明：{task.requirement_text or ''}",
     ]
+    context = getattr(task, "context", None) or ""
+    if context.strip():
+        parts.append(f"项目上下文（业务背景 / 本次迭代范围）：\n{context[:8000]}")
     material_quality = getattr(task, "material_quality", "") or ""
     if material_quality:
         parts.append(f"需求材料质量：\n{material_quality[:4000]}")
@@ -373,7 +315,7 @@ def compact_requirement(
         if getattr(item, "analysis_result", "")
     )
     if screenshot_text:
-        parts.append(f"产品截图识别材料：\n{screenshot_text[:16000]}")
+        parts.append(f"产品截图识别材料：\n{screenshot_text[:20000]}")
     if axure_text:
         parts.append(f"Axure提取文本：\n{axure_text[:12000]}")
     if snapshot and snapshot.dom_summary:
@@ -624,6 +566,222 @@ def analyze_functional_screenshot(task: FunctionalTask, screenshot: FunctionalSc
     return json.dumps(normalized, ensure_ascii=False, indent=2)
 
 
+def _flatten_paddle_result(raw: Any) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    blocks = raw if isinstance(raw, list) else []
+    for block in blocks:
+        items = block if isinstance(block, list) else []
+        for item in items:
+            if not isinstance(item, (list, tuple)) or len(item) < 2:
+                continue
+            box = item[0]
+            text_info = item[1]
+            if not isinstance(text_info, (list, tuple)) or len(text_info) < 2:
+                continue
+            text = str(text_info[0] or "").strip()
+            if not text:
+                continue
+            try:
+                confidence = float(text_info[1])
+            except (TypeError, ValueError):
+                confidence = 0.0
+            rows.append({"text": text, "confidence": confidence, "bbox": box})
+    return rows
+
+
+def _image_size(image_path: str) -> dict[str, int]:
+    try:
+        from PIL import Image
+
+        with Image.open(image_path) as img:
+            width, height = img.size
+        return {"width": int(width), "height": int(height)}
+    except Exception:
+        return {"width": 0, "height": 0}
+
+
+def _preprocess_image_for_ocr(image_path: str) -> str:
+    """Create a high-contrast enlarged copy for OCR. Falls back to the original image."""
+    try:
+        from PIL import Image, ImageEnhance, ImageFilter
+
+        source = Path(image_path)
+        target = FUNCTIONAL_SCREENSHOT_DIR / f"ocr-{source.stem}.png"
+        with Image.open(source) as img:
+            img = img.convert("RGB")
+            width, height = img.size
+            if width and height and max(width, height) < 2200:
+                img = img.resize((width * 2, height * 2))
+            img = ImageEnhance.Contrast(img).enhance(1.35)
+            img = ImageEnhance.Sharpness(img).enhance(1.2)
+            img = img.filter(ImageFilter.MedianFilter(size=3))
+            img.save(target)
+        return str(target)
+    except Exception:
+        return image_path
+
+
+def _opencv_regions(image_path: str) -> list[dict[str, Any]]:
+    """Detect coarse rectangular controls. This is evidence only, not a source of truth."""
+    try:
+        import cv2
+
+        image = cv2.imread(image_path)
+        if image is None:
+            return []
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 50, 150)
+        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        regions: list[dict[str, Any]] = []
+        height, width = gray.shape[:2]
+        min_area = max(120, int(width * height * 0.00015))
+        for contour in contours[:500]:
+            x, y, w, h = cv2.boundingRect(contour)
+            area = w * h
+            if area < min_area or w < 20 or h < 10:
+                continue
+            if w > width * 0.98 and h > height * 0.98:
+                continue
+            kind = "input_or_button" if 18 <= h <= 90 else "panel_or_table"
+            regions.append({"x": x, "y": y, "width": w, "height": h, "type": kind})
+        regions.sort(key=lambda item: (item["y"], item["x"]))
+        return regions[:80]
+    except Exception:
+        return []
+
+
+def extract_screenshot_material(image_path: str) -> dict[str, Any]:
+    """
+    Convert a screenshot into text-first evidence for DeepSeek.
+
+    DeepSeek is used as a text reasoning model only; it never receives image_url.
+    PaddleOCR is optional. If it is not installed, callers still receive a
+    structured payload and can continue with DOM/manual confirmation.
+    """
+    ensure_functional_dirs()
+    original = Path(image_path)
+    if not original.exists() or not original.is_file():
+        return {
+            "analysis_source": "ocr_unavailable",
+            "ocr_available": False,
+            "ocr_error": "截图文件不存在",
+            "image_path": image_path,
+            "image_size": {"width": 0, "height": 0},
+            "ocr_items": [],
+            "ocr_text": "",
+            "regions": [],
+            "ocr_confidence": 0,
+            "low_confidence_items": [],
+            "needs_manual_confirm": True,
+        }
+
+    processed = _preprocess_image_for_ocr(str(original))
+    ocr_items: list[dict[str, Any]] = []
+    ocr_error = ""
+    try:
+        from paddleocr import PaddleOCR
+
+        ocr = PaddleOCR(use_angle_cls=True, lang="ch", show_log=False)
+        ocr_items = _flatten_paddle_result(ocr.ocr(processed, cls=True))
+    except Exception as exc:
+        ocr_error = str(exc)
+
+    confidence_values = [float(item.get("confidence") or 0) for item in ocr_items]
+    avg_confidence = round(sum(confidence_values) / len(confidence_values), 4) if confidence_values else 0
+    low_confidence = [
+        item for item in ocr_items if float(item.get("confidence") or 0) < 0.72
+    ][:30]
+    ocr_text = "\n".join(str(item.get("text") or "") for item in ocr_items if item.get("text"))
+    return {
+        "analysis_source": "ocr_material",
+        "ocr_available": bool(ocr_items),
+        "ocr_error": ocr_error,
+        "image_path": str(original),
+        "preprocessed_image_path": processed,
+        "image_size": _image_size(str(original)),
+        "ocr_items": ocr_items[:200],
+        "ocr_text": ocr_text,
+        "ocr_confidence": avg_confidence,
+        "low_confidence_items": low_confidence,
+        "regions": _opencv_regions(processed),
+        "needs_manual_confirm": (not ocr_items) or avg_confidence < 0.72 or bool(low_confidence),
+    }
+
+
+def fallback_screenshot_analysis(task: FunctionalTask, screenshot: FunctionalScreenshot, reason: str) -> str:
+    material = extract_screenshot_material(screenshot.image_path)
+    text_lines = [line.strip() for line in material.get("ocr_text", "").splitlines() if line.strip()]
+    visible_controls = text_lines[:30]
+    payload = {
+        "analysis_source": "ocr_fallback",
+        "model_error": reason,
+        "page_summary": "已基于截图 OCR 提取可见文字；模型不可用或未返回合法 JSON，需人工确认关键规则。",
+        "visible_controls": visible_controls,
+        "inferred_rules": [
+            "OCR 只能证明截图中出现过这些文字，不能单独证明字段类型、必填规则或提交成功规则。",
+            "低置信度文字需要人工确认后再生成高可信自动化用例。",
+        ],
+        "questions_for_product": [
+            "请确认 OCR 低置信度文字是否正确。",
+            "请确认截图中的关键字段哪些是必填、唯一或格式校验字段。",
+            "请确认提交成功后的页面、提示文案或状态变化。",
+        ],
+        "suggested_test_points": [
+            "验证页面关键控件和文案展示。",
+            "验证主流程提交后的成功提示或状态变化。",
+            "验证必填、格式错误、重复数据等异常提示。",
+        ],
+        "ocr_material": material,
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def analyze_functional_screenshot(task: FunctionalTask, screenshot: FunctionalScreenshot, config: AiConfig | None) -> str:
+    material = extract_screenshot_material(screenshot.image_path)
+    prompt = f"""
+你是资深软件测试工程师。请只根据下面的 OCR/图像结构化材料分析产品截图，不要编造材料中没有的信息。
+输出合法 JSON，字段固定为：
+{{
+  "analysis_source": "ocr_deepseek",
+  "page_summary": "页面功能概述",
+  "visible_controls": ["可见按钮、输入框、表格、弹窗、状态文案等"],
+  "inferred_rules": ["只能从 OCR/区域信息合理推断出的业务规则"],
+  "questions_for_product": ["需要产品确认的问题"],
+  "suggested_test_points": ["建议测试点"],
+  "needs_manual_confirm": true,
+  "ocr_confidence": 0.0,
+  "low_confidence_items": []
+}}
+
+迭代：{task.iteration_name}
+目标页面：{task.target_url}
+初始需求说明：{task.requirement_text or ""}
+
+OCR/图像材料：
+{json.dumps(material, ensure_ascii=False, indent=2)[:30000]}
+"""
+    try:
+        payload = call_local_model_json(config, prompt, timeout=120)
+    except Exception as exc:
+        return fallback_screenshot_analysis(task, screenshot, str(exc))
+    if not isinstance(payload, dict):
+        return fallback_screenshot_analysis(task, screenshot, "DeepSeek 未返回合法 JSON")
+
+    normalized = {
+        "analysis_source": "ocr_deepseek",
+        "page_summary": payload.get("page_summary") or payload.get("summary") or "",
+        "visible_controls": payload.get("visible_controls") or payload.get("controls") or [],
+        "inferred_rules": payload.get("inferred_rules") or payload.get("rules") or [],
+        "questions_for_product": payload.get("questions_for_product") or payload.get("questions") or [],
+        "suggested_test_points": payload.get("suggested_test_points") or payload.get("test_points") or [],
+        "needs_manual_confirm": bool(payload.get("needs_manual_confirm", material.get("needs_manual_confirm", True))),
+        "ocr_confidence": material.get("ocr_confidence", 0),
+        "low_confidence_items": material.get("low_confidence_items", []),
+        "ocr_material": material,
+    }
+    return json.dumps(normalized, ensure_ascii=False, indent=2)
+
+
 def _normalize_generated_cases(payload: Any) -> list[Dict[str, Any]]:
     cases = payload.get("cases") if isinstance(payload, dict) else payload
     if not isinstance(cases, list):
@@ -699,13 +857,16 @@ def generate_functional_cases(
 ) -> GeneratedResult:
     requirement_context = compact_requirement(task, axure_text, snapshot, screenshots, notes)
     prompt = f"""
-请根据以下需求和原型信息，生成适合功能测试的测试点草稿。
-输出 JSON，格式：
-{{"cases":[{{"title":"","precondition":"","steps":"","expected":"","priority":"P0/P1/P2"}}]}}
+你是一名资深软件测试工程师，请根据以下需求和原型信息，设计功能测试用例。
 要求：
-1. 以 UI 功能流程为主；
-2. 覆盖正常流程、关键异常、权限/必填/状态变化；
-3. 不要输出说明文字，只输出 JSON。
+1. 覆盖核心业务流程（登录→操作→提交→结果反馈的完整路径）
+2. 覆盖正常流程、关键异常场景、权限/必填/状态变化
+3. 如果有多张截图或多个页面信息，请设计跨页面的完整业务流程用例
+4. 对需求不明确的地方，在 questions_for_product 数组中列出需要向产品确认的问题
+5. 只输出合法 JSON，不要输出说明文字
+
+输出格式：
+{{"cases":[{{"title":"","precondition":"","steps":"","expected":"","priority":"P0/P1/P2"}}],"questions_for_product":["问题1","问题2"]}}
 
 {requirement_context}
 """
@@ -1245,76 +1406,354 @@ def _login_before_scan(page: Any, page_url: str, auth: Dict[str, Any], timeout: 
     _scan_trace(trace, f"目标页面已打开：{page.url}")
 
 
-def scan_page_dom(page_url: str, timeout: int = 30, auth: Dict[str, Any] | None = None) -> Dict[str, str]:
-    ensure_functional_dirs()
+# ─── 分段扫描工具函数 ──────────────────────────────────
+
+import threading
+from contextlib import contextmanager
+
+
+def _safe_page_evaluate(page: Any, js: str, default: Any = None) -> Any:
+    """安全执行 page.evaluate，失败时返回 default 而非抛异常。"""
+    try:
+        return page.evaluate(js)
+    except Exception as exc:
+        return default
+
+
+@contextmanager
+def _step_timeout(page: Any, seconds: int, step_name: str, trace: list[str]):
+    """为扫描子步骤设置独立超时。超时或异常时自动记录到 trace。"""
+    old_timeout = None
+    try:
+        old_timeout = getattr(page, '_default_timeout', 30000)
+        page.set_default_timeout(seconds * 1000)
+        yield
+    except Exception as exc:
+        msg = str(exc)[:200]
+        _scan_trace(trace, f"步骤「{step_name}」超时或失败 ({seconds}s): {msg}")
+        raise
+    finally:
+        if old_timeout is not None:
+            page.set_default_timeout(old_timeout)
+
+
+def _scan_launch(playwright: Any, headless: bool = True, proxy: str | None = None) -> Any:
+    """启动浏览器，返回 browser 实例。"""
+    browser = launch_chromium_browser(playwright, headless=headless, proxy=proxy)
+    return browser
+
+
+def _scan_navigate(page: Any, url: str, timeout_sec: int, trace: list[str]) -> None:
+    """导航到目标页面，含等待加载完成。"""
+    _scan_trace(trace, f"导航到：{url}")
+    page.goto(url, wait_until="domcontentloaded", timeout=timeout_sec * 1000)
+    try:
+        page.wait_for_load_state("networkidle", timeout=min(timeout_sec * 1000, 8000))
+    except Exception:
+        page.wait_for_timeout(500)
+    _scan_trace(trace, f"页面已加载：{page.url}")
+
+
+_DOM_EXTRACT_JS = """
+() => {
+  try {
+    const textOf = (el) => {
+      try {
+        return (el.innerText || el.value || el.getAttribute("aria-label") || el.getAttribute("placeholder") || "").trim().replace(/\\s+/g, " ").slice(0, 80);
+      } catch(e) { return ""; }
+    };
+    const selectors = "a,button,input,textarea,select,[role=button],[role=link],[contenteditable=true]";
+    const elements = Array.from(document.querySelectorAll(selectors)).slice(0, 150).map((el, idx) => {
+      try {
+        const tag = el.tagName.toLowerCase();
+        const id = el.id || "";
+        const name = el.getAttribute("name") || "";
+        const type = el.getAttribute("type") || "";
+        const placeholder = el.getAttribute("placeholder") || "";
+        const ariaLabel = el.getAttribute("aria-label") || "";
+        const dataTestid = el.getAttribute("data-testid") || el.getAttribute("data-test") || el.getAttribute("data-cy") || "";
+        const text = textOf(el);
+        // 生成推荐定位器（简化版）
+        let locator = tag;
+        if (dataTestid) locator = `[data-testid="${dataTestid.replace(/"/g,'\\\\"')}"]`;
+        else if (id) locator = `#${CSS.escape(id)}`;
+        else if (name) locator = `${tag}[name="${name.replace(/"/g,'\\\\"')}"]`;
+        else if (placeholder) locator = `${tag}[placeholder="${placeholder.replace(/"/g,'\\\\"')}"]`;
+        else if (ariaLabel) locator = `${tag}[aria-label="${ariaLabel.replace(/"/g,'\\\\"')}"]`;
+        else if (text && ["button","a","span","label"].includes(tag)) locator = `text=${text}`;
+        return { tag, id, name, type, placeholder, role: el.getAttribute("role")||"", text, locator, data_testid: dataTestid };
+      } catch(e) { return null; }
+    }).filter(Boolean);
+    const headings = Array.from(document.querySelectorAll("h1,h2,h3,h4,label")).slice(0, 50).map(el => {
+      try { return (el.innerText||"").trim().replace(/\\s+/g," ").slice(0,80); } catch(e) { return ""; }
+    }).filter(Boolean);
+    return { title: document.title || "", url: location.href || "", headings, elements };
+  } catch(e) {
+    return { title: "", url: "", headings: [], elements: [], error: e.message };
+  }
+}
+"""
+
+
+def _scan_extract_dom(page: Any, trace: list[str]) -> dict:
+    """提取页面 DOM 摘要，含降级处理。"""
+    _scan_trace(trace, "开始提取页面 DOM 摘要")
+    result = _safe_page_evaluate(page, _DOM_EXTRACT_JS, default={})
+    elements = result.get("elements") or []
+    if result.get("error"):
+        _scan_trace(trace, f"DOM 提取部分失败：{result['error']}")
+    _scan_trace(trace, f"DOM 提取完成：{len(elements)} 个可操作元素")
+    return result
+
+
+def _scan_screenshot(page: Any, trace: list[str]) -> Path:
+    """截取页面截图。"""
     screenshot = SCREENSHOT_DIR / f"functional-{uuid4()}.png"
+    try:
+        page.screenshot(path=str(screenshot), full_page=True)
+        _scan_trace(trace, f"截图已保存：{screenshot.name}")
+    except Exception as exc:
+        _scan_trace(trace, f"截图失败：{str(exc)[:200]}")
+    return screenshot
+
+
+def _scan_locator_quality(elements: list[dict]) -> dict:
+    """评估定位器质量。"""
+    total = len(elements)
+    if total == 0:
+        return {"total_elements": 0, "score": "unknown", "recommendation": "未能提取到页面元素"}
+    with_data_testid = sum(1 for el in elements if el.get("data_testid"))
+    with_id = sum(1 for el in elements if el.get("id"))
+    with_name = sum(1 for el in elements if el.get("name"))
+    weak_locators = sum(1 for el in elements if str(el.get("locator","")).startswith("text=") and not el.get("id") and not el.get("name"))
+    quality = {}
+    quality["total_elements"] = total
+    quality["with_data_testid"] = with_data_testid
+    quality["with_id"] = with_id
+    quality["with_name"] = with_name
+    quality["weak_locators"] = weak_locators
+    if with_data_testid >= total * 0.3:
+        quality["score"] = "good"
+    elif with_id >= total * 0.3:
+        quality["score"] = "fair"
+    else:
+        quality["score"] = "poor"
+    quality["recommendation"] = ""
+    if quality["score"] == "poor" and weak_locators > 5:
+        quality["recommendation"] = f"建议给 {weak_locators} 个无 id/name/data-testid 的交互元素添加 data-testid 属性"
+    elif weak_locators > 5:
+        quality["recommendation"] = f"有 {weak_locators} 个元素只用 text= 定位，容易因文案变更失效"
+    return quality
+
+
+def scan_page_dom(page_url: str, timeout: int = 30, auth: Dict[str, Any] | None = None, proxy: str | None = None) -> Dict[str, str]:
+    """
+    分段式页面扫描。
+    
+    将扫描过程拆解为独立子步骤：启动浏览器 → 导航 → (登录) → DOM提取 → 截图。
+    每步有独立超时和错误处理，失败时返回已完成的部分数据 + 错误步骤定位。
+    """
+    ensure_functional_dirs()
     started = time.time()
     trace: list[str] = []
+    partial: dict = {"title": "", "url": "", "headings": [], "elements": [], "error_step": None, "error": None}
+
     try:
         from playwright.sync_api import sync_playwright
     except Exception as exc:
-        raise _scan_error(f"Playwright不可用：{exc}", trace) from exc
+        raise _scan_error(f"Playwright 不可用：{exc}", trace) from exc
 
-    with sync_playwright() as p:
-        browser = launch_chromium_browser(p, headless=True)
-        page = browser.new_page()
-        page.set_default_timeout(timeout * 1000)
-        auth_config = auth or {}
-        if auth_config.get("enabled"):
-            _login_before_scan(page, page_url, auth_config, timeout, trace)
-        else:
-            _scan_trace(trace, f"未启用登录，直接打开目标页面：{page_url}")
-            page.goto(page_url, wait_until="domcontentloaded")
-            page.wait_for_timeout(800)
-        _scan_trace(trace, "开始提取页面 DOM 摘要")
-        summary = page.evaluate(
-            """
-            () => {
-              const css = (value) => {
-                if (!value) return "";
-                if (window.CSS && CSS.escape) return CSS.escape(value);
-                return String(value).replace(/[^a-zA-Z0-9_-]/g, "\\\\$&");
-              };
-              const textOf = (el) => (el.innerText || el.value || el.getAttribute("aria-label") || el.getAttribute("placeholder") || "").trim().replace(/\\s+/g, " ").slice(0, 80);
-              const locatorOf = (el) => {
-                const quote = (value) => String(value || "").replace(/"/g, '\\"');
-                const testAttr = ["data-testid", "data-test", "data-cy"].find((attr) => el.getAttribute(attr));
-                if (testAttr) return `[${testAttr}="${quote(el.getAttribute(testAttr))}"]`;
-                if (el.id) return `#${css(el.id)}`;
-                if (el.name) return `${el.tagName.toLowerCase()}[name="${quote(el.name)}"]`;
-                const aria = el.getAttribute("aria-label");
-                if (aria) return `${el.tagName.toLowerCase()}[aria-label="${quote(aria)}"]`;
-                const placeholder = el.getAttribute("placeholder");
-                if (placeholder) return `${el.tagName.toLowerCase()}[placeholder="${quote(placeholder)}"]`;
-                const text = textOf(el);
-                if (text && ["BUTTON","A","SPAN","DIV"].includes(el.tagName)) return `text=${text}`;
-                return el.tagName.toLowerCase();
-              };
-              const selectors = "a,button,input,textarea,select,[role=button],[role=link],[contenteditable=true],.el-button,.ant-btn,[class*=btn],[class*=button]";
-              const elements = Array.from(document.querySelectorAll(selectors)).slice(0, 180).map((el, index) => ({
-                index,
-                tag: el.tagName.toLowerCase(),
-                type: el.getAttribute("type") || "",
-                id: el.id || "",
-                name: el.getAttribute("name") || "",
-                role: el.getAttribute("role") || "",
-                text: textOf(el),
-                placeholder: el.getAttribute("placeholder") || "",
-                locator: locatorOf(el)
-              }));
-              const headings = Array.from(document.querySelectorAll("h1,h2,h3,h4,label")).slice(0, 80).map(textOf).filter(Boolean);
-              return { title: document.title, url: location.href, headings, elements };
-            }
-            """
-        )
-        _scan_trace(trace, f"DOM 摘要提取完成：{len(summary.get('elements') or [])} 个可操作元素")
-        page.screenshot(path=str(screenshot), full_page=True)
-        _scan_trace(trace, "页面截图已保存")
-        browser.close()
+    browser = None
+    page = None
+    screenshot_path = SCREENSHOT_DIR / f"functional-{uuid4()}.png"
+
+    if proxy is None:
+        proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy")
+
+    try:
+        with sync_playwright() as p:
+            # 步骤 1：启动浏览器
+            _scan_trace(trace, "启动浏览器..." + (f" (代理: {proxy})" if proxy else ""))
+            browser = _scan_launch(p, headless=True, proxy=proxy)
+            page = browser.new_page()
+
+            # 步骤 2：导航
+            with _step_timeout(page, min(timeout, 20), "导航到目标页面", trace):
+                _scan_navigate(page, page_url, timeout, trace)
+
+            # 步骤 3：登录（如果启用）
+            auth_config = auth or {}
+            if auth_config.get("enabled"):
+                with _step_timeout(page, min(timeout, 25), "登录流程", trace):
+                    _login_before_scan(page, page_url, auth_config, timeout, trace)
+
+            # 步骤 4：提取 DOM
+            with _step_timeout(page, 10, "DOM 提取", trace):
+                partial = _scan_extract_dom(page, trace)
+
+            # 步骤 5：截图
+            with _step_timeout(page, 5, "截图", trace):
+                screenshot_path = _scan_screenshot(page, trace)
+
+    except FunctionalScanError:
+        raise
+    except Exception as exc:
+        error_msg = str(exc)[:300]
+        _scan_trace(trace, f"扫描过程中断：{error_msg}")
+        partial["error_step"] = "unknown"
+        partial["error"] = error_msg
+        # 如果浏览器还在，尝试截图
+        if page:
+            try:
+                screenshot_path = _scan_screenshot(page, trace)
+            except Exception:
+                pass
+    finally:
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
+
+    # 定位器质量报告
+    elements = partial.get("elements") or []
+    locator_quality = _scan_locator_quality(elements)
+
+    scan_result = {
+        "scan_seconds": round(time.time() - started, 2),
+        "scan_trace": trace,
+        "title": partial.get("title", ""),
+        "url": partial.get("url", ""),
+        "headings": partial.get("headings", []),
+        "elements": elements,
+        "locator_quality": locator_quality,
+    }
+    if partial.get("error_step"):
+        scan_result["error_step"] = partial["error_step"]
+        scan_result["error"] = partial["error"]
 
     return {
-        "dom_summary": json.dumps({"scan_seconds": round(time.time() - started, 2), "scan_trace": trace, **summary}, ensure_ascii=False, indent=2),
-        "screenshot_path": str(screenshot),
+        "dom_summary": json.dumps(scan_result, ensure_ascii=False, indent=2),
+        "screenshot_path": str(screenshot_path),
+        "scan_trace": trace,
+    }
+
+
+def _scan_page_state(partial: dict, console_errors: list[str], network_errors: list[str]) -> dict[str, Any]:
+    text = " ".join(
+        [
+            str(partial.get("title") or ""),
+            " ".join(str(item or "") for item in partial.get("headings") or []),
+            " ".join(str((item or {}).get("text") or "") for item in partial.get("elements") or []),
+        ]
+    ).lower()
+    current_url = str(partial.get("url") or "").lower()
+    login_markers = ("login", "signin", "登录", "登陆", "用户名", "密码", "验证码")
+    error_markers = ("404", "500", "502", "503", "504", "error", "exception", "not found", "错误", "异常", "无法访问")
+    is_login_page = any(marker in current_url or marker in text for marker in login_markers)
+    is_error_page = any(marker in current_url or marker in text for marker in error_markers)
+    elements = partial.get("elements") or []
+    if partial.get("error_step"):
+        scan_status = "partial"
+    elif is_error_page:
+        scan_status = "error_page"
+    elif not elements:
+        scan_status = "no_interactive_elements"
+    else:
+        scan_status = "ok"
+    return {
+        "scan_status": scan_status,
+        "is_login_page": is_login_page,
+        "is_error_page": is_error_page,
+        "interactive_count": len(elements),
+        "console_error_count": len(console_errors),
+        "network_error_count": len(network_errors),
+        "needs_auth": is_login_page,
+    }
+
+
+def scan_page_dom(page_url: str, timeout: int = 30, auth: Dict[str, Any] | None = None, proxy: str | None = None) -> Dict[str, str]:
+    """Scan a page and return DOM, screenshot, quality, page state, and trace."""
+    ensure_functional_dirs()
+    started = time.time()
+    trace: list[str] = []
+    partial: dict = {"title": "", "url": "", "headings": [], "elements": [], "error_step": None, "error": None}
+    console_errors: list[str] = []
+    network_errors: list[str] = []
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception as exc:
+        raise _scan_error(f"Playwright 不可用：{exc}", trace) from exc
+
+    browser = None
+    page = None
+    screenshot_path = SCREENSHOT_DIR / f"functional-{uuid4()}.png"
+    if proxy is None:
+        proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy")
+
+    try:
+        with sync_playwright() as p:
+            _scan_trace(trace, "启动浏览器..." + (f" (代理: {proxy})" if proxy else ""))
+            browser = _scan_launch(p, headless=True, proxy=proxy)
+            page = browser.new_page()
+            page.on("console", lambda msg: console_errors.append(f"{msg.type}: {msg.text}") if msg.type in {"error", "warning"} else None)
+            page.on("requestfailed", lambda request: network_errors.append(f"{request.method} {request.url}: {request.failure.get('errorText') if request.failure else 'request failed'}"))
+
+            with _step_timeout(page, min(timeout, 20), "导航到目标页面", trace):
+                _scan_navigate(page, page_url, timeout, trace)
+
+            auth_config = auth or {}
+            if auth_config.get("enabled"):
+                with _step_timeout(page, min(timeout, 25), "登录流程", trace):
+                    _login_before_scan(page, page_url, auth_config, timeout, trace)
+
+            with _step_timeout(page, 10, "DOM 提取", trace):
+                partial = _scan_extract_dom(page, trace)
+
+            with _step_timeout(page, 5, "截图", trace):
+                screenshot_path = _scan_screenshot(page, trace)
+    except FunctionalScanError:
+        raise
+    except Exception as exc:
+        error_msg = str(exc)[:300]
+        _scan_trace(trace, f"扫描过程中断：{error_msg}")
+        partial["error_step"] = "unknown"
+        partial["error"] = error_msg
+        if page:
+            try:
+                screenshot_path = _scan_screenshot(page, trace)
+            except Exception:
+                pass
+    finally:
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
+
+    elements = partial.get("elements") or []
+    locator_quality = _scan_locator_quality(elements)
+    page_state = _scan_page_state(partial, console_errors, network_errors)
+    scan_result = {
+        "scan_seconds": round(time.time() - started, 2),
+        "scan_trace": trace,
+        **page_state,
+        "title": partial.get("title", ""),
+        "url": partial.get("url", ""),
+        "headings": partial.get("headings", []),
+        "elements": elements,
+        "locator_quality": locator_quality,
+        "page_state": page_state,
+        "console_errors": console_errors[:50],
+        "network_errors": network_errors[:50],
+    }
+    if partial.get("error_step"):
+        scan_result["error_step"] = partial["error_step"]
+        scan_result["error"] = partial["error"]
+    return {
+        "dom_summary": json.dumps(scan_result, ensure_ascii=False, indent=2),
+        "screenshot_path": str(screenshot_path),
         "scan_trace": trace,
     }
 
@@ -1364,7 +1803,7 @@ def rule_generate_ui_steps(case: FunctionalCase, task: FunctionalTask, snapshot:
     return steps
 
 
-def generate_ui_steps(case: FunctionalCase, task: FunctionalTask, snapshot: PageSnapshot | None, config: AiConfig | None) -> GeneratedResult:
+def _basic_generate_ui_steps(case: FunctionalCase, task: FunctionalTask, snapshot: PageSnapshot | None, config: AiConfig | None) -> GeneratedResult:
     dom_summary = snapshot.dom_summary if snapshot else ""
     prompt = f"""
 请把以下功能测试点转换成 Playwright 可执行的 UI steps JSON。
@@ -1400,20 +1839,68 @@ placeholder 请使用 CSS 写法，例如 input[placeholder="邮箱/手机号"]�
     fallback = rule_generate_ui_steps(case, task, snapshot)
     return GeneratedResult(source="rule", warning=warning or "未配置本地模型或模型输出无效，已生成最小可执行步骤。", items=fallback)
 
+def _load_action_templates(project_id: int) -> list[Any]:
+    """加载项目下的操作模板"""
+    try:
+        from .models import ActionTemplate
+        from .database import SessionLocal
+        db = SessionLocal()
+        try:
+            return db.query(ActionTemplate).filter(ActionTemplate.project_id == project_id).all()
+        finally:
+            db.close()
+    except Exception:
+        return []
+
+
+def _match_template_for_case(case: FunctionalCase, templates: list[Any]) -> Any | None:
+    """匹配用例到操作模板"""
+    try:
+        from .executors import match_action_template
+        return match_action_template(case.title or "", case.steps or "", templates)
+    except Exception:
+        return None
+
+
 def generate_ui_steps(case: FunctionalCase, task: FunctionalTask, snapshot: PageSnapshot | None, config: AiConfig | None) -> GeneratedResult:
     dom_summary = snapshot.dom_summary if snapshot else ""
+    # 尝试匹配操作模板
+    templates = _load_action_templates(task.project_id) if hasattr(task, "project_id") else []
+    matched_template = _match_template_for_case(case, templates)
+
+    if matched_template:
+        steps = parse_json_value(matched_template.steps, [])
+        if isinstance(steps, list) and steps:
+            return GeneratedResult(
+                source="template",
+                warning=f"已匹配操作模板：{matched_template.name}",
+                items=steps,
+            )
+
     prompt = f"""
-请把以下功能测试点转换成 Playwright 可执行的 UI steps JSON。只输出 JSON，格式：
-{{"steps":[{{"name":"打开页面","action":"goto","value":"..."}}]}}
-允许 action：{", ".join(sorted(ALLOWED_UI_ACTIONS))}
-locator 优先级：data-testid、id、name、placeholder、aria-label、text，不要使用不稳定的深层 CSS。
-placeholder 请使用 CSS 写法，例如 input[placeholder="邮箱/手机号"]，不要写 placeholder=邮箱/手机号。
-除 goto/wait/screenshot/assert_url 外，所有操作必须带 locator；点击可使用 text=按钮文案。
-每个有 locator 的步骤尽量输出 fallback_locators 数组，至少给 1-3 个备用定位器。
-每一步必须有 name，用测试人员能理解的中文描述动作目标。
-允许可选字段 timeout、optional；非关键弱断言可以标 optional=true。
-运行时变量可用：{{{{username}}}}、{{{{password}}}}、{{{{code}}}}。
-如果页面同时存在“登录”和“立即注册/注册”，登录流程只能点击“登录”，绝不能把“立即注册/注册”当成提交登录按钮。
+你是一名资深测试工程师，请根据功能测试点生成 Playwright 可执行的 UI steps JSON。
+
+## 严格定位器优先级（必须遵守）
+1. data-testid / data-test / data-cy（最高优先级）
+2. id / name 属性
+3. placeholder / aria-label（CSS 写法，如 input[placeholder="邮箱"]）
+4. text=按钮文案（最后手段）
+
+## 禁止使用的定位器
+- nth-child / :nth-of-type / :eq()（结构易变）
+- 深层 CSS 路径如 div > div > div > button
+- 纯 class 选择器（多页面共用类名，不唯一）
+
+## 输出要求
+- 只输出 JSON，格式：{{"steps":[{{"name":"打开页面","action":"goto","value":"..."}}]}}
+- 允许 action：{", ".join(sorted(ALLOWED_UI_ACTIONS))}
+- 除 goto/wait/screenshot/assert_url 外，所有操作必须带 locator
+- 每个有 locator 的步骤输出 fallback_locators 数组，至少 1-3 个备用定位器
+- 每一步必须有 name，用测试人员能理解的中文描述动作目标
+- 允许可选字段 timeout、optional；非关键弱断言可以标 optional=true
+- 运行时变量可用：{{{{username}}}}、{{{{password}}}}、{{{{code}}}}
+- 如果页面同时存在"登录"和"立即注册/注册"，登录流程只能点击"登录"
+
 目标页面：{task.target_url}
 测试点标题：{case.title}
 前置条件：{case.precondition or ""}

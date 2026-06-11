@@ -1,9 +1,13 @@
 from pathlib import Path
 import argparse
+import site
 import sys
 
 
 BASE_DIR = Path(__file__).resolve().parent
+VENV_SITE = BASE_DIR / ".venv" / "Lib" / "site-packages"
+if VENV_SITE.exists():
+    site.addsitedir(str(VENV_SITE))
 
 
 def main() -> None:

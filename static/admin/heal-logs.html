@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>定位器自愈记录</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <style>
+    body { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .page-head h1 { margin: 0; font-size: 24px; }
+    .heal-card { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .heal-card .old { color: var(--fail); text-decoration: line-through; font-family: monospace; }
+    .heal-card .new { color: var(--ok); font-family: monospace; }
+    .heal-card .meta { color: var(--text-dim); font-size: 13px; margin-bottom: 8px; }
+    .heal-card .actions { margin-top: 8px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+    .badge.ok { background: #d4edda; color: #155724; }
+    .badge.warn { background: #fff3cd; color: #856404; }
+    .toast { position: fixed; top: 20px; right: 20px; background: #333; color: #fff; padding: 12px 20px; border-radius: 6px; z-index: 9999; }
+    .back-link { margin-bottom: 16px; display: inline-block; }
+  </style>
+</head>
+<body>
+  <a href="/" class="back-link">← 返回平台</a>
+  <div class="page-head">
+    <h1>定位器自愈记录</h1>
+  </div>
+
+  <div id="healList"></div>
+  <div id="toast" class="toast" hidden></div>
+
+  <script>
+    const API = (path, opts = {}) => {
+      const token = localStorage.getItem("token") || "";
+      const headers = { ...(opts.headers || {}) };
+      if (token) headers["Authorization"] = "Bearer " + token;
+      if (opts.body && typeof opts.body !== "string") {
+        headers["Content-Type"] = "application/json";
+        opts.body = JSON.stringify(opts.body);
+      }
+      return fetch("/api" + path, { ...opts, headers }).then(r => {
+        if (r.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; throw new Error("登录失效"); }
+        if (!r.ok) return r.json().then(e => { throw new Error(e.detail || r.statusText); });
+        return r.json();
+      });
+    };
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.hidden = false;
+      setTimeout(() => el.hidden = true, 2600);
+    }
+
+    async function loadLogs() {
+      const logs = await API("/locator-heal-logs");
+      const container = document.getElementById("healList");
+      if (!logs.length) {
+        container.innerHTML = '<div class="panel"><div class="empty">暂无自愈记录</div></div>';
+        return;
+      }
+      container.innerHTML = logs.map(log => `
+        <div class="heal-card">
+          <div class="meta">
+            用例 #${log.case_id} · ${new Date(log.create_time).toLocaleString()}
+            <span class="badge ${log.confirmed ? 'ok' : 'warn'}">${log.confirmed ? '已确认' : '待确认'}</span>
+          </div>
+          <div>旧定位器：<span class="old">${log.old_locator}</span></div>
+          <div>新定位器：<span class="new">${log.new_locator}</span></div>
+          ${log.page_url ? `<div>页面：<a href="${log.page_url}" target="_blank">${log.page_url}</a></div>` : ""}
+          <div class="actions">
+            ${!log.confirmed ? `<button class="btn secondary" onclick="confirmLog(${log.id}, 1)">确认</button>` : ""}
+            <button class="btn secondary" onclick="confirmLog(${log.id}, 0)">驳回</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function confirmLog(id, confirmed) {
+      await API(`/locator-heal-logs/${id}`, { method: "PUT", body: { confirmed } });
+      showToast(confirmed ? "已确认" : "已驳回");
+      loadLogs();
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      document.body.innerHTML = '<p style="padding:40px;text-align:center">请先登录平台</p>';
+    } else {
+      loadLogs();
+    }
+  </script>
+</body>
+</html>

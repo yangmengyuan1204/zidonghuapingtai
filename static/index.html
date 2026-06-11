@@ -4,12 +4,84 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>接口 + UI 自动化测试平台</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260608-functional-stability" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260609-anime-style" />
+    <style>
+      /* 快捷开始按钮样式 */
+      .quick-start-bar {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 16px; margin-bottom: 16px;
+        background: linear-gradient(135deg, #ff6b9d, #ff9ec4);
+        border-radius: 10px; color: #fff;
+      }
+      .quick-start-bar .btn {
+        background: rgba(255,255,255,0.25);
+        border: 1px solid rgba(255,255,255,0.5);
+        color: #fff; font-weight: 600; padding: 8px 20px; cursor: pointer;
+      }
+      .quick-start-bar .btn:hover { background: rgba(255,255,255,0.4); }
+      .quick-start-bar .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .quick-start-bar .status-label { font-size: 13px; opacity: 0.9; margin-left: auto; }
+    </style>
   </head>
   <body>
     <div id="app"></div>
     <div id="toast" class="toast" hidden></div>
     <dialog id="modal" class="modal"></dialog>
-    <script src="/static/app.js?v=20260608-functional-stability"></script>
+    <script src="/static/app.js?v=20260609-anime-style"></script>
+    <script src="/static/test-status.js?v=1"></script>
+    <script>
+    // 快捷开始按钮 — 事件委托（按钮已由 app.js 模板直接渲染，只需处理点击）
+    (function() {
+      'use strict';
+      function getTaskId() {
+        try {
+          var m = window.location.hash.match(/functional-task-(\d+)/);
+          if (m) return m[1];
+        } catch(e) {}
+        try {
+          if (typeof state !== 'undefined' && state.functionalTaskId)
+            return String(state.functionalTaskId);
+        } catch(e) {}
+        return '';
+      }
+      // 事件委托：监听 #app 上的点击，响应 #quickStartBtn
+      document.addEventListener('click', function(e) {
+        var btn = e.target.closest('#quickStartBtn');
+        if (!btn) return;
+        var statusEl = document.getElementById('quickStartStatus');
+        var tid = getTaskId();
+        if (!tid) { window.showToast && window.showToast('未找到功能测试任务'); return; }
+        btn.disabled = true;
+        if (statusEl) statusEl.textContent = '⏳ 执行中...';
+        var payload = {};
+        try {
+          var cacheKey = 'functionalScanAuth:' + tid;
+          var cached = localStorage.getItem(cacheKey);
+          if (cached) { var parsed = JSON.parse(cached); if (parsed && parsed.enabled) payload = { auth: parsed }; }
+        } catch(e) {}
+        window.api('/api/functional-tasks/' + tid + '/quick-start', { method: 'POST', body: payload })
+          .then(function(result) {
+            var steps = result.steps || {};
+            var parts = [];
+            parts.push(steps.scan && steps.scan.ok ? '✅扫描' : '❌扫描');
+            parts.push(steps.generate_cases && steps.generate_cases.ok ? '✅用例' : '❌用例');
+            parts.push(steps.generate_ui && steps.generate_ui.ok ? '✅步骤' : '❌步骤');
+            if (statusEl) statusEl.textContent = parts.join(' · ');
+            var allOk = steps.scan && steps.scan.ok && steps.generate_cases && steps.generate_cases.ok && steps.generate_ui && steps.generate_ui.ok;
+            window.showToast && window.showToast(allOk ? '✅ 快捷开始完成！' : '⚠️ 部分步骤失败，请手动检查');
+            setTimeout(function() {
+              if (window.renderFunctionalTests) window.renderFunctionalTests().catch(function(){});
+              else window.location.reload();
+            }, 500);
+          })
+          .catch(function(err) {
+            if (statusEl) statusEl.textContent = '❌ ' + (err.message || '').slice(0, 80);
+            window.showToast && window.showToast('快捷开始失败：' + (err.message || ''));
+          })
+          .finally(function() { btn.disabled = false; });
+      });
+      // 点击快速开始状态标签重新触发（刷新状态文字用）
+    })();
+    </script>
   </body>
 </html>

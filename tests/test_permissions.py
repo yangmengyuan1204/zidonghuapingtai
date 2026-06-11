@@ -5,6 +5,8 @@ TEST_DB = Path(__file__).resolve().parent / "test_platform.db"
 if TEST_DB.exists():
     TEST_DB.unlink()
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB.as_posix()}"
+os.environ["DEFAULT_ADMIN_PASSWORD"] = "admin123"
+os.environ["SECRET_KEY"] = "test-secret-key"
 
 from fastapi.testclient import TestClient
 
