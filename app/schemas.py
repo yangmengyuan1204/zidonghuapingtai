@@ -225,6 +225,56 @@ class FunctionalExecuteRequest(BaseModel):
     case_id: Optional[int] = None
 
 
+class CaseGenerationTaskCreate(BaseModel):
+    project_id: int
+    task_name: str
+    target_name: str
+    target_url: Optional[str] = ""
+    requirement_text: Optional[str] = ""
+    context: Optional[str] = ""
+    status: Optional[str] = "draft"
+
+
+class CaseGenerationTaskUpdate(BaseModel):
+    project_id: Optional[int] = None
+    task_name: Optional[str] = None
+    target_name: Optional[str] = None
+    target_url: Optional[str] = None
+    requirement_text: Optional[str] = None
+    context: Optional[str] = None
+    status: Optional[str] = None
+
+
+class CaseGenerationRequirementNoteCreate(BaseModel):
+    note_text: str
+
+
+class CaseGenerationRequirementNoteUpdate(BaseModel):
+    note_text: str
+
+
+class CaseGenerationScreenshotOcrUpdate(BaseModel):
+    corrected_text: str = ""
+
+
+class CaseGenerationCaseUpdate(BaseModel):
+    title: Optional[str] = None
+    precondition: Optional[str] = None
+    steps: Optional[str] = None
+    expected: Optional[str] = None
+    priority: Optional[str] = None
+    remark: Optional[str] = None
+
+
+class CaseGenerationCaseStatusUpdate(BaseModel):
+    test_result: str = "untested"
+
+
+class CaseGenerationCaseBatchStatusUpdate(BaseModel):
+    case_ids: list[int]
+    test_result: str = "untested"
+
+
 class AiConfigUpdate(BaseModel):
     provider: str = "openai_compatible"
     base_url: Optional[str] = ""

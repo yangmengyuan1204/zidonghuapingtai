@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, DateTime, Index, Integer, String, Text
+﻿from sqlalchemy import Column, DateTime, Float, Index, Integer, String, Text
 
 from .database import Base
 
@@ -158,6 +158,71 @@ class FunctionalRun(Base):
     passed_count = Column(Integer, nullable=False)
     failed_count = Column(Integer, nullable=False)
     execute_time = Column(DateTime, nullable=False)
+
+
+class CaseGenerationTask(Base):
+    __tablename__ = "case_generation_task"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=False, index=True)
+    task_name = Column(String(160), nullable=False)
+    target_name = Column(String(240), nullable=False)
+    target_url = Column(String(500), nullable=True)
+    requirement_text = Column(Text, nullable=True)
+    context = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class CaseGenerationScreenshot(Base):
+    __tablename__ = "case_generation_screenshot"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    image_path = Column(String(500), nullable=False)
+    analysis_result = Column(Text, nullable=True)
+    ocr_text = Column(Text, nullable=True)
+    corrected_text = Column(Text, nullable=True)
+    ocr_confidence = Column(Float, nullable=True)
+    low_confidence_items = Column(Text, nullable=True)
+    regions = Column(Text, nullable=True)
+    needs_manual_confirm = Column(Integer, nullable=False, default=1)
+    ocr_error = Column(Text, nullable=True)
+    create_time = Column(DateTime, nullable=False)
+
+
+class CaseGenerationRequirementNote(Base):
+    __tablename__ = "case_generation_requirement_note"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    note_text = Column(Text, nullable=False)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class CaseGenerationCase(Base):
+    __tablename__ = "case_generation_case"
+    __table_args__ = (
+        Index("ix_case_generation_case_task_result", "task_id", "test_result"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    precondition = Column(Text, nullable=True)
+    steps = Column(Text, nullable=True)
+    expected = Column(Text, nullable=True)
+    priority = Column(String(20), nullable=True)
+    source_refs = Column(Text, nullable=True)
+    generation_batch = Column(String(80), nullable=True)
+    manual_edited = Column(Integer, nullable=False, default=0)
+    test_result = Column(String(20), nullable=True, default="untested")
+    source_missing = Column(Integer, nullable=False, default=0)
+    remark = Column(Text, nullable=True)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
 
 
 class AiConfig(Base):

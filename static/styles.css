@@ -342,3 +342,56 @@
   --shadow: 0 8px 32px rgba(240, 122, 154, 0.12);
   --shadow-lg: 0 20px 60px rgba(245, 150, 175, 0.18);
 }
+
+/* 脚本执行结果中文汇总表 */
+.summary-wrap {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.summary-wrap > .empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 12px 0;
+  text-align: center;
+}
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 4px 0;
+}
+.summary-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.summary-label {
+  width: 140px;
+  color: var(--muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.summary-value {
+  color: var(--text);
+  word-break: break-all;
+}
+.summary-detail {
+  margin: 8px 0;
+  font-size: 13px;
+}
+.summary-detail > summary {
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--th-bg);
+  color: var(--muted);
+  font-weight: 500;
+}
+.summary-detail > summary:hover {
+  background: var(--row-hover);
+}
+.summary-detail > .log-view {
+  margin-top: 4px;
+  max-height: 30vh;
+}

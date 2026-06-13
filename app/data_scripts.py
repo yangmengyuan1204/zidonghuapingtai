@@ -1,9 +1,11 @@
 import copy
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import OrderedDict
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 import json
 import random
+import threading
 import time
 from typing import Any, Dict, Tuple
 from urllib.parse import urljoin
@@ -23,6 +25,52 @@ PURCHASE_TO_SHELF_SCRIPT_NAME = "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b
 WAREHOUSE_DELIVERY_SCRIPT_NAME = "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355"
 POORDER_BALANCE_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u4f59\u989d\u4ed8\u6b3e"
 POORDER_BANK_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u94f6\u884c\u4ed8\u6b3e"
+FULL_FLOW_SCRIPT_NAME = "\u5168\u6d41\u7a0b\u5b8c\u5168\u4f53"
+FULL_FLOW_COMPLETE_NODE = "full_complete"
+FULL_FLOW_NODE_LABELS = {
+    "shopping_cart": "\u5546\u54c1\u52a0\u8d2d\u5b8c\u6210",
+    "order_created": "\u524d\u53f0\u63d0\u4ea4\u8ba2\u5355\u5b8c\u6210",
+    "order_translated": "\u540e\u53f0\u8ba2\u5355\u7ffb\u8bd1\u5b8c\u6210",
+    "order_confirmed": "\u540e\u53f0\u8ba2\u5355\u786e\u8ba4\u5b8c\u6210",
+    "order_offered": "\u540e\u53f0\u8ba2\u5355\u62a5\u4ef7\u5b8c\u6210",
+    "order_paid": "\u8ba2\u5355\u652f\u4ed8\u5b8c\u6210",
+    "pending_purchase": "\u8ba2\u5355\u8fdb\u5165\u5f85\u62cd\u4e0b",
+    "purchase_no_saved": "\u4fdd\u5b58\u4ea4\u6613\u53f7\u5b8c\u6210",
+    "purchase_wait_modify_price": "\u6807\u8bb0\u5f85\u6539\u4ef7\u5b8c\u6210",
+    "purchase_wait_pay": "\u63d0\u4ea4\u5f85\u8d22\u52a1\u4ed8\u6b3e\u5b8c\u6210",
+    "purchase_paid": "\u4ea4\u6613\u53f7\u4ed8\u6b3e\u5b8c\u6210",
+    "checking_started": "\u5f00\u59cb\u6838\u67e5\u5b8c\u6210",
+    "shelf_stored": "\u6838\u67e5\u4e0a\u67b6\u5165\u5e93\u5b8c\u6210",
+    "warehouse_delivery_created": "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355\u5b8c\u6210",
+    "porder_translated": "\u914d\u9001\u5355\u5f85\u7ffb\u8bd1\u5b8c\u6210",
+    "porder_confirmed": "\u914d\u9001\u5355\u786e\u8ba4\u6d41\u8f6c\u5b8c\u6210",
+    "porder_wait_offer": "\u914d\u9001\u5355\u8fdb\u5165\u5f85\u62a5\u4ef7\u5b8c\u6210",
+    "porder_offered": "\u914d\u9001\u5355\u62a5\u4ef7\u5b8c\u6210",
+    "porder_paid": "\u914d\u9001\u5355\u652f\u4ed8\u5b8c\u6210",
+    FULL_FLOW_COMPLETE_NODE: "\u5168\u6d41\u7a0b\u7ed3\u675f",
+}
+FULL_FLOW_NODE_SEQUENCE = [
+    "shopping_cart",
+    "order_created",
+    "order_translated",
+    "order_confirmed",
+    "order_offered",
+    "order_paid",
+    "pending_purchase",
+    "purchase_no_saved",
+    "purchase_wait_modify_price",
+    "purchase_wait_pay",
+    "purchase_paid",
+    "checking_started",
+    "shelf_stored",
+    "warehouse_delivery_created",
+    "porder_translated",
+    "porder_confirmed",
+    "porder_wait_offer",
+    "porder_offered",
+    "porder_paid",
+    FULL_FLOW_COMPLETE_NODE,
+]
 KEYWORDS = [
     "\u8863\u670d",
     "\u978b\u5b50",
@@ -47,6 +95,101 @@ SHOP_TYPE_ALIASES = {}
 MAX_LOG_BODY = 1200
 REQUEST_RETRIES = 2
 REQUEST_RETRY_DELAY = 0.8
+ORDER_OPTION_NAME_FALLBACKS = {
+    "1": "FBA贴标",
+    "3": "更换OPP袋子",
+    "4": "取布标",
+    "5": "缝布标",
+    "fba_label": "FBA贴标",
+    "detail_inspection": "详细检品(单价)",
+    "opp_bag": "更换OPP袋子",
+    "remove_cloth_label": "取布标",
+    "sew_cloth_label": "缝布标",
+    "FBA贴标": "FBA贴标",
+    "详细检品(单价)": "详细检品(单价)",
+    "更换OPP袋子": "更换OPP袋子",
+    "取布标": "取布标",
+    "缝布标": "缝布标",
+}
+
+
+class DataScriptRuntime:
+    def __init__(self) -> None:
+        self._client_cache: Dict[tuple[Any, ...], tuple[Any, str]] = {}
+        self._admin_token_cache: Dict[tuple[Any, ...], tuple[Dict[str, Any], str]] = {}
+
+    def client(
+        self,
+        env: Env,
+        variables: Dict[str, Any],
+        *,
+        log: Dict[str, Any] | None = None,
+        retry_login: bool = True,
+    ) -> tuple[Any, str, int, str, bool]:
+        account, password, client_tool = _client_login_inputs(variables)
+        timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+        base_url = (env.base_url or bulk_cart.BASE_URL).rstrip("/")
+        key = (base_url, timeout, account, password, client_tool)
+        cached = key in self._client_cache
+        if cached:
+            client, token = self._client_cache[key]
+            _configure_client_api_paths(client, variables)
+        else:
+            client = bulk_cart.RakumartClient(base_url, timeout)
+            _configure_client_api_paths(client, variables)
+            login = lambda: client.login(account, password, client_tool)
+            token = _call_with_retry("client login", login) if retry_login else login()
+            self._client_cache[key] = (client, str(token))
+        if log is not None:
+            log["login"] = {
+                "success": True,
+                "account": account,
+                "client_tool": client_tool,
+                "token_extracted": bool(token),
+                "cached": cached,
+            }
+        return client, base_url, timeout, str(token), cached
+
+    def admin_login(
+        self,
+        session: requests.Session,
+        base_url: str,
+        variables: Dict[str, Any],
+        timeout: int,
+    ) -> tuple[Dict[str, Any], str, bool]:
+        key = (
+            base_url.rstrip("/"),
+            timeout,
+            str(variables.get("backend_account") or variables.get("backend_username") or "Y001"),
+            str(variables.get("backend_password") or "raku@123456``"),
+            str(variables.get("backend_system") or "1"),
+            str(variables.get("backend_compute_token") or ""),
+            str(variables.get("backend_code") or "wnm666"),
+        )
+        cached = key in self._admin_token_cache
+        if cached:
+            payload, token = self._admin_token_cache[key]
+        else:
+            payload, token = _admin_login_without_runtime(session, base_url, variables, timeout)
+            if token:
+                self._admin_token_cache[key] = (payload, token)
+        if token:
+            session.headers.update(_admin_headers(token))
+        return payload, token, cached
+
+
+def _runtime_from_variables(variables: Dict[str, Any]) -> DataScriptRuntime | None:
+    runtime = variables.get("_runtime")
+    return runtime if isinstance(runtime, DataScriptRuntime) else None
+
+
+def _client_login_inputs(variables: Dict[str, Any]) -> tuple[str, str, str]:
+    account = str(variables.get("account") or "").strip()
+    password = str(variables.get("password") or "").strip()
+    client_tool = str(variables.get("client_tool") or "1").strip()
+    if client_tool == "2" and not _as_bool(variables.get("allow_h5_client_tool"), False):
+        client_tool = "1"
+    return account, password, client_tool
 
 
 def _as_list(value: Any, fallback: list[str]) -> list[str]:
@@ -245,16 +388,64 @@ def _auth_form_fields(user_token: str, login_payload: Dict[str, Any], client_too
     return fields
 
 
+def _duration_ms(started_at: Any, finished_at: datetime) -> int | None:
+    if not isinstance(started_at, datetime):
+        return None
+    return max(0, int((finished_at - started_at).total_seconds() * 1000))
+
+
 def _finish_named(script_name: str, log: Dict[str, Any], passed: bool, summary: Dict[str, Any]) -> Tuple[bool, str, str, Dict[str, Any]]:
+    finished_at = datetime.now()
+    duration_ms = _duration_ms(log.get("started_at"), finished_at)
+    if duration_ms is not None:
+        summary.setdefault("duration_ms", duration_ms)
+        log["duration_ms"] = duration_ms
     log["summary"] = summary
-    log["finished_at"] = datetime.now()
+    log["finished_at"] = finished_at
     log_text = json.dumps(log, ensure_ascii=False, indent=2, default=str)
-    report_path = write_allure_result(script_name, "data_script", passed, log_text)
+    report_path = write_allure_result(script_name, "data_script", passed, log_text, started_at=log.get("started_at"), finished_at=finished_at)
     return passed, log_text, report_path, summary
 
 
 def _finish(log: Dict[str, Any], passed: bool, summary: Dict[str, Any]) -> Tuple[bool, str, str, Dict[str, Any]]:
     return _finish_named(SCRIPT_NAME, log, passed, summary)
+
+
+def _stop_after_node(variables: Dict[str, Any]) -> str:
+    return str(variables.get("stop_after_node") or variables.get("pause_after_node") or "").strip()
+
+
+def _checkpoint_requested(variables: Dict[str, Any], node: str) -> bool:
+    stop_after = _stop_after_node(variables)
+    return bool(stop_after and stop_after != FULL_FLOW_COMPLETE_NODE and stop_after == node)
+
+
+def _paused_summary(node: str, summary: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    paused = dict(summary or {})
+    paused.update(
+        {
+            "paused": True,
+            "stopped_after_node": node,
+            "current_node": node,
+            "node_label": FULL_FLOW_NODE_LABELS.get(node, node),
+        }
+    )
+    return paused
+
+
+def _is_paused(summary: Dict[str, Any] | None) -> bool:
+    return bool(isinstance(summary, dict) and summary.get("paused"))
+
+
+def _finish_paused(
+    script_name: str,
+    log: Dict[str, Any],
+    node: str,
+    summary: Dict[str, Any] | None = None,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
+    paused = _paused_summary(node, summary)
+    log["paused"] = paused
+    return _finish_named(script_name, log, True, paused)
 
 
 def _legacy_run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
@@ -594,7 +785,7 @@ def _quantity_cycle(value: Any) -> list[int]:
 
 
 def _item_brief(item: Any) -> Dict[str, Any]:
-    data = item.to_dict() if hasattr(item, "to_dict") else {}
+    data = item.to_dict() if hasattr(item, "to_dict") else dict(item) if isinstance(item, dict) else {}
     return {
         "goods_id": data.get("goods_id"),
         "shop_id": data.get("shop_id"),
@@ -604,6 +795,55 @@ def _item_brief(item: Any) -> Dict[str, Any]:
         "num": data.get("num"),
         "price": data.get("price"),
         "from_platform": data.get("from_platform"),
+    }
+
+
+def _cart_text(data: Dict[str, Any], *keys: str) -> str:
+    for key in keys:
+        value = data.get(key)
+        if value not in (None, ""):
+            return str(value).strip()
+    return ""
+
+
+def _cart_item_matches(expected: Dict[str, Any], actual: Dict[str, Any]) -> bool:
+    expected_goods = _cart_text(expected, "goods_id", "goodsId")
+    actual_goods = _cart_text(actual, "goods_id", "goodsId")
+    if not expected_goods or expected_goods != actual_goods:
+        return False
+    for key_pair in [("sku_id", "skuId"), ("spec_id", "specId")]:
+        expected_value = _cart_text(expected, *key_pair)
+        actual_value = _cart_text(actual, *key_pair)
+        if expected_value and actual_value and expected_value != actual_value:
+            return False
+    return True
+
+
+def _verify_cart_contains_items(cart_payload: Dict[str, Any], items: list[Any]) -> Dict[str, Any]:
+    cart_goods = _flatten_cart_goods(cart_payload)
+    used_indices: set[int] = set()
+    missing: list[Dict[str, Any]] = []
+    matched = 0
+    for item in items:
+        expected = item.to_dict() if hasattr(item, "to_dict") else dict(item) if isinstance(item, dict) else {}
+        match_index = None
+        for index, actual in enumerate(cart_goods):
+            if index in used_indices:
+                continue
+            if _cart_item_matches(expected, actual):
+                match_index = index
+                break
+        if match_index is None:
+            missing.append(_item_brief(expected))
+        else:
+            used_indices.add(match_index)
+            matched += 1
+    return {
+        "cart_goods_count": len(cart_goods),
+        "expected_count": len(items),
+        "matched_count": matched,
+        "missing_count": len(missing),
+        "missing_items": missing[:10],
     }
 
 
@@ -633,6 +873,11 @@ def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) 
     quantities = _quantity_cycle(variables.get("quantities"))
     allow_fallback_sku = not _as_bool(variables.get("no_fallback_sku"), False)
     strict_shop_count = _as_bool(variables.get("strict_shop_count") or variables.get("strict"), False)
+    verify_cart_after_add = _as_bool(variables.get("verify_cart_after_add"), True)
+    cart_verify_mode = str(variables.get("cart_verify_mode") or "batch").strip().lower()
+    if cart_verify_mode not in {"batch", "final"}:
+        cart_verify_mode = "batch"
+    cart_list_price_cut = str(variables.get("priceCut") or variables.get("price_cut") or "0")
 
     log: Dict[str, Any] = {
         "script": SCRIPT_NAME,
@@ -649,16 +894,22 @@ def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) 
         "detail_workers": detail_workers,
         "quantities": quantities,
         "allow_fallback_sku": allow_fallback_sku,
+        "verify_cart_after_add": verify_cart_after_add,
+        "cart_verify_mode": cart_verify_mode,
         "started_at": datetime.now(),
         "shops": [],
         "batches": [],
     }
 
     try:
-        client = bulk_cart.RakumartClient(base_url, timeout)
-        _configure_client_api_paths(client, variables)
-        token = client.login(account, password, client_tool)
-        log["login"] = {"success": True, "account": account, "client_tool": client_tool, "token_extracted": bool(token)}
+        runtime = _runtime_from_variables(variables)
+        if runtime:
+            client, _base_url, _timeout, token, _cached = runtime.client(env, variables, log=log, retry_login=False)
+        else:
+            client = bulk_cart.RakumartClient(base_url, timeout)
+            _configure_client_api_paths(client, variables)
+            token = client.login(account, password, client_tool)
+            log["login"] = {"success": True, "account": account, "client_tool": client_tool, "token_extracted": bool(token)}
 
         shops = bulk_cart.collect_items(
             client=client,
@@ -714,7 +965,11 @@ def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) 
             )
 
         added_total = 0
+        api_added_total = 0
+        verified_added_total = 0
         failed_batches = []
+        verification_failed_batches = []
+        verification_items: list[Any] = []
         for batch_index, batch in enumerate(bulk_cart.chunks(items, batch_size), start=1):
             payload = client.add_to_cart(batch)
             ok = bool(payload.get("success")) and payload.get("code") == 0
@@ -729,12 +984,49 @@ def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) 
                 batch_log["body"] = payload
                 failed_batches.append(batch_index)
             else:
-                added_total += len(batch)
+                api_added_total += len(batch)
+                if verify_cart_after_add and cart_verify_mode == "batch":
+                    cart_payload = _call_with_retry(
+                        "cart verify",
+                        lambda: client.post_form(
+                            _api_path(variables, "client_cart_list", "/client/cart.goodsCartList"),
+                            {"priceCut": cart_list_price_cut},
+                        ),
+                    )
+                    verification = _verify_cart_contains_items(cart_payload, batch)
+                    verification["api_success"] = _api_success(cart_payload)
+                    batch_log["verification"] = verification
+                    verified_added_total += verification["matched_count"]
+                    if not verification["api_success"] or verification["matched_count"] < len(batch):
+                        verification_failed_batches.append(batch_index)
+                elif verify_cart_after_add:
+                    verification_items.extend(batch)
+                else:
+                    added_total += len(batch)
             log["batches"].append(batch_log)
             if sleep_seconds > 0:
                 time.sleep(sleep_seconds)
 
+        if verify_cart_after_add and cart_verify_mode == "final" and verification_items:
+            cart_payload = _call_with_retry(
+                "cart verify final",
+                lambda: client.post_form(
+                    _api_path(variables, "client_cart_list", "/client/cart.goodsCartList"),
+                    {"priceCut": cart_list_price_cut},
+                ),
+            )
+            verification = _verify_cart_contains_items(cart_payload, verification_items)
+            verification["api_success"] = _api_success(cart_payload)
+            log["final_verification"] = verification
+            verified_added_total = verification["matched_count"]
+            if not verification["api_success"] or verification["matched_count"] < len(verification_items):
+                verification_failed_batches.append("final")
+
+        if verify_cart_after_add:
+            added_total = verified_added_total
         passed = added_total > 0 and not failed_batches and (ready_shops >= target_shops or not strict_shop_count)
+        if verify_cart_after_add:
+            passed = passed and not verification_failed_batches
         summary = {
             "keyword": keyword,
             "shop_type": shop_type,
@@ -744,12 +1036,19 @@ def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) 
             "expected_total": expected_total,
             "available_expected_total": ready_shops * per_shop,
             "added_total": added_total,
+            "api_added_total": api_added_total,
+            "verified_added_total": verified_added_total if verify_cart_after_add else added_total,
+            "cart_verification_enabled": verify_cart_after_add,
+            "cart_verify_mode": cart_verify_mode,
             "failed_batches": failed_batches,
+            "verification_failed_batches": verification_failed_batches,
             "strict_shop_count": strict_shop_count,
         }
         if not passed:
             if failed_batches:
                 summary["reason"] = "\u6709\u52a0\u8d2d\u6279\u6b21\u5931\u8d25"
+            elif verification_failed_batches:
+                summary["reason"] = "\u52a0\u8d2d\u63a5\u53e3\u8fd4\u56de\u6210\u529f\uff0c\u4f46\u8d2d\u7269\u8f66\u672a\u9a8c\u8bc1\u5230\u5bf9\u5e94\u5546\u54c1"
             elif strict_shop_count and ready_shops < target_shops:
                 summary["reason"] = "\u6536\u96c6\u5230\u7684\u5e97\u94fa\u6570\u4e0d\u8db3"
             else:
@@ -884,6 +1183,159 @@ def _first_price(price_ranges: Any) -> str:
     return ""
 
 
+def _json_list(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, str) and value.strip():
+        try:
+            parsed = json.loads(value)
+        except ValueError:
+            return []
+        return parsed if isinstance(parsed, list) else []
+    return []
+
+
+def _order_option_items(value: Any) -> list[Dict[str, Any]]:
+    return [item for item in _json_list(value) if isinstance(item, dict)]
+
+
+def _order_option_key(option: Dict[str, Any]) -> str:
+    for key in ["id", "option_id", "value", "key", "name", "name_translate"]:
+        value = option.get(key)
+        if value not in (None, ""):
+            return str(value).strip()
+    return ""
+
+
+def _order_option_label(option: Dict[str, Any], key: str = "") -> str:
+    option_id = str(option.get("id") or option.get("option_id") or "").strip()
+    name = str(option.get("name") or "").strip()
+    name_translate = str(option.get("name_translate") or "").strip()
+    for candidate in [name, option_id, key]:
+        if candidate and ORDER_OPTION_NAME_FALLBACKS.get(candidate):
+            return ORDER_OPTION_NAME_FALLBACKS[candidate]
+    return name or name_translate or key
+
+
+def _normalize_order_option_counts(value: Any) -> OrderedDict[str, int]:
+    if not isinstance(value, dict):
+        return OrderedDict()
+    counts: OrderedDict[str, int] = OrderedDict()
+    for raw_key, raw_count in value.items():
+        key = str(raw_key or "").strip()
+        if not key:
+            continue
+        try:
+            count = int(raw_count)
+        except (TypeError, ValueError):
+            continue
+        if count > 0:
+            counts[key] = count
+    return counts
+
+
+def _add_order_option_to_catalog(catalog: OrderedDict[str, Dict[str, Any]], option: Dict[str, Any]) -> None:
+    key = _order_option_key(option)
+    if not key or key in catalog:
+        return
+    label = _order_option_label(option, key)
+    catalog[key] = {
+        "key": key,
+        "id": option.get("id") or option.get("option_id") or "",
+        "name": option.get("name") or label,
+        "label": label,
+        "name_translate": option.get("name_translate") or "",
+        "price": option.get("price") if option.get("price") not in (None, "") else "",
+        "price_type": option.get("price_type") if option.get("price_type") not in (None, "") else "",
+        "unit": option.get("unit") or "",
+        "template": copy.deepcopy(option),
+    }
+
+
+def _order_option_catalog_from_options(options: Any) -> OrderedDict[str, Dict[str, Any]]:
+    catalog: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+    for option in _order_option_items(options):
+        _add_order_option_to_catalog(catalog, option)
+    return catalog
+
+
+def _collect_order_option_catalog(items: list[Dict[str, Any]]) -> OrderedDict[str, Dict[str, Any]]:
+    catalog: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+    for item in items:
+        for option in _order_option_items(item.get("option")):
+            _add_order_option_to_catalog(catalog, option)
+    return catalog
+
+
+def _public_order_options(catalog: OrderedDict[str, Dict[str, Any]]) -> list[Dict[str, Any]]:
+    return [
+        {key: value for key, value in option.items() if key != "template"}
+        for option in catalog.values()
+    ]
+
+
+def _order_option_list_path(variables: Dict[str, Any]) -> str:
+    return _api_path(variables, "client_order_option_list", "/client/order.optionList")
+
+
+def _fetch_order_option_catalog(client: Any, variables: Dict[str, Any]) -> tuple[OrderedDict[str, Dict[str, Any]], Dict[str, Any], str]:
+    path = _order_option_list_path(variables)
+    payload = _call_with_retry("order option list", lambda: client.post_form(path, {}))
+    if not _api_success(payload):
+        raise RuntimeError(f"读取订单 option 失败：{payload.get('msg') or payload.get('data') or payload}")
+    options = payload.get("data")
+    catalog = _order_option_catalog_from_options(options)
+    if not catalog:
+        raise RuntimeError("读取订单 option 失败：接口未返回可用 option")
+    return catalog, payload, path
+
+
+def _apply_order_options_to_items(
+    items: list[Dict[str, Any]],
+    variables: Dict[str, Any],
+    option_catalog: OrderedDict[str, Dict[str, Any]] | None = None,
+) -> Dict[str, Any]:
+    counts = _normalize_order_option_counts(variables.get("order_option_counts"))
+    catalog = option_catalog if option_catalog is not None else _collect_order_option_catalog(items)
+    selected_options = []
+    missing = []
+    for key, count in counts.items():
+        option = catalog.get(key)
+        if option:
+            selected_options.append({**{k: v for k, v in option.items() if k != "template"}, "num": count})
+        else:
+            missing.append({"key": key, "num": count, "reason": "option_not_found"})
+
+    applied_detail_count = 0
+    for item in items:
+        applied = []
+        for key, count in counts.items():
+            template = (catalog.get(key) or {}).get("template")
+            if not isinstance(template, dict):
+                continue
+            option = copy.deepcopy(template)
+            label = _order_option_label(option, key)
+            option["name"] = option.get("name") or label
+            option["checked"] = True
+            option["num"] = str(count)
+            applied.append(option)
+        if applied:
+            item["option"] = applied
+            applied_detail_count += 1
+        else:
+            item.pop("option", None)
+
+    return {
+        "available_options": _public_order_options(catalog),
+        "selected_options": selected_options,
+        "counts": dict(counts),
+        "applied_detail_count": applied_detail_count,
+        "missing": missing,
+    }
+
+
 def _flatten_cart_goods(cart_payload: Dict[str, Any]) -> list[Dict[str, Any]]:
     data = cart_payload.get("data")
     if isinstance(data, list):
@@ -1006,6 +1458,119 @@ def _edit_cart_fields(item: Dict[str, Any], quantity: int) -> OrderedDict[str, A
     fields["pic"] = item.get("pic") or ""
     fields["client_remark"] = item.get("client_remark") or ""
     return fields
+
+
+def _cart_item_quantity(item: Dict[str, Any]) -> int | None:
+    value = item.get("num")
+    if value in (None, ""):
+        return None
+    try:
+        return int(float(str(value)))
+    except (TypeError, ValueError):
+        return None
+
+
+def _authed_client_with_token(base_url: str, timeout: int, variables: Dict[str, Any], token: str) -> Any:
+    client = bulk_cart.RakumartClient(base_url, timeout)
+    _configure_client_api_paths(client, variables)
+    if token:
+        client.session.headers.update({"clienttoken": token})
+    return client
+
+
+def _edit_cart_items_for_order(
+    client: Any,
+    base_url: str,
+    timeout: int,
+    variables: Dict[str, Any],
+    selected_items: list[Dict[str, Any]],
+    item_quantity: int,
+    token: str,
+) -> tuple[list[Dict[str, Any]], list[Any]]:
+    edit_path = _api_path(variables, "client_cart_edit", "/client/cart.goodsCartEdit")
+    workers = _as_int(variables.get("cart_edit_workers"), 1)
+    logs_by_index: Dict[int, Dict[str, Any]] = {}
+    failed_by_index: Dict[int, tuple[Dict[str, Any], Dict[str, Any]]] = {}
+    to_edit: list[tuple[int, Dict[str, Any], OrderedDict[str, Any]]] = []
+
+    for index, item in enumerate(selected_items):
+        if _cart_item_quantity(item) == item_quantity:
+            item["num"] = item_quantity
+            logs_by_index[index] = {
+                "cart_id": item.get("id"),
+                "goods_id": item.get("goods_id"),
+                "num": item_quantity,
+                "success": True,
+                "skipped": True,
+                "reason": "quantity_already_matched",
+            }
+            continue
+        to_edit.append((index, item, _edit_cart_fields(item, item_quantity)))
+
+    def apply_result(index: int, item: Dict[str, Any], payload: Dict[str, Any], retried: bool = False) -> None:
+        edit_ok = _api_success(payload)
+        if edit_ok:
+            item["num"] = item_quantity
+            failed_by_index.pop(index, None)
+        else:
+            failed_by_index[index] = (item, payload)
+        log_item = {
+            "cart_id": item.get("id"),
+            "goods_id": item.get("goods_id"),
+            "num": item_quantity,
+            **_payload_brief(payload),
+        }
+        if retried:
+            log_item["retried_serial"] = True
+        logs_by_index[index] = log_item
+
+    def edit_with(target_client: Any, fields: OrderedDict[str, Any]) -> Dict[str, Any]:
+        return _call_with_retry("cart edit", lambda: target_client.post_form(edit_path, fields))
+
+    if workers > 1 and len(to_edit) > 1 and token:
+        thread_state = threading.local()
+
+        def thread_client() -> Any:
+            cached_client = getattr(thread_state, "client", None)
+            if cached_client is None:
+                cached_client = _authed_client_with_token(base_url, timeout, variables, token)
+                thread_state.client = cached_client
+            return cached_client
+
+        def edit_in_thread(fields: OrderedDict[str, Any]) -> Dict[str, Any]:
+            return edit_with(thread_client(), fields)
+
+        with ThreadPoolExecutor(max_workers=min(workers, len(to_edit))) as executor:
+            future_map = {
+                executor.submit(edit_in_thread, fields): (index, item, fields)
+                for index, item, fields in to_edit
+            }
+            for future in as_completed(future_map):
+                index, item, fields = future_map[future]
+                try:
+                    payload = future.result()
+                except Exception as exc:
+                    payload = {"success": False, "message": str(exc)}
+                apply_result(index, item, payload)
+
+        retry_items = [(index, item, fields) for index, item, fields in to_edit if index in failed_by_index]
+        for index, item, fields in retry_items:
+            try:
+                payload = edit_with(client, fields)
+            except Exception as exc:
+                payload = {"success": False, "message": str(exc)}
+            apply_result(index, item, payload, retried=True)
+    else:
+        for index, item, fields in to_edit:
+            try:
+                payload = edit_with(client, fields)
+            except Exception as exc:
+                payload = {"success": False, "message": str(exc)}
+            apply_result(index, item, payload)
+
+    edit_logs = [logs_by_index[index] for index in range(len(selected_items)) if index in logs_by_index]
+    failed_edits = [item.get("id") for item, _payload in failed_by_index.values()]
+    return edit_logs, failed_edits
 
 
 def _order_fields(
@@ -1156,7 +1721,7 @@ def _post_admin_urlencoded(
     raise RuntimeError(f"admin request {path} failed after retries: {last_error}")
 
 
-def _admin_login(
+def _admin_login_without_runtime(
     session: requests.Session,
     base_url: str,
     variables: Dict[str, Any],
@@ -1175,6 +1740,19 @@ def _admin_login(
     if token:
         session.headers.update(_admin_headers(token))
     return payload, token
+
+
+def _admin_login(
+    session: requests.Session,
+    base_url: str,
+    variables: Dict[str, Any],
+    timeout: int,
+) -> tuple[Dict[str, Any], str]:
+    runtime = _runtime_from_variables(variables)
+    if runtime:
+        payload, token, _cached = runtime.admin_login(session, base_url, variables, timeout)
+        return payload, token
+    return _admin_login_without_runtime(session, base_url, variables, timeout)
 
 
 def _order_detail_data(
@@ -1339,6 +1917,16 @@ def _run_backend_order_flow(
 
     _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
     backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
+    if _checkpoint_requested(variables, "order_translated"):
+        return True, _paused_summary(
+            "order_translated",
+            {
+                "order_sn": order_sn,
+                "backend_passed": True,
+                "backend_steps": ["login", "detail", "translate"],
+                "backend_status": after_translate.get("status") if after_translate else None,
+            },
+        )
 
     confirm_source = after_translate or translate_data
     confirm_data = _build_confirm_data(confirm_source, variables, item_quantity)
@@ -1362,6 +1950,16 @@ def _run_backend_order_flow(
 
     _, after_confirm = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
     backend_log["detail_after_confirm"] = _admin_detail_brief(after_confirm)
+    if _checkpoint_requested(variables, "order_confirmed"):
+        return True, _paused_summary(
+            "order_confirmed",
+            {
+                "order_sn": order_sn,
+                "backend_passed": True,
+                "backend_steps": ["login", "detail", "translate", "confirm"],
+                "backend_status": after_confirm.get("status") if after_confirm else None,
+            },
+        )
 
     offer_source = after_confirm or confirm_source
     offer_data = _prepare_offer_data(offer_source, variables, item_quantity)
@@ -1381,6 +1979,17 @@ def _run_backend_order_flow(
 
     _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=1)
     backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
+    if _checkpoint_requested(variables, "order_offered"):
+        return True, _paused_summary(
+            "order_offered",
+            {
+                "order_sn": order_sn,
+                "backend_passed": True,
+                "backend_steps": ["login", "detail", "translate", "confirm", "offer"],
+                "quote_unit_price": _decimal_text(variables.get("quote_unit_price") or "10"),
+                "backend_status": after_offer.get("status") if after_offer else None,
+            },
+        )
     return True, {
         "backend_passed": True,
         "backend_steps": ["login", "detail", "translate", "confirm", "offer"],
@@ -1495,11 +2104,11 @@ def _select_payment_order(orders: list[Dict[str, Any]], variables: Dict[str, Any
 
 
 def _login_client_for_payment(env: Env, variables: Dict[str, Any], log: Dict[str, Any]) -> tuple[Any, str, int, str]:
-    account = str(variables.get("account") or "").strip()
-    password = str(variables.get("password") or "").strip()
-    client_tool = str(variables.get("client_tool") or "1").strip()
-    if client_tool == "2" and not _as_bool(variables.get("allow_h5_client_tool"), False):
-        client_tool = "1"
+    runtime = _runtime_from_variables(variables)
+    if runtime:
+        client, base_url, timeout, token, _cached = runtime.client(env, variables, log=log)
+        return client, base_url, timeout, token
+    account, password, client_tool = _client_login_inputs(variables)
     timeout = _as_int(variables.get("timeout"), env.timeout or 25)
     base_url = (env.base_url or bulk_cart.BASE_URL).rstrip("/")
     client = bulk_cart.RakumartClient(base_url, timeout)
@@ -1931,6 +2540,7 @@ def _purchase_item_brief(item: Dict[str, Any]) -> Dict[str, Any]:
     detail = item.get("order_detail") if isinstance(item.get("order_detail"), dict) else {}
     return {
         "id": _purchase_item_id(item),
+        "order_detail_id": _purchase_order_detail_id(item),
         "order_sn": item.get("_order_sn") or item.get("order_sn"),
         "purchase_no": item.get("purchase_no"),
         "status": item.get("status"),
@@ -1938,6 +2548,22 @@ def _purchase_item_brief(item: Dict[str, Any]) -> Dict[str, Any]:
         "goods_id": detail.get("goods_id") or item.get("goods_id"),
         "confirm_num": detail.get("confirm_num") or detail.get("num") or item.get("num"),
     }
+
+
+def _purchase_order_detail_id(item: Dict[str, Any]) -> str:
+    detail = item.get("order_detail") if isinstance(item.get("order_detail"), dict) else {}
+    for value in [
+        item.get("order_detail_id"),
+        item.get("orderDetailId"),
+        item.get("detail_id"),
+        detail.get("id"),
+        detail.get("order_detail_id"),
+        detail.get("orderDetailId"),
+        detail.get("detail_id"),
+    ]:
+        if value not in (None, ""):
+            return str(value).strip()
+    return ""
 
 
 def _purchase_wait_pay_fields(variables: Dict[str, Any], purchase_no: str, with_status: bool = True) -> OrderedDict[str, Any]:
@@ -2098,6 +2724,109 @@ def _unique_values(values: list[Any]) -> list[Any]:
     return result
 
 
+def _purchase_status_code(item: Dict[str, Any]) -> int | None:
+    for key in ["status", "_order_status"]:
+        value = item.get(key)
+        if value in (None, ""):
+            continue
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _purchase_still_pending(item: Dict[str, Any]) -> bool:
+    status_code = _purchase_status_code(item)
+    if status_code in {0, 1, 2, 3}:
+        return True
+    status_name = _purchase_status_name(item)
+    pending_names = [
+        "\u5f85\u62cd\u4e0b",
+        "\u5f85\u6539\u4ef7",
+        "\u5f85\u8d22\u52a1\u4ed8\u6b3e",
+        "\u5f85\u4ed8\u6b3e",
+        "\u5f85\u6838\u67e5",
+    ]
+    return any(name in status_name for name in pending_names)
+
+
+def _verify_purchase_to_shelf_completed(
+    session: requests.Session,
+    base_url: str,
+    variables: Dict[str, Any],
+    order_sn: str,
+    purchase_ids: list[Any],
+    timeout: int,
+    log: Dict[str, Any],
+) -> tuple[bool, Dict[str, Any]]:
+    retries = _as_int(variables.get("purchase_verify_retries"), 4)
+    delay = _as_float(variables.get("purchase_verify_delay"), 1.0)
+    selected_id_set = {str(item_id) for item_id in purchase_ids}
+    attempts = []
+    last_payload: Dict[str, Any] = {}
+    last_selected: list[Dict[str, Any]] = []
+    last_pending: list[Dict[str, Any]] = []
+
+    for attempt in range(retries):
+        fields = _purchase_list_fields(variables, order_sn)
+        fields["status"] = str(variables.get("purchase_verify_status") or "\u5168\u90e8")
+        fields["pageSize"] = max(_as_int(fields.get("pageSize"), 20), len(selected_id_set) or 20)
+        payload = _post_admin_form(
+            session,
+            base_url,
+            _api_path(variables, "admin_purchase_list", "/purchase.purchaseList"),
+            fields,
+            timeout,
+        )
+        items = _flatten_purchase_items(_admin_rows_from_payload(payload))
+        selected_items = [
+            item
+            for item in items
+            if not selected_id_set or str(_purchase_item_id(item) or "") in selected_id_set
+        ]
+        pending_items = [item for item in selected_items if _purchase_still_pending(item)]
+        attempts.append(
+            {
+                **_payload_brief(payload),
+                "attempt": attempt + 1,
+                "item_count": len(items),
+                "selected_count": len(selected_items),
+                "pending_count": len(pending_items),
+                "request": dict(fields),
+                "selected_items": [_purchase_item_brief(item) for item in selected_items[:20]],
+            }
+        )
+        last_payload = payload
+        last_selected = selected_items
+        last_pending = pending_items
+        if _api_success(payload) and not pending_items:
+            log["post_storage_verify_attempts"] = attempts
+            return True, {
+                "verify_passed": True,
+                "remaining_purchase_count": len(selected_items),
+                "remaining_pending_count": 0,
+            }
+        if attempt < retries - 1:
+            time.sleep(delay)
+
+    log["post_storage_verify_attempts"] = attempts
+    if not _api_success(last_payload):
+        return False, {
+            "verify_passed": False,
+            "remaining_purchase_count": len(last_selected),
+            "remaining_pending_count": len(last_pending),
+            "reason": "\u4e0a\u67b6\u540e\u56de\u67e5\u91c7\u8d2d\u5217\u8868\u5931\u8d25",
+        }
+    return False, {
+        "verify_passed": False,
+        "remaining_purchase_count": len(last_selected),
+        "remaining_pending_count": len(last_pending),
+        "remaining_pending_items": [_purchase_item_brief(item) for item in last_pending[:20]],
+        "reason": "\u4e0a\u67b6\u540e\u91c7\u8d2d\u72b6\u6001\u4ecd\u672a\u6d41\u8f6c",
+    }
+
+
 def _walk_grid_candidates(value: Any, result: list[Dict[str, Any]]) -> None:
     if isinstance(value, dict):
         if value.get("id") not in (None, "") and value.get("grid_number") not in (None, ""):
@@ -2215,6 +2944,18 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
                     "reason": "\u672a\u67e5\u8be2\u5230\u53ef\u64cd\u4f5c\u7684\u5f85\u62cd\u4e0b\u5546\u54c1",
                 },
             )
+        if _checkpoint_requested(variables, "pending_purchase"):
+            return _finish_paused(
+                PURCHASE_TO_SHELF_SCRIPT_NAME,
+                log,
+                "pending_purchase",
+                {
+                    "order_sn": order_sn,
+                    "purchase_no": purchase_no,
+                    "selected_count": len(purchase_items),
+                    "purchase_items": [_purchase_item_brief(item) for item in purchase_items[:20]],
+                },
+            )
 
         save_rows, ids = _purchase_save_rows(purchase_items, variables, purchase_no)
         if not save_rows or not ids:
@@ -2240,6 +2981,13 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
                 False,
                 {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u4fdd\u5b58\u4ea4\u6613\u53f7\u5931\u8d25"},
             )
+        if _checkpoint_requested(variables, "purchase_no_saved"):
+            return _finish_paused(
+                PURCHASE_TO_SHELF_SCRIPT_NAME,
+                log,
+                "purchase_no_saved",
+                {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
+            )
 
         modify_payload = _post_admin_urlencoded(
             session,
@@ -2255,6 +3003,13 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
                 log,
                 False,
                 {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u6807\u8bb0\u5f85\u6539\u4ef7\u5931\u8d25"},
+            )
+        if _checkpoint_requested(variables, "purchase_wait_modify_price"):
+            return _finish_paused(
+                PURCHASE_TO_SHELF_SCRIPT_NAME,
+                log,
+                "purchase_wait_modify_price",
+                {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
             )
 
         transition_delay = _as_float(variables.get("purchase_transition_delay"), 1.0)
@@ -2313,6 +3068,13 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
                 log,
                 False,
                 {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u63d0\u4ea4\u5f85\u8d22\u52a1\u4ed8\u6b3e\u5931\u8d25"},
+            )
+        if _checkpoint_requested(variables, "purchase_wait_pay"):
+            return _finish_paused(
+                PURCHASE_TO_SHELF_SCRIPT_NAME,
+                log,
+                "purchase_wait_pay",
+                {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
             )
 
         retry_delay = _as_float(variables.get("finance_confirm_delay"), 2.0)
@@ -2395,6 +3157,13 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
                 log,
                 False,
                 {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u4ea4\u6613\u53f7\u4ed8\u6b3e\u786e\u8ba4\u5931\u8d25"},
+            )
+        if _checkpoint_requested(variables, "purchase_paid"):
+            return _finish_paused(
+                PURCHASE_TO_SHELF_SCRIPT_NAME,
+                log,
+                "purchase_paid",
+                {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
             )
 
         follow_delay = _as_float(variables.get("follow_delay"), 2.0)
@@ -2485,6 +3254,7 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
             )
 
         purchase_ids = _unique_values([_order_purchase_id(item) for item in preview_items])
+        order_detail_ids = _unique_values([_purchase_order_detail_id(item) for item in purchase_items])
         already_checking = _items_already_checking(preview_items)
         if purchase_ids and (not already_checking or _as_bool(variables.get("force_start_checking"), False)):
             start_payload = _post_admin_urlencoded(
@@ -2504,6 +3274,20 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
                 )
         else:
             log["steps"].append({"name": "follow_start_checking", "skipped": True, "already_checking": already_checking})
+        if _checkpoint_requested(variables, "checking_started"):
+            return _finish_paused(
+                PURCHASE_TO_SHELF_SCRIPT_NAME,
+                log,
+                "checking_started",
+                {
+                    "order_sn": order_sn,
+                    "purchase_no": purchase_no,
+                    "purchase_ids": purchase_ids,
+                    "order_detail_ids": order_detail_ids,
+                    "selected_count": len(purchase_items),
+                    "already_checking": already_checking,
+                },
+            )
 
         inspection_delay = _as_float(variables.get("inspection_transition_delay"), 1.0)
         if inspection_delay > 0:
@@ -2609,6 +3393,8 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
             "purchase_no": purchase_no,
             "selected_count": len(purchase_items),
             "purchase_ids": purchase_ids,
+            "order_detail_ids": order_detail_ids,
+            "order_detail_id": order_detail_ids[0] if order_detail_ids else "",
             "grid_id": selected_grid.get("id"),
             "grid_number": selected_grid.get("grid_number"),
             "storage_count": len(up_data),
@@ -2616,6 +3402,20 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
         }
         if not passed:
             summary["reason"] = str(storage_payload.get("msg") or storage_payload.get("data") or "\u4e0a\u67b6\u5165\u5e93\u5931\u8d25")
+        elif _checkpoint_requested(variables, "shelf_stored"):
+            return _finish_paused(PURCHASE_TO_SHELF_SCRIPT_NAME, log, "shelf_stored", summary)
+        elif _as_bool(variables.get("verify_purchase_to_shelf"), True):
+            verify_passed, verify_summary = _verify_purchase_to_shelf_completed(
+                session,
+                base_url,
+                variables,
+                order_sn,
+                purchase_ids,
+                timeout,
+                log,
+            )
+            summary.update(verify_summary)
+            passed = verify_passed
         return _finish_named(PURCHASE_TO_SHELF_SCRIPT_NAME, log, passed, summary)
     except Exception as exc:
         log["error"] = str(exc)
@@ -2713,6 +3513,27 @@ def _warehouse_item_id(row: Dict[str, Any]) -> str:
     return str(_field_value(row, ["order_detail_id", "order_detailId", "detail_id", "porder_detail_id", "id"]) or "").strip()
 
 
+def _warehouse_sku_id(row: Dict[str, Any]) -> str:
+    return str(
+        _field_value(
+            row,
+            [
+                "sku_id",
+                "skuId",
+                "skuID",
+                "spec_id",
+                "specId",
+                "specID",
+                "goods_id",
+                "goodsId",
+                "goodsID",
+            ],
+        )
+        or _warehouse_item_id(row)
+        or ""
+    ).strip()
+
+
 def _warehouse_sendable_num(row: Dict[str, Any]) -> int:
     value = _field_value(
         row,
@@ -2734,17 +3555,107 @@ def _warehouse_sendable_num(row: Dict[str, Any]) -> int:
     return _as_int(value, 0)
 
 
-def _select_warehouse_item(rows: list[Dict[str, Any]], variables: Dict[str, Any]) -> Dict[str, Any] | None:
+def _warehouse_item_brief(row: Dict[str, Any], send_num: int | None = None) -> Dict[str, Any]:
+    brief = {
+        "order_detail_id": _warehouse_item_id(row),
+        "sku_id": _warehouse_sku_id(row),
+        "goods_id": _field_value(row, ["goods_id", "goodsId", "goodsID"]),
+        "goods_title": _field_value(row, ["goods_title", "goodsTitle", "title", "name"]),
+        "sendable_num": _warehouse_sendable_num(row),
+    }
+    order_sn = _field_value(row, ["order_sn", "orderSn", "orderSN"])
+    if order_sn not in (None, ""):
+        brief["order_sn"] = order_sn
+    if row.get("_warehouse_source"):
+        brief["source"] = row.get("_warehouse_source")
+    if send_num is not None:
+        brief["send_num"] = send_num
+    return brief
+
+
+def _warehouse_requested_order_detail_ids(variables: Dict[str, Any]) -> list[str]:
+    ids = _as_list(variables.get("order_detail_ids"), [])
+    for key in ["order_detail_id", "porder_detail_id"]:
+        value = variables.get(key)
+        if value not in (None, ""):
+            ids.append(str(value).strip())
+    return _unique_list(ids)
+
+
+def _warehouse_row_order_sn(row: Dict[str, Any]) -> str:
+    direct = _field_value(row, ["order_sn", "orderSn", "orderSN"])
+    if direct not in (None, ""):
+        return str(direct).strip()
+    return str(_first_deep_value(row, ["order_sn", "orderSn", "orderSN"]) or "").strip()
+
+
+def _warehouse_row_matches_current_order(row: Dict[str, Any], order_sn: str, order_detail_ids: set[str]) -> bool:
+    item_id = _warehouse_item_id(row)
+    if order_detail_ids and item_id in order_detail_ids:
+        return True
+    return bool(order_sn and _warehouse_row_order_sn(row) == order_sn)
+
+
+def _select_warehouse_items(rows: list[Dict[str, Any]], variables: Dict[str, Any], limit: int = 1) -> list[Dict[str, Any]]:
     requested_id = str(variables.get("order_detail_id") or variables.get("porder_detail_id") or "").strip()
+    requested_ids = _warehouse_requested_order_detail_ids(variables)
+    requested_id_set = set(requested_ids)
+    order_sn = str(variables.get("warehouse_order_sn") or variables.get("order_sn") or "").strip()
+    fill_scope = str(variables.get("warehouse_fill_scope") or "").strip().lower()
+    require_full_count = _as_bool(variables.get("require_warehouse_sku_count"), False)
+    current_first = fill_scope in {"current_order", "current_order_then_history"} or bool(requested_id_set and limit > 1)
+    allow_history = fill_scope != "current_order"
+    target_count = max(1, limit)
+    selected: list[Dict[str, Any]] = []
+    seen_skus: set[str] = set()
+    seen_item_ids: set[str] = set()
+
+    def add(row: Dict[str, Any], *, force: bool = False, source: str = "history") -> bool:
+        item_id = _warehouse_item_id(row)
+        if not item_id:
+            return False
+        if not force and _warehouse_sendable_num(row) <= 0:
+            return False
+        if item_id in seen_item_ids:
+            return False
+        sku_id = _warehouse_sku_id(row) or item_id
+        if sku_id in seen_skus:
+            return False
+        selected_row = dict(row)
+        selected_row["_warehouse_source"] = source
+        selected.append(selected_row)
+        seen_skus.add(sku_id)
+        seen_item_ids.add(item_id)
+        return len(selected) >= target_count
+
+    if current_first:
+        for row in rows:
+            if _warehouse_row_matches_current_order(row, order_sn, requested_id_set) and add(row, source="current_order"):
+                return selected
+        if len(selected) >= target_count or not allow_history:
+            return selected
+
     if requested_id:
         for row in rows:
             if _warehouse_item_id(row) == requested_id:
-                return row
-        return {"order_detail_id": requested_id, "send_num": _as_int(variables.get("send_num"), 1)}
+                add(row, force=not require_full_count, source="current_order")
+                break
+        if not selected and not require_full_count:
+            add({"order_detail_id": requested_id, "send_num": _as_int(variables.get("send_num"), 1)}, force=True, source="current_order")
+        if len(selected) >= target_count:
+            return selected
+
+    if not allow_history:
+        return selected
     for row in rows:
-        if _warehouse_item_id(row) and _warehouse_sendable_num(row) > 0:
-            return row
-    return None
+        if add(row, source="history"):
+            break
+    return selected
+
+
+def _select_warehouse_item(rows: list[Dict[str, Any]], variables: Dict[str, Any]) -> Dict[str, Any] | None:
+    selected = _select_warehouse_items(rows, variables, 1)
+    return selected[0] if selected else None
 
 
 def _address_fields(prefix: str, values: Dict[str, Any]) -> OrderedDict[str, Any]:
@@ -2809,15 +3720,17 @@ def _merge_address(defaults: Dict[str, Any], configured: Any) -> Dict[str, Any]:
     return result
 
 
-def _porder_create_fields(order_detail_id: str, porder_sn: str, send_num: int, variables: Dict[str, Any]) -> OrderedDict[str, Any]:
+def _porder_create_fields_for_items(items: list[Dict[str, Any]], porder_sn: str, variables: Dict[str, Any]) -> OrderedDict[str, Any]:
     fields: OrderedDict[str, Any] = OrderedDict()
     fields["create_type"] = str(variables.get("create_type") or "send")
     fields["porder_sn"] = porder_sn
     fields["logistics_id"] = str(variables.get("porder_logistics_id") or variables.get("logistics_id") or "14")
     fields["client_remark"] = str(variables.get("client_remark") or "")
-    fields["porder_detail[0][order_detail_id]"] = order_detail_id
-    fields["porder_detail[0][send_num]"] = send_num
-    fields["porder_detail[0][client_remark]"] = str(variables.get("porder_detail_remark") or "")
+    for index, item in enumerate(items):
+        prefix = f"porder_detail[{index}]"
+        fields[f"{prefix}[order_detail_id]"] = str(item.get("order_detail_id") or "")
+        fields[f"{prefix}[send_num]"] = _as_int(item.get("send_num"), 1)
+        fields[f"{prefix}[client_remark]"] = str(item.get("client_remark") or variables.get("porder_detail_remark") or "")
     receiver = _merge_address(_default_receiver_address(), variables.get("receiver_address"))
     importer = _merge_address(_default_importer_address(), variables.get("importer_address"))
     fields.update(_address_fields("receiver_address", receiver))
@@ -2825,6 +3738,14 @@ def _porder_create_fields(order_detail_id: str, porder_sn: str, send_num: int, v
     fields["is_amazon"] = str(variables.get("is_amazon") or "0")
     _apply_extra_fields(fields, variables.get("porder_create_fields"))
     return fields
+
+
+def _porder_create_fields(order_detail_id: str, porder_sn: str, send_num: int, variables: Dict[str, Any]) -> OrderedDict[str, Any]:
+    return _porder_create_fields_for_items(
+        [{"order_detail_id": order_detail_id, "send_num": send_num, "client_remark": variables.get("porder_detail_remark") or ""}],
+        porder_sn,
+        variables,
+    )
 
 
 def _extract_porder_sn(payload: Dict[str, Any], fallback: str) -> str:
@@ -3129,6 +4050,72 @@ def _extract_stock_item(payload: Dict[str, Any], fallback_num: int, porder_detai
     return {"stock_id": "", "num_need": _box_need_num(fallback_num, fallback_num)}
 
 
+def _stock_item_from_row(row: Dict[str, Any], fallback_num: int) -> Dict[str, Any]:
+    stock_id = _field_value(row, ["stock_id", "stockId", "wms_stock_id", "wmsStockId", "stockDetailId", "stock_detail_id"])
+    if stock_id not in (None, ""):
+        return {
+            "stock_id": str(stock_id).strip(),
+            "num_need": _box_need_num(
+                _field_value(row, ["num_need", "need_num", "send_num", "wait_box_num", "stock_num", "storage_num", "num"]),
+                fallback_num,
+            ),
+        }
+    for stock_key in ["stock", "stocks", "stock_list", "stockList", "wms_stock", "wmsStock", "storage", "storage_list", "storageList"]:
+        stock = row.get(stock_key)
+        stock_rows = stock if isinstance(stock, list) else [stock] if isinstance(stock, dict) else []
+        for item in stock_rows:
+            if not isinstance(item, dict):
+                continue
+            item_id = _field_value(item, ["stock_id", "stockId", "wms_stock_id", "wmsStockId", "stockDetailId", "stock_detail_id", "id"])
+            if item_id not in (None, ""):
+                return {
+                    "stock_id": str(item_id).strip(),
+                    "num_need": _box_need_num(
+                        _field_value(item, ["num_need", "need_num", "send_num", "wait_box_num", "stock_num", "storage_num", "num"]),
+                        fallback_num,
+                    ),
+                }
+    return {"stock_id": "", "num_need": _box_need_num(fallback_num, fallback_num)}
+
+
+def _extract_stock_item_for_detail(
+    payload: Dict[str, Any],
+    porder_detail_id: str,
+    fallback_num: int,
+    *,
+    allow_global_fallback: bool = False,
+) -> Dict[str, Any]:
+    detail_id = str(porder_detail_id or "").strip()
+    for row in _walk_dicts(payload):
+        row_detail_id = str(_field_value(row, ["porder_detail_id", "porderDetailId", "detail_id", "detailId"]) or "").strip()
+        row_id = str(row.get("id") or "").strip()
+        if detail_id and detail_id not in {row_detail_id, row_id}:
+            continue
+        stock_item = _stock_item_from_row(row, fallback_num)
+        if stock_item.get("stock_id"):
+            return stock_item
+    if allow_global_fallback:
+        return _extract_stock_item(payload, fallback_num, detail_id)
+    return {"stock_id": "", "num_need": _box_need_num(fallback_num, fallback_num)}
+
+
+def _porder_flow_detail_items(rows: list[Dict[str, Any]], fallback_num: int = 1) -> list[Dict[str, Any]]:
+    items: list[Dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows:
+        porder_detail_id = _porder_detail_id(row)
+        if not porder_detail_id or porder_detail_id in seen:
+            continue
+        seen.add(porder_detail_id)
+        items.append(
+            {
+                "porder_detail_id": porder_detail_id,
+                "wait_box_num": _porder_wait_box_num(row, fallback_num),
+            }
+        )
+    return items
+
+
 def _porder_detail_payload(
     session: requests.Session,
     base_url: str,
@@ -3211,11 +4198,13 @@ def _run_backend_porder_flow(
     if not _api_success(detail_payload) or not detail_rows:
         return False, {"backend_passed": False, "reason": "未获取到配送单详情"}
 
-    detail_row = detail_rows[0]
-    porder_detail_id = _porder_detail_id(detail_row)
-    wait_box_num = _porder_wait_box_num(detail_row, _as_int(variables.get("backend_box_num"), 1))
-    if not porder_detail_id:
+    default_box_num = _as_int(variables.get("backend_box_num"), 1)
+    detail_items = _porder_flow_detail_items(detail_rows, default_box_num)
+    if not detail_items:
         return False, {"backend_passed": False, "reason": "配送单详情缺少 porder_detail_id"}
+
+    porder_detail_ids = [item["porder_detail_id"] for item in detail_items]
+    porder_detail_id = porder_detail_ids[0]
 
     translate_payload = _post_admin_urlencoded(
         session,
@@ -3224,21 +4213,34 @@ def _run_backend_porder_flow(
         {
             "porder_sn": porder_sn,
             "client_remark_translate": str(variables.get("client_remark_translate") or ""),
-            "list": [{"id": porder_detail_id, "y_remark": str(variables.get("porder_y_remark") or "")}],
+            "list": [{"id": item["porder_detail_id"], "y_remark": str(variables.get("porder_y_remark") or "")} for item in detail_items],
             "is_temp": str(variables.get("porder_translate_is_temp") or "0"),
         },
         timeout,
     )
-    backend_log["submit_translate"] = {**_payload_brief(translate_payload), "porder_detail_id": porder_detail_id}
+    backend_log["submit_translate"] = {**_payload_brief(translate_payload), "porder_detail_ids": porder_detail_ids}
     if not _api_success(translate_payload):
         return False, {"backend_passed": False, "reason": "配送单提交配货失败", "submit_translate": _payload_brief(translate_payload)}
 
     _, after_translate_rows = _porder_detail_payload(session, base_url, variables, porder_sn, timeout, retries=2)
     if after_translate_rows:
-        detail_row = after_translate_rows[0]
-        porder_detail_id = _porder_detail_id(detail_row) or porder_detail_id
-        wait_box_num = _porder_wait_box_num(detail_row, wait_box_num)
-    backend_log["detail_after_translate"] = {"detail_count": len(after_translate_rows), "porder_detail_id": porder_detail_id}
+        translated_items = _porder_flow_detail_items(after_translate_rows, default_box_num)
+        if translated_items:
+            detail_items = translated_items
+            porder_detail_ids = [item["porder_detail_id"] for item in detail_items]
+            porder_detail_id = porder_detail_ids[0]
+    backend_log["detail_after_translate"] = {"detail_count": len(after_translate_rows), "porder_detail_ids": porder_detail_ids}
+    if _checkpoint_requested(variables, "porder_translated"):
+        return True, _paused_summary(
+            "porder_translated",
+            {
+                "porder_sn": porder_sn,
+                "porder_detail_id": porder_detail_id,
+                "porder_detail_ids": porder_detail_ids,
+                "backend_passed": True,
+                "backend_steps": ["login", "porder_detail", "submit_translate"],
+            },
+        )
 
     box_fields = {
         "porder_sn": porder_sn,
@@ -3277,10 +4279,26 @@ def _run_backend_porder_flow(
         session,
         base_url,
         _api_path(variables, "admin_porder_into_box_preview", "/porder.intoBoxPreview"),
-        {"porderDetailIdS": [porder_detail_id]},
+        {"porderDetailIdS": porder_detail_ids},
         timeout,
     )
-    stock_item = _extract_stock_item(preview_payload, wait_box_num, porder_detail_id)
+    stock_items: list[Dict[str, Any]] = []
+    for item in detail_items:
+        stock_item = _extract_stock_item_for_detail(
+            preview_payload,
+            item["porder_detail_id"],
+            _as_int(item.get("wait_box_num"), default_box_num),
+            allow_global_fallback=len(detail_items) == 1,
+        )
+        box_num = _box_need_num(stock_item.get("num_need"), _as_int(item.get("wait_box_num"), default_box_num))
+        stock_items.append(
+            {
+                "porder_detail_id": item["porder_detail_id"],
+                "stock_id": stock_item.get("stock_id") or "",
+                "num_need": stock_item.get("num_need"),
+                "box_num": box_num,
+            }
+        )
     freight_id = _extract_freight_id(
         freight_before_box_payload,
         detail_after_box_payload,
@@ -3292,19 +4310,27 @@ def _run_backend_porder_flow(
     backend_log["into_box_preview"] = {
         **_payload_brief(preview_payload),
         "porder_detail_id": porder_detail_id,
+        "porder_detail_ids": porder_detail_ids,
         "freight_id": freight_id,
-        "stock_id": stock_item.get("stock_id"),
-        "num_need": stock_item.get("num_need"),
+        "stock_items": stock_items,
         "sample": _payload_structure_sample(preview_payload, limit=8),
     }
     if not _api_success(preview_payload):
         return False, {"backend_passed": False, "reason": "装箱预览失败", "into_box_preview": _payload_brief(preview_payload)}
     if not freight_id:
         return False, {"backend_passed": False, "reason": "未拿到箱子 freight_id，无法装箱"}
-    if not stock_item.get("stock_id"):
+    missing_stock_items = [item for item in stock_items if not item.get("stock_id")]
+    if missing_stock_items:
+        return False, {
+            "backend_passed": False,
+            "reason": "\u672a\u6309\u914d\u9001\u5355\u8be6\u60c5\u5339\u914d\u5230\u5e93\u5b58 stock_id\uff0c\u65e0\u6cd5\u88c5\u7bb1",
+            "missing_porder_detail_ids": [item["porder_detail_id"] for item in missing_stock_items],
+        }
+    stock_item = stock_items[0]
+    if False and not stock_item.get("stock_id"):
         return False, {"backend_passed": False, "reason": "未拿到库存 stock_id，无法装箱"}
 
-    box_num = _box_need_num(stock_item.get("num_need"), wait_box_num)
+    box_num = _as_int(stock_item.get("box_num"), 1)
     into_box_payload = _post_admin_urlencoded(
         session,
         base_url,
@@ -3313,15 +4339,16 @@ def _run_backend_porder_flow(
             "freight_id_set": [freight_id],
             "list": [
                 {
-                    "per_num": box_num,
-                    "porder_detail_id": porder_detail_id,
-                    "stock": [{"stock_id": stock_item.get("stock_id"), "num_need": box_num}],
+                    "per_num": item["box_num"],
+                    "porder_detail_id": item["porder_detail_id"],
+                    "stock": [{"stock_id": item["stock_id"], "num_need": item["box_num"]}],
                 }
+                for item in stock_items
             ],
         },
         timeout,
     )
-    backend_log["into_box_submit"] = {**_payload_brief(into_box_payload), "box_num": box_num}
+    backend_log["into_box_submit"] = {**_payload_brief(into_box_payload), "box_num": box_num, "box_nums": {item["porder_detail_id"]: item["box_num"] for item in stock_items}}
     if not _api_success(into_box_payload):
         return False, {"backend_passed": False, "reason": "装箱提交失败", "into_box_submit": _payload_brief(into_box_payload)}
 
@@ -3441,6 +4468,33 @@ def _run_backend_porder_flow(
     if not _api_success(to_wait_offer_payload):
         return False, {"backend_passed": False, "reason": "配送单提交业务失败", "to_wait_offer": _payload_brief(to_wait_offer_payload)}
 
+    porder_to_wait_node = ""
+    if _checkpoint_requested(variables, "porder_confirmed"):
+        porder_to_wait_node = "porder_confirmed"
+    elif _checkpoint_requested(variables, "porder_wait_offer"):
+        porder_to_wait_node = "porder_wait_offer"
+    if porder_to_wait_node:
+        return True, _paused_summary(
+            porder_to_wait_node,
+            {
+                "porder_sn": porder_sn,
+                "porder_detail_id": porder_detail_id,
+                "porder_detail_ids": porder_detail_ids,
+                "freight_id": freight_id,
+                "backend_passed": True,
+                "backend_steps": [
+                    "login",
+                    "porder_detail",
+                    "submit_translate",
+                    "add_box",
+                    "into_box_preview",
+                    "into_box_submit",
+                    "complete_box",
+                    "to_wait_offer",
+                ],
+            },
+        )
+
     logistics_id = str(variables.get("delivery_quote_logistics_id") or variables.get("quote_logistics_id") or "25")
     logistics_price = str(variables.get("logistics_price_artificial") or "775")
     logistics_payload = _post_admin_urlencoded(
@@ -3486,7 +4540,7 @@ def _run_backend_porder_flow(
         {
             "porder_sn": porder_sn,
             "y_remark": str(variables.get("porder_offer_remark") or ""),
-            "list": [{"id": porder_detail_id, "y_remark": str(variables.get("porder_y_remark") or ""), "received_num": ""}],
+            "list": [{"id": item["porder_detail_id"], "y_remark": str(variables.get("porder_y_remark") or ""), "received_num": ""} for item in detail_items],
             "logistics_price_artificial": logistics_price,
             "fba_complete_num": str(variables.get("fba_complete_num") or "0"),
             "fba_overstep_reason": str(variables.get("fba_overstep_reason") or ""),
@@ -3496,8 +4550,39 @@ def _run_backend_porder_flow(
     backend_log["submit_offer"] = {
         **_payload_brief(offer_payload),
         "porder_detail_id": porder_detail_id,
+        "porder_detail_ids": porder_detail_ids,
         "logistics_price_artificial": logistics_price,
     }
+    if _api_success(offer_payload) and _checkpoint_requested(variables, "porder_offered"):
+        return True, _paused_summary(
+            "porder_offered",
+            {
+                "porder_sn": porder_sn,
+                "porder_detail_id": porder_detail_id,
+                "porder_detail_ids": porder_detail_ids,
+                "freight_id": freight_id,
+                "stock_id": stock_item.get("stock_id"),
+                "stock_ids": [item.get("stock_id") for item in stock_items],
+                "box_num": box_num,
+                "box_nums": {item["porder_detail_id"]: item["box_num"] for item in stock_items},
+                "logistics_id": logistics_id,
+                "logistics_price_artificial": logistics_price,
+                "backend_passed": True,
+                "backend_steps": [
+                    "login",
+                    "porder_detail",
+                    "submit_translate",
+                    "add_box",
+                    "into_box_preview",
+                    "into_box_submit",
+                    "complete_box",
+                    "to_wait_offer",
+                    "batch_update_freight_logistics",
+                    "freight_list",
+                    "submit_offer",
+                ],
+            },
+        )
     if not _api_success(offer_payload):
         return False, {"backend_passed": False, "reason": "配送单报价失败", "submit_offer": _payload_brief(offer_payload)}
 
@@ -3517,9 +4602,12 @@ def _run_backend_porder_flow(
             "submit_offer",
         ],
         "porder_detail_id": porder_detail_id,
+        "porder_detail_ids": porder_detail_ids,
         "freight_id": freight_id,
         "stock_id": stock_item.get("stock_id"),
+        "stock_ids": [item.get("stock_id") for item in stock_items],
         "box_num": box_num,
+        "box_nums": {item["porder_detail_id"]: item["box_num"] for item in stock_items},
         "logistics_id": logistics_id,
         "logistics_price_artificial": logistics_price,
     }
@@ -3528,60 +4616,92 @@ def _run_backend_porder_flow(
 def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
     ensure_report_dirs()
     variables = dict(variables or {})
-    account = str(variables.get("account") or "").strip()
-    password = str(variables.get("password") or "").strip()
-    client_tool = str(variables.get("client_tool") or "1").strip()
-    if client_tool == "2" and not _as_bool(variables.get("allow_h5_client_tool"), False):
-        client_tool = "1"
+    account, password, client_tool = _client_login_inputs(variables)
     timeout = _as_int(variables.get("timeout"), env.timeout or 25)
     base_url = (env.base_url or bulk_cart.BASE_URL).rstrip("/")
     send_num = _as_int(variables.get("send_num") or variables.get("porder_send_num"), 1)
+    warehouse_sku_count = max(1, _as_int(variables.get("warehouse_sku_count") or variables.get("porder_sku_count") or variables.get("sku_count"), 1))
+    require_full_count = _as_bool(variables.get("require_warehouse_sku_count"), False)
+    warehouse_fill_retries = max(1, _as_int(variables.get("warehouse_fill_retries"), 1))
+    warehouse_fill_retry_delay = _as_float(variables.get("warehouse_fill_retry_delay"), 1.0)
     porder_sn = _porder_sn(variables)
     log: Dict[str, Any] = {
         "script": WAREHOUSE_DELIVERY_SCRIPT_NAME,
         "mode": "warehouse_to_delivery_offer",
         "base_url": base_url,
         "send_num": send_num,
+        "warehouse_sku_count": warehouse_sku_count,
+        "requested_warehouse_sku_count": warehouse_sku_count,
+        "warehouse_fill_scope": str(variables.get("warehouse_fill_scope") or ""),
+        "require_warehouse_sku_count": require_full_count,
         "started_at": datetime.now(),
         "warehouse_attempts": [],
     }
 
     try:
-        client = bulk_cart.RakumartClient(base_url, timeout)
-        _configure_client_api_paths(client, variables)
-        token = _call_with_retry("client login", lambda: client.login(account, password, client_tool))
-        log["login"] = {"success": True, "account": account, "client_tool": client_tool, "token_extracted": bool(token)}
+        runtime = _runtime_from_variables(variables)
+        if runtime:
+            client, _base_url, _timeout, token, _cached = runtime.client(env, variables, log=log)
+        else:
+            client = bulk_cart.RakumartClient(base_url, timeout)
+            _configure_client_api_paths(client, variables)
+            token = _call_with_retry("client login", lambda: client.login(account, password, client_tool))
+            log["login"] = {"success": True, "account": account, "client_tool": client_tool, "token_extracted": bool(token)}
 
-        selected_item: Dict[str, Any] | None = None
+        selected_items: list[Dict[str, Any]] = []
         warehouse_rows: list[Dict[str, Any]] = []
         requested_id = str(variables.get("order_detail_id") or variables.get("porder_detail_id") or "").strip()
-        if requested_id:
-            selected_item = {"order_detail_id": requested_id, "send_num": send_num}
+        if requested_id and warehouse_sku_count <= 1 and not require_full_count:
+            selected_items = [{"order_detail_id": requested_id, "send_num": send_num}]
         else:
             list_fields = _warehouse_list_fields(variables)
-            for path in _warehouse_candidate_paths(variables):
-                try:
-                    payload = _call_with_retry("warehouse list", lambda path=path: client.post_form(path, list_fields), attempts=1)
-                except Exception as exc:
-                    log["warehouse_attempts"].append({"path": path, "request": dict(list_fields), "error": str(exc)})
-                    continue
-                rows = _nested_rows(payload)
-                selected = _select_warehouse_item(rows, variables)
-                log["warehouse_attempts"].append(
-                    {
-                        "path": path,
-                        "request": dict(list_fields),
-                        **_payload_brief(payload),
-                        "row_count": len(rows),
-                        "selected_order_detail_id": _warehouse_item_id(selected or {}),
-                    }
-                )
-                if _api_success(payload) and selected:
-                    warehouse_rows = rows
-                    selected_item = selected
+            best_selected: list[Dict[str, Any]] = []
+            for attempt in range(warehouse_fill_retries):
+                found_usable = False
+                for path in _warehouse_candidate_paths(variables):
+                    try:
+                        payload = _call_with_retry("warehouse list", lambda path=path: client.post_form(path, list_fields), attempts=1)
+                    except Exception as exc:
+                        log["warehouse_attempts"].append({"attempt": attempt + 1, "path": path, "request": dict(list_fields), "error": str(exc)})
+                        continue
+                    rows = _nested_rows(payload)
+                    selected = _select_warehouse_items(rows, variables, warehouse_sku_count)
+                    current_order_count = sum(1 for item in selected if item.get("_warehouse_source") == "current_order")
+                    history_fill_count = sum(1 for item in selected if item.get("_warehouse_source") == "history")
+                    log["warehouse_attempts"].append(
+                        {
+                            "attempt": attempt + 1,
+                            "path": path,
+                            "request": dict(list_fields),
+                            **_payload_brief(payload),
+                            "row_count": len(rows),
+                            "selected_order_detail_ids": [_warehouse_item_id(item) for item in selected],
+                            "selected_sku_ids": [_warehouse_sku_id(item) for item in selected],
+                            "current_order_count": current_order_count,
+                            "history_fill_count": history_fill_count,
+                        }
+                    )
+                    if not _api_success(payload) or not selected:
+                        continue
+                    if len(selected) > len(best_selected):
+                        best_selected = selected
+                        warehouse_rows = rows
+                    if len(selected) >= warehouse_sku_count or not require_full_count:
+                        selected_items = selected
+                        warehouse_rows = rows
+                        found_usable = True
+                        break
+                if found_usable:
                     break
+                if attempt < warehouse_fill_retries - 1 and warehouse_fill_retry_delay > 0:
+                    time.sleep(warehouse_fill_retry_delay)
+            if not selected_items and best_selected:
+                selected_items = best_selected
 
-        order_detail_id = _warehouse_item_id(selected_item or {})
+        if not selected_items and requested_id and not require_full_count:
+            selected_items = [{"order_detail_id": requested_id, "send_num": send_num}]
+
+        order_detail_id = _warehouse_item_id(selected_items[0] if selected_items else {})
         if not order_detail_id:
             return _finish_named(
                 WAREHOUSE_DELIVERY_SCRIPT_NAME,
@@ -3594,20 +4714,83 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
                 },
             )
 
-        max_send_num = _warehouse_sendable_num(selected_item or {})
-        actual_send_num = min(send_num, max_send_num) if max_send_num > 0 else send_num
-        fields = _porder_create_fields(order_detail_id, porder_sn, actual_send_num, variables)
+        delivery_items: list[Dict[str, Any]] = []
+        for item in selected_items:
+            item_order_detail_id = _warehouse_item_id(item)
+            if not item_order_detail_id:
+                continue
+            max_send_num = _warehouse_sendable_num(item)
+            actual_send_num = min(send_num, max_send_num) if max_send_num > 0 else send_num
+            delivery_items.append(
+                {
+                    "order_detail_id": item_order_detail_id,
+                    "send_num": actual_send_num,
+                    "sendable_num": max_send_num,
+                    "sku_id": _warehouse_sku_id(item),
+                    "source": item.get("_warehouse_source") or "history",
+                    "client_remark": str(variables.get("porder_detail_remark") or ""),
+                    "row": item,
+                }
+            )
+        order_detail_ids = [item["order_detail_id"] for item in delivery_items]
+        selected_sku_ids = [item["sku_id"] for item in delivery_items if item.get("sku_id")]
+        actual_warehouse_sku_count = len(delivery_items)
+        current_order_count = sum(1 for item in delivery_items if item.get("source") == "current_order")
+        history_fill_count = sum(1 for item in delivery_items if item.get("source") == "history")
+        total_send_num = sum(_as_int(item.get("send_num"), 0) for item in delivery_items)
+        if not delivery_items:
+            return _finish_named(
+                WAREHOUSE_DELIVERY_SCRIPT_NAME,
+                log,
+                False,
+                {
+                    "porder_sn": "",
+                    "order_detail_id": "",
+                    "order_detail_ids": [],
+                    "requested_warehouse_sku_count": warehouse_sku_count,
+                    "warehouse_sku_count": warehouse_sku_count,
+                    "actual_warehouse_sku_count": 0,
+                    "current_order_count": 0,
+                    "history_fill_count": 0,
+                    "reason": "可用库存不足" if require_full_count else "\u672a\u627e\u5230\u53ef\u63d0\u51fa\u914d\u9001\u5355\u7684\u4ed3\u5e93\u5546\u54c1",
+                },
+            )
+        selected_warehouse_items = [_warehouse_item_brief(item.get("row") or {}, _as_int(item.get("send_num"), send_num)) for item in delivery_items]
+        if require_full_count and actual_warehouse_sku_count < warehouse_sku_count:
+            return _finish_named(
+                WAREHOUSE_DELIVERY_SCRIPT_NAME,
+                log,
+                False,
+                {
+                    "porder_sn": "",
+                    "order_detail_id": order_detail_ids[0] if order_detail_ids else "",
+                    "order_detail_ids": order_detail_ids,
+                    "send_num": _as_int(delivery_items[0].get("send_num"), send_num),
+                    "total_send_num": total_send_num,
+                    "requested_warehouse_sku_count": warehouse_sku_count,
+                    "warehouse_sku_count": warehouse_sku_count,
+                    "actual_warehouse_sku_count": actual_warehouse_sku_count,
+                    "current_order_count": current_order_count,
+                    "history_fill_count": history_fill_count,
+                    "selected_sku_ids": selected_sku_ids,
+                    "selected_warehouse_items": selected_warehouse_items,
+                    "warehouse_rows": len(warehouse_rows),
+                    "reason": "可用库存不足",
+                },
+            )
+        order_detail_id = order_detail_ids[0]
+        actual_send_num = _as_int(delivery_items[0].get("send_num"), send_num)
+        fields = _porder_create_fields_for_items(delivery_items, porder_sn, variables)
         payload = _call_with_retry(
             "porder create",
             lambda: client.post_form(_api_path(variables, "client_porder_create", "/client/porder.porderCreate"), fields),
         )
         porder_sn = _extract_porder_sn(payload, porder_sn)
-        log["selected_item"] = {
-            "order_detail_id": order_detail_id,
-            "sendable_num": max_send_num,
-            "send_num": actual_send_num,
-            "row": selected_item,
-        }
+        log["selected_item"] = delivery_items[0]
+        log["selected_items"] = [
+            {key: value for key, value in item.items() if key != "row"}
+            for item in delivery_items
+        ]
         log["porder_create"] = {
             **_payload_brief(payload),
             "request": {
@@ -3615,7 +4798,13 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
                 "porder_sn": fields.get("porder_sn"),
                 "logistics_id": fields.get("logistics_id"),
                 "order_detail_id": order_detail_id,
+                "order_detail_ids": order_detail_ids,
                 "send_num": actual_send_num,
+                "total_send_num": total_send_num,
+                "details": [
+                    {key: value for key, value in item.items() if key != "row"}
+                    for item in delivery_items
+                ],
             },
             "response": payload,
         }
@@ -3623,13 +4812,26 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
         summary = {
             "porder_sn": porder_sn,
             "order_detail_id": order_detail_id,
+            "order_detail_ids": order_detail_ids,
             "send_num": actual_send_num,
+            "total_send_num": total_send_num,
+            "requested_warehouse_sku_count": warehouse_sku_count,
+            "warehouse_sku_count": warehouse_sku_count,
+            "actual_warehouse_sku_count": actual_warehouse_sku_count,
+            "current_order_count": current_order_count,
+            "history_fill_count": history_fill_count,
+            "selected_sku_ids": selected_sku_ids,
+            "selected_warehouse_items": selected_warehouse_items,
             "warehouse_rows": len(warehouse_rows),
             "create_passed": passed,
         }
+        if actual_warehouse_sku_count < warehouse_sku_count:
+            summary["warning"] = f"\u8bf7\u6c42 {warehouse_sku_count} \u756a\uff0c\u5b9e\u9645\u627e\u5230 {actual_warehouse_sku_count} \u756a\u53ef\u63d0\u51fa SKU"
         if not passed:
             summary["reason"] = payload.get("msg") or payload.get("message") or "\u914d\u9001\u5355\u63d0\u51fa\u5931\u8d25"
             return _finish_named(WAREHOUSE_DELIVERY_SCRIPT_NAME, log, False, summary)
+        if _checkpoint_requested(variables, "warehouse_delivery_created"):
+            return _finish_paused(WAREHOUSE_DELIVERY_SCRIPT_NAME, log, "warehouse_delivery_created", summary)
         if _as_bool(variables.get("run_backend_delivery_flow"), True):
             backend_passed, backend_summary = _run_backend_porder_flow(base_url, timeout, variables, porder_sn, log)
             summary.update(backend_summary)
@@ -3643,7 +4845,7 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
             WAREHOUSE_DELIVERY_SCRIPT_NAME,
             log,
             False,
-            {"porder_sn": "", "order_detail_id": "", "send_num": send_num, "error": str(exc)},
+            {"porder_sn": "", "order_detail_id": "", "send_num": send_num, "warehouse_sku_count": warehouse_sku_count, "error": str(exc)},
         )
 
 
@@ -3869,6 +5071,43 @@ def run_bank_payment_script(env: Env, variables: Dict[str, Any] | None = None) -
         )
 
 
+def preview_order_quote_options(env: Env, variables: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    variables = dict(variables or {})
+
+    account, password, client_tool = _client_login_inputs(variables)
+    timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+    base_url = (env.base_url or bulk_cart.BASE_URL).rstrip("/")
+    item_count = _as_int(variables.get("order_item_count") or variables.get("item_count"), 2)
+    order_shop_count_raw = variables.get("order_shop_count")
+    order_per_shop_raw = variables.get("order_per_shop")
+    use_shop_grouping = order_shop_count_raw not in (None, "") or order_per_shop_raw not in (None, "")
+    order_shop_count = _as_int(order_shop_count_raw, 0)
+    order_per_shop = _as_int(order_per_shop_raw, 0)
+    if use_shop_grouping:
+        if order_shop_count <= 0:
+            order_shop_count = _as_int(variables.get("target_shops") or variables.get("shop_count"), 1)
+        if order_per_shop <= 0:
+            order_per_shop = _as_int(variables.get("per_shop"), item_count)
+        item_count = order_shop_count * order_per_shop
+
+    client = bulk_cart.RakumartClient(base_url, timeout)
+    _configure_client_api_paths(client, variables)
+    token = _call_with_retry("client login", lambda: client.login(account, password, client_tool))
+    catalog, option_payload, source_path = _fetch_order_option_catalog(client, variables)
+
+    return {
+        "options": _public_order_options(catalog),
+        "option_count": len(catalog),
+        "source_path": source_path,
+        "selected_count": 0,
+        "item_count": item_count,
+        "selection": {"mode": "option_preview", "expected_total": item_count, "selected_count": 0, "shortage_count": 0},
+        "preview_mode": "option_list",
+        "login": {"success": bool(token), "account": account, "client_tool": client_tool},
+        "option_list": {**_payload_brief(option_payload), "option_count": len(catalog)},
+    }
+
+
 def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
     ensure_report_dirs()
     variables = dict(variables or {})
@@ -3901,6 +5140,7 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
     seed_order_sn = str(variables.get("order_sn") or "").strip()
     run_backend_flow = submit_order and _as_bool(variables.get("run_backend_flow"), True)
     skip_create_order = _as_bool(variables.get("skip_create_order") or variables.get("backend_only"), False)
+    option_counts = _normalize_order_option_counts(variables.get("order_option_counts"))
 
     log: Dict[str, Any] = {
         "script": ORDER_SCRIPT_NAME,
@@ -3914,6 +5154,7 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
         "price_cut": price_cut,
         "submit_order": submit_order,
         "run_backend_flow": run_backend_flow,
+        "order_option_counts": dict(option_counts),
         "started_at": datetime.now(),
         "selected_items": [],
         "edits": [],
@@ -3951,10 +5192,14 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
                 return _finish_named(ORDER_SCRIPT_NAME, log, backend_passed, summary)
             return _finish_named(ORDER_SCRIPT_NAME, log, True, summary)
 
-        client = bulk_cart.RakumartClient(base_url, timeout)
-        _configure_client_api_paths(client, variables)
-        token = _call_with_retry("client login", lambda: client.login(account, password, client_tool))
-        log["login"] = {"success": True, "account": account, "client_tool": client_tool, "token_extracted": bool(token)}
+        runtime = _runtime_from_variables(variables)
+        if runtime:
+            client, _base_url, _timeout, token, _cached = runtime.client(env, variables, log=log)
+        else:
+            client = bulk_cart.RakumartClient(base_url, timeout)
+            _configure_client_api_paths(client, variables)
+            token = _call_with_retry("client login", lambda: client.login(account, password, client_tool))
+            log["login"] = {"success": True, "account": account, "client_tool": client_tool, "token_extracted": bool(token)}
 
         cart_payload = _call_with_retry(
             "cart list",
@@ -4020,26 +5265,16 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
                 shortage_summary,
             )
 
-        failed_edits = []
-        for item in selected_items:
-            edit_fields = _edit_cart_fields(item, item_quantity)
-            edit_payload = _call_with_retry(
-                "cart edit",
-                lambda edit_fields=edit_fields: client.post_form(_api_path(variables, "client_cart_edit", "/client/cart.goodsCartEdit"), edit_fields),
-            )
-            edit_ok = _api_success(edit_payload)
-            if edit_ok:
-                item["num"] = item_quantity
-            else:
-                failed_edits.append(item.get("id"))
-            log["edits"].append(
-                {
-                    "cart_id": item.get("id"),
-                    "goods_id": item.get("goods_id"),
-                    "num": item_quantity,
-                    **_payload_brief(edit_payload),
-                }
-            )
+        edit_logs, failed_edits = _edit_cart_items_for_order(
+            client,
+            base_url,
+            timeout,
+            variables,
+            selected_items,
+            item_quantity,
+            token,
+        )
+        log["edits"].extend(edit_logs)
         if failed_edits:
             return _finish_named(
                 ORDER_SCRIPT_NAME,
@@ -4054,6 +5289,31 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
                 },
             )
 
+        if option_counts:
+            option_catalog, option_payload, option_path = _fetch_order_option_catalog(client, variables)
+            log["order_option_list"] = {
+                "source_path": option_path,
+                **_payload_brief(option_payload),
+                "option_count": len(option_catalog),
+            }
+            option_summary = _apply_order_options_to_items(selected_items, variables, option_catalog)
+            log["order_options"] = option_summary
+            if option_summary.get("missing"):
+                return _finish_named(
+                    ORDER_SCRIPT_NAME,
+                    log,
+                    False,
+                    {
+                        "order_sn": "",
+                        "selected_count": len(selected_items),
+                        "item_quantity": item_quantity,
+                        "missing_order_options": option_summary["missing"],
+                        "reason": "已选择的订单 option 在接口返回中不存在，已停止创建订单",
+                    },
+                )
+        else:
+            option_summary = _apply_order_options_to_items(selected_items, variables, OrderedDict())
+            log["order_options"] = option_summary
         save_fields = _order_fields(selected_items, "save", seed_order_sn, item_quantity, logistics_id, client_remark)
         save_payload = _call_with_retry(
             "order save",
@@ -4093,6 +5353,8 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
             "run_backend_flow": run_backend_flow,
             "cart_ids": [item.get("id") for item in selected_items],
             "goods_ids": [item.get("goods_id") for item in selected_items],
+            "order_options": option_summary.get("selected_options", []),
+            "order_option_applied_detail_count": option_summary.get("applied_detail_count", 0),
         }
         if use_shop_grouping:
             summary.update(
@@ -4106,6 +5368,8 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
             )
         if not passed:
             summary["reason"] = "\u6b63\u5f0f\u63d0\u51fa\u8ba2\u5355\u5931\u8d25" if submit_order else "\u8ba2\u5355\u4fdd\u5b58\u5931\u8d25"
+        elif _checkpoint_requested(variables, "order_created"):
+            return _finish_named(ORDER_SCRIPT_NAME, log, True, _paused_summary("order_created", summary))
         elif run_backend_flow:
             backend_passed, backend_summary = _run_backend_order_flow(
                 base_url, timeout, variables, final_order_sn, item_quantity, log
@@ -4167,6 +5431,11 @@ SCRIPT_REGISTRY: Dict[str, Any] = {
     "porder_bank_payment": {
         "name": POORDER_BANK_PAYMENT_SCRIPT_NAME,
         "func": None,
+    },
+    "full_flow": {
+        "name": FULL_FLOW_SCRIPT_NAME,
+        "func": None,
+        "chain": True,
     },
 }
 
@@ -4264,6 +5533,17 @@ def run_purchase_to_shelf_chain(env: Env, variables: Dict[str, Any] | None = Non
             "total_steps": 3,
             "success_steps": sum(1 for s in chain_log["steps"] if s["passed"]),
         }
+        for key in [
+            "storage_passed",
+            "verify_passed",
+            "remaining_purchase_count",
+            "remaining_pending_count",
+            "purchase_ids",
+            "grid_id",
+            "grid_number",
+        ]:
+            if key in shelf_summary:
+                chain_log["summary"][key] = shelf_summary[key]
         if not chain_passed:
             chain_log["summary"]["reason"] = "待拍下到商品上架脚本失败"
             chain_log["summary"]["failed_step"] = "待拍下到商品上架"
@@ -4521,5 +5801,344 @@ def run_porder_bank_payment_script(env: Env, variables: Dict[str, Any] | None = 
         )
 
 
+BALANCE_INSUFFICIENT_MARKERS = [
+    "\u4f59\u989d\u4e0d\u8db3",
+    "\u8d26\u6237\u91d1\u989d",
+    "\u53ef\u7528\u4f59\u989d",
+    "\u4f59\u989d\u4e0d\u591f",
+    "insufficient",
+    "not enough",
+]
+FULL_FLOW_SHARED_KEYS = [
+    "order_sn",
+    "purchase_no",
+    "purchase_ids",
+    "grid_id",
+    "grid_number",
+    "order_detail_id",
+    "order_detail_ids",
+    "porder_sn",
+    "porder_detail_id",
+    "porder_detail_ids",
+    "freight_id",
+    "warehouse_sku_count",
+    "actual_warehouse_sku_count",
+    "selected_sku_ids",
+    "total_send_num",
+    "serial_number",
+    "payment_type",
+    "pay_amount",
+]
+
+
+def _summary_text(*parts: Any) -> str:
+    return json.dumps(parts, ensure_ascii=False, default=str).lower()
+
+
+def _looks_like_balance_insufficient(summary: Dict[str, Any], log_text: str = "") -> bool:
+    text = _summary_text(summary, log_text)
+    if any(marker.lower() in text for marker in BALANCE_INSUFFICIENT_MARKERS):
+        return True
+    return "\u4f59\u989d" in text and any(marker in text for marker in ["\u4e0d\u8db3", "\u4e0d\u591f", "\u4f4e\u4e8e"])
+
+
+def _payment_with_bank_fallback(
+    env: Env,
+    variables: Dict[str, Any],
+    *,
+    porder: bool = False,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
+    balance_func = run_porder_balance_payment_script if porder else run_balance_payment_script
+    bank_func = run_porder_bank_payment_script if porder else run_bank_payment_script
+    balance_passed, balance_log, balance_report, balance_summary = balance_func(env, variables)
+    balance_summary = dict(balance_summary or {})
+    balance_summary["attempted_payment_types"] = ["balance"]
+    if balance_passed:
+        return balance_passed, balance_log, balance_report, balance_summary
+    if not _looks_like_balance_insufficient(balance_summary, balance_log):
+        return balance_passed, balance_log, balance_report, balance_summary
+
+    bank_vars = dict(variables)
+    bank_vars["finance_confirm"] = True
+    bank_passed, bank_log, bank_report, bank_summary = bank_func(env, bank_vars)
+    bank_summary = dict(bank_summary or {})
+    bank_summary.update(
+        {
+            "fallback_from_balance": True,
+            "attempted_payment_types": ["balance", "bank"],
+            "balance_failure": balance_summary,
+        }
+    )
+    return bank_passed, bank_log, bank_report, bank_summary
+
+
+def _full_flow_update_shared(shared: Dict[str, Any], summary: Dict[str, Any]) -> None:
+    for key in FULL_FLOW_SHARED_KEYS:
+        value = summary.get(key)
+        if value not in (None, ""):
+            shared[key] = value
+
+
+def _full_flow_record_step(
+    log: Dict[str, Any],
+    node: str,
+    script_name: str,
+    passed: bool,
+    summary: Dict[str, Any],
+    report_path: str = "",
+) -> None:
+    current_node = str(summary.get("current_node") or summary.get("stopped_after_node") or node)
+    log["steps"].append(
+        {
+            "node": current_node,
+            "node_label": FULL_FLOW_NODE_LABELS.get(current_node, current_node),
+            "script": script_name,
+            "passed": passed,
+            "paused": bool(summary.get("paused")),
+            "duration_ms": summary.get("duration_ms"),
+            "summary": summary,
+            "report_path": report_path,
+        }
+    )
+    _full_flow_update_shared(log["shared_data"], summary)
+
+
+def _full_flow_node_results(current_node: str, passed: bool, paused: bool) -> list[Dict[str, Any]]:
+    if current_node in FULL_FLOW_NODE_SEQUENCE:
+        reached_index = FULL_FLOW_NODE_SEQUENCE.index(current_node)
+    elif passed:
+        reached_index = FULL_FLOW_NODE_SEQUENCE.index(FULL_FLOW_COMPLETE_NODE)
+    else:
+        reached_index = -1
+    results: list[Dict[str, Any]] = []
+    for index, node in enumerate(FULL_FLOW_NODE_SEQUENCE):
+        if reached_index < 0 or index > reached_index:
+            status_text = "pending"
+            node_passed: bool | None = None
+        elif index < reached_index:
+            status_text = "completed"
+            node_passed = True
+        elif paused:
+            status_text = "paused"
+            node_passed = True
+        elif passed:
+            status_text = "completed"
+            node_passed = True
+        else:
+            status_text = "failed"
+            node_passed = False
+        results.append(
+            {
+                "node": node,
+                "node_label": FULL_FLOW_NODE_LABELS.get(node, node),
+                "status": status_text,
+                "passed": node_passed,
+            }
+        )
+    return results
+
+
+def _full_flow_finish(
+    log: Dict[str, Any],
+    passed: bool,
+    current_node: str,
+    *,
+    reason: str = "",
+    paused: bool = False,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
+    summary: Dict[str, Any] = {
+        "passed": passed,
+        "paused": paused,
+        "current_node": current_node,
+        "node_label": FULL_FLOW_NODE_LABELS.get(current_node, current_node),
+        "stop_after_node": log.get("stop_after_node") or FULL_FLOW_COMPLETE_NODE,
+        "total_steps": len(log.get("steps", [])),
+        "success_steps": sum(1 for item in log.get("steps", []) if item.get("passed")),
+        "node_results": _full_flow_node_results(current_node, passed, paused),
+        "steps": [
+            {
+                "node": item.get("node"),
+                "node_label": item.get("node_label"),
+                "script": item.get("script"),
+                "passed": item.get("passed"),
+                "paused": item.get("paused"),
+                "duration_ms": item.get("duration_ms"),
+            }
+            for item in log.get("steps", [])
+        ],
+        "step_timings": [
+            {
+                "node": item.get("node"),
+                "script": item.get("script"),
+                "duration_ms": item.get("duration_ms"),
+            }
+            for item in log.get("steps", [])
+            if item.get("duration_ms") is not None
+        ],
+    }
+    summary.update(log.get("shared_data") or {})
+    if paused:
+        summary["stopped_after_node"] = current_node
+    if reason:
+        summary["reason"] = reason
+    return _finish_named(FULL_FLOW_SCRIPT_NAME, log, passed, summary)
+
+
+def _full_flow_stop_reached(variables: Dict[str, Any], node: str) -> bool:
+    return _checkpoint_requested(variables, node)
+
+
+def _full_flow_prepare_warehouse_counts(variables: Dict[str, Any]) -> Dict[str, Any]:
+    before = {
+        "target_shops": variables.get("target_shops"),
+        "per_shop": variables.get("per_shop"),
+        "order_shop_count": variables.get("order_shop_count"),
+        "order_per_shop": variables.get("order_per_shop"),
+        "order_item_count": variables.get("order_item_count"),
+        "warehouse_sku_count": variables.get("warehouse_sku_count"),
+    }
+    warehouse_sku_count = max(1, _as_int(variables.get("warehouse_sku_count") or variables.get("porder_sku_count") or variables.get("sku_count"), 1))
+    order_shop_count = _as_int(variables.get("order_shop_count"), 1)
+    order_per_shop = _as_int(variables.get("order_per_shop") or variables.get("order_item_count"), 2)
+    if order_shop_count * order_per_shop < warehouse_sku_count:
+        order_per_shop = max(order_per_shop, (warehouse_sku_count + order_shop_count - 1) // order_shop_count)
+    target_shops = max(_as_int(variables.get("target_shops") or variables.get("shop_count"), 4), order_shop_count)
+    per_shop = max(_as_int(variables.get("per_shop"), 5), order_per_shop)
+
+    variables["warehouse_sku_count"] = warehouse_sku_count
+    variables["order_shop_count"] = order_shop_count
+    variables["order_per_shop"] = order_per_shop
+    variables["order_item_count"] = order_per_shop
+    variables["target_shops"] = target_shops
+    variables["per_shop"] = per_shop
+
+    after = {
+        "target_shops": target_shops,
+        "per_shop": per_shop,
+        "order_shop_count": order_shop_count,
+        "order_per_shop": order_per_shop,
+        "order_item_count": order_per_shop,
+        "warehouse_sku_count": warehouse_sku_count,
+    }
+    changed = {key: {"before": before.get(key), "after": value} for key, value in after.items() if str(before.get(key)) != str(value)}
+    return changed
+
+
+def run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    variables["_runtime"] = variables.get("_runtime") if isinstance(variables.get("_runtime"), DataScriptRuntime) else DataScriptRuntime()
+    variables.setdefault("sleep", 0)
+    variables.setdefault("cart_verify_mode", "final")
+    variables.setdefault("cart_edit_workers", 4)
+    variables.setdefault("purchase_transition_delay", 0)
+    variables.setdefault("inspection_transition_delay", 0)
+    variables.setdefault("after_box_submit_delay", 0.2)
+    variables.setdefault("after_complete_box_delay", 0.2)
+    input_adjustments = _full_flow_prepare_warehouse_counts(variables)
+    stop_after = _stop_after_node(variables) or FULL_FLOW_COMPLETE_NODE
+    variables["stop_after_node"] = stop_after
+    log: Dict[str, Any] = {
+        "script": FULL_FLOW_SCRIPT_NAME,
+        "mode": "full_flow",
+        "started_at": datetime.now(),
+        "stop_after_node": stop_after,
+        "input_adjustments": input_adjustments,
+        "steps": [],
+        "shared_data": {},
+    }
+
+    try:
+        cart_passed, cart_log, cart_report, cart_summary = run_shopping_cart_script(env, variables)
+        _full_flow_record_step(log, "shopping_cart", SCRIPT_NAME, cart_passed, cart_summary, cart_report)
+        if not cart_passed:
+            return _full_flow_finish(log, False, "shopping_cart", reason=str(cart_summary.get("reason") or cart_summary.get("error") or "\u5546\u54c1\u52a0\u8d2d\u5931\u8d25"))
+        if _full_flow_stop_reached(variables, "shopping_cart"):
+            return _full_flow_finish(log, True, "shopping_cart", paused=True)
+
+        quote_vars = dict(variables)
+        quote_vars.pop("order_sn", None)
+        quote_vars.pop("last_order_sn", None)
+        quote_vars["skip_create_order"] = False
+        quote_vars["backend_only"] = False
+        quote_vars["submit_order"] = True
+        quote_vars["run_backend_flow"] = True
+        quote_passed, quote_log, quote_report, quote_summary = run_order_quote_script(env, quote_vars)
+        _full_flow_record_step(log, "order_offered", ORDER_SCRIPT_NAME, quote_passed, quote_summary, quote_report)
+        if not quote_passed:
+            return _full_flow_finish(log, False, str(quote_summary.get("current_node") or "order_offered"), reason=str(quote_summary.get("reason") or quote_summary.get("error") or "\u8ba2\u5355\u62a5\u4ef7\u5931\u8d25"))
+        if _is_paused(quote_summary):
+            return _full_flow_finish(log, True, str(quote_summary.get("current_node") or "order_offered"), paused=True)
+
+        order_sn = str(quote_summary.get("order_sn") or "").strip()
+        if not order_sn:
+            return _full_flow_finish(log, False, "order_offered", reason="\u8ba2\u5355\u62a5\u4ef7\u672a\u8fd4\u56de\u8ba2\u5355\u53f7")
+        variables["order_sn"] = order_sn
+
+        pay_vars = dict(variables)
+        pay_vars["order_sn"] = order_sn
+        pay_passed, pay_log, pay_report, pay_summary = _payment_with_bank_fallback(env, pay_vars, porder=False)
+        _full_flow_record_step(log, "order_paid", pay_summary.get("payment_type") == "bank" and BANK_PAYMENT_SCRIPT_NAME or BALANCE_PAYMENT_SCRIPT_NAME, pay_passed, pay_summary, pay_report)
+        if not pay_passed:
+            return _full_flow_finish(log, False, "order_paid", reason=str(pay_summary.get("reason") or pay_summary.get("error") or "\u8ba2\u5355\u652f\u4ed8\u5931\u8d25"))
+        if _full_flow_stop_reached(variables, "order_paid"):
+            return _full_flow_finish(log, True, "order_paid", paused=True)
+
+        shelf_vars = dict(variables)
+        shelf_vars["order_sn"] = order_sn
+        shelf_vars["purchase_no"] = str(variables.get("purchase_no") or datetime.now().strftime("%Y%m%d%H%M%S"))
+        shelf_vars["link_quote_balance_before_shelf"] = False
+        shelf_vars["auto_quote_and_pay"] = False
+        shelf_passed, shelf_log, shelf_report, shelf_summary = run_purchase_to_shelf_script(env, shelf_vars)
+        _full_flow_record_step(log, "shelf_stored", PURCHASE_TO_SHELF_SCRIPT_NAME, shelf_passed, shelf_summary, shelf_report)
+        if not shelf_passed:
+            return _full_flow_finish(log, False, str(shelf_summary.get("current_node") or "shelf_stored"), reason=str(shelf_summary.get("reason") or shelf_summary.get("error") or "\u5f85\u62cd\u4e0b\u5230\u4e0a\u67b6\u5931\u8d25"))
+        if _is_paused(shelf_summary):
+            return _full_flow_finish(log, True, str(shelf_summary.get("current_node") or "shelf_stored"), paused=True)
+
+        delivery_vars = dict(variables)
+        delivery_vars.update(log["shared_data"])
+        delivery_vars["run_backend_delivery_flow"] = True
+        delivery_vars.setdefault("warehouse_fill_scope", "current_order_then_history")
+        delivery_vars.setdefault("require_warehouse_sku_count", True)
+        delivery_vars.setdefault("warehouse_fill_retries", 3)
+        delivery_vars.setdefault("warehouse_fill_retry_delay", 1)
+        delivery_vars.pop("porder_sn", None)
+        delivery_passed, delivery_log, delivery_report, delivery_summary = run_warehouse_delivery_script(env, delivery_vars)
+        _full_flow_record_step(log, "porder_offered", WAREHOUSE_DELIVERY_SCRIPT_NAME, delivery_passed, delivery_summary, delivery_report)
+        if not delivery_passed:
+            return _full_flow_finish(log, False, str(delivery_summary.get("current_node") or "porder_offered"), reason=str(delivery_summary.get("reason") or delivery_summary.get("error") or "\u914d\u9001\u5355\u6d41\u8f6c\u5931\u8d25"))
+        if _is_paused(delivery_summary):
+            return _full_flow_finish(log, True, str(delivery_summary.get("current_node") or "porder_offered"), paused=True)
+
+        porder_sn = str(delivery_summary.get("porder_sn") or log["shared_data"].get("porder_sn") or "").strip()
+        if not porder_sn:
+            return _full_flow_finish(log, False, "porder_offered", reason="\u914d\u9001\u5355\u6d41\u8f6c\u672a\u8fd4\u56de\u914d\u9001\u5355\u53f7")
+        variables["porder_sn"] = porder_sn
+
+        porder_pay_vars = dict(variables)
+        porder_pay_vars["porder_sn"] = porder_sn
+        porder_pay_vars["run_backend_porder_flow"] = False
+        porder_pay_passed, porder_pay_log, porder_pay_report, porder_pay_summary = _payment_with_bank_fallback(env, porder_pay_vars, porder=True)
+        _full_flow_record_step(
+            log,
+            "porder_paid",
+            porder_pay_summary.get("payment_type") == "bank" and POORDER_BANK_PAYMENT_SCRIPT_NAME or POORDER_BALANCE_PAYMENT_SCRIPT_NAME,
+            porder_pay_passed,
+            porder_pay_summary,
+            porder_pay_report,
+        )
+        if not porder_pay_passed:
+            return _full_flow_finish(log, False, "porder_paid", reason=str(porder_pay_summary.get("reason") or porder_pay_summary.get("error") or "\u914d\u9001\u5355\u652f\u4ed8\u5931\u8d25"))
+        if _full_flow_stop_reached(variables, "porder_paid"):
+            return _full_flow_finish(log, True, "porder_paid", paused=True)
+
+        return _full_flow_finish(log, True, FULL_FLOW_COMPLETE_NODE)
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _full_flow_finish(log, False, str(log["steps"][-1]["node"] if log["steps"] else "full_flow"), reason=str(exc))
+
+
 SCRIPT_REGISTRY["porder_balance_payment"]["func"] = run_porder_balance_payment_script
 SCRIPT_REGISTRY["porder_bank_payment"]["func"] = run_porder_bank_payment_script
+SCRIPT_REGISTRY["full_flow"]["func"] = run_full_flow_script

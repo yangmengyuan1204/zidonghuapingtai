@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import base64
 from dataclasses import dataclass
 from datetime import datetime
 from html import unescape
 import json
-import mimetypes
 import os
 from pathlib import Path
 import re
+import subprocess
 import time
 from typing import Any, Dict, Iterable
 from urllib.parse import urlparse
@@ -25,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 FUNCTIONAL_DIR = BASE_DIR / "reports" / "functional"
 AXURE_DIR = FUNCTIONAL_DIR / "axure"
 FUNCTIONAL_SCREENSHOT_DIR = FUNCTIONAL_DIR / "screenshots"
+PADDLE_OCR_WORKER = BASE_DIR / "scripts" / "paddle_ocr_worker.py"
 
 ALLOWED_UI_ACTIONS = {
     "goto",
@@ -309,11 +309,21 @@ def compact_requirement(
     )
     if note_text:
         parts.append(f"产品沟通后的补充需求：\n{note_text[:12000]}")
-    screenshot_text = "\n\n".join(
-        f"截图#{item.id}识别结果：\n{item.analysis_result}"
-        for item in (screenshots or [])
-        if getattr(item, "analysis_result", "")
-    )
+    screenshot_parts: list[str] = []
+    for item in (screenshots or []):
+        analysis = getattr(item, "analysis_result", "") or ""
+        corrected = getattr(item, "corrected_text", "") or ""
+        ocr_text = getattr(item, "ocr_text", "") or ""
+        material_parts = []
+        if corrected.strip():
+            material_parts.append(f"人工校对后的 OCR 文本（优先使用）：\n{corrected[:12000]}")
+        elif ocr_text.strip():
+            material_parts.append(f"OCR 原始文本：\n{ocr_text[:12000]}")
+        if analysis.strip():
+            material_parts.append(f"截图结构化分析：\n{analysis[:12000]}")
+        if material_parts:
+            screenshot_parts.append(f"截图#{getattr(item, 'id', '')}识别材料：\n" + "\n\n".join(material_parts))
+    screenshot_text = "\n\n".join(screenshot_parts)
     if screenshot_text:
         parts.append(f"产品截图识别材料：\n{screenshot_text[:20000]}")
     if axure_text:
@@ -364,8 +374,8 @@ def _format_model_http_error(response: requests.Response) -> str:
     except Exception:
         response_text = ""
 
-    if status_code == 400 and "image_url" in response_text:
-        return "当前模型接口不支持 image_url 图片输入，不能直接识别截图；请切换到支持视觉的 OpenAI兼容模型，或先使用系统兜底分析继续生成测试点。"
+    if status_code == 400 and "image" in response_text.lower():
+        return "当前模型接口不支持图片输入；系统会先提取截图 OCR 文本，再交给文本模型生成测试点。"
     if status_code == 401:
         return "模型接口认证失败，请检查 AI 配置里的 API Key 是否正确。"
     if status_code == 402:
@@ -434,54 +444,8 @@ def call_local_model_json(config: AiConfig | None, prompt: str, timeout: int = 9
     return _json_from_text(content)
 
 
-def _image_data_url(image_path: str) -> str:
-    path = Path(image_path)
-    if not path.exists() or not path.is_file():
-        raise RuntimeError("截图文件不存在")
-    mime_type = mimetypes.guess_type(path.name)[0] or "image/png"
-    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-    return f"data:{mime_type};base64,{encoded}"
-
-
-def call_visual_model_json(config: AiConfig | None, prompt: str, image_path: str, timeout: int = 120) -> Any:
-    if not config or not config.base_url or not config.model:
-        raise RuntimeError("未配置 AI 模型，无法识别截图")
-    provider = (config.provider or "openai_compatible").strip().lower()
-    if provider != "openai_compatible":
-        raise RuntimeError("截图识别需要 OpenAI兼容视觉模型；当前配置不是 OpenAI兼容模式")
-    base_url = config.base_url.rstrip("/")
-    if _is_deepseek_api_base_url(base_url):
-        raise RuntimeError(
-            "DeepSeek 官方 chat/completions 接口当前文档只定义文本消息，messages.content 不支持 image_url 图片输入；"
-            "请切换到支持视觉的 OpenAI兼容模型，或先使用系统兜底分析继续生成测试点。"
-        )
-    endpoint = base_url if base_url.endswith("/chat/completions") else f"{base_url}/v1/chat/completions"
-    headers = {"Content-Type": "application/json"}
-    if config.api_key:
-        headers["Authorization"] = f"Bearer {config.api_key}"
-    response = requests.post(
-        endpoint,
-        headers=headers,
-        json={
-            "model": config.model,
-            "messages": [
-                {"role": "system", "content": "你是资深软件测试工程师，只输出合法 JSON。"},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": _image_data_url(image_path)}},
-                    ],
-                },
-            ],
-            "temperature": 0.2,
-        },
-        timeout=timeout,
-    )
-    _raise_for_model_response(response)
-    payload = response.json()
-    content = payload.get("choices", [{}])[0].get("message", {}).get("content", "")
-    return _json_from_text(content)
+def call_visual_model_json(*args: Any, **kwargs: Any) -> Any:
+    raise RuntimeError("截图识别已改为 OCR 文本链路，不再调用视觉图片输入")
 
 
 def fallback_screenshot_analysis(task: FunctionalTask, screenshot: FunctionalScreenshot, reason: str) -> str:
@@ -534,38 +498,6 @@ def fallback_screenshot_analysis(task: FunctionalTask, screenshot: FunctionalScr
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
-def analyze_functional_screenshot(task: FunctionalTask, screenshot: FunctionalScreenshot, config: AiConfig | None) -> str:
-    prompt = f"""
-请识别这张产品需求/原型截图，并从软件测试工程师角度输出 JSON。
-格式：
-{{
-  "page_summary": "页面功能概述",
-  "visible_controls": ["可见按钮、输入框、筛选项、表格、弹窗等"],
-  "inferred_rules": ["从截图能推测出的业务规则"],
-  "questions_for_product": ["需要向产品确认的问题"],
-  "suggested_test_points": ["建议测试点"]
-}}
-要求：不要编造截图里完全看不到的信息；如果截图信息不足，把需要确认的问题写清楚。
-迭代：{task.iteration_name}
-目标页面：{task.target_url}
-初始需求说明：{task.requirement_text or ""}
-"""
-    try:
-        payload = call_visual_model_json(config, prompt, screenshot.image_path)
-    except Exception as exc:
-        return fallback_screenshot_analysis(task, screenshot, str(exc))
-    if not isinstance(payload, dict):
-        return fallback_screenshot_analysis(task, screenshot, "视觉模型未返回合法 JSON")
-    normalized = {
-        "page_summary": payload.get("page_summary") or payload.get("summary") or "",
-        "visible_controls": payload.get("visible_controls") or payload.get("controls") or [],
-        "inferred_rules": payload.get("inferred_rules") or payload.get("rules") or [],
-        "questions_for_product": payload.get("questions_for_product") or payload.get("questions") or [],
-        "suggested_test_points": payload.get("suggested_test_points") or payload.get("test_points") or [],
-    }
-    return json.dumps(normalized, ensure_ascii=False, indent=2)
-
-
 def _flatten_paddle_result(raw: Any) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     blocks = raw if isinstance(raw, list) else []
@@ -586,7 +518,18 @@ def _flatten_paddle_result(raw: Any) -> list[dict[str, Any]]:
             except (TypeError, ValueError):
                 confidence = 0.0
             rows.append({"text": text, "confidence": confidence, "bbox": box})
+    rows.sort(key=lambda item: _bbox_sort_key(item.get("bbox")))
     return rows
+
+
+def _bbox_sort_key(bbox: Any) -> tuple[float, float]:
+    try:
+        points = bbox if isinstance(bbox, list) else []
+        xs = [float(point[0]) for point in points if isinstance(point, (list, tuple)) and len(point) >= 2]
+        ys = [float(point[1]) for point in points if isinstance(point, (list, tuple)) and len(point) >= 2]
+        return (min(ys) if ys else 0.0, min(xs) if xs else 0.0)
+    except Exception:
+        return (0.0, 0.0)
 
 
 def _image_size(image_path: str) -> dict[str, int]:
@@ -600,25 +543,155 @@ def _image_size(image_path: str) -> dict[str, int]:
         return {"width": 0, "height": 0}
 
 
-def _preprocess_image_for_ocr(image_path: str) -> str:
-    """Create a high-contrast enlarged copy for OCR. Falls back to the original image."""
+def _preprocess_image_variants_for_ocr(image_path: str) -> list[str]:
+    """Create several OCR candidates and keep the original as a fallback."""
+    variants = [image_path]
     try:
-        from PIL import Image, ImageEnhance, ImageFilter
+        from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
         source = Path(image_path)
-        target = FUNCTIONAL_SCREENSHOT_DIR / f"ocr-{source.stem}.png"
         with Image.open(source) as img:
             img = img.convert("RGB")
             width, height = img.size
-            if width and height and max(width, height) < 2200:
-                img = img.resize((width * 2, height * 2))
-            img = ImageEnhance.Contrast(img).enhance(1.35)
-            img = ImageEnhance.Sharpness(img).enhance(1.2)
-            img = img.filter(ImageFilter.MedianFilter(size=3))
-            img.save(target)
-        return str(target)
+            scale = 2 if width and height and max(width, height) < 2200 else 1
+            if scale > 1:
+                img = img.resize((width * scale, height * scale))
+
+            enhanced = ImageEnhance.Contrast(img).enhance(1.45)
+            enhanced = ImageEnhance.Sharpness(enhanced).enhance(1.25)
+            enhanced = enhanced.filter(ImageFilter.MedianFilter(size=3))
+            enhanced_path = FUNCTIONAL_SCREENSHOT_DIR / f"ocr-enhanced-{source.stem}.png"
+            enhanced.save(enhanced_path)
+            variants.append(str(enhanced_path))
+
+            gray = ImageOps.grayscale(enhanced)
+            gray_path = FUNCTIONAL_SCREENSHOT_DIR / f"ocr-gray-{source.stem}.png"
+            gray.save(gray_path)
+            variants.append(str(gray_path))
+
+            threshold = gray.point(lambda value: 255 if value > 172 else 0)
+            threshold_path = FUNCTIONAL_SCREENSHOT_DIR / f"ocr-threshold-{source.stem}.png"
+            threshold.save(threshold_path)
+            variants.append(str(threshold_path))
     except Exception:
-        return image_path
+        pass
+    result: list[str] = []
+    for item in variants:
+        if item not in result:
+            result.append(item)
+    return result
+
+
+def _preprocess_image_for_ocr(image_path: str) -> str:
+    return _preprocess_image_variants_for_ocr(image_path)[-1]
+
+
+def _ocr_python_candidates() -> list[str]:
+    candidates: list[str] = []
+    for value in [os.getenv("OCR_PYTHON"), os.getenv("PADDLE_OCR_PYTHON")]:
+        if value and value not in candidates:
+            candidates.append(value)
+    for path in [
+        BASE_DIR / ".venv_ocr" / "Scripts" / "python.exe",
+        BASE_DIR / ".venv_ocr" / "bin" / "python",
+    ]:
+        if path.exists():
+            candidates.append(str(path))
+    return candidates
+
+
+def _run_external_paddle_ocr(image_paths: list[str]) -> tuple[list[dict[str, Any]], str]:
+    if not PADDLE_OCR_WORKER.exists():
+        return [], "OCR 子进程脚本不存在"
+    payload_paths = [Path(item).as_posix() for item in image_paths]
+    request = json.dumps(
+        {"images": payload_paths, "lang": "ch", "cache_dir": (BASE_DIR / ".ocr_cache").as_posix()},
+        ensure_ascii=False,
+    )
+    errors: list[str] = []
+    for python_path in _ocr_python_candidates():
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        try:
+            completed = subprocess.run(
+                [python_path, str(PADDLE_OCR_WORKER)],
+                input=request,
+                text=True,
+                capture_output=True,
+                encoding="utf-8",
+                errors="replace",
+                env=env,
+                timeout=180,
+            )
+        except Exception as exc:
+            errors.append(f"{python_path}: {exc}")
+            continue
+        if completed.returncode != 0 and not completed.stdout.strip():
+            errors.append(f"{python_path}: {completed.stderr.strip()[:500]}")
+            continue
+        try:
+            payload = json.loads(completed.stdout or "{}")
+        except json.JSONDecodeError:
+            errors.append(f"{python_path}: OCR 输出不是合法 JSON")
+            continue
+        if payload.get("error"):
+            errors.append(f"{python_path}: {payload.get('error')}")
+        results = payload.get("results") if isinstance(payload, dict) else []
+        if isinstance(results, list) and results:
+            return results, "; ".join(errors)
+    if errors:
+        return [], "; ".join(errors)
+    return [], "未配置 OCR_PYTHON，也未找到 .venv_ocr；请使用 Python 3.11/3.12 安装 PaddleOCR 运行时"
+
+
+def _ocr_score(items: list[dict[str, Any]]) -> float:
+    if not items:
+        return 0.0
+    texts = [str(item.get("text") or "").strip() for item in items if str(item.get("text") or "").strip()]
+    confidence_values = [float(item.get("confidence") or 0) for item in items]
+    avg_confidence = sum(confidence_values) / len(confidence_values) if confidence_values else 0.0
+    char_count = sum(len(text) for text in texts)
+    unique_count = len({text.lower() for text in texts})
+    return avg_confidence * 1000 + min(char_count, 3000) / 3 + unique_count * 4
+
+
+def _run_ocr_candidates(image_paths: list[str]) -> tuple[list[dict[str, Any]], str, list[dict[str, Any]]]:
+    results: list[dict[str, Any]] = []
+    local_error = ""
+    try:
+        from paddleocr import PaddleOCR
+
+        ocr = PaddleOCR(use_angle_cls=True, lang="ch", show_log=False)
+        for image_path in image_paths:
+            try:
+                results.append({"image_path": image_path, "items": _flatten_paddle_result(ocr.ocr(image_path, cls=True)), "error": ""})
+            except Exception as exc:
+                results.append({"image_path": image_path, "items": [], "error": str(exc)})
+    except Exception as exc:
+        local_error = str(exc)
+        results, external_error = _run_external_paddle_ocr(image_paths)
+        external_has_result = any((item.get("items") if isinstance(item, dict) else []) for item in results)
+        if external_has_result:
+            local_error = external_error or ""
+        elif external_error:
+            local_error = f"{local_error}; {external_error}" if local_error else external_error
+
+    candidates: list[dict[str, Any]] = []
+    best: dict[str, Any] = {"items": [], "image_path": image_paths[0] if image_paths else "", "score": 0}
+    for result in results:
+        items = result.get("items") if isinstance(result, dict) else []
+        items = items if isinstance(items, list) else []
+        score = _ocr_score(items)
+        candidate = {
+            "image_path": result.get("image_path"),
+            "text_count": len(items),
+            "score": round(score, 3),
+            "error": result.get("error") or "",
+        }
+        candidates.append(candidate)
+        if score > float(best.get("score") or 0):
+            best = {"items": items, "image_path": result.get("image_path") or "", "score": score}
+    return best.get("items") or [], local_error, candidates
 
 
 def _opencv_regions(image_path: str) -> list[dict[str, Any]]:
@@ -654,7 +727,7 @@ def extract_screenshot_material(image_path: str) -> dict[str, Any]:
     """
     Convert a screenshot into text-first evidence for DeepSeek.
 
-    DeepSeek is used as a text reasoning model only; it never receives image_url.
+    DeepSeek is used as a text reasoning model only; it never receives the raw image.
     PaddleOCR is optional. If it is not installed, callers still receive a
     structured payload and can continue with DOM/manual confirmation.
     """
@@ -675,16 +748,14 @@ def extract_screenshot_material(image_path: str) -> dict[str, Any]:
             "needs_manual_confirm": True,
         }
 
-    processed = _preprocess_image_for_ocr(str(original))
-    ocr_items: list[dict[str, Any]] = []
-    ocr_error = ""
-    try:
-        from paddleocr import PaddleOCR
-
-        ocr = PaddleOCR(use_angle_cls=True, lang="ch", show_log=False)
-        ocr_items = _flatten_paddle_result(ocr.ocr(processed, cls=True))
-    except Exception as exc:
-        ocr_error = str(exc)
+    variants = _preprocess_image_variants_for_ocr(str(original))
+    ocr_items, ocr_error, ocr_candidates = _run_ocr_candidates(variants)
+    processed = ""
+    if ocr_candidates:
+        best_candidate = max(ocr_candidates, key=lambda item: float(item.get("score") or 0))
+        processed = str(best_candidate.get("image_path") or "")
+    if not processed:
+        processed = variants[-1] if variants else str(original)
 
     confidence_values = [float(item.get("confidence") or 0) for item in ocr_items]
     avg_confidence = round(sum(confidence_values) / len(confidence_values), 4) if confidence_values else 0
@@ -698,11 +769,13 @@ def extract_screenshot_material(image_path: str) -> dict[str, Any]:
         "ocr_error": ocr_error,
         "image_path": str(original),
         "preprocessed_image_path": processed,
+        "preprocessed_candidates": variants,
         "image_size": _image_size(str(original)),
         "ocr_items": ocr_items[:200],
         "ocr_text": ocr_text,
         "ocr_confidence": avg_confidence,
         "low_confidence_items": low_confidence,
+        "ocr_candidates": ocr_candidates,
         "regions": _opencv_regions(processed),
         "needs_manual_confirm": (not ocr_items) or avg_confidence < 0.72 or bool(low_confidence),
     }
@@ -803,7 +876,7 @@ def _normalize_generated_cases(payload: Any) -> list[Dict[str, Any]]:
                 "automation_status": "draft",
             }
         )
-    return result[:30]
+    return result[:100]
 
 
 def _extract_json_list_field(text: str, field_name: str) -> list[str]:
@@ -864,6 +937,7 @@ def generate_functional_cases(
 3. 如果有多张截图或多个页面信息，请设计跨页面的完整业务流程用例
 4. 对需求不明确的地方，在 questions_for_product 数组中列出需要向产品确认的问题
 5. 只输出合法 JSON，不要输出说明文字
+6. 请生成足够多（至少40条）的功能测试用例，覆盖上面提到的所有页面和功能模块
 
 输出格式：
 {{"cases":[{{"title":"","precondition":"","steps":"","expected":"","priority":"P0/P1/P2"}}],"questions_for_product":["问题1","问题2"]}}

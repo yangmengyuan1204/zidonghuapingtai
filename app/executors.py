@@ -226,9 +226,25 @@ def to_json_text(value: Any, fallback: Any) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def write_allure_result(name: str, case_type: str, passed: bool, log_text: str, screenshot_path: str = "") -> str:
+def _epoch_ms(value: Any, fallback: int) -> int:
+    if isinstance(value, datetime):
+        return int(value.timestamp() * 1000)
+    return fallback
+
+
+def write_allure_result(
+    name: str,
+    case_type: str,
+    passed: bool,
+    log_text: str,
+    screenshot_path: str = "",
+    started_at: Any = None,
+    finished_at: Any = None,
+) -> str:
     ensure_report_dirs()
     now_ms = int(time.time() * 1000)
+    start_ms = _epoch_ms(started_at, now_ms)
+    stop_ms = _epoch_ms(finished_at, now_ms)
     result_uuid = str(uuid4())
     status = "passed" if passed else "failed"
     log_source = f"{result_uuid}-log.txt"
@@ -248,8 +264,8 @@ def write_allure_result(name: str, case_type: str, passed: bool, log_text: str, 
         "fullName": f"{case_type}.{name}",
         "status": status,
         "stage": "finished",
-        "start": now_ms,
-        "stop": now_ms,
+        "start": start_ms,
+        "stop": stop_ms,
         "labels": [{"name": "suite", "value": case_type}],
         "attachments": attachments,
     }

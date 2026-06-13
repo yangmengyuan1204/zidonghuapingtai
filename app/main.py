@@ -12,8 +12,10 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Dict, Iterable, Type
 from urllib.parse import urljoin, urlparse
+from uuid import uuid4
 
 import requests
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Query, UploadFile, status
@@ -26,8 +28,10 @@ from sqlalchemy.orm import Session
 
 from .database import Base, engine, get_db
 from .data_scripts import (
+    preview_order_quote_options,
     run_balance_payment_script,
     run_bank_payment_script,
+    run_full_flow_script,
     run_order_quote_script,
     run_purchase_to_shelf_script,
     run_purchase_to_shelf_chain,
@@ -51,6 +55,10 @@ from .functional_testing import (
 from .models import (
     AiConfig,
     ApiCase,
+    CaseGenerationCase,
+    CaseGenerationRequirementNote,
+    CaseGenerationScreenshot,
+    CaseGenerationTask,
     ActionTemplate,
     Env,
     FunctionalCase,
@@ -75,6 +83,14 @@ from .schemas import (
     ApiBatchExecuteRequest,
     ApiCaseUpdate,
     ApiExecuteRequest,
+    CaseGenerationCaseBatchStatusUpdate,
+    CaseGenerationCaseStatusUpdate,
+    CaseGenerationCaseUpdate,
+    CaseGenerationRequirementNoteCreate,
+    CaseGenerationRequirementNoteUpdate,
+    CaseGenerationScreenshotOcrUpdate,
+    CaseGenerationTaskCreate,
+    CaseGenerationTaskUpdate,
     DataScriptExecuteRequest,
     EnvCreate,
     EnvUpdate,
@@ -134,6 +150,50 @@ TABLE_FIELDS = {
     FunctionalScreenshot: ["id", "task_id", "image_path", "analysis_result", "create_time"],
     FunctionalRequirementNote: ["id", "task_id", "note_text", "create_time", "update_time"],
     FunctionalRun: ["id", "task_id", "result", "log", "passed_count", "failed_count", "execute_time"],
+    CaseGenerationTask: [
+        "id",
+        "project_id",
+        "task_name",
+        "target_name",
+        "target_url",
+        "requirement_text",
+        "context",
+        "status",
+        "create_time",
+        "update_time",
+    ],
+    CaseGenerationScreenshot: [
+        "id",
+        "task_id",
+        "image_path",
+        "analysis_result",
+        "ocr_text",
+        "corrected_text",
+        "ocr_confidence",
+        "low_confidence_items",
+        "regions",
+        "needs_manual_confirm",
+        "ocr_error",
+        "create_time",
+    ],
+    CaseGenerationRequirementNote: ["id", "task_id", "note_text", "create_time", "update_time"],
+    CaseGenerationCase: [
+        "id",
+        "task_id",
+        "title",
+        "precondition",
+        "steps",
+        "expected",
+        "priority",
+        "source_refs",
+        "generation_batch",
+        "manual_edited",
+        "test_result",
+        "source_missing",
+        "remark",
+        "create_time",
+        "update_time",
+    ],
     AiConfig: ["id", "provider", "base_url", "model", "api_key", "create_time"],
     TestAccountProfile: [
         "id", "project_id", "profile_name", "variables",
@@ -210,6 +270,7 @@ def find_data_script_api_case(db: Session, item: Dict[str, Any]) -> ApiCase | No
 
 LOGIN_CASE_NAME = "\u767b\u5f55"
 CART_CASE_NAME = "\u52a0\u5165\u8d2d\u7269\u8f66"
+FRONTEND_UNIVERSAL_ACCOUNT_PASSWORD = "raku@123456``"
 
 DATA_SCRIPT_API_CASES = [
     {
@@ -568,6 +629,15 @@ def init_app() -> None:
                 "success_url_contains": "ALTER TABLE test_account_profile ADD COLUMN success_url_contains VARCHAR(500)",
                 "success_selector": "ALTER TABLE test_account_profile ADD COLUMN success_selector VARCHAR(500)",
             },
+            "case_generation_screenshot": {
+                "ocr_text": "ALTER TABLE case_generation_screenshot ADD COLUMN ocr_text TEXT",
+                "corrected_text": "ALTER TABLE case_generation_screenshot ADD COLUMN corrected_text TEXT",
+                "ocr_confidence": "ALTER TABLE case_generation_screenshot ADD COLUMN ocr_confidence FLOAT",
+                "low_confidence_items": "ALTER TABLE case_generation_screenshot ADD COLUMN low_confidence_items TEXT",
+                "regions": "ALTER TABLE case_generation_screenshot ADD COLUMN regions TEXT",
+                "needs_manual_confirm": "ALTER TABLE case_generation_screenshot ADD COLUMN needs_manual_confirm INTEGER DEFAULT 1",
+                "ocr_error": "ALTER TABLE case_generation_screenshot ADD COLUMN ocr_error TEXT",
+            },
         }
         with engine.begin() as conn:
             for table_name, table_migrations in migrations.items():
@@ -764,6 +834,746 @@ def functional_task_detail(db: Session, task: FunctionalTask) -> Dict[str, Any]:
     )
     data["runs"] = serialize_many(db.query(FunctionalRun).filter(FunctionalRun.task_id == task.id).order_by(FunctionalRun.id.desc()).limit(20).all())
     return data
+
+
+CASE_GENERATION_TEST_RESULTS = {"untested", "passed", "failed", "blocked", "skipped"}
+CASE_GENERATION_WORKSPACE_TASK_NAME = "用例生成草稿"
+CASE_GENERATION_WORKSPACE_TARGET_NAME = "用例生成"
+
+
+def case_generation_case_is_protected(item: CaseGenerationCase) -> bool:
+    return bool(item.manual_edited) or (item.test_result or "untested") != "untested"
+
+
+def ensure_case_generation_workspace(db: Session, project_id: int) -> CaseGenerationTask:
+    ensure_project_exists(db, project_id)
+    task = (
+        db.query(CaseGenerationTask)
+        .filter(
+            CaseGenerationTask.project_id == project_id,
+            CaseGenerationTask.task_name == CASE_GENERATION_WORKSPACE_TASK_NAME,
+            CaseGenerationTask.target_name == CASE_GENERATION_WORKSPACE_TARGET_NAME,
+        )
+        .order_by(CaseGenerationTask.id.desc())
+        .first()
+    )
+    if task:
+        return task
+    task = CaseGenerationTask(
+        project_id=project_id,
+        task_name=CASE_GENERATION_WORKSPACE_TASK_NAME,
+        target_name=CASE_GENERATION_WORKSPACE_TARGET_NAME,
+        target_url="",
+        requirement_text="",
+        context="",
+        status="draft",
+        create_time=datetime.now(),
+        update_time=None,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def case_generation_serialize_json(value: Any) -> str:
+    return json.dumps(value or [], ensure_ascii=False)
+
+
+def apply_case_generation_ocr_material(screenshot: CaseGenerationScreenshot, analysis_result: str) -> None:
+    payload = parse_json_value(analysis_result, {})
+    material = payload.get("ocr_material") if isinstance(payload, dict) else {}
+    if not isinstance(material, dict):
+        material = {}
+    screenshot.ocr_text = str(material.get("ocr_text") or "")
+    try:
+        screenshot.ocr_confidence = float(material.get("ocr_confidence") or 0)
+    except (TypeError, ValueError):
+        screenshot.ocr_confidence = 0
+    screenshot.low_confidence_items = case_generation_serialize_json(material.get("low_confidence_items"))
+    screenshot.regions = case_generation_serialize_json(material.get("regions"))
+    screenshot.needs_manual_confirm = 1 if material.get("needs_manual_confirm", True) else 0
+    screenshot.ocr_error = str(material.get("ocr_error") or "")
+
+
+def case_generation_task_proxy(task: CaseGenerationTask) -> SimpleNamespace:
+    target = task.target_url or task.target_name or ""
+    return SimpleNamespace(
+        id=task.id,
+        project_id=task.project_id,
+        iteration_name=task.task_name,
+        target_url=target,
+        requirement_text=task.requirement_text or "",
+        context=task.context or "",
+        status=task.status,
+    )
+
+
+def case_generation_source_refs(
+    screenshots: Iterable[CaseGenerationScreenshot],
+    notes: Iterable[CaseGenerationRequirementNote],
+) -> str:
+    payload = {
+        "screenshots": [item.id for item in screenshots],
+        "notes": [item.id for item in notes],
+        "initial_requirement": True,
+    }
+    return json.dumps(payload, ensure_ascii=False)
+
+
+def case_generation_refs_include_screenshot(item: CaseGenerationCase, screenshot_id: int) -> bool:
+    refs = parse_json_value(item.source_refs, {})
+    values = refs.get("screenshots") if isinstance(refs, dict) else []
+    return str(screenshot_id) in {str(value) for value in (values or [])}
+
+
+def case_generation_refs_include_note(item: CaseGenerationCase, note_id: int) -> bool:
+    refs = parse_json_value(item.source_refs, {})
+    values = refs.get("notes") if isinstance(refs, dict) else []
+    return str(note_id) in {str(value) for value in (values or [])}
+
+
+def case_generation_stats(cases: Iterable[CaseGenerationCase]) -> Dict[str, int]:
+    stats = {key: 0 for key in ["total", "untested", "passed", "failed", "blocked", "skipped"]}
+    for item in cases:
+        stats["total"] += 1
+        result = item.test_result or "untested"
+        if result not in CASE_GENERATION_TEST_RESULTS:
+            result = "untested"
+        stats[result] += 1
+    return stats
+
+
+def case_generation_detail(db: Session, task: CaseGenerationTask) -> Dict[str, Any]:
+    data = serialize(task)
+    project = db.get(Project, task.project_id)
+    data["project_name"] = project.name if project else task.project_id
+    screenshots = (
+        db.query(CaseGenerationScreenshot)
+        .filter(CaseGenerationScreenshot.task_id == task.id)
+        .order_by(CaseGenerationScreenshot.id.desc())
+        .all()
+    )
+    notes = (
+        db.query(CaseGenerationRequirementNote)
+        .filter(CaseGenerationRequirementNote.task_id == task.id)
+        .order_by(CaseGenerationRequirementNote.id.desc())
+        .all()
+    )
+    cases = (
+        db.query(CaseGenerationCase)
+        .filter(CaseGenerationCase.task_id == task.id)
+        .order_by(CaseGenerationCase.id.asc())
+        .all()
+    )
+    data["screenshots"] = serialize_many(screenshots)
+    data["requirement_notes"] = serialize_many(notes)
+    data["cases"] = serialize_many(cases)
+    data["stats"] = case_generation_stats(cases)
+    return data
+
+
+def remove_uploaded_case_generation_file(raw_path: str | None) -> None:
+    if not raw_path:
+        return
+    try:
+        path = Path(raw_path)
+        if not path.is_absolute():
+            path = BASE_DIR / path
+        resolved = path.resolve()
+        reports_dir = (BASE_DIR / "reports").resolve()
+        if resolved.exists() and resolved.is_file() and (resolved == reports_dir or reports_dir in resolved.parents):
+            resolved.unlink()
+    except Exception:
+        pass
+
+
+def case_generation_screenshot_impact(db: Session, screenshot: CaseGenerationScreenshot) -> Dict[str, int]:
+    impacted = [
+        item
+        for item in db.query(CaseGenerationCase).filter(CaseGenerationCase.task_id == screenshot.task_id).all()
+        if case_generation_refs_include_screenshot(item, screenshot.id)
+    ]
+    deletable = [item for item in impacted if not case_generation_case_is_protected(item)]
+    protected = [item for item in impacted if case_generation_case_is_protected(item)]
+    return {
+        "total": len(impacted),
+        "deletable": len(deletable),
+        "protected": len(protected),
+    }
+
+
+def ensure_case_generation_task(db: Session, task_id: int) -> CaseGenerationTask:
+    return get_or_404(db, CaseGenerationTask, task_id)
+
+
+@app.get("/api/case-generation/workspace")
+def get_case_generation_workspace(
+    project_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    task = ensure_case_generation_workspace(db, project_id)
+    return case_generation_detail(db, task)
+
+
+@app.post("/api/case-generation/workspace/upload-screenshots")
+async def upload_case_generation_workspace_screenshots(
+    project_id: int = Query(...),
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = ensure_case_generation_workspace(db, project_id)
+    uploaded: list[Dict[str, Any]] = []
+    errors: list[str] = []
+    for file in files:
+        content = await file.read()
+        if not content:
+            errors.append(f"{file.filename}: 文件为空")
+            continue
+        try:
+            image_path = store_functional_screenshot_file(file.filename or "screenshot.png", content)
+        except ValueError as exc:
+            errors.append(f"{file.filename}: {exc}")
+            continue
+        screenshot = CaseGenerationScreenshot(
+            task_id=task.id,
+            image_path=image_path,
+            analysis_result="",
+            ocr_text="",
+            corrected_text="",
+            ocr_confidence=0,
+            low_confidence_items="[]",
+            regions="[]",
+            needs_manual_confirm=1,
+            ocr_error="",
+            create_time=datetime.now(),
+        )
+        db.add(screenshot)
+        db.flush()
+        uploaded.append(serialize(screenshot))
+    if not uploaded and errors:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="；".join(errors[:5]))
+    if uploaded:
+        task.status = "screenshot_uploaded"
+        task.update_time = datetime.now()
+    db.commit()
+    db.refresh(task)
+    return {"uploaded": uploaded, "errors": errors, "workspace": case_generation_detail(db, task)}
+
+
+@app.post("/api/case-generation/workspace/requirement-notes")
+def create_case_generation_workspace_requirement_note(
+    project_id: int = Query(...),
+    payload: CaseGenerationRequirementNoteCreate = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = ensure_case_generation_workspace(db, project_id)
+    data = schema_data(payload)
+    note_text = (data.get("note_text") or "").strip()
+    if not note_text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="补充需求不能为空")
+    note = CaseGenerationRequirementNote(
+        task_id=task.id,
+        note_text=note_text,
+        create_time=datetime.now(),
+        update_time=None,
+    )
+    task.status = "requirements_updated"
+    task.update_time = datetime.now()
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+    return {"note": serialize(note), "workspace": case_generation_detail(db, task)}
+
+
+@app.post("/api/case-generation/workspace/generate-cases")
+def generate_case_generation_workspace_cases(
+    project_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = ensure_case_generation_workspace(db, project_id)
+    return generate_case_generation_cases_for_task(db, task)
+
+
+@app.post("/api/case-generation/workspace/cases/batch-status")
+def batch_update_case_generation_workspace_case_status(
+    project_id: int = Query(...),
+    payload: CaseGenerationCaseBatchStatusUpdate = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    task = ensure_case_generation_workspace(db, project_id)
+    return batch_update_case_generation_cases_for_task(db, task.id, payload)
+
+
+@app.get("/api/case-generation/tasks")
+def list_case_generation_tasks(
+    project_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[Dict[str, Any]]:
+    query = db.query(CaseGenerationTask)
+    if project_id is not None:
+        query = query.filter(CaseGenerationTask.project_id == project_id)
+    return [case_generation_detail(db, item) for item in query.order_by(CaseGenerationTask.id.desc()).all()]
+
+
+@app.post("/api/case-generation/tasks")
+def create_case_generation_task(
+    payload: CaseGenerationTaskCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    data = schema_data(payload)
+    ensure_project_exists(db, data["project_id"])
+    task = CaseGenerationTask(
+        project_id=data["project_id"],
+        task_name=(data.get("task_name") or "").strip(),
+        target_name=(data.get("target_name") or "").strip(),
+        target_url=(data.get("target_url") or "").strip(),
+        requirement_text=data.get("requirement_text") or "",
+        context=data.get("context") or "",
+        status=data.get("status") or "draft",
+        create_time=datetime.now(),
+        update_time=None,
+    )
+    if not task.task_name or not task.target_name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="任务名称和目标页面/功能不能为空")
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return case_generation_detail(db, task)
+
+
+@app.get("/api/case-generation/tasks/{task_id}")
+def get_case_generation_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    return case_generation_detail(db, ensure_case_generation_task(db, task_id))
+
+
+@app.put("/api/case-generation/tasks/{task_id}")
+def update_case_generation_task(
+    task_id: int,
+    payload: CaseGenerationTaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = ensure_case_generation_task(db, task_id)
+    data = schema_data(payload, exclude_unset=True)
+    if "project_id" in data and data["project_id"] is not None:
+        ensure_project_exists(db, data["project_id"])
+    for field in ["project_id", "task_name", "target_name", "target_url", "requirement_text", "context", "status"]:
+        if field in data and data[field] is not None:
+            value = data[field]
+            if field in {"task_name", "target_name", "target_url"}:
+                value = str(value or "").strip()
+            setattr(task, field, value)
+    if not task.task_name or not task.target_name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="任务名称和目标页面/功能不能为空")
+    task.update_time = datetime.now()
+    db.commit()
+    db.refresh(task)
+    return case_generation_detail(db, task)
+
+
+@app.delete("/api/case-generation/tasks/{task_id}")
+def delete_case_generation_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, str]:
+    task = ensure_case_generation_task(db, task_id)
+    screenshots = db.query(CaseGenerationScreenshot).filter(CaseGenerationScreenshot.task_id == task.id).all()
+    for screenshot in screenshots:
+        remove_uploaded_case_generation_file(screenshot.image_path)
+    db.query(CaseGenerationCase).filter(CaseGenerationCase.task_id == task.id).delete(synchronize_session=False)
+    db.query(CaseGenerationScreenshot).filter(CaseGenerationScreenshot.task_id == task.id).delete(synchronize_session=False)
+    db.query(CaseGenerationRequirementNote).filter(CaseGenerationRequirementNote.task_id == task.id).delete(synchronize_session=False)
+    db.delete(task)
+    db.commit()
+    return {"message": "deleted"}
+
+
+@app.post("/api/case-generation/tasks/{task_id}/upload-screenshots")
+async def upload_case_generation_screenshots(
+    task_id: int,
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = ensure_case_generation_task(db, task_id)
+    uploaded: list[Dict[str, Any]] = []
+    errors: list[str] = []
+    for file in files:
+        content = await file.read()
+        if not content:
+            errors.append(f"{file.filename}: 文件为空")
+            continue
+        try:
+            image_path = store_functional_screenshot_file(file.filename or "screenshot.png", content)
+        except ValueError as exc:
+            errors.append(f"{file.filename}: {exc}")
+            continue
+        screenshot = CaseGenerationScreenshot(
+            task_id=task.id,
+            image_path=image_path,
+            analysis_result="",
+            ocr_text="",
+            corrected_text="",
+            ocr_confidence=0,
+            low_confidence_items="[]",
+            regions="[]",
+            needs_manual_confirm=1,
+            ocr_error="",
+            create_time=datetime.now(),
+        )
+        db.add(screenshot)
+        db.flush()
+        uploaded.append(serialize(screenshot))
+    if not uploaded and errors:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="；".join(errors[:5]))
+    if uploaded:
+        task.status = "screenshot_uploaded"
+        task.update_time = datetime.now()
+    db.commit()
+    db.refresh(task)
+    return {"uploaded": uploaded, "errors": errors, "task": case_generation_detail(db, task)}
+
+
+@app.get("/api/case-generation/screenshots/{screenshot_id}/file")
+def get_case_generation_screenshot_file(
+    screenshot_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> FileResponse:
+    screenshot = get_or_404(db, CaseGenerationScreenshot, screenshot_id)
+    return safe_file_response(screenshot.image_path)
+
+
+@app.get("/api/case-generation/screenshots/{screenshot_id}/impact")
+def get_case_generation_screenshot_impact(
+    screenshot_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, int]:
+    screenshot = get_or_404(db, CaseGenerationScreenshot, screenshot_id)
+    return case_generation_screenshot_impact(db, screenshot)
+
+
+@app.post("/api/case-generation/screenshots/{screenshot_id}/analyze")
+def analyze_case_generation_screenshot(
+    screenshot_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    screenshot = get_or_404(db, CaseGenerationScreenshot, screenshot_id)
+    task = ensure_case_generation_task(db, screenshot.task_id)
+    try:
+        screenshot.analysis_result = analyze_functional_screenshot(
+            case_generation_task_proxy(task),
+            screenshot,
+            latest_ai_config(db),
+        )
+        apply_case_generation_ocr_material(screenshot, screenshot.analysis_result or "")
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    task.status = "screenshot_analyzed"
+    task.update_time = datetime.now()
+    db.commit()
+    db.refresh(screenshot)
+    return {"screenshot": serialize(screenshot), "task": case_generation_detail(db, task)}
+
+
+@app.put("/api/case-generation/screenshots/{screenshot_id}/ocr-text")
+def update_case_generation_screenshot_ocr_text(
+    screenshot_id: int,
+    payload: CaseGenerationScreenshotOcrUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    screenshot = get_or_404(db, CaseGenerationScreenshot, screenshot_id)
+    task = ensure_case_generation_task(db, screenshot.task_id)
+    screenshot.corrected_text = (payload.corrected_text or "").strip()
+    screenshot.needs_manual_confirm = 0 if screenshot.corrected_text else screenshot.needs_manual_confirm
+    task.update_time = datetime.now()
+    db.commit()
+    db.refresh(screenshot)
+    return {"screenshot": serialize(screenshot), "task": case_generation_detail(db, task)}
+
+
+@app.delete("/api/case-generation/screenshots/{screenshot_id}")
+def delete_case_generation_screenshot(
+    screenshot_id: int,
+    delete_cases: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    screenshot = get_or_404(db, CaseGenerationScreenshot, screenshot_id)
+    task = ensure_case_generation_task(db, screenshot.task_id)
+    impacted = [
+        item
+        for item in db.query(CaseGenerationCase).filter(CaseGenerationCase.task_id == task.id).all()
+        if case_generation_refs_include_screenshot(item, screenshot.id)
+    ]
+    deleted_case_ids: list[int] = []
+    preserved_case_ids: list[int] = []
+    for item in impacted:
+        if delete_cases and not case_generation_case_is_protected(item):
+            deleted_case_ids.append(item.id)
+            db.delete(item)
+        else:
+            item.source_missing = 1
+            item.update_time = datetime.now()
+            preserved_case_ids.append(item.id)
+    remove_uploaded_case_generation_file(screenshot.image_path)
+    db.delete(screenshot)
+    task.status = "screenshot_deleted"
+    task.update_time = datetime.now()
+    db.commit()
+    return {
+        "message": "deleted",
+        "deleted_case_ids": deleted_case_ids,
+        "preserved_case_ids": preserved_case_ids,
+        "task": case_generation_detail(db, task),
+    }
+
+
+@app.post("/api/case-generation/tasks/{task_id}/requirement-notes")
+def create_case_generation_requirement_note(
+    task_id: int,
+    payload: CaseGenerationRequirementNoteCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = ensure_case_generation_task(db, task_id)
+    data = schema_data(payload)
+    note_text = (data.get("note_text") or "").strip()
+    if not note_text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="补充需求不能为空")
+    note = CaseGenerationRequirementNote(
+        task_id=task.id,
+        note_text=note_text,
+        create_time=datetime.now(),
+        update_time=None,
+    )
+    task.status = "requirements_updated"
+    task.update_time = datetime.now()
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+    return {"note": serialize(note), "task": case_generation_detail(db, task)}
+
+
+@app.put("/api/case-generation/requirement-notes/{note_id}")
+def update_case_generation_requirement_note(
+    note_id: int,
+    payload: CaseGenerationRequirementNoteUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    note = get_or_404(db, CaseGenerationRequirementNote, note_id)
+    task = ensure_case_generation_task(db, note.task_id)
+    data = schema_data(payload)
+    note_text = (data.get("note_text") or "").strip()
+    if not note_text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="补充需求不能为空")
+    note.note_text = note_text
+    note.update_time = datetime.now()
+    task.status = "requirements_updated"
+    task.update_time = datetime.now()
+    db.commit()
+    db.refresh(note)
+    return {"note": serialize(note), "task": case_generation_detail(db, task)}
+
+
+@app.delete("/api/case-generation/requirement-notes/{note_id}")
+def delete_case_generation_requirement_note(
+    note_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    note = get_or_404(db, CaseGenerationRequirementNote, note_id)
+    task = ensure_case_generation_task(db, note.task_id)
+    for item in db.query(CaseGenerationCase).filter(CaseGenerationCase.task_id == task.id).all():
+        if case_generation_refs_include_note(item, note.id):
+            item.source_missing = 1
+            item.update_time = datetime.now()
+    db.delete(note)
+    task.status = "requirements_updated"
+    task.update_time = datetime.now()
+    db.commit()
+    return {"message": "deleted", "task": case_generation_detail(db, task)}
+
+
+def generate_case_generation_cases_for_task(db: Session, task: CaseGenerationTask) -> Dict[str, Any]:
+    screenshots = (
+        db.query(CaseGenerationScreenshot)
+        .filter(CaseGenerationScreenshot.task_id == task.id)
+        .order_by(CaseGenerationScreenshot.id.asc())
+        .all()
+    )
+    notes = (
+        db.query(CaseGenerationRequirementNote)
+        .filter(CaseGenerationRequirementNote.task_id == task.id)
+        .order_by(CaseGenerationRequirementNote.id.asc())
+        .all()
+    )
+    generated = generate_functional_cases(
+        case_generation_task_proxy(task),
+        "",
+        None,
+        latest_ai_config(db),
+        screenshots,
+        notes,
+    )
+    for old_case in db.query(CaseGenerationCase).filter(CaseGenerationCase.task_id == task.id).all():
+        if not case_generation_case_is_protected(old_case):
+            db.delete(old_case)
+    db.flush()
+
+    batch = uuid4().hex[:12]
+    source_refs = case_generation_source_refs(screenshots, notes)
+    created = 0
+    for item in generated.items:
+        title = (item.get("title") or "").strip()
+        if not title:
+            continue
+        db.add(
+            CaseGenerationCase(
+                task_id=task.id,
+                title=title[:200],
+                precondition=item.get("precondition", ""),
+                steps=item.get("steps", ""),
+                expected=item.get("expected", ""),
+                priority=item.get("priority", "P1"),
+                source_refs=source_refs,
+                generation_batch=batch,
+                manual_edited=0,
+                test_result="untested",
+                source_missing=0,
+                remark="",
+                create_time=datetime.now(),
+                update_time=None,
+            )
+        )
+        created += 1
+    task.status = "cases_generated"
+    task.update_time = datetime.now()
+    db.commit()
+    db.refresh(task)
+    return {
+        "source": generated.source,
+        "warning": generated.warning,
+        "created": created,
+        "generation_batch": batch,
+        "task": case_generation_detail(db, task),
+        "workspace": case_generation_detail(db, task),
+    }
+
+
+@app.post("/api/case-generation/tasks/{task_id}/generate-cases")
+def generate_case_generation_cases(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = ensure_case_generation_task(db, task_id)
+    return generate_case_generation_cases_for_task(db, task)
+
+
+@app.put("/api/case-generation/cases/{case_id}")
+def update_case_generation_case(
+    case_id: int,
+    payload: CaseGenerationCaseUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    item = get_or_404(db, CaseGenerationCase, case_id)
+    data = schema_data(payload, exclude_unset=True)
+    for field in ["title", "precondition", "steps", "expected", "priority", "remark"]:
+        if field in data and data[field] is not None:
+            setattr(item, field, data[field])
+    if not item.title:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用例标题不能为空")
+    item.manual_edited = 1
+    item.update_time = datetime.now()
+    db.commit()
+    db.refresh(item)
+    return serialize(item)
+
+
+@app.delete("/api/case-generation/cases/{case_id}")
+def delete_case_generation_case(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, str]:
+    item = get_or_404(db, CaseGenerationCase, case_id)
+    db.delete(item)
+    db.commit()
+    return {"message": "deleted"}
+
+
+@app.put("/api/case-generation/cases/{case_id}/status")
+def update_case_generation_case_status(
+    case_id: int,
+    payload: CaseGenerationCaseStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    item = get_or_404(db, CaseGenerationCase, case_id)
+    if payload.test_result not in CASE_GENERATION_TEST_RESULTS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的测试状态")
+    item.test_result = payload.test_result
+    item.update_time = datetime.now()
+    db.commit()
+    db.refresh(item)
+    return serialize(item)
+
+
+def batch_update_case_generation_cases_for_task(
+    db: Session,
+    task_id: int,
+    payload: CaseGenerationCaseBatchStatusUpdate,
+) -> Dict[str, Any]:
+    if payload.test_result not in CASE_GENERATION_TEST_RESULTS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的测试状态")
+    updated = (
+        db.query(CaseGenerationCase)
+        .filter(CaseGenerationCase.task_id == task_id, CaseGenerationCase.id.in_(payload.case_ids or [-1]))
+        .update({"test_result": payload.test_result, "update_time": datetime.now()}, synchronize_session="fetch")
+    )
+    db.commit()
+    return {"updated": updated, "test_result": payload.test_result}
+
+
+@app.post("/api/case-generation/tasks/{task_id}/cases/batch-status")
+def batch_update_case_generation_case_status(
+    task_id: int,
+    payload: CaseGenerationCaseBatchStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    ensure_case_generation_task(db, task_id)
+    return batch_update_case_generation_cases_for_task(db, task_id, payload)
+
+
+@app.get("/api/case-generation/tasks/{task_id}/cases/stats")
+def get_case_generation_case_stats(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, int]:
+    ensure_case_generation_task(db, task_id)
+    cases = db.query(CaseGenerationCase).filter(CaseGenerationCase.task_id == task_id).all()
+    return case_generation_stats(cases)
 
 
 def save_ui_record(db: Session, case: UiCase, passed: bool, log_text: str, report_path: str, screenshot_path: str = "") -> TestRecord:
@@ -1653,6 +2463,38 @@ def save_record(db: Session, case_type: str, case_id: int, passed: bool, log_tex
     return record
 
 
+def split_customer_ids(value: Any) -> list[str]:
+    if value in (None, ""):
+        return []
+    raw_items = value if isinstance(value, list) else [value]
+    customer_ids: list[str] = []
+    for raw_item in raw_items:
+        if raw_item in (None, ""):
+            continue
+        for item in re.split(r"[\s,，;；]+", str(raw_item).strip()):
+            customer_id = item.strip()
+            if not customer_id:
+                continue
+            if not re.fullmatch(r"\d+", customer_id):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"客户ID只能是数字：{customer_id}")
+            customer_ids.append(customer_id)
+    return customer_ids
+
+
+def apply_frontend_customer_login_variables(variables: Dict[str, Any]) -> Dict[str, Any]:
+    customer_ids = split_customer_ids(variables.get("customer_id"))
+    if not customer_ids:
+        customer_ids = split_customer_ids(variables.get("customer_ids"))
+    if not customer_ids:
+        return variables
+    customer_id = customer_ids[0]
+    variables["customer_id"] = customer_id
+    variables["customer_ids"] = customer_ids
+    variables["account"] = f"userID/{customer_id}In"
+    variables["password"] = FRONTEND_UNIVERSAL_ACCOUNT_PASSWORD
+    return variables
+
+
 @app.post("/api/api-cases/batch-execute")
 def batch_run_api_cases(
     payload: ApiBatchExecuteRequest,
@@ -1661,7 +2503,7 @@ def batch_run_api_cases(
 ) -> Dict[str, Any]:
     if not payload.case_ids:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请选择要执行的接口用例")
-    runtime_vars = dict(payload.variables or {})
+    runtime_vars = apply_frontend_customer_login_variables(dict(payload.variables or {}))
     records = []
     for case_id in payload.case_ids:
         case = get_or_404(db, ApiCase, case_id)
@@ -1702,7 +2544,7 @@ def data_script_variables(db: Session, variables: Dict[str, Any] | None) -> Dict
             is_old_seed = (key == "account" and current_value == "abner") or (key == "password" and current_value == "12345")
             if current_value in (None, "") or is_old_seed:
                 merged[key] = default_value
-    return merged
+    return apply_frontend_customer_login_variables(merged)
 
 
 @app.post("/api/data-scripts/shopping-cart")
@@ -1738,6 +2580,19 @@ def run_order_quote_data_script(
     data = serialize(record)
     data["summary"] = summary
     return data
+
+
+@app.post("/api/data-scripts/order-quote/options-preview")
+def preview_order_quote_options_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
+    if not env:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
+    variables = data_script_variables(db, payload.variables)
+    return preview_order_quote_options(env, variables)
 
 
 @app.post("/api/data-scripts/balance-payment")
@@ -1791,7 +2646,11 @@ def run_purchase_to_shelf_data_script(
             return value
         return str(value).strip().lower() not in {"0", "false", "no", "off"}
 
-    if enabled(variables.get("link_quote_balance_before_shelf"), True) and enabled(variables.get("auto_quote_and_pay"), True):
+    has_target_order = bool(
+        str(variables.get("order_sn") or variables.get("last_order_sn") or "").strip()
+        or variables.get("purchase_ids")
+    )
+    if not has_target_order and enabled(variables.get("link_quote_balance_before_shelf"), True) and enabled(variables.get("auto_quote_and_pay"), True):
         passed, log_text, report_path, summary = run_purchase_to_shelf_chain(env, variables)
     else:
         passed, log_text, report_path, summary = run_purchase_to_shelf_script(env, variables)
@@ -1863,6 +2722,23 @@ def run_porder_bank_payment_data_script(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
     variables = data_script_variables(db, payload.variables)
     passed, log_text, report_path, summary = run_porder_bank_payment_script(env, variables)
+    record = save_record(db, "api", 0, passed, log_text, report_path)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+@app.post("/api/data-scripts/full-flow")
+def run_full_flow_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
+    if not env:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
+    variables = data_script_variables(db, payload.variables)
+    passed, log_text, report_path, summary = run_full_flow_script(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path)
     data = serialize(record)
     data["summary"] = summary
