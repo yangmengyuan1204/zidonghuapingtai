@@ -90,6 +90,7 @@ class ApiBatchExecuteRequest(BaseModel):
 
 
 class DataScriptExecuteRequest(BaseModel):
+    project_id: Optional[int] = None
     env_id: Optional[int] = None
     variables: Dict[str, Any] = {}
 

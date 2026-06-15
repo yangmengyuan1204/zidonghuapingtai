@@ -3,6 +3,8 @@ if (!window.__fullFlowDataScriptLoaded) {
 
   BUILTIN_FLOW_DEFINITIONS.full_flow = { id: "full_flow_builtin", name: "全流程完全体" };
   if (!BUILTIN_DATA_SCRIPT_TYPES.includes("full_flow")) BUILTIN_DATA_SCRIPT_TYPES.push("full_flow");
+  BUILTIN_FLOW_DEFINITIONS.direct_box_to_shelf = { id: "direct_box_to_shelf_builtin", name: "直接装箱上架" };
+  if (!BUILTIN_DATA_SCRIPT_TYPES.includes("direct_box_to_shelf")) BUILTIN_DATA_SCRIPT_TYPES.push("direct_box_to_shelf");
 
   const FULL_FLOW_STOP_NODE_OPTIONS = [
     { value: "full_complete", label: "不暂停（全流程结束）" },
@@ -42,8 +44,47 @@ if (!window.__fullFlowDataScriptLoaded) {
     { name: "stop_after_node", label: "暂停节点", type: "select", options: FULL_FLOW_STOP_NODE_OPTIONS, default: "full_complete" },
   ];
 
+  SCRIPT_PARAM_SCHEMAS.direct_box_to_shelf = [
+    CUSTOMER_ID_FIELD,
+    { name: "order_sn", label: "订单号（可选）" },
+    { name: "purchase_no", label: "交易号（可选）" },
+    { name: "keyword", label: "关键词", default: "衣服" },
+    { name: "shop_type", label: "商品来源", type: "select", options: SHOP_TYPE_OPTIONS, default: "1688" },
+    { name: "order_shop_count", label: "订单店铺数", type: "number", default: 1 },
+    { name: "order_per_shop", label: "订单每店商品数", type: "number", default: 2 },
+    { name: "order_item_num", label: "订单商品数量", type: "number", default: 10 },
+    { name: "box_count", label: "箱子数", type: "number", default: 1 },
+  ];
+
   const originalSanitizeScriptVariablesForFullFlow = sanitizeScriptVariables;
   sanitizeScriptVariables = function (scriptType, variables, flow = null) {
+    if (scriptType === "direct_box_to_shelf") {
+      const next = { ...(variables || {}) };
+      const shopType = String(next.shop_type || splitParamList(next.shop_types)[0] || "1688").trim() || "1688";
+      next.shop_type = shopType;
+      next.shop_types = [shopType];
+      next.order_shop_count = normalizePositiveInt(next.order_shop_count, 1);
+      next.order_per_shop = normalizePositiveInt(next.order_per_shop || next.order_item_count, 2);
+      next.order_item_count = next.order_per_shop;
+      next.order_item_num = normalizePositiveInt(next.order_item_num, 10);
+      next.box_count = normalizePositiveInt(next.box_count || next.direct_box_count, 1);
+      next.strict_shop_count = false;
+      next.submit_order = true;
+      next.run_backend_flow = true;
+      next.auto_fill_cart_on_shortage = true;
+      next.link_quote_balance_before_shelf = false;
+      next.auto_quote_and_pay = false;
+      next.logistics_id = next.logistics_id || "1";
+      next.purchase_unit_price = next.purchase_unit_price || "10";
+      next.purchase_freight = next.purchase_freight || "0";
+      next.warehouse_index = next.warehouse_index || "2";
+      next.finance_confirm = true;
+      next.discounts_id = "";
+      next.predict_logistics_price_is_pay = "0";
+      next.include_balance_pay_amount = false;
+      next.boxes = normalizeDirectBoxes(next.boxes, next.box_count);
+      return next;
+    }
     if (scriptType !== "full_flow") return originalSanitizeScriptVariablesForFullFlow(scriptType, variables, flow);
     const next = { ...(variables || {}) };
     const shopType = String(next.shop_type || splitParamList(next.shop_types)[0] || "1688").trim() || "1688";
@@ -98,8 +139,8 @@ if (!window.__fullFlowDataScriptLoaded) {
     const search = findCaseByName(cases, "搜索商品");
     const detail = findCaseByName(cases, "商品详情");
     const cart = findCaseByName(cases, "加入购物车");
-    const env = envs.find((item) => item.env_name === "test-登录") || envs[0];
-    const projectId = env?.project_id || projects[0]?.id || "";
+    const env = dataScriptDefaultEnv(projects, envs);
+    const projectId = env?.project_id || dataScriptDefaultProject(projects)?.id || projects[0]?.id || "";
     if (!env) return flows;
     const loginBody = parseJsonText(login?.body || "{}", {});
     const existingIndex =
@@ -183,10 +224,229 @@ if (!window.__fullFlowDataScriptLoaded) {
     return next;
   }
 
+  function directBoxNumber(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? Math.floor(number) : fallback;
+  }
+
+  function normalizeDirectBoxes(rawBoxes, count = 1) {
+    let source = rawBoxes;
+    if (typeof source === "string") {
+      try {
+        source = JSON.parse(source);
+      } catch {
+        source = [];
+      }
+    }
+    source = Array.isArray(source) ? source : [];
+    const targetCount = directBoxNumber(count || source.length, 1);
+    const fallback = source[0] || {};
+    const result = [];
+    for (let index = 0; index < targetCount; index += 1) {
+      const item = source[index] || fallback || {};
+      result.push({
+        length: String(item.length || item.c || item.box_length || "10"),
+        width: String(item.width || item.k || item.box_width || "20"),
+        height: String(item.height || item.g || item.box_height || "30"),
+        weight: String(item.weight || item.box_weight || "10"),
+        item_count: item.item_count || item.num || "",
+      });
+    }
+    return result;
+  }
+
+  function ensureDirectBoxToShelfScript(flows, projects, envs, cases) {
+    if (isBuiltinDeleted("direct_box_to_shelf_builtin")) return flows;
+    const scriptName = "直接装箱上架";
+    const login = findCaseByName(cases, "登录");
+    const search = findCaseByName(cases, "搜索商品");
+    const detail = findCaseByName(cases, "商品详情");
+    const cart = findCaseByName(cases, "加入购物车");
+    const env = dataScriptDefaultEnv(projects, envs);
+    const projectId = env?.project_id || dataScriptDefaultProject(projects)?.id || projects[0]?.id || "";
+    if (!env) return flows;
+    const loginBody = parseJsonText(login?.body || "{}", {});
+    const existingIndex =
+      flows.findIndex((flow) => flow.id === "direct_box_to_shelf_builtin") >= 0
+        ? flows.findIndex((flow) => flow.id === "direct_box_to_shelf_builtin")
+        : flows.findIndex((flow) => flow.name === scriptName);
+    const existingFlow = existingIndex >= 0 ? flows[existingIndex] : {};
+    let existingVariables = {};
+    try {
+      existingVariables = parseJsonText(existingFlow.variables || "{}", {});
+    } catch {
+      existingVariables = {};
+    }
+    const defaultVariables = {
+      keyword: "衣服",
+      shop_type: "1688",
+      shop_types: ["1688"],
+      order_shop_count: 1,
+      order_per_shop: 2,
+      order_item_count: 2,
+      order_item_num: 10,
+      logistics_id: "1",
+      submit_order: true,
+      run_backend_flow: true,
+      auto_fill_cart_on_shortage: true,
+      purchase_unit_price: "10",
+      purchase_freight: "0",
+      warehouse_index: "2",
+      box_count: 1,
+      boxes: [{ length: "10", width: "20", height: "30", weight: "10", item_count: "" }],
+      account: loginBody.account || "12345678990",
+      password: loginBody.password || "123456",
+      client_tool: "1",
+      backend_account: "Y001",
+      backend_password: "raku@123456``",
+      backend_system: "1",
+      backend_code: "wnm666",
+    };
+    const mergedVariables = sanitizeScriptVariables("direct_box_to_shelf", { ...defaultVariables, ...existingVariables }, existingFlow);
+    const caseIds = [login, search, detail, cart].filter(Boolean).map((item) => item.id);
+    const nextFlow = {
+      ...existingFlow,
+      id: "direct_box_to_shelf_builtin",
+      name: existingFlow.name || scriptName,
+      scriptType: "direct_box_to_shelf",
+      projectId: String(projectId),
+      envId: String(env.id),
+      caseIds,
+      variables: JSON.stringify(mergedVariables, null, 2),
+    };
+    const next =
+      existingIndex >= 0
+        ? flows.map((flow, index) => (index === existingIndex ? nextFlow : flow)).filter((flow, index) => index === existingIndex || flow.id !== "direct_box_to_shelf_builtin")
+        : [...flows, nextFlow];
+    writeFlows(next);
+    return next;
+  }
+
   const originalEnsureWarehouseDeliveryScriptForFullFlow = ensureWarehouseDeliveryScript;
   ensureWarehouseDeliveryScript = function (flows, projects, envs, cases) {
-    return ensureFullFlowScript(originalEnsureWarehouseDeliveryScriptForFullFlow(flows, projects, envs, cases), projects, envs, cases);
+    return ensureDirectBoxToShelfScript(ensureFullFlowScript(originalEnsureWarehouseDeliveryScriptForFullFlow(flows, projects, envs, cases), projects, envs, cases), projects, envs, cases);
   };
+
+  function directBoxRowsHtml(boxes) {
+    return boxes
+      .map(
+        (box, index) => `
+          <tr class="direct-box-row" data-index="${index}">
+            <td>${index + 1}</td>
+            <td><input name="direct_length_${index}" type="number" min="1" value="${escapeHtml(box.length || "10")}" /></td>
+            <td><input name="direct_width_${index}" type="number" min="1" value="${escapeHtml(box.width || "20")}" /></td>
+            <td><input name="direct_height_${index}" type="number" min="1" value="${escapeHtml(box.height || "30")}" /></td>
+            <td><input name="direct_weight_${index}" type="number" min="0.01" step="0.01" value="${escapeHtml(box.weight || "10")}" /></td>
+            <td><input name="direct_item_count_${index}" type="number" min="1" value="${escapeHtml(box.item_count || "")}" placeholder="自动" /></td>
+          </tr>
+        `,
+      )
+      .join("");
+  }
+
+  function readDirectBoxes(form) {
+    return Array.from(form.querySelectorAll(".direct-box-row")).map((row, index) => ({
+      length: String(row.querySelector(`[name="direct_length_${index}"]`)?.value || "10").trim() || "10",
+      width: String(row.querySelector(`[name="direct_width_${index}"]`)?.value || "20").trim() || "20",
+      height: String(row.querySelector(`[name="direct_height_${index}"]`)?.value || "30").trim() || "30",
+      weight: String(row.querySelector(`[name="direct_weight_${index}"]`)?.value || "10").trim() || "10",
+      item_count: String(row.querySelector(`[name="direct_item_count_${index}"]`)?.value || "").trim(),
+    }));
+  }
+
+  function openDirectBoxRunForm(flow, fields) {
+    let variables = {};
+    try {
+      variables = parseJsonText(flow.variables || "{}", {});
+    } catch {
+      showToast("脚本变量不是合法 JSON");
+      return;
+    }
+    variables = withCustomerLoginInputs(mergeStoredCustomerIds(sanitizeScriptVariables("direct_box_to_shelf", variables, flow)));
+    const values = {
+      ...paramFormValues(fields, variables),
+      __save_defaults: false,
+    };
+    const baseFields = fields.filter((field) => field.name !== "box_count");
+    const boxCountField = fields.find((field) => field.name === "box_count");
+    const boxes = normalizeDirectBoxes(variables.boxes, values.box_count || variables.box_count || 1);
+    modalEl.innerHTML = `
+      <form id="directBoxRunForm">
+        <div class="modal-head">
+          <h3>${escapeHtml(`执行 ${flow.name || "直接装箱上架"}`)}</h3>
+          <button class="btn secondary" value="cancel" formmethod="dialog" type="button" id="closeModal">关闭</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            ${baseFields.map((field) => renderFormField(field, values?.[field.name] ?? field.default ?? "")).join("")}
+            ${boxCountField ? renderFormField(boxCountField, values.box_count || 1) : ""}
+            <label class="check-field">
+              <input name="__save_defaults" type="checkbox" />
+              <span>保存为默认值</span>
+            </label>
+          </div>
+          <details class="functional-requirement" open>
+            <summary>箱子配置</summary>
+            <div class="actions" style="margin:10px 0">
+              <button class="btn secondary" id="applyFirstDirectBox" type="button">套用第一箱</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>箱号</th>
+                    <th>长</th>
+                    <th>宽</th>
+                    <th>高</th>
+                    <th>重量(kg)</th>
+                    <th>装商品数</th>
+                  </tr>
+                </thead>
+                <tbody id="directBoxRows">${directBoxRowsHtml(boxes)}</tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+        <div class="modal-foot"><span></span><button class="btn" type="submit">执行</button></div>
+      </form>
+    `;
+    modalEl.showModal();
+    const form = document.querySelector("#directBoxRunForm");
+    const rowsEl = document.querySelector("#directBoxRows");
+    const boxCountEl = form.querySelector('[name="box_count"]');
+    function syncRows() {
+      const current = readDirectBoxes(form);
+      const count = normalizePositiveInt(boxCountEl?.value || current.length, 1);
+      rowsEl.innerHTML = directBoxRowsHtml(normalizeDirectBoxes(current, count));
+    }
+    document.querySelector("#closeModal").addEventListener("click", async () => {
+      modalEl.close();
+      if (state.view === "dataScripts" && !state.factory.editing) {
+        await renderDataScripts();
+      }
+    });
+    boxCountEl?.addEventListener("change", syncRows);
+    boxCountEl?.addEventListener("input", syncRows);
+    document.querySelector("#applyFirstDirectBox").addEventListener("click", () => {
+      const current = readDirectBoxes(form);
+      if (!current.length) return;
+      rowsEl.innerHTML = directBoxRowsHtml(current.map((box, index) => (index === 0 ? box : { ...current[0], item_count: box.item_count })));
+    });
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        const data = readForm(form);
+        let next = sanitizeScriptVariables("direct_box_to_shelf", mergeParamValues(variables, fields, data), flow);
+        next.boxes = readDirectBoxes(form);
+        next.box_count = next.boxes.length;
+        next = withCustomerLoginInputs(mergeStoredCustomerIds(next));
+        if (data.__save_defaults) saveFlowVariables(flow, next);
+        await runSavedFlow(flow, next);
+      } catch (error) {
+        showToast(error.message);
+      }
+    });
+  }
 
   function openFullFlowRunForm(flow, fields) {
     let variables = {};
@@ -196,7 +456,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       showToast("脚本变量不是合法 JSON");
       return;
     }
-    variables = sanitizeScriptVariables("full_flow", variables, flow);
+    variables = withCustomerLoginInputs(mergeStoredCustomerIds(sanitizeScriptVariables("full_flow", variables, flow)));
     const values = {
       ...paramFormValues(fields, variables),
       __save_defaults: false,
@@ -233,7 +493,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       const counts = includeCurrentCounts ? readOrderOptionCounts(form) : initialCounts;
       if (Object.keys(counts).length) next.order_option_counts = counts;
       else delete next.order_option_counts;
-      return next;
+      return withCustomerLoginInputs(mergeStoredCustomerIds(next));
     }
     async function refreshOptions() {
       const counts = readOrderOptionCounts(form);
@@ -242,6 +502,7 @@ if (!window.__fullFlowDataScriptLoaded) {
         const result = await api("/api/data-scripts/order-quote/options-preview", {
           method: "POST",
           body: {
+            project_id: flow.projectId ? Number(flow.projectId) : null,
             env_id: flow.envId ? Number(flow.envId) : null,
             variables: runtimeVariables(false),
           },
@@ -274,6 +535,10 @@ if (!window.__fullFlowDataScriptLoaded) {
 
   const originalOpenRunScriptFormForFullFlow = openRunScriptForm;
   openRunScriptForm = function (flow) {
+    if (flow?.scriptType === "direct_box_to_shelf") {
+      openDirectBoxRunForm(flow, scriptParamFields("direct_box_to_shelf", flow));
+      return;
+    }
     if (flow?.scriptType === "full_flow") {
       openFullFlowRunForm(flow, scriptParamFields("full_flow", flow));
       return;
@@ -283,7 +548,7 @@ if (!window.__fullFlowDataScriptLoaded) {
 
   const originalRunSavedFlowForFullFlow = runSavedFlow;
   runSavedFlow = async function (flow, runtimeVariables = null, options = {}) {
-    if (flow?.scriptType !== "full_flow") {
+    if (flow?.scriptType !== "full_flow" && flow?.scriptType !== "direct_box_to_shelf") {
       return originalRunSavedFlowForFullFlow(flow, runtimeVariables, options);
     }
     let variables = {};
@@ -297,7 +562,59 @@ if (!window.__fullFlowDataScriptLoaded) {
         return;
       }
     }
-    variables = withCustomerLoginInputs(mergeStoredCustomerIds(sanitizeScriptVariables("full_flow", variables, flow), !options.singleCustomerRun));
+    if (flow?.scriptType === "direct_box_to_shelf") {
+      variables = withCustomerLoginInputs(mergeStoredCustomerIds(sanitizeScriptVariables("direct_box_to_shelf", variables, flow)));
+      const customerIds = customerIdsFromVariables(variables);
+      if (customerIds.length > 1 && !options.singleCustomerRun) {
+        await runMultiCustomerFlow(flow, variables, customerIds);
+        return;
+      }
+      if (customerIds.length === 1) variables = variablesForCustomerId(variables, customerIds[0]);
+      const progress = options.progress || openScriptProgress("直接装箱上架执行进度", "正在准备订单、核查、装箱和上架...");
+      try {
+        showToast("直接装箱上架脚本执行中，请稍候");
+        progress.update(10, "正在执行前置流程并进入开始核查...");
+        const result = await api("/api/data-scripts/direct-box-to-shelf", {
+          method: "POST",
+          body: {
+            project_id: flow.projectId ? Number(flow.projectId) : null,
+            env_id: flow.envId ? Number(flow.envId) : null,
+            variables,
+          },
+        });
+        const summary = result.summary || {};
+        const orderSn = summary.order_sn || "";
+        const purchaseNo = summary.purchase_no || "";
+        const flows = readFlows().map((item) =>
+          item.id === flow.id
+            ? {
+                ...item,
+                lastOrderSn: orderSn || item.lastOrderSn || "",
+                lastPurchaseNo: purchaseNo || item.lastPurchaseNo || "",
+                lastRecordId: result.id,
+              }
+            : item,
+        );
+        writeFlows(flows);
+        flow.lastOrderSn = orderSn || flow.lastOrderSn || "";
+        flow.lastPurchaseNo = purchaseNo || flow.lastPurchaseNo || "";
+        flow.lastRecordId = result.id;
+        progress.success("直接装箱上架脚本执行完成，正在展示结果...");
+        return presentScriptResult(
+          {
+            records: [{ id: result.id, case_name: flow.name, result: result.result }],
+            variables: summary,
+          },
+          options,
+        );
+      } catch (error) {
+        progress.fail(`执行失败：${error.message}`);
+        showToast(error.message);
+        if (options.collectOnly) throw error;
+      }
+      return;
+    }
+    variables = withCustomerLoginInputs(mergeStoredCustomerIds(sanitizeScriptVariables("full_flow", variables, flow)));
     const customerIds = customerIdsFromVariables(variables);
     if (customerIds.length > 1 && !options.singleCustomerRun) {
       await runMultiCustomerFlow(flow, variables, customerIds);
@@ -311,6 +628,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       const result = await api("/api/data-scripts/full-flow", {
         method: "POST",
         body: {
+          project_id: flow.projectId ? Number(flow.projectId) : null,
           env_id: flow.envId ? Number(flow.envId) : null,
           variables,
         },

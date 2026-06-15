@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 import app.executors as executors
 import app.data_scripts as data_scripts
 import app.main as main
+from app.database import SessionLocal
 from app.main import app
 
 
@@ -216,6 +217,85 @@ def test_purchase_to_shelf_with_order_sn_runs_target_order_not_chain(monkeypatch
     assert response.status_code == 200
     assert response.json()["summary"]["mode"] == "direct"
     assert [item[0] for item in calls] == ["direct"]
+
+
+def test_data_script_rejects_env_from_other_project(monkeypatch):
+    calls = []
+
+    def fake_shopping_cart(env, variables):
+        calls.append((env.id, variables))
+        return True, "{}", "", {}
+
+    monkeypatch.setattr(main, "run_shopping_cart_script", fake_shopping_cart)
+
+    with TestClient(app) as client:
+        admin_token = login(client, "admin", "admin123")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        project, _ = create_project_env(client, headers, "data-script-project-a")
+        _, other_env = create_project_env(client, headers, "data-script-project-b")
+        response = client.post(
+            "/api/data-scripts/shopping-cart",
+            headers=headers,
+            json={"project_id": project["id"], "env_id": other_env["id"], "variables": {}},
+        )
+
+    assert response.status_code == 400
+    assert calls == []
+
+
+def test_data_script_record_saves_project_and_filters_records(monkeypatch):
+    def fake_balance_payment(env, variables):
+        return True, "balance-payment-log", "", {"payment_type": "balance"}
+
+    monkeypatch.setattr(main, "run_balance_payment_script", fake_balance_payment)
+
+    with TestClient(app) as client:
+        admin_token = login(client, "admin", "admin123")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        project, env = create_project_env(client, headers, "data-script-record-project")
+        other_project, _ = create_project_env(client, headers, "data-script-record-other")
+        response = client.post(
+            "/api/data-scripts/balance-payment",
+            headers=headers,
+            json={"project_id": project["id"], "env_id": env["id"], "variables": {}},
+        )
+        records = client.get(
+            "/api/test-records",
+            headers=headers,
+            params={"project_id": project["id"], "case_type": "api"},
+        )
+        other_records = client.get(
+            "/api/test-records",
+            headers=headers,
+            params={"project_id": other_project["id"], "case_type": "api"},
+        )
+
+    assert response.status_code == 200
+    record = response.json()
+    assert record["project_id"] == project["id"]
+    assert any(item["id"] == record["id"] and item["project_id"] == project["id"] for item in records.json())
+    assert all(item["id"] != record["id"] for item in other_records.json())
+
+
+def test_data_script_builtin_cases_bind_to_japan_project():
+    with TestClient(app) as client:
+        admin_token = login(client, "admin", "admin123")
+        assert admin_token
+
+    db = SessionLocal()
+    try:
+        project = main.find_data_script_project(db)
+        assert project is not None
+        assert project.name == main.DATA_SCRIPT_PROJECT_NAME
+        for item in main.DATA_SCRIPT_API_CASES:
+            case = main.find_data_script_api_case(db, item, project.id)
+            assert case is not None
+            assert case.project_id == project.id
+            env = db.get(main.Env, case.env_id)
+            assert env is not None
+            assert env.project_id == project.id
+    finally:
+        db.close()
 
 
 def test_data_script_customer_id_derives_frontend_account(monkeypatch):

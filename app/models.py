@@ -76,6 +76,7 @@ class TestRecord(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     case_type = Column(String(16), nullable=False, index=True)
     case_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(Integer, nullable=True, index=True)
     result = Column(String(32), nullable=False)
     log = Column(Text, nullable=True)
     screenshot = Column(String(500), nullable=True)

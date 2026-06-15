@@ -26,6 +26,7 @@ WAREHOUSE_DELIVERY_SCRIPT_NAME = "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355"
 POORDER_BALANCE_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u4f59\u989d\u4ed8\u6b3e"
 POORDER_BANK_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u94f6\u884c\u4ed8\u6b3e"
 FULL_FLOW_SCRIPT_NAME = "\u5168\u6d41\u7a0b\u5b8c\u5168\u4f53"
+DIRECT_BOX_TO_SHELF_SCRIPT_NAME = "\u76f4\u63a5\u88c5\u7bb1\u4e0a\u67b6"
 FULL_FLOW_COMPLETE_NODE = "full_complete"
 FULL_FLOW_NODE_LABELS = {
     "shopping_cart": "\u5546\u54c1\u52a0\u8d2d\u5b8c\u6210",
@@ -5437,6 +5438,11 @@ SCRIPT_REGISTRY: Dict[str, Any] = {
         "func": None,
         "chain": True,
     },
+    "direct_box_to_shelf": {
+        "name": DIRECT_BOX_TO_SHELF_SCRIPT_NAME,
+        "func": None,
+        "chain": True,
+    },
 }
 
 
@@ -5870,6 +5876,457 @@ def _payment_with_bank_fallback(
         }
     )
     return bank_passed, bank_log, bank_report, bank_summary
+
+
+def _direct_box_int(value: Any, fallback: int = 1) -> int:
+    try:
+        number = int(Decimal(str(value)))
+        return number if number > 0 else fallback
+    except (InvalidOperation, TypeError, ValueError):
+        return fallback
+
+
+def _direct_box_text(value: Any, fallback: str) -> str:
+    text = str(value if value not in (None, "") else fallback).strip()
+    return text or fallback
+
+
+def _direct_box_configs(variables: Dict[str, Any], total_num: int = 1) -> list[Dict[str, Any]]:
+    raw_boxes = variables.get("boxes")
+    if isinstance(raw_boxes, str):
+        try:
+            parsed = json.loads(raw_boxes)
+        except (TypeError, ValueError):
+            parsed = []
+        raw_boxes = parsed
+    requested_count = _direct_box_int(variables.get("box_count") or variables.get("direct_box_count"), 1)
+    if isinstance(raw_boxes, list) and raw_boxes:
+        requested_count = max(requested_count, len(raw_boxes))
+    requested_count = max(1, requested_count)
+    default = {
+        "length": _direct_box_text(variables.get("box_length"), "10"),
+        "width": _direct_box_text(variables.get("box_width"), "20"),
+        "height": _direct_box_text(variables.get("box_height"), "30"),
+        "weight": _direct_box_text(variables.get("box_weight"), "10"),
+        "item_count": "",
+    }
+    result: list[Dict[str, Any]] = []
+    source = raw_boxes if isinstance(raw_boxes, list) else []
+    for index in range(requested_count):
+        item = source[index] if index < len(source) and isinstance(source[index], dict) else {}
+        result.append(
+            {
+                "length": _direct_box_text(item.get("length") or item.get("c") or item.get("box_length"), default["length"]),
+                "width": _direct_box_text(item.get("width") or item.get("k") or item.get("box_width"), default["width"]),
+                "height": _direct_box_text(item.get("height") or item.get("g") or item.get("box_height"), default["height"]),
+                "weight": _direct_box_text(item.get("weight") or item.get("box_weight"), default["weight"]),
+                "item_count": item.get("item_count") or item.get("num") or "",
+            }
+        )
+    return result[: max(1, min(len(result), max(total_num, requested_count)))]
+
+
+def _direct_box_rows(payload: Dict[str, Any]) -> list[Dict[str, Any]]:
+    rows: list[Dict[str, Any]] = []
+    data = payload.get("data")
+    candidates = data if isinstance(data, list) else data.get("data") if isinstance(data, dict) else []
+    if isinstance(candidates, list):
+        rows = [row for row in candidates if isinstance(row, dict)]
+    if not rows:
+        rows = [
+            row
+            for row in _nested_rows(payload)
+            if isinstance(row, dict) and row.get("id") not in (None, "") and any(key in row for key in ["box_no", "order_sn", "attr", "weight"])
+        ]
+    return rows
+
+
+def _direct_box_id(row: Dict[str, Any]) -> str:
+    return str(row.get("id") or row.get("box_id") or "").strip()
+
+
+def _direct_box_sort_key(row: Dict[str, Any]) -> tuple[int, int]:
+    return (_direct_box_int(row.get("box_no"), 999999), _direct_box_int(row.get("id"), 999999))
+
+
+def _direct_box_order_sn(rows: list[Dict[str, Any]], items: list[Dict[str, Any]], variables: Dict[str, Any]) -> str:
+    for value in [variables.get("order_sn"), variables.get("last_order_sn")]:
+        if value not in (None, ""):
+            return str(value).strip()
+    for item in items:
+        for key in ["order_sn", "_order_sn"]:
+            if item.get(key) not in (None, ""):
+                return str(item.get(key)).strip()
+    for row in rows:
+        if row.get("order_sn") not in (None, ""):
+            return str(row.get("order_sn")).strip()
+    return ""
+
+
+def _direct_box_units(items: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+    units: list[Dict[str, Any]] = []
+    for item in items:
+        order_purchase_id = _order_purchase_id(item)
+        if order_purchase_id in (None, ""):
+            continue
+        units.append({"order_purchase_id": order_purchase_id, "num": _direct_box_int(_item_up_num(item), 1)})
+    return units
+
+
+def _direct_box_counts(total_num: int, configs: list[Dict[str, Any]], box_count: int) -> list[int]:
+    box_count = max(1, min(box_count, total_num))
+    configured: list[int] = []
+    has_configured = False
+    for index in range(box_count):
+        count_value = configs[index].get("item_count") if index < len(configs) else ""
+        if count_value not in (None, ""):
+            has_configured = True
+        configured.append(_direct_box_int(count_value, 1))
+    if has_configured:
+        counts = [max(1, value) for value in configured]
+        while sum(counts) > total_num:
+            changed = False
+            for index in range(len(counts) - 1, -1, -1):
+                if counts[index] > 1 and sum(counts) > total_num:
+                    counts[index] -= 1
+                    changed = True
+            if not changed:
+                break
+        if sum(counts) < total_num:
+            counts[-1] += total_num - sum(counts)
+        return counts
+    base = total_num // box_count
+    remainder = total_num % box_count
+    counts = [base for _ in range(box_count)]
+    counts[-1] += remainder
+    return [max(1, count) for count in counts]
+
+
+def _direct_box_allocations(units: list[Dict[str, Any]], counts: list[int]) -> list[list[Dict[str, Any]]]:
+    remaining = [{"order_purchase_id": item["order_purchase_id"], "num": _direct_box_int(item.get("num"), 1)} for item in units]
+    cursor = 0
+    result: list[list[Dict[str, Any]]] = []
+    for count in counts:
+        need = count
+        allocation: list[Dict[str, Any]] = []
+        while need > 0 and cursor < len(remaining):
+            current = remaining[cursor]
+            take = min(need, current["num"])
+            if take > 0:
+                allocation.append({"num": take, "order_purchase_id": current["order_purchase_id"]})
+                current["num"] -= take
+                need -= take
+            if current["num"] <= 0:
+                cursor += 1
+        result.append(allocation)
+    return result
+
+
+def _direct_box_prepare_to_checking(env: Env, variables: Dict[str, Any], log: Dict[str, Any]) -> tuple[bool, Dict[str, Any]]:
+    order_sn = str(variables.get("order_sn") or variables.get("last_order_sn") or "").strip()
+    purchase_no = str(variables.get("purchase_no") or "").strip()
+    if not order_sn and purchase_no:
+        return True, {"order_sn": "", "purchase_no": purchase_no, "preflow": "purchase_no_only"}
+
+    working = dict(variables)
+    if not order_sn:
+        quote_vars = dict(working)
+        quote_vars.pop("order_sn", None)
+        quote_vars.pop("last_order_sn", None)
+        quote_vars["skip_create_order"] = False
+        quote_vars["backend_only"] = False
+        quote_vars["submit_order"] = True
+        quote_vars["run_backend_flow"] = True
+        quote_passed, _, quote_report, quote_summary = run_order_quote_script(env, quote_vars)
+        log["steps"].append({"name": "pre_order_quote", "passed": quote_passed, "summary": quote_summary, "report_path": quote_report})
+        order_sn = str((quote_summary or {}).get("order_sn") or "").strip()
+        if not quote_passed or not order_sn:
+            return False, {"reason": "\u8ba2\u5355\u62a5\u4ef7\u672a\u751f\u6210\u8ba2\u5355\u53f7", "order_sn": order_sn}
+
+        pay_vars = dict(working)
+        pay_vars["order_sn"] = order_sn
+        pay_passed, _, pay_report, pay_summary = _payment_with_bank_fallback(env, pay_vars, porder=False)
+        log["steps"].append({"name": "pre_order_payment", "passed": pay_passed, "summary": pay_summary, "report_path": pay_report})
+        if not pay_passed:
+            return False, {"reason": str((pay_summary or {}).get("reason") or "\u8ba2\u5355\u652f\u4ed8\u5931\u8d25"), "order_sn": order_sn}
+        working["order_sn"] = order_sn
+
+    shelf_vars = dict(working)
+    shelf_vars["order_sn"] = order_sn
+    shelf_vars["purchase_no"] = purchase_no or str(variables.get("purchase_no") or datetime.now().strftime("%Y%m%d%H%M%S"))
+    shelf_vars["link_quote_balance_before_shelf"] = False
+    shelf_vars["auto_quote_and_pay"] = False
+    shelf_vars["stop_after_node"] = "checking_started"
+    shelf_passed, _, shelf_report, shelf_summary = run_purchase_to_shelf_script(env, shelf_vars)
+    log["steps"].append({"name": "pre_purchase_to_checking", "passed": shelf_passed, "summary": shelf_summary, "report_path": shelf_report})
+    if not shelf_passed:
+        return False, {
+            "reason": str((shelf_summary or {}).get("reason") or (shelf_summary or {}).get("error") or "\u5f00\u59cb\u6838\u67e5\u524d\u7f6e\u6d41\u7a0b\u5931\u8d25"),
+            "order_sn": order_sn,
+            "purchase_no": shelf_vars["purchase_no"],
+        }
+    return True, dict(shelf_summary or {})
+
+
+def run_direct_box_to_shelf_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+    base_url = (variables.get("backend_base_url") or env.base_url or bulk_cart.BASE_URL).rstrip("/")
+    log: Dict[str, Any] = {
+        "script": DIRECT_BOX_TO_SHELF_SCRIPT_NAME,
+        "mode": "direct_box_to_shelf",
+        "base_url": base_url,
+        "started_at": datetime.now(),
+        "steps": [],
+    }
+
+    try:
+        pre_passed, pre_summary = _direct_box_prepare_to_checking(env, variables, log)
+        if not pre_passed:
+            return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, pre_summary)
+
+        purchase_no = str(pre_summary.get("purchase_no") or variables.get("purchase_no") or "").strip()
+        if not purchase_no:
+            return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"reason": "\u672a\u83b7\u53d6\u5230\u4ea4\u6613\u53f7\uff0c\u65e0\u6cd5\u76f4\u63a5\u88c5\u7bb1"})
+
+        session = requests.Session()
+        login_payload, token = _admin_login(session, base_url, variables, timeout)
+        log["login"] = {
+            **_payload_brief(login_payload),
+            "account": str(variables.get("backend_account") or variables.get("backend_username") or "Y001"),
+            "token_extracted": bool(token),
+        }
+        if not _api_success(login_payload) or not token:
+            return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"purchase_no": purchase_no, "reason": "\u540e\u53f0\u767b\u5f55\u5931\u8d25"})
+
+        purchase_ids = _unique_values(pre_summary.get("purchase_ids") if isinstance(pre_summary.get("purchase_ids"), list) else [])
+        preview_fields: Dict[str, Any] = {"purchase_no": purchase_no, "express_no": str(variables.get("express_no") or "")}
+        if purchase_ids:
+            preview_fields["order_purchase_id_set"] = purchase_ids
+        preview_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_follow_up_preview", "/follow.upPreview"),
+            preview_fields,
+            timeout,
+        )
+        preview_rows = _preview_rows_from_payload(preview_payload)
+        preview_items = _preview_items(preview_rows)
+        if not purchase_ids:
+            purchase_ids = _unique_values([_order_purchase_id(item) for item in preview_items])
+        _step(log, "direct_follow_up_preview", preview_payload, preview_fields, {"item_count": len(preview_items), "purchase_ids": purchase_ids})
+        if not _api_success(preview_payload) or not preview_items:
+            return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"purchase_no": purchase_no, "reason": "\u672a\u83b7\u53d6\u5230\u53ef\u76f4\u63a5\u88c5\u7bb1\u7684\u6838\u67e5\u5546\u54c1"})
+
+        units = _direct_box_units(preview_items)
+        total_num = sum(item["num"] for item in units)
+        if total_num <= 0:
+            return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"purchase_no": purchase_no, "reason": "\u53ef\u88c5\u7bb1\u5546\u54c1\u6570\u91cf\u4e0d\u8db3"})
+
+        order_sn = _direct_box_order_sn(preview_rows, preview_items, {**variables, **pre_summary})
+        if not order_sn:
+            return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"purchase_no": purchase_no, "reason": "\u672a\u83b7\u53d6\u5230\u8ba2\u5355\u53f7\uff0c\u65e0\u6cd5\u521b\u5efa\u7bb1\u5b50"})
+
+        configs = _direct_box_configs(variables, total_num)
+        requested_box_count = len(configs)
+        before_box_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_box_list", "/box.boxList"),
+            {"status": 1, "order_sn": order_sn},
+            timeout,
+        )
+        before_boxes = _direct_box_rows(before_box_payload)
+        before_ids = {_direct_box_id(row) for row in before_boxes}
+        _step(log, "box_list_before_add", before_box_payload, {"status": 1, "order_sn": order_sn}, {"box_count": len(before_boxes)})
+
+        add_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_box_add_batch", "/box.addBoxBatch"),
+            {"order_sn": order_sn, "num": requested_box_count},
+            timeout,
+        )
+        _step(log, "box_add_batch", add_payload, {"order_sn": order_sn, "num": requested_box_count})
+        if not _api_success(add_payload):
+            return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u6dfb\u52a0\u7bb1\u5b50\u5931\u8d25"})
+
+        after_add_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_box_list", "/box.boxList"),
+            {"status": 1, "order_sn": order_sn},
+            timeout,
+        )
+        after_add_boxes = sorted(_direct_box_rows(after_add_payload), key=_direct_box_sort_key)
+        new_boxes = [row for row in after_add_boxes if _direct_box_id(row) and _direct_box_id(row) not in before_ids]
+        if len(new_boxes) < requested_box_count:
+            new_boxes = after_add_boxes[-requested_box_count:]
+        new_boxes = sorted(new_boxes, key=_direct_box_sort_key)
+        _step(log, "box_list_after_add", after_add_payload, {"status": 1, "order_sn": order_sn}, {"new_box_ids": [_direct_box_id(row) for row in new_boxes]})
+        if not new_boxes:
+            return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u672a\u83b7\u53d6\u5230\u672c\u6b21\u65b0\u589e\u7bb1\u5b50ID"})
+
+        keep_count = min(len(new_boxes), total_num)
+        keep_boxes = new_boxes[:keep_count]
+        delete_boxes = new_boxes[keep_count:]
+        deleted_box_ids: list[str] = []
+        if delete_boxes:
+            delete_ids = [_direct_box_id(row) for row in delete_boxes if _direct_box_id(row)]
+            delete_payload = _post_admin_urlencoded(
+                session,
+                base_url,
+                _api_path(variables, "admin_box_delete", "/box.deleteBox"),
+                {"ids": delete_ids},
+                timeout,
+            )
+            _step(log, "box_delete_extra", delete_payload, {"ids": delete_ids})
+            if not _api_success(delete_payload):
+                return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u5220\u9664\u591a\u4f59\u7a7a\u7bb1\u5931\u8d25", "delete_box_ids": delete_ids})
+            deleted_box_ids = delete_ids
+
+        kept_box_ids = [_direct_box_id(row) for row in keep_boxes if _direct_box_id(row)]
+        if not kept_box_ids:
+            return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u65e0\u53ef\u88c5\u8d27\u7bb1\u5b50"})
+
+        for index, box_id in enumerate(kept_box_ids):
+            config = configs[index] if index < len(configs) else configs[-1]
+            attr_fields = {
+                "ids": [box_id],
+                "attr": f"{config['length']}*{config['width']}*{config['height']}",
+                "c": config["length"],
+                "k": config["width"],
+                "g": config["height"],
+            }
+            attr_payload = _post_admin_urlencoded(
+                session,
+                base_url,
+                _api_path(variables, "admin_box_update_attr", "/box.updateBoxAttr"),
+                attr_fields,
+                timeout,
+            )
+            _step(log, "box_update_attr", attr_payload, attr_fields)
+            if not _api_success(attr_payload):
+                return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u4fee\u6539\u7bb1\u89c4\u5931\u8d25", "box_id": box_id})
+
+            weight_fields = {"ids": [box_id], "weight": config["weight"]}
+            weight_payload = _post_admin_urlencoded(
+                session,
+                base_url,
+                _api_path(variables, "admin_box_update_weight", "/box.updateBoxWeight"),
+                weight_fields,
+                timeout,
+            )
+            _step(log, "box_update_weight", weight_payload, weight_fields)
+            if not _api_success(weight_payload):
+                return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u4fee\u6539\u91cd\u91cf\u5931\u8d25", "box_id": box_id})
+
+        counts = _direct_box_counts(total_num, configs, len(kept_box_ids))
+        allocations = _direct_box_allocations(units, counts)
+        if any(not allocation for allocation in allocations):
+            return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u5546\u54c1\u6570\u91cf\u4e0d\u8db3\uff0c\u65e0\u6cd5\u4fdd\u8bc1\u6bcf\u4e2a\u7bb1\u5b50\u81f3\u5c111\u4ef6\u5546\u54c1"})
+
+        for box_id, allocation in zip(kept_box_ids, allocations):
+            into_payload = _post_admin_urlencoded(
+                session,
+                base_url,
+                _api_path(variables, "admin_box_into_box", "/box.intoBox"),
+                {"ids": [box_id], "list": allocation},
+                timeout,
+            )
+            _step(log, "box_into_box", into_payload, {"ids": [box_id], "list": allocation})
+            if not _api_success(into_payload):
+                return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u8d27\u7269\u88c5\u7bb1\u5931\u8d25", "box_id": box_id})
+
+        grid_fields = {
+            "shelf_type_set": variables.get("shelf_type_set") or [1, 3],
+            "user_id": str(variables.get("warehouse_user_id") or ""),
+            "order_purchase_id": variables.get("grid_order_purchase_id") or "",
+        }
+        grid_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_wms_grid_preview", "/wms.wmsGridPreview"),
+            grid_fields,
+            timeout,
+        )
+        selected_grid = _select_grid_from_payload(grid_payload, variables)
+        _step(
+            log,
+            "wms_grid_preview_for_box",
+            grid_payload,
+            grid_fields,
+            {"selected_grid": {"id": (selected_grid or {}).get("id"), "grid_number": (selected_grid or {}).get("grid_number")}},
+        )
+        if not _api_success(grid_payload) or not selected_grid:
+            return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u672a\u627e\u5230\u53ef\u7528\u4e0a\u67b6\u5e93\u4f4d"})
+
+        complete_fields = {"ids": kept_box_ids, "grid_id": selected_grid.get("id"), "grid_number": selected_grid.get("grid_number")}
+        complete_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_box_to_complete", "/box.toComplete"),
+            complete_fields,
+            timeout,
+        )
+        _step(log, "box_to_complete", complete_payload, complete_fields)
+        if not _api_success(complete_payload):
+            fallback_results = []
+            all_ok = True
+            for box_id in kept_box_ids:
+                single_fields = {"ids": [box_id], "grid_id": selected_grid.get("id"), "grid_number": selected_grid.get("grid_number")}
+                single_payload = _post_admin_urlencoded(
+                    session,
+                    base_url,
+                    _api_path(variables, "admin_box_to_complete", "/box.toComplete"),
+                    single_fields,
+                    timeout,
+                )
+                fallback_results.append({"box_id": box_id, **_payload_brief(single_payload)})
+                if not _api_success(single_payload):
+                    all_ok = False
+            log["steps"].append({"name": "box_to_complete_fallback", "results": fallback_results, "passed": all_ok})
+            if not all_ok:
+                return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u76f4\u63a5\u88c5\u7bb1\u4e0a\u67b6\u5931\u8d25", "box_ids": kept_box_ids})
+
+        final_box_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_box_list", "/box.boxList"),
+            {"status": 1, "order_sn": order_sn},
+            timeout,
+        )
+        final_boxes = _direct_box_rows(final_box_payload)
+        remaining_ids = {_direct_box_id(row) for row in final_boxes}
+        unfinished_ids = [box_id for box_id in kept_box_ids if box_id in remaining_ids]
+        _step(log, "box_list_after_complete", final_box_payload, {"status": 1, "order_sn": order_sn}, {"unfinished_box_ids": unfinished_ids})
+        passed = not unfinished_ids
+        summary = {
+            "order_sn": order_sn,
+            "purchase_no": purchase_no,
+            "purchase_ids": purchase_ids,
+            "total_box_item_num": total_num,
+            "requested_box_count": requested_box_count,
+            "kept_box_count": len(kept_box_ids),
+            "deleted_box_ids": deleted_box_ids,
+            "box_ids": kept_box_ids,
+            "box_item_counts": counts,
+            "box_allocations": [{"box_id": box_id, "list": allocation} for box_id, allocation in zip(kept_box_ids, allocations)],
+            "grid_id": selected_grid.get("id"),
+            "grid_number": selected_grid.get("grid_number"),
+            "direct_box_passed": passed,
+        }
+        if not passed:
+            summary["reason"] = "\u4ecd\u6709\u7bb1\u5b50\u505c\u7559\u5728\u5f85\u88c5\u7bb1\u5217\u8868"
+            summary["unfinished_box_ids"] = unfinished_ids
+        return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, passed, summary)
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"error": str(exc), "reason": str(exc)})
+
+
+SCRIPT_REGISTRY["direct_box_to_shelf"]["func"] = run_direct_box_to_shelf_script
 
 
 def _full_flow_update_shared(shared: Dict[str, Any], summary: Dict[str, Any]) -> None:

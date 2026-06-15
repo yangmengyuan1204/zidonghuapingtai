@@ -31,6 +31,7 @@ from .data_scripts import (
     preview_order_quote_options,
     run_balance_payment_script,
     run_bank_payment_script,
+    run_direct_box_to_shelf_script,
     run_full_flow_script,
     run_order_quote_script,
     run_purchase_to_shelf_script,
@@ -143,7 +144,7 @@ TABLE_FIELDS = {
         "create_time",
     ],
     UiCase: ["id", "project_id", "case_name", "page_url", "steps", "timeout", "status", "create_time"],
-    TestRecord: ["id", "case_type", "case_id", "result", "log", "screenshot", "report_path", "execute_time"],
+    TestRecord: ["id", "case_type", "case_id", "project_id", "result", "log", "screenshot", "report_path", "execute_time"],
     FunctionalTask: ["id", "project_id", "iteration_name", "requirement_text", "axure_path", "target_url", "context", "status", "create_time"],
     FunctionalCase: ["id", "task_id", "title", "precondition", "steps", "expected", "priority", "automation_status", "test_result", "ui_case_id", "create_time"],
     PageSnapshot: ["id", "task_id", "page_url", "dom_summary", "screenshot_path", "scan_time"],
@@ -251,7 +252,14 @@ def normalize_api_case_names(db: Session) -> None:
         db.commit()
 
 
-def find_data_script_api_case(db: Session, item: Dict[str, Any]) -> ApiCase | None:
+DATA_SCRIPT_PROJECT_NAME = "日本站测试"
+
+
+def find_data_script_project(db: Session) -> Project | None:
+    return db.query(Project).filter(Project.name == DATA_SCRIPT_PROJECT_NAME).order_by(Project.id.asc()).first()
+
+
+def find_data_script_api_case(db: Session, item: Dict[str, Any], project_id: int | None = None) -> ApiCase | None:
     case_name = strip_case_name_prefix(item["case_name"])
     legacy_name = item["case_name"]
     url = item["url"]
@@ -262,6 +270,8 @@ def find_data_script_api_case(db: Session, item: Dict[str, Any]) -> ApiCase | No
         db.query(ApiCase).filter(ApiCase.case_name == case_name),
     ]
     for query in queries:
+        if project_id is not None:
+            query = query.filter(ApiCase.project_id == project_id)
         case = query.order_by(ApiCase.id.asc()).first()
         if case:
             return case
@@ -551,21 +561,64 @@ DATA_SCRIPT_API_CASES = [
         "url": "/follow.upStorage",
         "body": {"grid_id": "{{grid_id}}", "data": "{{data}}", "reconfirm": "{{reconfirm}}"},
     },
+    {
+        "key": "admin_box_list",
+        "case_name": "\u6570\u636e\u811a\u672c-\u76f4\u63a5\u88c5\u7bb1\u7bb1\u5b50\u5217\u8868",
+        "url": "/box.boxList",
+        "body": {"status": "{{status}}", "order_sn": "{{order_sn}}"},
+    },
+    {
+        "key": "admin_box_add_batch",
+        "case_name": "\u6570\u636e\u811a\u672c-\u76f4\u63a5\u88c5\u7bb1\u6dfb\u52a0\u7bb1\u5b50",
+        "url": "/box.addBoxBatch",
+        "body": {"order_sn": "{{order_sn}}", "num": "{{num}}"},
+    },
+    {
+        "key": "admin_box_update_attr",
+        "case_name": "\u6570\u636e\u811a\u672c-\u76f4\u63a5\u88c5\u7bb1\u4fee\u6539\u7bb1\u89c4",
+        "url": "/box.updateBoxAttr",
+        "body": {"ids": "{{ids}}", "attr": "{{attr}}", "c": "{{c}}", "k": "{{k}}", "g": "{{g}}"},
+    },
+    {
+        "key": "admin_box_update_weight",
+        "case_name": "\u6570\u636e\u811a\u672c-\u76f4\u63a5\u88c5\u7bb1\u4fee\u6539\u91cd\u91cf",
+        "url": "/box.updateBoxWeight",
+        "body": {"ids": "{{ids}}", "weight": "{{weight}}"},
+    },
+    {
+        "key": "admin_box_into_box",
+        "case_name": "\u6570\u636e\u811a\u672c-\u76f4\u63a5\u88c5\u7bb1\u8d27\u7269\u88c5\u7bb1",
+        "url": "/box.intoBox",
+        "body": {"ids": "{{ids}}", "list": "{{list}}"},
+    },
+    {
+        "key": "admin_box_delete",
+        "case_name": "\u6570\u636e\u811a\u672c-\u76f4\u63a5\u88c5\u7bb1\u5220\u9664\u7bb1\u5b50",
+        "url": "/box.deleteBox",
+        "body": {"ids": "{{ids}}"},
+    },
+    {
+        "key": "admin_box_to_complete",
+        "case_name": "\u6570\u636e\u811a\u672c-\u76f4\u63a5\u88c5\u7bb1\u4e0a\u67b6\u5b8c\u6210",
+        "url": "/box.toComplete",
+        "body": {"ids": "{{ids}}", "grid_id": "{{grid_id}}", "grid_number": "{{grid_number}}"},
+    },
 ]
 
 
 def ensure_data_script_api_cases(db: Session) -> None:
-    env = db.query(Env).order_by(Env.id.asc()).first()
+    project = find_data_script_project(db)
+    if not project:
+        project = Project(name=DATA_SCRIPT_PROJECT_NAME, desc="系统自动创建", create_time=datetime.now())
+        db.add(project)
+        db.commit()
+        db.refresh(project)
+
+    env = db.query(Env).filter(Env.project_id == project.id).order_by(Env.id.asc()).first()
     if not env:
-        project = db.query(Project).order_by(Project.id.asc()).first()
-        if not project:
-            project = Project(name="\u6570\u636e\u811a\u672c\u9879\u76ee", desc="\u7cfb\u7edf\u81ea\u52a8\u521b\u5efa", create_time=datetime.now())
-            db.add(project)
-            db.commit()
-            db.refresh(project)
         env = Env(
             project_id=project.id,
-            env_name="test-\u6570\u636e\u811a\u672c",
+            env_name=project.name or "test-\u6570\u636e\u811a\u672c",
             base_url="https://jpapi.rakumart.cn",
             global_headers=to_json_text({}, {}),
             global_vars=to_json_text({"api": "https://jpapi.rakumart.cn"}, {}),
@@ -577,9 +630,11 @@ def ensure_data_script_api_cases(db: Session) -> None:
 
     for item in DATA_SCRIPT_API_CASES:
         case_name = strip_case_name_prefix(item["case_name"])
-        exists = find_data_script_api_case(db, item)
+        exists = find_data_script_api_case(db, item, env.project_id) or find_data_script_api_case(db, item)
         if exists:
             exists.case_name = case_name
+            exists.project_id = env.project_id
+            exists.env_id = env.id
             key = str(item.get("key", ""))
             if item.get("key") in {"client_warehouse_list", "client_porder_create"} or key.startswith(("admin_porder_", "admin_spot_")):
                 assert_rule = {"status_code": 200}
@@ -620,6 +675,9 @@ def init_app() -> None:
         migrations = {
             "functional_case": {
                 "test_result": "ALTER TABLE functional_case ADD COLUMN test_result VARCHAR(20) DEFAULT 'untested'",
+            },
+            "test_record": {
+                "project_id": "ALTER TABLE test_record ADD COLUMN project_id INTEGER",
             },
             "test_account_profile": {
                 "login_url": "ALTER TABLE test_account_profile ADD COLUMN login_url VARCHAR(500)",
@@ -1580,6 +1638,7 @@ def save_ui_record(db: Session, case: UiCase, passed: bool, log_text: str, repor
     record = TestRecord(
         case_type="ui",
         case_id=case.id,
+        project_id=case.project_id,
         result="passed" if passed else "failed",
         log=log_text,
         screenshot=screenshot_path,
@@ -2433,6 +2492,7 @@ def run_api_case(
     record = TestRecord(
         case_type="api",
         case_id=case.id,
+        project_id=case.project_id,
         result="passed" if passed else "failed",
         log=log_text,
         screenshot="",
@@ -2447,10 +2507,20 @@ def run_api_case(
     return data
 
 
-def save_record(db: Session, case_type: str, case_id: int, passed: bool, log_text: str, report_path: str, screenshot: str = "") -> TestRecord:
+def save_record(
+    db: Session,
+    case_type: str,
+    case_id: int,
+    passed: bool,
+    log_text: str,
+    report_path: str,
+    screenshot: str = "",
+    project_id: int | None = None,
+) -> TestRecord:
     record = TestRecord(
         case_type=case_type,
         case_id=case_id,
+        project_id=project_id,
         result="passed" if passed else "failed",
         log=log_text,
         screenshot=screenshot,
@@ -2513,7 +2583,7 @@ def batch_run_api_cases(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"用例 {case.id} 与所选环境不属于同一项目")
         passed, log_text, report_path, extracted_vars = execute_api_case(case, env, runtime_vars)
         runtime_vars.update(extracted_vars)
-        record = save_record(db, "api", case.id, passed, log_text, report_path)
+        record = save_record(db, "api", case.id, passed, log_text, report_path, project_id=case.project_id)
         record_data = serialize(record)
         record_data["case_name"] = case.case_name
         record_data["extracted_vars"] = extracted_vars
@@ -2525,15 +2595,40 @@ def batch_run_api_cases(
     }
 
 
-def data_script_variables(db: Session, variables: Dict[str, Any] | None) -> Dict[str, Any]:
+def resolve_data_script_context(db: Session, payload: DataScriptExecuteRequest) -> tuple[Env, int]:
+    project_id = int(payload.project_id) if payload.project_id is not None else None
+    if project_id is not None:
+        ensure_project_exists(db, project_id)
+    if payload.env_id:
+        env = get_or_404(db, Env, payload.env_id)
+        if project_id is not None and env.project_id != project_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="环境不属于所选项目")
+        return env, env.project_id
+    query = db.query(Env)
+    if project_id is not None:
+        query = query.filter(Env.project_id == project_id)
+    else:
+        data_script_project = find_data_script_project(db)
+        if data_script_project:
+            query = query.filter(Env.project_id == data_script_project.id)
+    env = query.order_by(Env.id.asc()).first()
+    if not env:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
+    return env, env.project_id
+
+
+def data_script_variables(db: Session, variables: Dict[str, Any] | None, project_id: int | None = None) -> Dict[str, Any]:
     merged = dict(variables or {})
     configured_paths = {}
     for item in DATA_SCRIPT_API_CASES:
-        case = find_data_script_api_case(db, item)
+        case = find_data_script_api_case(db, item, project_id)
         configured_paths[item["key"]] = case.url if case else item["url"]
     custom_paths = merged.get("api_paths") if isinstance(merged.get("api_paths"), dict) else {}
     merged["api_paths"] = {**configured_paths, **custom_paths}
-    login_case = db.query(ApiCase).filter(ApiCase.case_name == LOGIN_CASE_NAME).first()
+    login_case_query = db.query(ApiCase).filter(ApiCase.case_name == LOGIN_CASE_NAME)
+    if project_id is not None:
+        login_case_query = login_case_query.filter(ApiCase.project_id == project_id)
+    login_case = login_case_query.order_by(ApiCase.id.asc()).first()
     login_body = parse_json_value(login_case.body, {}) if login_case else {}
     if isinstance(login_body, dict):
         for key in ["account", "password", "client_tool"]:
@@ -2553,13 +2648,11 @@ def run_shopping_cart_data_script(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
-    variables = data_script_variables(db, payload.variables)
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = run_shopping_cart_script(env, variables)
-    cart_case = db.query(ApiCase).filter(ApiCase.case_name == CART_CASE_NAME).first()
-    record = save_record(db, "api", cart_case.id if cart_case else 0, passed, log_text, report_path)
+    cart_case = db.query(ApiCase).filter(ApiCase.case_name == CART_CASE_NAME, ApiCase.project_id == project_id).order_by(ApiCase.id.asc()).first()
+    record = save_record(db, "api", cart_case.id if cart_case else 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -2571,12 +2664,10 @@ def run_order_quote_data_script(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="璇峰厛閰嶇疆鐜")
-    variables = data_script_variables(db, payload.variables)
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = run_order_quote_script(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -2588,10 +2679,8 @@ def preview_order_quote_options_data_script(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
-    variables = data_script_variables(db, payload.variables)
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
     return preview_order_quote_options(env, variables)
 
 
@@ -2601,12 +2690,10 @@ def run_balance_payment_data_script(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u8bf7\u5148\u914d\u7f6e\u73af\u5883")
-    variables = data_script_variables(db, payload.variables)
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = run_balance_payment_script(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -2618,12 +2705,10 @@ def run_bank_payment_data_script(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u8bf7\u5148\u914d\u7f6e\u73af\u5883")
-    variables = data_script_variables(db, payload.variables)
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = run_bank_payment_script(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -2635,10 +2720,8 @@ def run_purchase_to_shelf_data_script(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u8bf7\u5148\u914d\u7f6e\u73af\u5883")
-    variables = data_script_variables(db, payload.variables)
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
     def enabled(value: Any, default: bool = True) -> bool:
         if value is None:
             return default
@@ -2654,7 +2737,7 @@ def run_purchase_to_shelf_data_script(
         passed, log_text, report_path, summary = run_purchase_to_shelf_chain(env, variables)
     else:
         passed, log_text, report_path, summary = run_purchase_to_shelf_script(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -2666,12 +2749,25 @@ def run_purchase_to_shelf_chain_data_script(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u8bf7\u5148\u914d\u7f6e\u73af\u5883")
-    variables = data_script_variables(db, payload.variables)
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = run_purchase_to_shelf_chain(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+@app.post("/api/data-scripts/direct-box-to-shelf")
+def run_direct_box_to_shelf_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
+    passed, log_text, report_path, summary = run_direct_box_to_shelf_script(env, variables)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -2683,12 +2779,10 @@ def run_warehouse_delivery_data_script(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u8bf7\u5148\u914d\u7f6e\u73af\u5883")
-    variables = data_script_variables(db, payload.variables)
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = run_warehouse_delivery_script(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -2700,12 +2794,10 @@ def run_porder_balance_payment_data_script(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
-    variables = data_script_variables(db, payload.variables)
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = run_porder_balance_payment_script(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -2717,12 +2809,10 @@ def run_porder_bank_payment_data_script(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
-    variables = data_script_variables(db, payload.variables)
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = run_porder_bank_payment_script(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -2734,12 +2824,10 @@ def run_full_flow_data_script(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    env = get_or_404(db, Env, payload.env_id) if payload.env_id else db.query(Env).order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
-    variables = data_script_variables(db, payload.variables)
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = run_full_flow_script(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -2747,10 +2835,14 @@ def run_full_flow_data_script(
 
 @app.get("/api/data-scripts/latest-order-sn")
 def get_latest_order_sn(
+    project_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    records = db.query(TestRecord).filter(TestRecord.case_type == "api").order_by(TestRecord.id.desc()).limit(100).all()
+    query = db.query(TestRecord).filter(TestRecord.case_type == "api")
+    if project_id is not None:
+        query = query.filter(TestRecord.project_id == project_id)
+    records = query.order_by(TestRecord.id.desc()).limit(100).all()
     for record in records:
         try:
             log_data = json.loads(record.log or "{}")
@@ -4054,6 +4146,7 @@ def list_records(
         ui_ids = [item.id for item in db.query(UiCase.id).filter(UiCase.project_id == project_id).all()]
         query = query.filter(
             or_(
+                TestRecord.project_id == project_id,
                 (TestRecord.case_type == "api") & TestRecord.case_id.in_(api_ids or [-1]),
                 (TestRecord.case_type == "ui") & TestRecord.case_id.in_(ui_ids or [-1]),
             )
