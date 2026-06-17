@@ -8,59 +8,6 @@
 (function () {
   'use strict';
 
-  // 注入样式
-  const STYLE_ID = 'quick-start-styles';
-  if (!document.getElementById(STYLE_ID)) {
-    const style = document.createElement('style');
-    style.id = STYLE_ID;
-    style.textContent = `
-      .quick-start-bar {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        margin-bottom: 16px;
-        background: linear-gradient(135deg, var(--accent, #ff6b9d), var(--accent-light, #ff9ec4));
-        border-radius: 10px;
-        color: #fff;
-      }
-      .quick-start-bar .btn {
-        background: rgba(255,255,255,0.25);
-        border: 1px solid rgba(255,255,255,0.5);
-        color: #fff;
-        font-weight: 600;
-        padding: 8px 20px;
-        cursor: pointer;
-      }
-      .quick-start-bar .btn:hover {
-        background: rgba(255,255,255,0.4);
-      }
-      .quick-start-bar .btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      .quick-start-bar .btn.primary {
-        background: rgba(255,255,255,0.4);
-        border-color: #fff;
-      }
-      .quick-start-bar .btn.primary:hover {
-        background: rgba(255,255,255,0.6);
-      }
-      .quick-start-bar .status-label {
-        font-size: 13px;
-        opacity: 0.9;
-        margin-left: auto;
-      }
-      .quick-start-bar .demo-badge {
-        font-size: 10px;
-        background: rgba(255,255,255,0.2);
-        padding: 2px 8px;
-        border-radius: 999px;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
   async function doAiPrepare() {
     const bar = document.getElementById('quickStartBar');
     const btn = document.getElementById('aiPrepareBtn');

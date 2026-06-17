@@ -185,46 +185,58 @@
     const rows = table.querySelectorAll('tbody tr');
     rows.forEach(row => {
       const caseId = extractCaseId(row);
-      if (!caseId) {
-        console.warn('无法提取用例ID，该行已跳过批量操作:', row.innerHTML.slice(0, 100));
-        return;
-      }
 
-      // checkbox
+      // checkbox（即使 caseId 为 null 也插入空列以保持对齐）
       const tdCb = document.createElement('td');
       tdCb.style.cssText = 'text-align:center;vertical-align:middle';
-      tdCb.innerHTML = `<input type="checkbox" class="case-cb" value="${caseId}">`;
+      if (caseId) {
+        tdCb.innerHTML = `<input type="checkbox" class="case-cb" value="${caseId}">`;
+      }
       row.insertBefore(tdCb, row.firstChild);
 
-      // 状态选择器
+      // 状态选择器（即使 caseId 为 null 也插入空列）
       const current = row.dataset.testResult || 'untested';
       const tdSt = document.createElement('td');
       tdSt.style.cssText = 'white-space:nowrap;vertical-align:middle';
-      tdSt.innerHTML = `<span class="sr-picker">${pickerHTML(caseId, current)}</span>`;
+      if (caseId) {
+        tdSt.innerHTML = `<span class="sr-picker">${pickerHTML(caseId, current)}</span>`;
+      }
       const ref = row.children[1]; // 原来的第一列
       row.insertBefore(tdSt, ref);
     });
   }
 
   function extractCaseId(row) {
-    // 尝试方法1：从行 HTML 中匹配 API 路径 /api/functional-cases/{id}
     const html = row.innerHTML;
+    // 方法1：匹配 /api/functional-cases/{id}
     let m = html.match(/\/api\/functional-cases\/(\d+)/i);
     if (m) return Number(m[1]);
-    // 尝试方法2：匹配 generate-ui-steps/\d+ 或类似 pattern
-    m = html.match(/generate-ui-steps[\/\\](\d+)/i);
+    // 方法2：匹配 data-functional-case-detail="{id}"
+    m = html.match(/data-functional-case-detail="(\d+)"/i);
     if (m) return Number(m[1]);
-    // 尝试方法3：匹配 onclick 中的数字
-    m = html.match(/onclick[^>]*?(\d+)/i);
+    // 方法3：匹配 data-execute-functional-case="{id}"
+    m = html.match(/data-execute-functional-case="(\d+)"/i);
     if (m) return Number(m[1]);
-    // 尝试方法4：查找 data-case-id 属性
-    const attrEl = row.querySelector('[data-case-id]');
-    if (attrEl) return Number(attrEl.dataset.caseId);
-    // 尝试方法5：从第一个按钮的 href / data 提取
-    const btn = row.querySelector('.btn');
-    if (btn) {
-      m = (btn.getAttribute('onclick') || btn.getAttribute('href') || '').match(/(\d+)/);
-      if (m) return Number(m[1]);
+    // 方法4：匹配 data-generate-ui="{id}"
+    m = html.match(/data-generate-ui="?(\d+)"?/i);
+    if (m) return Number(m[1]);
+    // 方法5：匹配 data-edit-functional-case="{id}"
+    m = html.match(/data-edit-functional-case="?(\d+)"?/i);
+    if (m) return Number(m[1]);
+    // 方法6：匹配 data-approve-functional="{id}"
+    m = html.match(/data-approve-functional="?(\d+)"?/i);
+    if (m) return Number(m[1]);
+    // 方法7：匹配 data-preflight-functional="{id}"
+    m = html.match(/data-preflight-functional="?(\d+)"?/i);
+    if (m) return Number(m[1]);
+    // 方法8：查找任意 data-*-functional-case 属性
+    const attrEl = row.querySelector('[data-functional-case-detail], [data-execute-functional-case], [data-edit-functional-case], [data-generate-ui], [data-case-id]');
+    if (attrEl) {
+      for (const attr of attrEl.attributes) {
+        if (/^data-.+-(?:case|functional)/i.test(attr.name) && /^\d+$/.test(attr.value)) {
+          return Number(attr.value);
+        }
+      }
     }
     return null;
   }
