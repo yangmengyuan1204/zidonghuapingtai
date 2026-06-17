@@ -1,29 +1,31 @@
-.venv/
-.venv_ocr/
-.ocr_cache/
+# Python
 __pycache__/
-.pytest_cache/
-*.pyc
-auto_test_platform.db
-tests/*.db
-reports/
-logs/
-*.log
-.idea/
-.codex_remote/
-.rakumart_curl_config_*
-.secret_key
-.codex_test_deps/
-ms-playwright/
-.reasonix/
-.codegraph/
-.venv_py39_backup_*
-auto_test_platform.db-shm
-auto_test_platform.db-wal
-*.exe
-*.png
-*.bak
-$null
-fix_*.js
-git_original.js
+*.py[cod]
+*.egg-info/
+dist/
+build/
 
+# Node
+node_modules/
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temp files
+_*.js
+-*
+CC_Switch/
+fix_route_script.py
+public-access.bat
+reasonix.toml
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Secret
+.secret_key
