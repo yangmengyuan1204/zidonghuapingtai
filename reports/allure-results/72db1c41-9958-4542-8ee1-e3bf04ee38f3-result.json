@@ -1,0 +1,27 @@
+{
+  "uuid": "72db1c41-9958-4542-8ee1-e3bf04ee38f3",
+  "name": "密码输入框类型验证",
+  "fullName": "ui.密码输入框类型验证",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780636521051,
+  "stop": 1780636521051,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "72db1c41-9958-4542-8ee1-e3bf04ee38f3-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "72db1c41-9958-4542-8ee1-e3bf04ee38f3-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

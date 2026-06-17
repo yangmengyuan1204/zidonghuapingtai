@@ -1,0 +1,27 @@
+{
+  "uuid": "0da16298-9308-4aae-bcc7-71e59e61c50c",
+  "name": "注册页面正常加载与元素展示",
+  "fullName": "ui.注册页面正常加载与元素展示",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781073871583,
+  "stop": 1781073871583,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "0da16298-9308-4aae-bcc7-71e59e61c50c-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "0da16298-9308-4aae-bcc7-71e59e61c50c-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

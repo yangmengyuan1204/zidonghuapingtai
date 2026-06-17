@@ -1,0 +1,49 @@
+{
+  "case_name": "注册页面正常流程-输入有效手机号、验证码、密码并勾选协议后提交成功",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "wait_for_selector",
+      "locator": "body"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "wait",
+      "value": 1000
+    },
+    {
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780636338,
+    "datetime": "2026-06-05 13:12:18",
+    "date": "2026-06-05",
+    "uuid": "f51e93c7-bdc8-4ad8-aa7f-02350ffcb687",
+    "random_int": 275743,
+    "random_str": "rvq6pa6t",
+    "random_phone": "13651988030",
+    "random_email": "test_275743@example.com",
+    "$timestamp": 1780636338,
+    "$datetime": "2026-06-05 13:12:18",
+    "$date": "2026-06-05",
+    "$uuid": "f51e93c7-bdc8-4ad8-aa7f-02350ffcb687",
+    "$random_int": 275743,
+    "$random_str": "rvq6pa6t",
+    "$random_phone": "13651988030",
+    "$random_email": "test_275743@example.com",
+    "username": "",
+    "password": "***",
+    "code": ""
+  },
+  "started_at": "2026-06-05 13:12:18.902403",
+  "finished_at": "2026-06-05 13:12:24.234533"
+}

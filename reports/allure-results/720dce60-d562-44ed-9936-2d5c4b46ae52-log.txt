@@ -1,0 +1,156 @@
+{
+  "case_name": "异常流程：搜索无结果",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "input",
+      "locator": "input[placeholder=\"邮箱/手机号\"]",
+      "value": "不存在的客户信息"
+    },
+    {
+      "action": "click",
+      "locator": "text=搜索"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "assert_visible",
+      "locator": "text=暂无数据"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780887856,
+    "datetime": "2026-06-08 11:04:16",
+    "date": "2026-06-08",
+    "uuid": "a43367cd-2933-461c-9b60-224447320e9f",
+    "random_int": 311616,
+    "random_str": "8js0wbyd",
+    "random_phone": "13376541268",
+    "random_email": "test_311616@example.com",
+    "$timestamp": 1780887856,
+    "$datetime": "2026-06-08 11:04:16",
+    "$date": "2026-06-08",
+    "$uuid": "a43367cd-2933-461c-9b60-224447320e9f",
+    "$random_int": 311616,
+    "$random_str": "8js0wbyd",
+    "$random_phone": "13376541268",
+    "$random_email": "test_311616@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "rakumart888"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited",
+      "started_at": "2026-06-08 11:04:18.550504",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 5862,
+      "finished_at": "2026-06-08 11:04:24.412936",
+      "index": 1
+    },
+    {
+      "name": "等待",
+      "action": "wait",
+      "locator": "",
+      "fallback_locators": [],
+      "value": 2000,
+      "started_at": "2026-06-08 11:04:24.412982",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 2014,
+      "finished_at": "2026-06-08 11:04:26.427409",
+      "index": 2
+    },
+    {
+      "name": "输入",
+      "action": "input",
+      "locator": "input[placeholder=\"邮箱/手机号\"]",
+      "fallback_locators": [],
+      "value": "不存在的客户信息",
+      "started_at": "2026-06-08 11:04:26.427469",
+      "status": "passed",
+      "used_locator": "input[placeholder=\"邮箱/手机号\"]",
+      "matched_count": 1,
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 157,
+      "finished_at": "2026-06-08 11:04:26.584719",
+      "index": 3
+    },
+    {
+      "name": "点击",
+      "action": "click",
+      "locator": "text=搜索",
+      "fallback_locators": [
+        "button:has-text(\"搜索\")",
+        "a:has-text(\"搜索\")",
+        "[role=\"button\"]:has-text(\"搜索\")",
+        "input[type=\"button\"][value*=\"搜索\"]",
+        "input[type=\"submit\"][value*=\"搜索\"]"
+      ],
+      "value": null,
+      "started_at": "2026-06-08 11:04:26.584778",
+      "status": "failed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 91291,
+      "finished_at": "2026-06-08 11:05:57.876013",
+      "error": "未找到可用定位器：a:has-text(\"搜索\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"a:has-text(\\\"搜索\\\")\").first to be visible\n；[role=\"button\"]:has-text(\"搜索\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"[role=\\\"button\\\"]:has-text(\\\"搜索\\\")\").first to be visible\n；input[type=\"button\"][value*=\"搜索\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"button\\\"][value*=\\\"搜索\\\"]\").first to be visible\n；input[type=\"submit\"][value*=\"搜索\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"submit\\\"][value*=\\\"搜索\\\"]\").first to be visible\n",
+      "category": "定位器找不到",
+      "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+      "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+      "index": 4
+    }
+  ],
+  "started_at": "2026-06-08 11:04:16.138913",
+  "error": "点击失败：定位器找不到。规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "error_category": "定位器找不到",
+  "failure_reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+  "failed_step_index": 4,
+  "failed_step": {
+    "action": "click",
+    "locator": "text=搜索"
+  },
+  "failed_step_detail": {
+    "name": "点击",
+    "action": "click",
+    "locator": "text=搜索",
+    "fallback_locators": [
+      "button:has-text(\"搜索\")",
+      "a:has-text(\"搜索\")",
+      "[role=\"button\"]:has-text(\"搜索\")",
+      "input[type=\"button\"][value*=\"搜索\"]",
+      "input[type=\"submit\"][value*=\"搜索\"]"
+    ],
+    "value": null,
+    "started_at": "2026-06-08 11:04:26.584778",
+    "status": "failed",
+    "current_url": "https://promotees.rakumart.cn/login",
+    "duration_ms": 91291,
+    "finished_at": "2026-06-08 11:05:57.876013",
+    "error": "未找到可用定位器：a:has-text(\"搜索\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"a:has-text(\\\"搜索\\\")\").first to be visible\n；[role=\"button\"]:has-text(\"搜索\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"[role=\\\"button\\\"]:has-text(\\\"搜索\\\")\").first to be visible\n；input[type=\"button\"][value*=\"搜索\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"button\\\"][value*=\\\"搜索\\\"]\").first to be visible\n；input[type=\"submit\"][value*=\"搜索\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"submit\\\"][value*=\\\"搜索\\\"]\").first to be visible\n",
+    "category": "定位器找不到",
+    "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+    "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+    "index": 4
+  },
+  "current_url": "https://promotees.rakumart.cn/login",
+  "screenshot": "",
+  "finished_at": "2026-06-08 11:05:58.603325"
+}

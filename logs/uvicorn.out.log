@@ -1,0 +1,728 @@
+INFO:     127.0.0.1:56406 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54289 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54290 - "GET /static/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51147 - "GET /static/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51148 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52493 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61494 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61494 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57238 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50400 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55408 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64221 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61596 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61494 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57238 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57238 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64221 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50400 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61596 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61494 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55408 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61494 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61494 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61494 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61494 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50128 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57500 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55464 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51598 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60814 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60814 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51318 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51318 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60695 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53995 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53265 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57670 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53157 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60695 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55362 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55362 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62349 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55362 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60896 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52278 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55895 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52278 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52278 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52278 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62349 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55362 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55895 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52278 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60896 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62349 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56743 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56743 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56743 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64788 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59073 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63609 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63138 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56743 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50047 - "GET /static/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52630 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52630 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57222 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52653 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55324 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60856 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56359 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52653 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60856 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60856 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60856 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52942 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52942 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52384 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59270 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62692 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52942 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52761 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52942 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52384 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52384 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52384 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52384 - "GET /static/anime_bg.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52384 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57217 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57217 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57217 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57217 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52384 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52384 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57460 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57460 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65051 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56127 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62630 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:52938 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/test-records?page=1&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51176 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:52938 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64740 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64740 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64740 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64740 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64740 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52938 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62685 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62685 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50634 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64730 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54240 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53970 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64730 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64730 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64730 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:53970 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53970 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62221 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54240 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54240 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62221 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60581 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62221 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49175 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62221 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62221 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53275 - "GET /api/functional-runs/3/timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50473 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50473 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59412 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61281 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54661 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56321 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62591 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59412 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59412 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59412 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59412 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59412 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59412 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53001 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53001 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50734 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53279 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53279 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62606 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62606 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53105 - "GET /static/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56155 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56155 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60936 - "GET /static/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51955 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51955 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60825 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56273 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59798 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65334 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51955 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58698 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65334 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60825 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60825 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60825 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:65334 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65334 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:61660 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61660 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61660 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61660 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:50065 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63923 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63923 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:55356 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55356 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55356 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55356 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49170 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49170 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49170 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:64821 - "GET /static/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60502 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60502 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63598 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52669 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49900 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61452 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64406 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61452 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52669 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52669 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52669 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:61452 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61452 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:53760 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53760 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50445 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55008 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58815 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56969 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56976 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58815 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50445 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50445 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50445 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:58815 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58815 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:61143 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61143 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61143 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61143 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56389 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61143 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57032 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57032 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:54349 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55283 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55283 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55283 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65435 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65435 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:65435 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65435 - "POST /api/auth/login HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:56903 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:56903 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:56903 - "GET /api/dashboard HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:56903 - "GET /api/projects HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:56338 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56338 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56338 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56338 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56338 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52887 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60560 - "GET /api/envs HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60560 - "GET /api/test-accounts HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60560 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55406 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55406 - "GET /static/app.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55406 - "GET /static/full-flow.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55406 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56176 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56176 - "GET /static/styles.css?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59432 - "GET /static/app.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55123 - "GET /static/case-generation.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50668 - "GET /static/full-flow.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60046 - "GET /static/requirement-pack.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56176 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64608 - "GET /static/test-status.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59432 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60046 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59432 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59432 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:50035 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50035 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62407 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62407 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62407 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61138 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61138 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61138 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61138 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62407 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:59900 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60791 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:64796 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:59368 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50972 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:59368 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59368 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59368 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59368 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59368 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62107 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/test-records?page=1&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/test-records?page=1&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60396 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62107 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/test-records?page=1&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54590 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62107 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49969 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62107 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62107 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:55889 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57217 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57217 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57217 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57217 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55889 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55889 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55350 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55350 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55350 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55350 - "GET /api/test-records?page=1&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55350 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55350 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55550 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60074 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:55550 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55550 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56380 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:56387 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56387 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56387 - "GET /api/functional-tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56387 - "GET /api/functional-cases?task_id=1 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56387 - "GET /api/data-script-flows HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56387 - "GET /api/case-generation/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58939 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58939 - "GET /api/functional-tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58939 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58939 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58939 - "GET /api/functional-tasks/1/cases HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58939 - "GET /api/functional-tasks/1/runs HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58939 - "GET /api/functional-screenshots?task_id=1 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58939 - "GET /api/functional-requirement-notes?task_id=1 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58939 - "GET /api/test-accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58939 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58939 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:58965 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58965 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:59005 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59005 - "GET /api/dashboard?project_id=1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60705 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60705 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/test-records?page=1&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58535 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60705 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53644 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60705 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60705 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49669 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49669 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54040 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49669 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49669 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64770 - "GET /api/auth/login HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:64770 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64771 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:65348 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53532 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65348 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53532 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53532 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53532 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53532 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53532 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:65348 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57949 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:65348 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50458 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:65348 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65348 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61169 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61169 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50797 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:61169 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61169 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61169 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61169 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61169 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61169 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61169 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61169 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57100 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57100 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52067 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57100 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57100 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50771 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50771 - "GET /static/styles.css?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60671 - "GET /static/app.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51569 - "GET /static/full-flow.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56596 - "GET /static/test-status.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51200 - "GET /static/case-generation.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61049 - "GET /static/requirement-pack.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60671 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61049 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61049 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61049 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61049 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60671 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:61049 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61049 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56609 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56609 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:56610 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60499 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60500 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:53225 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53225 - "GET /static/styles.css?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61231 - "GET /static/app.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /static/requirement-pack.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51746 - "GET /static/full-flow.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58062 - "GET /static/test-status.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53275 - "GET /static/case-generation.js?v=20260620-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61231 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53708 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61231 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61231 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61231 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61231 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61231 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61231 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53433 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54143 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54143 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54143 - "GET /api/test-records?page=1&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54143 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54143 - "GET /api/ui-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53138 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53138 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52682 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56713 - "POST /api/test-accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56713 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56906 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56906 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56906 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56906 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56906 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56906 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51112 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51443 - "PUT /api/test-accounts/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51443 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53748 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61718 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64489 - "GET /api/test-accounts?project_id=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61817 - "DELETE /api/test-accounts/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61817 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61670 - "GET /api/test-accounts?project_id=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56059 - "DELETE /api/test-accounts/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56059 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49949 - "GET /api/test-accounts?project_id=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49949 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56059 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59201 - "POST /api/test-accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59201 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64827 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51205 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51205 - "GET /api/api-cases?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51205 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51824 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51824 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50306 - "GET /api/case-generation/workspace?project_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50306 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52740 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50306 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50306 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51901 - "POST /api/functional-tasks/1/cases/batch-automation-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51901 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58029 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51901 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51901 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52351 - "POST /api/functional-tasks/1/cases/batch-automation-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52351 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61934 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52351 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52351 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64986 - "POST /api/functional-cases/2/preflight HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64986 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55315 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64986 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64986 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64986 - "PUT /api/functional-cases/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64986 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55315 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64986 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64986 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54040 - "POST /api/functional-tasks/1/execute-async HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:54040 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54040 - "POST /api/functional-tasks/1/execute-async HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:65065 - "PUT /api/functional-cases/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65065 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57698 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65065 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65065 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62284 - "POST /api/functional-cases/3/preflight HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55138 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52281 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55138 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55138 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55210 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60234 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60234 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54660 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56999 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57887 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58610 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60234 - "GET /static/anime_bg.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60234 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58739 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60234 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60234 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58739 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64948 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64948 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64948 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49400 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49400 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64613 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64884 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/anime_bg.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55957 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64884 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64613 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49400 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/anime_bg.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53286 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64884 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49400 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64613 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/anime_bg.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55957 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49400 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64884 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64613 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/anime_bg.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53286 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64884 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49400 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64613 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/anime_bg.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53286 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49400 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64884 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64613 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/anime_bg.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53286 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64613 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49400 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64884 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64884 - "GET /static/anime_bg.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64884 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64884 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64613 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64884 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49400 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /static/anime_bg.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51052 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49400 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64884 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64613 - "GET /static/app.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /static/styles.css?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /static/full-flow.js?v=20260613-full-flow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/test-status.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /static/anime_bg.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55957 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55957 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55957 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57516 - "GET / HTTP/1.1" 200 OK

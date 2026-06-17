@@ -1,0 +1,93 @@
+{
+  "case_name": "必填项为空-密码为空",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "wait_for_selector",
+      "locator": "body"
+    },
+    {
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1781073907,
+    "datetime": "2026-06-10 14:45:07",
+    "date": "2026-06-10",
+    "uuid": "34142b1b-d720-4517-94c8-c5153449e8b2",
+    "random_int": 503915,
+    "random_str": "mexnl4ks",
+    "random_phone": "13672819995",
+    "random_email": "test_503915@example.com",
+    "$timestamp": 1781073907,
+    "$datetime": "2026-06-10 14:45:07",
+    "$date": "2026-06-10",
+    "$uuid": "34142b1b-d720-4517-94c8-c5153449e8b2",
+    "$random_int": 503915,
+    "$random_str": "mexnl4ks",
+    "$random_phone": "13672819995",
+    "$random_email": "test_503915@example.com"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/login",
+      "started_at": "2026-06-10 14:45:08.452492",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 6111,
+      "finished_at": "2026-06-10 14:45:14.563921",
+      "index": 1
+    },
+    {
+      "name": "等待元素",
+      "action": "wait_for_selector",
+      "locator": "body",
+      "fallback_locators": [],
+      "value": null,
+      "started_at": "2026-06-10 14:45:14.873245",
+      "status": "passed",
+      "used_locator": "body",
+      "matched_count": 1,
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 95,
+      "finished_at": "2026-06-10 14:45:14.969033",
+      "index": 2
+    },
+    {
+      "name": "截图",
+      "action": "screenshot",
+      "locator": "",
+      "fallback_locators": [],
+      "value": null,
+      "started_at": "2026-06-10 14:45:14.969074",
+      "status": "passed",
+      "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\07b55506-94c9-4800-82ec-13328a7c8605.png",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 249,
+      "finished_at": "2026-06-10 14:45:15.218224",
+      "index": 3
+    }
+  ],
+  "started_at": "2026-06-10 14:45:07.665968",
+  "retry_config": {
+    "retry_count": 2,
+    "retry_interval_ms": 1000
+  },
+  "auth_context": {
+    "login_required": false,
+    "account_profile_id": null,
+    "login_url": "",
+    "removed_login_step_count": 0
+  },
+  "finished_at": "2026-06-10 14:45:15.218236"
+}

@@ -1,0 +1,78 @@
+{
+  "script": "待拍下到商品上架(组合脚本)",
+  "mode": "chain_execution",
+  "started_at": "2026-06-03 09:31:08.979055",
+  "steps": [
+    {
+      "step": 1,
+      "script": "订单报价",
+      "passed": true,
+      "summary": {
+        "order_sn": "2026060309311090-300001",
+        "selected_count": 2,
+        "item_quantity": 10,
+        "submit_order": true,
+        "run_backend_flow": true,
+        "cart_ids": [
+          1127977,
+          1127976
+        ],
+        "goods_ids": [
+          "548916804550",
+          "548916804550"
+        ],
+        "backend_passed": true,
+        "backend_steps": [
+          "login",
+          "detail",
+          "translate",
+          "confirm",
+          "offer"
+        ],
+        "quote_unit_price": "10",
+        "backend_status": 30
+      }
+    },
+    {
+      "step": 2,
+      "script": "余额支付",
+      "passed": true,
+      "summary": {
+        "payment_type": "balance",
+        "order_sn": "2026060309311090-300001",
+        "pay_amount": "4431",
+        "payment_passed": true,
+        "serial_number": "178045027928900300001612"
+      }
+    },
+    {
+      "step": 3,
+      "script": "待拍下到商品上架",
+      "passed": true,
+      "summary": {
+        "order_sn": "2026060309311090-300001",
+        "purchase_no": "20260603093122",
+        "selected_count": 2,
+        "purchase_ids": [
+          15327267,
+          15327268
+        ],
+        "grid_id": 12464,
+        "grid_number": "【三部-FBA.1.1-FBA-003】-1-8-9",
+        "storage_count": 2,
+        "storage_passed": true
+      }
+    }
+  ],
+  "shared_data": {
+    "order_sn": "2026060309311090-300001"
+  },
+  "finished_at": "2026-06-03 09:31:34.985807",
+  "summary": {
+    "passed": true,
+    "order_sn": "2026060309311090-300001",
+    "purchase_no": "20260603093122",
+    "total_steps": 3,
+    "success_steps": 3
+  }
+}

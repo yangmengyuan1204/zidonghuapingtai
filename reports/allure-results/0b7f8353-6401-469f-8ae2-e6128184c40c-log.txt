@@ -1,0 +1,105 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://example.test",
+  "keyword": "USP",
+  "shop_type": "1688",
+  "target_shops": 1,
+  "per_shop": 1,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "verify_cart_after_add": true,
+  "cart_verify_mode": "batch",
+  "started_at": "2026-06-16 09:26:26.342058",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "shop-1",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "goods-1",
+          "shop_id": "shop-1",
+          "shop_name": "shop",
+          "sku_id": "sku-1",
+          "spec_id": "spec-1",
+          "num": 1,
+          "price": "10",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 1,
+      "success": true,
+      "code": 0,
+      "msg": null,
+      "verification": {
+        "cart_goods_count": 1,
+        "expected_count": 1,
+        "matched_count": 1,
+        "missing_count": 0,
+        "missing_items": [],
+        "api_success": true
+      }
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "alice",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "collection": {
+    "ready_shops": 1,
+    "collected_shops": 1,
+    "selected_items": 1,
+    "expected_total": 1,
+    "preview_items": [
+      {
+        "goods_id": "goods-1",
+        "shop_id": "shop-1",
+        "shop_name": "shop",
+        "sku_id": "sku-1",
+        "spec_id": "spec-1",
+        "num": 1,
+        "price": "10",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "duration_ms": 0,
+  "summary": {
+    "keyword": "USP",
+    "shop_type": "1688",
+    "target_shops": 1,
+    "per_shop": 1,
+    "ready_shops": 1,
+    "expected_total": 1,
+    "available_expected_total": 1,
+    "added_total": 1,
+    "api_added_total": 1,
+    "verified_added_total": 1,
+    "cart_verification_enabled": true,
+    "cart_verify_mode": "batch",
+    "failed_batches": [],
+    "verification_failed_batches": [],
+    "strict_shop_count": false,
+    "duration_ms": 0
+  },
+  "finished_at": "2026-06-16 09:26:26.342149"
+}

@@ -1,0 +1,180 @@
+{
+  "script": "配送单银行付款",
+  "mode": "porder_bank_payment",
+  "started_at": "2026-06-04 14:48:54.494681",
+  "porder_sn": "P2026060315255416-300001",
+  "backend_porder": {
+    "skipped": true,
+    "reason": "配送单已待支付，跳过后台流程"
+  },
+  "order_list": {},
+  "payment": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "data.serial_number": "178055573653300300001677",
+    "request": {
+      "porder_sn": "P2026060315255416-300001",
+      "pay_bank_method": "1",
+      "pay_date": "2026-06-04 14:48:55",
+      "pay_reach_date": "2026-06-04 14:48:55",
+      "pay_name": "自动化测试",
+      "pay_amount": "775.02",
+      "pay_remark": "自动化银行付款",
+      "discounts_id": "",
+      "merge_pay": "0"
+    },
+    "serial_number": "178055573653300300001677",
+    "porder_matched": true
+  },
+  "finance": {
+    "login": {
+      "success": true,
+      "code": 0,
+      "msg": "登录成功",
+      "account": "Y001",
+      "token_extracted": true
+    },
+    "unconfirm_list_attempts": [
+      {
+        "success": true,
+        "code": 0,
+        "msg": "操作成功",
+        "request": {
+          "page": 1,
+          "pageSize": 20,
+          "serial_number": "178055573653300300001677",
+          "order_sn": "P2026060315255416-300001"
+        },
+        "row_count": 1,
+        "selected_bill": {
+          "id": 3231709,
+          "serial_number": "178055573653300300001677",
+          "order_sn": "P2026060315255416-300001",
+          "porder_sn": null,
+          "p_order_sn": null,
+          "pay_amount": 775,
+          "amount": 775,
+          "bill_method": 1,
+          "predict_arrival_at": "2026-06-04 14:48:55",
+          "created_at": "2026-06-04 14:48:56",
+          "status": 0
+        },
+        "serial_number": "178055573653300300001677",
+        "attempt": 1
+      }
+    ],
+    "unconfirm_list": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "request": {
+        "page": 1,
+        "pageSize": 20,
+        "serial_number": "178055573653300300001677",
+        "order_sn": "P2026060315255416-300001"
+      },
+      "row_count": 1,
+      "selected_bill": {
+        "id": 3231709,
+        "serial_number": "178055573653300300001677",
+        "order_sn": "P2026060315255416-300001",
+        "porder_sn": null,
+        "p_order_sn": null,
+        "pay_amount": 775,
+        "amount": 775,
+        "bill_method": 1,
+        "predict_arrival_at": "2026-06-04 14:48:55",
+        "created_at": "2026-06-04 14:48:56",
+        "status": 0
+      },
+      "serial_number": "178055573653300300001677",
+      "attempt": 1
+    },
+    "confirm": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "request": {
+        "id": 3231709
+      },
+      "selected_bill": {
+        "id": 3231709,
+        "serial_number": "178055573653300300001677",
+        "order_sn": "P2026060315255416-300001",
+        "porder_sn": null,
+        "p_order_sn": null,
+        "pay_amount": 775,
+        "amount": 775,
+        "bill_method": 1,
+        "predict_arrival_at": "2026-06-04 14:48:55",
+        "created_at": "2026-06-04 14:48:56",
+        "status": 0
+      }
+    }
+  },
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "base_url": "https://jpapi.rakumart.cn",
+  "porder_amount": {
+    "attempts": [
+      {
+        "success": false,
+        "code": 0,
+        "msg": "接口路由错误:https://jpapi.rakumart.cn/client/porder.porderPayDetail",
+        "path": "/client/porder.porderPayDetail",
+        "request": {
+          "porder_sn": "P2026060315255416-300001"
+        },
+        "pay_amount": "0"
+      },
+      {
+        "success": false,
+        "code": 0,
+        "msg": "接口路由错误:https://jpapi.rakumart.cn/client/porder.payDetail",
+        "path": "/client/porder.payDetail",
+        "request": {
+          "porder_sn": "P2026060315255416-300001"
+        },
+        "pay_amount": "0"
+      },
+      {
+        "success": false,
+        "code": 0,
+        "msg": "接口路由错误:https://jpapi.rakumart.cn/client/porder.paymentDetail",
+        "path": "/client/porder.paymentDetail",
+        "request": {
+          "porder_sn": "P2026060315255416-300001"
+        },
+        "pay_amount": "0"
+      },
+      {
+        "success": true,
+        "code": 0,
+        "msg": "操作が成功しました",
+        "path": "/client/porder.porderDetail",
+        "request": {
+          "porder_sn": "P2026060315255416-300001"
+        },
+        "pay_amount": "775.02"
+      }
+    ],
+    "pay_amount": "775.02"
+  },
+  "summary": {
+    "payment_type": "bank",
+    "porder_sn": "P2026060315255416-300001",
+    "pay_amount": "775.02",
+    "payment_passed": true,
+    "porder_matched": true,
+    "serial_number": "178055573653300300001677",
+    "backend_passed": true,
+    "finance_passed": true
+  },
+  "finished_at": "2026-06-04 14:49:04.292221"
+}

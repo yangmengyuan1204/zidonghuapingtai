@@ -1,0 +1,40 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://jpapi.rakumart.cn/mobile/userLogin",
+    "headers": {
+      "Content-Type": "multipart/form-data"
+    },
+    "params": {},
+    "body": {
+      "account": "12345678990",
+      "password": "123456",
+      "client_tool": "2"
+    },
+    "timeout": 30
+  },
+  "variables": {
+    "timestamp": 1780281081,
+    "datetime": "2026-06-01 10:31:21",
+    "date": "2026-06-01",
+    "uuid": "6c483ce7-bac3-4c8c-8d3d-165348ccb312",
+    "random_int": 231971,
+    "random_str": "p0hekk5z",
+    "random_phone": "13866742092",
+    "random_email": "test_231971@example.com",
+    "$timestamp": 1780281081,
+    "$datetime": "2026-06-01 10:31:21",
+    "$date": "2026-06-01",
+    "$uuid": "6c483ce7-bac3-4c8c-8d3d-165348ccb312",
+    "$random_int": 231971,
+    "$random_str": "p0hekk5z",
+    "$random_phone": "13866742092",
+    "$random_email": "test_231971@example.com",
+    "api": "https://jpapi.rakumart.cn",
+    "keyword": "鞋子",
+    "shop_type": "1688"
+  },
+  "started_at": "2026-06-01 10:31:21.478355",
+  "error": "('Connection aborted.', ConnectionResetError(10054, '远程主机强迫关闭了一个现有的连接。', None, 10054, None))",
+  "finished_at": "2026-06-01 10:31:26.492806"
+}

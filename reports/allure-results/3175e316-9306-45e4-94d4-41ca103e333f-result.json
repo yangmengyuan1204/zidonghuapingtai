@@ -1,0 +1,27 @@
+{
+  "uuid": "3175e316-9306-45e4-94d4-41ca103e333f",
+  "name": "页面元素完整性检查：长存仓库页面标题、搜索区域、表格列标题、操作按钮均正确显示",
+  "fullName": "ui.页面元素完整性检查：长存仓库页面标题、搜索区域、表格列标题、操作按钮均正确显示",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781596021865,
+  "stop": 1781596021865,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "3175e316-9306-45e4-94d4-41ca103e333f-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "3175e316-9306-45e4-94d4-41ca103e333f-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

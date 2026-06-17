@@ -1,0 +1,22 @@
+{
+  "uuid": "8f45830b-e130-4bf4-8450-9725aae6c3a9",
+  "name": "异常流程：搜索无结果",
+  "fullName": "ui.异常流程：搜索无结果",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780643365136,
+  "stop": 1780643365136,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "8f45830b-e130-4bf4-8450-9725aae6c3a9-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

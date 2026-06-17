@@ -1,0 +1,22 @@
+{
+  "uuid": "d449d61e-000c-4e6d-9fcd-55fff912ae46",
+  "name": "异常流程：搜索无结果",
+  "fullName": "ui.异常流程：搜索无结果",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780900034615,
+  "stop": 1780900034615,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "d449d61e-000c-4e6d-9fcd-55fff912ae46-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

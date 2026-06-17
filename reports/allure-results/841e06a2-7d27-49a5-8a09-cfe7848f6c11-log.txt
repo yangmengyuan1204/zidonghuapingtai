@@ -1,0 +1,144 @@
+{
+  "case_name": "正常流程：列表分页功能",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "click",
+      "locator": "text=下一页"
+    },
+    {
+      "action": "wait",
+      "value": 1000
+    },
+    {
+      "action": "click",
+      "locator": "text=2"
+    },
+    {
+      "action": "wait",
+      "value": 1000
+    },
+    {
+      "action": "assert_url",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780887652,
+    "datetime": "2026-06-08 11:00:52",
+    "date": "2026-06-08",
+    "uuid": "ab8863fc-82a7-459c-aff2-18b3b7557293",
+    "random_int": 741447,
+    "random_str": "sgi34p48",
+    "random_phone": "13965854966",
+    "random_email": "test_741447@example.com",
+    "$timestamp": 1780887652,
+    "$datetime": "2026-06-08 11:00:52",
+    "$date": "2026-06-08",
+    "$uuid": "ab8863fc-82a7-459c-aff2-18b3b7557293",
+    "$random_int": 741447,
+    "$random_str": "sgi34p48",
+    "$random_phone": "13965854966",
+    "$random_email": "test_741447@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "rakumart888"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited",
+      "started_at": "2026-06-08 11:00:55.146369",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 4893,
+      "finished_at": "2026-06-08 11:01:00.040180",
+      "index": 1
+    },
+    {
+      "name": "等待",
+      "action": "wait",
+      "locator": "",
+      "fallback_locators": [],
+      "value": 2000,
+      "started_at": "2026-06-08 11:01:00.040216",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 2014,
+      "finished_at": "2026-06-08 11:01:02.054557",
+      "index": 2
+    },
+    {
+      "name": "点击",
+      "action": "click",
+      "locator": "text=下一页",
+      "fallback_locators": [
+        "button:has-text(\"下一页\")",
+        "a:has-text(\"下一页\")",
+        "[role=\"button\"]:has-text(\"下一页\")",
+        "input[type=\"button\"][value*=\"下一页\"]",
+        "input[type=\"submit\"][value*=\"下一页\"]"
+      ],
+      "value": null,
+      "started_at": "2026-06-08 11:01:02.054613",
+      "status": "failed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 91297,
+      "finished_at": "2026-06-08 11:02:33.352344",
+      "error": "未找到可用定位器：a:has-text(\"下一页\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"a:has-text(\\\"下一页\\\")\").first to be visible\n；[role=\"button\"]:has-text(\"下一页\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"[role=\\\"button\\\"]:has-text(\\\"下一页\\\")\").first to be visible\n；input[type=\"button\"][value*=\"下一页\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"button\\\"][value*=\\\"下一页\\\"]\").first to be visible\n；input[type=\"submit\"][value*=\"下一页\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"submit\\\"][value*=\\\"下一页\\\"]\").first to be visible\n",
+      "category": "定位器找不到",
+      "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+      "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+      "index": 3
+    }
+  ],
+  "started_at": "2026-06-08 11:00:52.147563",
+  "error": "点击失败：定位器找不到。规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "error_category": "定位器找不到",
+  "failure_reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+  "failed_step_index": 3,
+  "failed_step": {
+    "action": "click",
+    "locator": "text=下一页"
+  },
+  "failed_step_detail": {
+    "name": "点击",
+    "action": "click",
+    "locator": "text=下一页",
+    "fallback_locators": [
+      "button:has-text(\"下一页\")",
+      "a:has-text(\"下一页\")",
+      "[role=\"button\"]:has-text(\"下一页\")",
+      "input[type=\"button\"][value*=\"下一页\"]",
+      "input[type=\"submit\"][value*=\"下一页\"]"
+    ],
+    "value": null,
+    "started_at": "2026-06-08 11:01:02.054613",
+    "status": "failed",
+    "current_url": "https://promotees.rakumart.cn/login",
+    "duration_ms": 91297,
+    "finished_at": "2026-06-08 11:02:33.352344",
+    "error": "未找到可用定位器：a:has-text(\"下一页\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"a:has-text(\\\"下一页\\\")\").first to be visible\n；[role=\"button\"]:has-text(\"下一页\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"[role=\\\"button\\\"]:has-text(\\\"下一页\\\")\").first to be visible\n；input[type=\"button\"][value*=\"下一页\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"button\\\"][value*=\\\"下一页\\\"]\").first to be visible\n；input[type=\"submit\"][value*=\"下一页\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"submit\\\"][value*=\\\"下一页\\\"]\").first to be visible\n",
+    "category": "定位器找不到",
+    "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+    "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+    "index": 3
+  },
+  "current_url": "https://promotees.rakumart.cn/login",
+  "screenshot": "",
+  "finished_at": "2026-06-08 11:02:33.947846"
+}

@@ -1,0 +1,22 @@
+{
+  "uuid": "129bdac7-12a0-4138-aea9-8d00110bca30",
+  "name": "创建用户",
+  "fullName": "api.创建用户",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781147482821,
+  "stop": 1781147482821,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "129bdac7-12a0-4138-aea9-8d00110bca30-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

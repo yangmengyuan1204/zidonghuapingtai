@@ -1,0 +1,27 @@
+{
+  "uuid": "839d6125-f43b-4a9b-afce-5fa56bf899f9",
+  "name": "搜索功能-按入库时间搜索仅指定开始日期",
+  "fullName": "ui.搜索功能-按入库时间搜索仅指定开始日期",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781595555095,
+  "stop": 1781595555095,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "839d6125-f43b-4a9b-afce-5fa56bf899f9-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "839d6125-f43b-4a9b-afce-5fa56bf899f9-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "uuid": "785a053f-c642-472b-b696-16ec1b1763f8",
+  "name": "查询用户",
+  "fullName": "api.查询用户",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780477236520,
+  "stop": 1780477236520,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "785a053f-c642-472b-b696-16ec1b1763f8-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

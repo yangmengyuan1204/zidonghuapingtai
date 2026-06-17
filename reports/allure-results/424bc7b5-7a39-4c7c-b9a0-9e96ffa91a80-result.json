@@ -1,0 +1,27 @@
+{
+  "uuid": "424bc7b5-7a39-4c7c-b9a0-9e96ffa91a80",
+  "name": "必填项为空-邮箱/手机号为空",
+  "fullName": "ui.必填项为空-邮箱/手机号为空",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781072994109,
+  "stop": 1781072994109,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "424bc7b5-7a39-4c7c-b9a0-9e96ffa91a80-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "424bc7b5-7a39-4c7c-b9a0-9e96ffa91a80-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

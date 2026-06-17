@@ -1,0 +1,84 @@
+{
+  "case_name": "权限验证：未登录访问",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "assert_url",
+      "value": "https://promotees.rakumart.cn/login"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780887958,
+    "datetime": "2026-06-08 11:05:58",
+    "date": "2026-06-08",
+    "uuid": "77888dc9-d6ee-43b0-8cb4-405fff28b84e",
+    "random_int": 788295,
+    "random_str": "mh02yyah",
+    "random_phone": "13526854840",
+    "random_email": "test_788295@example.com",
+    "$timestamp": 1780887958,
+    "$datetime": "2026-06-08 11:05:58",
+    "$date": "2026-06-08",
+    "$uuid": "77888dc9-d6ee-43b0-8cb4-405fff28b84e",
+    "$random_int": 788295,
+    "$random_str": "mh02yyah",
+    "$random_phone": "13526854840",
+    "$random_email": "test_788295@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "rakumart888"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited",
+      "started_at": "2026-06-08 11:06:02.093673",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 5934,
+      "finished_at": "2026-06-08 11:06:08.027969",
+      "index": 1
+    },
+    {
+      "name": "等待",
+      "action": "wait",
+      "locator": "",
+      "fallback_locators": [],
+      "value": 2000,
+      "started_at": "2026-06-08 11:06:08.027999",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 2009,
+      "finished_at": "2026-06-08 11:06:10.037825",
+      "index": 2
+    },
+    {
+      "name": "检查页面地址",
+      "action": "assert_url",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/login",
+      "started_at": "2026-06-08 11:06:10.037979",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 0,
+      "finished_at": "2026-06-08 11:06:10.038023",
+      "index": 3
+    }
+  ],
+  "started_at": "2026-06-08 11:05:58.620618",
+  "finished_at": "2026-06-08 11:06:11.529073"
+}

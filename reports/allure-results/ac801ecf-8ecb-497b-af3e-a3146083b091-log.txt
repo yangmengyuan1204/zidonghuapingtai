@@ -1,0 +1,49 @@
+{
+  "case_name": "注册页面-手机号格式错误提示",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "wait_for_selector",
+      "locator": "body"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "wait",
+      "value": 1000
+    },
+    {
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780631437,
+    "datetime": "2026-06-05 11:50:37",
+    "date": "2026-06-05",
+    "uuid": "008ca057-eefe-458f-b9ec-dcb054c205ad",
+    "random_int": 616383,
+    "random_str": "8w8dv6jq",
+    "random_phone": "13993917686",
+    "random_email": "test_616383@example.com",
+    "$timestamp": 1780631437,
+    "$datetime": "2026-06-05 11:50:37",
+    "$date": "2026-06-05",
+    "$uuid": "008ca057-eefe-458f-b9ec-dcb054c205ad",
+    "$random_int": 616383,
+    "$random_str": "8w8dv6jq",
+    "$random_phone": "13993917686",
+    "$random_email": "test_616383@example.com",
+    "username": "",
+    "password": "***",
+    "code": ""
+  },
+  "started_at": "2026-06-05 11:50:37.923638",
+  "finished_at": "2026-06-05 11:50:44.667330"
+}

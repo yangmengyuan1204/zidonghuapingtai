@@ -1,0 +1,22 @@
+{
+  "uuid": "d4735cfa-1303-430e-a740-7ac1449396c8",
+  "name": "直接装箱上架",
+  "fullName": "data_script.直接装箱上架",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781500786575,
+  "stop": 1781500833154,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "d4735cfa-1303-430e-a740-7ac1449396c8-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

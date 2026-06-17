@@ -1,0 +1,22 @@
+{
+  "uuid": "7f23e62e-7650-4d4e-a1b3-02da910319d3",
+  "name": "正常流程：搜索已邀请客户",
+  "fullName": "ui.正常流程：搜索已邀请客户",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780644575537,
+  "stop": 1780644575537,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "7f23e62e-7650-4d4e-a1b3-02da910319d3-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

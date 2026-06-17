@@ -1,0 +1,619 @@
+{
+  "script": "待拍下到商品上架",
+  "mode": "purchase_to_shelf",
+  "base_url": "https://jpapi.rakumart.cn",
+  "order_sn": "2026060415233477-300001",
+  "purchase_no": "20260612141626",
+  "started_at": "2026-06-12 14:16:26.399111",
+  "steps": [
+    {
+      "name": "purchase_list",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "request": {
+        "page": 1,
+        "pageSize": 20,
+        "status": "全部",
+        "dateStart": "",
+        "dateEnd": "",
+        "user_id": "",
+        "order_sn": "2026060415233477-300001",
+        "g_id": "",
+        "is_urgent": "",
+        "overdue": ""
+      },
+      "row_count": 1,
+      "selected_count": 15,
+      "selected_items": [
+        {
+          "id": 15327300,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "873093045205",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327301,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "873093045205",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327302,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "873093045205",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327303,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "772274657795",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327304,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "772274657795",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327305,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "772274657795",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327306,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "776765235559",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327307,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "776765235559",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327308,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "776765235559",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327309,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "670654847225",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327310,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "670654847225",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327311,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "669575252807",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327312,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "1050991531950",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327313,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "1050991531950",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327314,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "",
+          "status": 0,
+          "statusName": "待拍下",
+          "goods_id": "1050991531950",
+          "confirm_num": 10
+        }
+      ]
+    },
+    {
+      "name": "purchase_save_temp",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "request": {
+        "data_count": 15,
+        "purchase_no": "20260612141626"
+      }
+    },
+    {
+      "name": "purchase_to_wait_modify_price",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "request": {
+        "ids": [
+          15327300,
+          15327301,
+          15327302,
+          15327303,
+          15327304,
+          15327305,
+          15327306,
+          15327307,
+          15327308,
+          15327309,
+          15327310,
+          15327311,
+          15327312,
+          15327313,
+          15327314
+        ],
+        "purchase_no": "20260612141626"
+      }
+    },
+    {
+      "name": "purchase_relist_after_modify",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "request": {
+        "page": 1,
+        "pageSize": 20,
+        "status": "全部",
+        "dateStart": "",
+        "dateEnd": "",
+        "user_id": "",
+        "order_sn": "2026060415233477-300001",
+        "g_id": "",
+        "is_urgent": "",
+        "overdue": ""
+      },
+      "selected_count": 15,
+      "selected_items": [
+        {
+          "id": 15327300,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "873093045205",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327301,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "873093045205",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327302,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "873093045205",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327303,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "772274657795",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327304,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "772274657795",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327305,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "772274657795",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327306,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "776765235559",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327307,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "776765235559",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327308,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "776765235559",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327309,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "670654847225",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327310,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "670654847225",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327311,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "669575252807",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327312,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "1050991531950",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327313,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "1050991531950",
+          "confirm_num": 10
+        },
+        {
+          "id": 15327314,
+          "order_sn": "2026060415233477-300001",
+          "purchase_no": "20260612141626",
+          "status": 1,
+          "statusName": "待改价",
+          "goods_id": "1050991531950",
+          "confirm_num": 10
+        }
+      ]
+    },
+    {
+      "name": "purchase_save_temp_before_wait_pay",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "request": {
+        "data_count": 15,
+        "purchase_no": "20260612141626"
+      }
+    },
+    {
+      "name": "purchase_to_wait_pay",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "request": {
+        "data_count": 15,
+        "ids": [
+          15327300,
+          15327301,
+          15327302,
+          15327303,
+          15327304,
+          15327305,
+          15327306,
+          15327307,
+          15327308,
+          15327309,
+          15327310,
+          15327311,
+          15327312,
+          15327313,
+          15327314
+        ],
+        "purchase_no": "20260612141626"
+      }
+    },
+    {
+      "name": "bill_purchase_wait_pay_confirm",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "request": {
+        "purchaseNoSet": [
+          "20260612141626"
+        ]
+      }
+    },
+    {
+      "name": "follow_up_preview",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data_count": 1,
+      "request": {
+        "purchase_no": "20260612141626",
+        "express_no": ""
+      },
+      "row_count": 1,
+      "item_count": 15
+    },
+    {
+      "name": "follow_start_checking",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "request": {
+        "purchaseIds": [
+          15327300,
+          15327301,
+          15327302,
+          15327303,
+          15327304,
+          15327305,
+          15327306,
+          15327307,
+          15327308,
+          15327309,
+          15327310,
+          15327311,
+          15327312,
+          15327313,
+          15327314
+        ]
+      }
+    },
+    {
+      "name": "follow_up_preview_after_start",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data_count": 1,
+      "request": {
+        "purchase_no": "20260612141626",
+        "express_no": ""
+      },
+      "row_count": 1,
+      "item_count": 15
+    },
+    {
+      "name": "wms_grid_preview",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "request": {
+        "shelf_type_set": [
+          1,
+          3
+        ],
+        "user_id": "300001",
+        "order_purchase_id": [
+          15327300,
+          15327301,
+          15327302,
+          15327303,
+          15327304,
+          15327305,
+          15327306,
+          15327307,
+          15327308,
+          15327309,
+          15327310,
+          15327311,
+          15327312,
+          15327313,
+          15327314
+        ]
+      },
+      "selected_grid": {
+        "id": 12440,
+        "grid_number": "【三部-FBA.1.1-FBA-003】-1-6-5"
+      }
+    },
+    {
+      "name": "follow_up_storage",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "request": {
+        "grid_id": 12440,
+        "data_count": 15,
+        "reconfirm": 0
+      },
+      "grid_number": "【三部-FBA.1.1-FBA-003】-1-6-5"
+    }
+  ],
+  "login": {
+    "success": true,
+    "code": 0,
+    "msg": "登录成功",
+    "account": "Y001",
+    "token_extracted": true
+  },
+  "finance_wait_pay_attempts": [
+    {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "attempt": 1,
+      "row_count": 1,
+      "selected": {
+        "id": null,
+        "purchase_no": "20260612141626",
+        "order_sn": "2026060415233477-300001",
+        "status": 2,
+        "statusName": "待财务付款(暂未查询到)",
+        "shouldPay": 1575,
+        "clientTotal": 1575
+      },
+      "request": {
+        "page": 1,
+        "pageSize": 20,
+        "status": "2",
+        "dateStart": "2026-05-13 00:00:00",
+        "dateEnd": "2026-06-12 23:59:59",
+        "purchase_no": "20260612141626",
+        "order_sn": "2026060415233477-300001"
+      }
+    }
+  ],
+  "follow_list_attempts": [
+    {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "attempt": 1,
+      "row_count": 1,
+      "item_count": 15,
+      "request": {
+        "page": 1,
+        "pageSize": 20,
+        "status": "3",
+        "dateStart": "",
+        "dateEnd": "",
+        "user_id": "",
+        "order_sn": "2026060415233477-300001",
+        "express_no": "",
+        "purchase_no": "20260612141626",
+        "order_part": "",
+        "realname": ""
+      }
+    }
+  ],
+  "post_storage_verify_attempts": [
+    {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "attempt": 1,
+      "item_count": 0,
+      "selected_count": 0,
+      "pending_count": 0,
+      "request": {
+        "page": 1,
+        "pageSize": 20,
+        "status": "全部",
+        "dateStart": "",
+        "dateEnd": "",
+        "user_id": "",
+        "order_sn": "2026060415233477-300001",
+        "g_id": "",
+        "is_urgent": "",
+        "overdue": ""
+      },
+      "selected_items": []
+    }
+  ],
+  "summary": {
+    "order_sn": "2026060415233477-300001",
+    "purchase_no": "20260612141626",
+    "selected_count": 15,
+    "purchase_ids": [
+      15327300,
+      15327301,
+      15327302,
+      15327303,
+      15327304,
+      15327305,
+      15327306,
+      15327307,
+      15327308,
+      15327309,
+      15327310,
+      15327311,
+      15327312,
+      15327313,
+      15327314
+    ],
+    "grid_id": 12440,
+    "grid_number": "【三部-FBA.1.1-FBA-003】-1-6-5",
+    "storage_count": 15,
+    "storage_passed": true,
+    "verify_passed": true,
+    "remaining_purchase_count": 0,
+    "remaining_pending_count": 0
+  },
+  "finished_at": "2026-06-12 14:16:41.262860"
+}

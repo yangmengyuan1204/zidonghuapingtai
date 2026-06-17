@@ -1,0 +1,251 @@
+{
+  "case_name": "搜索功能-按保管天数精确搜索",
+  "page_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse"
+    },
+    {
+      "name": "等待长租仓库页面完全加载",
+      "action": "wait",
+      "value": 2000,
+      "timeout": 10000
+    },
+    {
+      "name": "在保管天数输入框输入数字",
+      "action": "input",
+      "value": "30",
+      "locator": "input[placeholder*=\"保管天数\"]",
+      "fallback_locators": [
+        "input[placeholder*=\"storage day\"]",
+        "input[aria-label*=\"保管天数\"]"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "点击搜索按钮",
+      "action": "click",
+      "locator": "button:has-text(\"搜索\")",
+      "fallback_locators": [
+        "span:has-text(\"搜索\")",
+        "text=搜索"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "验证表格显示保管天数为30的箱子数据",
+      "action": "text_assert",
+      "locator": "td:has-text(\"30\")",
+      "value": "30",
+      "fallback_locators": [
+        "div[class*=\"row\"]:has-text(\"30\")",
+        "text=30"
+      ],
+      "optional": false,
+      "timeout": 10000
+    },
+    {
+      "name": "截取搜索后页面截图",
+      "action": "screenshot",
+      "value": "screenshot_search_result.png"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1781596347,
+    "datetime": "2026-06-16 15:52:27",
+    "date": "2026-06-16",
+    "uuid": "0e4d3978-5fdd-4ae1-a1d4-8976de6bb124",
+    "random_int": 879226,
+    "random_str": "w6l9po02",
+    "random_phone": "13546350687",
+    "random_email": "test_879226@example.com",
+    "$timestamp": 1781596347,
+    "$datetime": "2026-06-16 15:52:27",
+    "$date": "2026-06-16",
+    "$uuid": "0e4d3978-5fdd-4ae1-a1d4-8976de6bb124",
+    "$random_int": 879226,
+    "$random_str": "w6l9po02",
+    "$random_phone": "13546350687",
+    "$random_email": "test_879226@example.com",
+    "username": "Y001",
+    "password": "***"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "started_at": "2026-06-16 15:53:04.303715",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 首页 关联系统 汇率:0语言 : 大舘 正在加载，请稍等... 正在加载，请稍等...",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-2059dc62-33d9-4db8-a142-027b62efde78.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 首页 关联系统 汇率:0语言 : 大舘 正在加载，请稍等...",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-3f204362-6209-42ad-9e16-7b1b4a230ea9.png",
+      "duration_ms": 287,
+      "finished_at": "2026-06-16 15:53:04.591095",
+      "index": 1
+    },
+    {
+      "name": "等待长租仓库页面完全加载",
+      "action": "wait",
+      "locator": "",
+      "fallback_locators": [],
+      "value": 2000,
+      "started_at": "2026-06-16 15:53:04.599521",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 首页 关联系统 汇率:0语言 : 大舘 正在加载，请稍等...",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-69fb8695-5199-489d-a8f2-0b08f760e0e6.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-bde89ac9-2789-4d77-8b6b-25a92f037411.png",
+      "duration_ms": 2238,
+      "finished_at": "2026-06-16 15:53:06.837622",
+      "index": 2
+    },
+    {
+      "name": "在保管天数输入框输入数字",
+      "action": "input",
+      "locator": "input[placeholder*=\"保管天数\"]",
+      "fallback_locators": [
+        "input[placeholder*=\"storage day\"]",
+        "input[aria-label*=\"保管天数\"]"
+      ],
+      "value": "30",
+      "started_at": "2026-06-16 15:53:07.168535",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-3018110c-0739-46eb-85b2-9f7da131d420.png",
+      "used_locator": "input[placeholder*=\"保管天数\"]",
+      "matched_count": 1,
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 1 ID：300001 小杨测试 2026061517095887-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 1111*22*33 2026-06-16 13:30:48 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 2 ID：300001 小杨测试 2026061516094011-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 100*200*300 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 3 ID：300001 小杨测试 2026061516094011-300001-7 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*41 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 4 ID：300001 小杨测试 2026061516094011-300001-6 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*40 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 5 ID：300001 小杨测试 202606151",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-54979735-e4e7-470b-930d-90bcfe5422d8.png",
+      "duration_ms": 10109,
+      "finished_at": "2026-06-16 15:53:17.278109",
+      "index": 3
+    },
+    {
+      "name": "点击搜索按钮",
+      "action": "click",
+      "locator": "button:has-text(\"搜索\")",
+      "fallback_locators": [
+        "span:has-text(\"搜索\")",
+        "text=搜索",
+        "a:has-text(\"搜索\")",
+        "[role=\"button\"]:has-text(\"搜索\")",
+        "input[type=\"button\"][value*=\"搜索\"]",
+        "input[type=\"submit\"][value*=\"搜索\"]"
+      ],
+      "value": null,
+      "started_at": "2026-06-16 15:53:17.868608",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 1 ID：300001 小杨测试 2026061517095887-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 1111*22*33 2026-06-16 13:30:48 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 2 ID：300001 小杨测试 2026061516094011-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 100*200*300 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 3 ID：300001 小杨测试 2026061516094011-300001-7 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*41 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 4 ID：300001 小杨测试 2026061516094011-300001-6 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*40 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 5 ID：300001 小杨测试 202606151",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-1bc98c92-5df9-4c25-a61d-169a9164d1b6.png",
+      "used_locator": "button:has-text(\"搜索\")",
+      "matched_count": 1,
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 1 ID：300001 小杨测试 2026061517095887-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 1111*22*33 2026-06-16 13:30:48 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 2 ID：300001 小杨测试 2026061516094011-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 100*200*300 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 3 ID：300001 小杨测试 2026061516094011-300001-7 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*41 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 4 ID：300001 小杨测试 2026061516094011-300001-6 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*40 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 5 ID：300001 小杨测试 202606151",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-4e9a2582-6d36-42cc-8838-3c9b0a58f2de.png",
+      "duration_ms": 1429,
+      "finished_at": "2026-06-16 15:53:19.298420",
+      "index": 4
+    },
+    {
+      "name": "验证表格显示保管天数为30的箱子数据",
+      "action": "text_assert",
+      "locator": "td:has-text(\"30\")",
+      "fallback_locators": [
+        "div[class*=\"row\"]:has-text(\"30\")",
+        "text=30"
+      ],
+      "value": "30",
+      "started_at": "2026-06-16 15:53:19.823664",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 1 ID：300001 小杨测试 2026061517095887-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 1111*22*33 2026-06-16 13:30:48 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 2 ID：300001 小杨测试 2026061516094011-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 100*200*300 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 3 ID：300001 小杨测试 2026061516094011-300001-7 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*41 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 4 ID：300001 小杨测试 2026061516094011-300001-6 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*40 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 5 ID：300001 小杨测试 202606151",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-dbcd8310-ec6b-4ce3-ae44-14c0e0c4c01a.png",
+      "used_locator": "text=30",
+      "matched_count": 119,
+      "healed": true,
+      "original_locator": "td:has-text(\"30\")",
+      "suggested_locator": "text=30",
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 1 ID：300001 小杨测试 2026061517095887-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 1111*22*33 2026-06-16 13:30:48 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 2 ID：300001 小杨测试 2026061516094011-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 100*200*300 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 3 ID：300001 小杨测试 2026061516094011-300001-7 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*41 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 4 ID：300001 小杨测试 2026061516094011-300001-6 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*40 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 5 ID：300001 小杨测试 202606151",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-759ac141-548c-4d6b-9417-4efa0f2ca74a.png",
+      "duration_ms": 13188,
+      "finished_at": "2026-06-16 15:53:33.012400",
+      "index": 5
+    },
+    {
+      "name": "截取搜索后页面截图",
+      "action": "screenshot",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "screenshot_search_result.png",
+      "started_at": "2026-06-16 15:53:33.012916",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 1 ID：300001 小杨测试 2026061517095887-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 1111*22*33 2026-06-16 13:30:48 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 2 ID：300001 小杨测试 2026061516094011-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 100*200*300 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 3 ID：300001 小杨测试 2026061516094011-300001-7 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*41 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 4 ID：300001 小杨测试 2026061516094011-300001-6 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*40 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 5 ID：300001 小杨测试 202606151",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-6654b965-5220-49ca-bc60-f86cd53253a0.png",
+      "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\53d9d3f4-0ccc-4db5-9c6e-75bae9469b53.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 1 ID：300001 小杨测试 2026061517095887-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 1111*22*33 2026-06-16 13:30:48 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 2 ID：300001 小杨测试 2026061516094011-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 100*200*300 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 3 ID：300001 小杨测试 2026061516094011-300001-7 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*41 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 4 ID：300001 小杨测试 2026061516094011-300001-6 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*40 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 5 ID：300001 小杨测试 202606151",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-9bf386bd-6068-48ac-98de-414b4a9fff76.png",
+      "duration_ms": 3303,
+      "finished_at": "2026-06-16 15:53:36.316275",
+      "index": 6
+    }
+  ],
+  "started_at": "2026-06-16 15:52:27.444749",
+  "retry_config": {
+    "retry_count": 2,
+    "retry_interval_ms": 1000
+  },
+  "auth_context": {
+    "login_required": true,
+    "account_profile_id": 2,
+    "login_url": "",
+    "removed_login_step_count": 0,
+    "login_trace": [
+      "打开登录页：https://jpmanage.rakumart.cn/#/login",
+      "已填写登录账号：input[type=\"text\"]",
+      "已填写登录密码：input[placeholder=\"请输入密码\"]",
+      "已点击登录按钮：text=登录",
+      "首次提交后当前页面：https://jpmanage.rakumart.cn/#/login",
+      "首次点击后仍在登录页，已尝试按 Enter 再次提交",
+      "Enter 提交后当前页面：https://jpmanage.rakumart.cn/#/login",
+      "Enter 提交后仍在登录页，已尝试强制点击登录按钮",
+      "强制点击后当前页面：https://jpmanage.rakumart.cn/#/login",
+      "登录后当前页面：https://jpmanage.rakumart.cn/#/homePage"
+    ]
+  },
+  "finished_at": "2026-06-16 15:53:36.676098",
+  "verification": {
+    "screenshot_ok": true,
+    "url_ok": true,
+    "business_ok": true
+  },
+  "verification_status": "trusted_passed",
+  "business_verification": {
+    "business_assertion_count": 1,
+    "final_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+    "final_text_excerpt": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 1 ID：300001 小杨测试 2026061517095887-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 1111*22*33 2026-06-16 13:30:48 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 2 ID：300001 小杨测试 2026061516094011-300001-8 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 100*200*300 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 3 ID：300001 小杨测试 2026061516094011-300001-7 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*41 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 4 ID：300001 小杨测试 2026061516094011-300001-6 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 20*20*40 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 5 ID：300001 小杨测试 2026061516094011-300001-5 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 10*20*11 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 6 ID：300001 小杨测试 2026061516094011-300001-4 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 10*20*10 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 7 ID：300001 小杨测试 2026061516094011-300001-3 展开 【小杨专属仓库.1.1-0003】-3-5-1 1 1 10 3*3*5 2026-06-15 16:20:37 0 10 0 0 大舘 业务：沈文妮 采购：沈振伟 配货：王玉山 8 ID：300001 "
+  },
+  "verification_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\fe682a10-9890-461e-9214-993296c6b23f.png"
+}

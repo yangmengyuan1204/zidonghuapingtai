@@ -1,0 +1,235 @@
+{
+  "case_name": "UI兼容性：不同分辨率显示",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "screenshot",
+      "value": "screenshot-1920x1080.png"
+    },
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "screenshot",
+      "value": "screenshot-1366x768.png"
+    },
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "screenshot",
+      "value": "screenshot-375x667.png"
+    },
+    {
+      "action": "assert_url",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780907175,
+    "datetime": "2026-06-08 16:26:15",
+    "date": "2026-06-08",
+    "uuid": "e6b730e4-6b03-46a5-922f-268d3a54404e",
+    "random_int": 656716,
+    "random_str": "3z251b2t",
+    "random_phone": "13555115389",
+    "random_email": "test_656716@example.com",
+    "$timestamp": 1780907175,
+    "$datetime": "2026-06-08 16:26:15",
+    "$date": "2026-06-08",
+    "$uuid": "e6b730e4-6b03-46a5-922f-268d3a54404e",
+    "$random_int": 656716,
+    "$random_str": "3z251b2t",
+    "$random_phone": "13555115389",
+    "$random_email": "test_656716@example.com"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited",
+      "started_at": "2026-06-08 16:26:15.876793",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 1059,
+      "finished_at": "2026-06-08 16:26:16.936207",
+      "index": 1
+    },
+    {
+      "name": "等待",
+      "action": "wait",
+      "locator": "",
+      "fallback_locators": [],
+      "value": 2000,
+      "started_at": "2026-06-08 16:26:16.936230",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 2013,
+      "finished_at": "2026-06-08 16:26:18.949310",
+      "index": 2
+    },
+    {
+      "name": "截图",
+      "action": "screenshot",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "screenshot-1920x1080.png",
+      "started_at": "2026-06-08 16:26:18.949341",
+      "status": "passed",
+      "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\e66a3fee-3249-4b9f-99af-432774f1d702.png",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 204,
+      "finished_at": "2026-06-08 16:26:19.154146",
+      "index": 3
+    },
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited",
+      "started_at": "2026-06-08 16:26:19.154181",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 1038,
+      "finished_at": "2026-06-08 16:26:20.192747",
+      "index": 4
+    },
+    {
+      "name": "等待",
+      "action": "wait",
+      "locator": "",
+      "fallback_locators": [],
+      "value": 2000,
+      "started_at": "2026-06-08 16:26:20.192779",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 2033,
+      "finished_at": "2026-06-08 16:26:22.226634",
+      "index": 5
+    },
+    {
+      "name": "截图",
+      "action": "screenshot",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "screenshot-1366x768.png",
+      "started_at": "2026-06-08 16:26:22.226679",
+      "status": "passed",
+      "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\455b62bd-2f99-4f1f-ad73-f940bd52dfe8.png",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 332,
+      "finished_at": "2026-06-08 16:26:22.558655",
+      "index": 6
+    },
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited",
+      "started_at": "2026-06-08 16:26:22.558695",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 1356,
+      "finished_at": "2026-06-08 16:26:23.915354",
+      "index": 7
+    },
+    {
+      "name": "等待",
+      "action": "wait",
+      "locator": "",
+      "fallback_locators": [],
+      "value": 2000,
+      "started_at": "2026-06-08 16:26:23.915396",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 2016,
+      "finished_at": "2026-06-08 16:26:25.931538",
+      "index": 8
+    },
+    {
+      "name": "截图",
+      "action": "screenshot",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "screenshot-375x667.png",
+      "started_at": "2026-06-08 16:26:25.931571",
+      "status": "passed",
+      "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\af93d620-c10c-4071-8216-a143697a6aa2.png",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 289,
+      "finished_at": "2026-06-08 16:26:26.221399",
+      "index": 9
+    },
+    {
+      "name": "检查页面地址",
+      "action": "assert_url",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited",
+      "started_at": "2026-06-08 16:26:26.221437",
+      "status": "failed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 12189,
+      "finished_at": "2026-06-08 16:26:38.410702",
+      "error": "assert_url failed: expected contains 'https://promotees.rakumart.cn/customerHasBeenInvited', actual 'https://promotees.rakumart.cn/login'",
+      "category": "页面未跳转或跳转地址不符合预期",
+      "reason": "执行后当前 URL 和预期不一致。",
+      "suggestion": "确认提交是否成功、登录态是否有效、预期跳转地址是否正确。",
+      "index": 10
+    }
+  ],
+  "started_at": "2026-06-08 16:26:15.724749",
+  "error": "检查页面地址失败：页面未跳转或跳转地址不符合预期。执行后当前 URL 和预期不一致。",
+  "error_category": "页面未跳转或跳转地址不符合预期",
+  "failure_reason": "执行后当前 URL 和预期不一致。",
+  "suggestion": "确认提交是否成功、登录态是否有效、预期跳转地址是否正确。",
+  "failed_step_index": 10,
+  "failed_step": {
+    "action": "assert_url",
+    "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+  },
+  "failed_step_detail": {
+    "name": "检查页面地址",
+    "action": "assert_url",
+    "locator": "",
+    "fallback_locators": [],
+    "value": "https://promotees.rakumart.cn/customerHasBeenInvited",
+    "started_at": "2026-06-08 16:26:26.221437",
+    "status": "failed",
+    "current_url": "https://promotees.rakumart.cn/login",
+    "duration_ms": 12189,
+    "finished_at": "2026-06-08 16:26:38.410702",
+    "error": "assert_url failed: expected contains 'https://promotees.rakumart.cn/customerHasBeenInvited', actual 'https://promotees.rakumart.cn/login'",
+    "category": "页面未跳转或跳转地址不符合预期",
+    "reason": "执行后当前 URL 和预期不一致。",
+    "suggestion": "确认提交是否成功、登录态是否有效、预期跳转地址是否正确。",
+    "index": 10
+  },
+  "current_url": "https://promotees.rakumart.cn/login",
+  "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\d6a05563-2b60-482e-b8a4-1fe5dcaea4a9.png",
+  "finished_at": "2026-06-08 16:26:38.649797"
+}

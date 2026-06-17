@@ -1,0 +1,25 @@
+{
+  "script": "订单报价",
+  "mode": "cart_to_order_and_backend_quote",
+  "base_url": "https://oem.rakumart.cn",
+  "item_count": 2,
+  "order_shop_count": 1,
+  "order_per_shop": 2,
+  "use_shop_grouping": true,
+  "item_quantity": 10,
+  "price_cut": "1",
+  "submit_order": true,
+  "run_backend_flow": true,
+  "started_at": "2026-06-09 14:12:14.376103",
+  "selected_items": [],
+  "edits": [],
+  "create": {},
+  "error": "client login failed after 3 attempts: Non-JSON response from https://oem.rakumart.cn/client/userLogin: HTTP 405 <html>\r\n<head><title>405 Not Allowed</title></head>\r\n<body>\r\n<center><h1>405 Not Allowed</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n",
+  "summary": {
+    "order_sn": "",
+    "selected_count": 0,
+    "item_quantity": 10,
+    "error": "client login failed after 3 attempts: Non-JSON response from https://oem.rakumart.cn/client/userLogin: HTTP 405 <html>\r\n<head><title>405 Not Allowed</title></head>\r\n<body>\r\n<center><h1>405 Not Allowed</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+  },
+  "finished_at": "2026-06-09 14:12:16.947089"
+}

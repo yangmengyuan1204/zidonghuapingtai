@@ -1,0 +1,27 @@
+{
+  "uuid": "5e16be93-9f6e-4801-bfb3-c2f8437200a8",
+  "name": "搜索功能-重置按钮清空所有搜索条件并刷新表格",
+  "fullName": "ui.搜索功能-重置按钮清空所有搜索条件并刷新表格",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781596647420,
+  "stop": 1781596647420,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "5e16be93-9f6e-4801-bfb3-c2f8437200a8-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "5e16be93-9f6e-4801-bfb3-c2f8437200a8-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

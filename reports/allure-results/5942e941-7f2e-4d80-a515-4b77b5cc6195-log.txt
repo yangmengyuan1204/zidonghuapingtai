@@ -1,0 +1,86 @@
+{
+  "script": "待拍下到商品上架(组合脚本)",
+  "mode": "chain_execution",
+  "started_at": "2026-06-12 13:58:28.128536",
+  "steps": [
+    {
+      "step": 1,
+      "script": "订单报价",
+      "passed": true,
+      "summary": {
+        "order_sn": "2026061213582920-300001",
+        "selected_count": 2,
+        "item_quantity": 10,
+        "submit_order": true,
+        "run_backend_flow": true,
+        "cart_ids": [
+          1128039,
+          1127985
+        ],
+        "goods_ids": [
+          "1050329507287",
+          "1051769454068"
+        ],
+        "expected_shop_count": 1,
+        "expected_per_shop": 2,
+        "selected_shop_count": 1,
+        "available_shop_count": 44,
+        "ready_shop_count": 32,
+        "backend_passed": true,
+        "backend_steps": [
+          "login",
+          "detail",
+          "translate",
+          "confirm",
+          "offer"
+        ],
+        "quote_unit_price": "10",
+        "backend_status": 30
+      }
+    },
+    {
+      "step": 2,
+      "script": "余额支付",
+      "passed": true,
+      "summary": {
+        "payment_type": "balance",
+        "order_sn": "2026061213582920-300001",
+        "pay_amount": "4431",
+        "payment_passed": true,
+        "serial_number": "178124392113000300001421"
+      }
+    },
+    {
+      "step": 3,
+      "script": "待拍下到商品上架",
+      "passed": true,
+      "summary": {
+        "order_sn": "2026061213582920-300001",
+        "purchase_no": "20260612135844",
+        "selected_count": 2,
+        "purchase_ids": [
+          15327298,
+          15327299
+        ],
+        "grid_id": 12438,
+        "grid_number": "【三部-FBA.1.1-FBA-003】-1-6-3",
+        "storage_count": 2,
+        "storage_passed": true,
+        "verify_passed": true,
+        "remaining_purchase_count": 0,
+        "remaining_pending_count": 0
+      }
+    }
+  ],
+  "shared_data": {
+    "order_sn": "2026061213582920-300001"
+  },
+  "finished_at": "2026-06-12 13:59:04.776665",
+  "summary": {
+    "passed": true,
+    "order_sn": "2026061213582920-300001",
+    "purchase_no": "20260612135844",
+    "total_steps": 3,
+    "success_steps": 3
+  }
+}

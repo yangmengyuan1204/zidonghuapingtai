@@ -1,0 +1,61 @@
+{
+  "case_name": "异常流程：搜索无结果",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "input",
+      "locator": "input[placeholder=\"邮箱/手机号\"]",
+      "value": "不存在的客户信息"
+    },
+    {
+      "action": "click",
+      "locator": "text=搜索"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "assert_visible",
+      "locator": "text=暂无数据"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780652186,
+    "datetime": "2026-06-05 17:36:26",
+    "date": "2026-06-05",
+    "uuid": "9a24d80f-fda5-42cb-952d-c314bc82cb4c",
+    "random_int": 295092,
+    "random_str": "y1x5zt3i",
+    "random_phone": "13292041724",
+    "random_email": "test_295092@example.com",
+    "$timestamp": 1780652186,
+    "$datetime": "2026-06-05 17:36:26",
+    "$date": "2026-06-05",
+    "$uuid": "9a24d80f-fda5-42cb-952d-c314bc82cb4c",
+    "$random_int": 295092,
+    "$random_str": "y1x5zt3i",
+    "$random_phone": "13292041724",
+    "$random_email": "test_295092@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "rakumart888"
+  },
+  "started_at": "2026-06-05 17:36:26.996864",
+  "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"text=搜索\")\n",
+  "failed_step_index": 4,
+  "failed_step": {
+    "action": "click",
+    "locator": "text=搜索"
+  },
+  "finished_at": "2026-06-05 17:37:09.132334"
+}

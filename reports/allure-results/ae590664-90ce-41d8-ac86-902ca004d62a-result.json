@@ -1,0 +1,22 @@
+{
+  "uuid": "ae590664-90ce-41d8-ac86-902ca004d62a",
+  "name": "test-搜索商品",
+  "fullName": "api.test-搜索商品",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780281091525,
+  "stop": 1780281091525,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "ae590664-90ce-41d8-ac86-902ca004d62a-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

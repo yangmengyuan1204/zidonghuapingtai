@@ -1,0 +1,76 @@
+{
+  "case_name": "UI兼容性：不同分辨率显示",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "screenshot",
+      "value": "screenshot-1920x1080.png"
+    },
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "screenshot",
+      "value": "screenshot-1366x768.png"
+    },
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "screenshot",
+      "value": "screenshot-375x667.png"
+    },
+    {
+      "action": "assert_url",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780652252,
+    "datetime": "2026-06-05 17:37:32",
+    "date": "2026-06-05",
+    "uuid": "6c8984d3-a674-46df-95fb-19470837b163",
+    "random_int": 154877,
+    "random_str": "5dr1bnm5",
+    "random_phone": "13564957871",
+    "random_email": "test_154877@example.com",
+    "$timestamp": 1780652252,
+    "$datetime": "2026-06-05 17:37:32",
+    "$date": "2026-06-05",
+    "$uuid": "6c8984d3-a674-46df-95fb-19470837b163",
+    "$random_int": 154877,
+    "$random_str": "5dr1bnm5",
+    "$random_phone": "13564957871",
+    "$random_email": "test_154877@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "rakumart888"
+  },
+  "started_at": "2026-06-05 17:37:32.494944",
+  "error": "assert_url failed: expected contains 'https://promotees.rakumart.cn/customerHasBeenInvited', actual 'https://promotees.rakumart.cn/login'",
+  "failed_step_index": 10,
+  "failed_step": {
+    "action": "assert_url",
+    "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+  },
+  "finished_at": "2026-06-05 17:37:53.220584"
+}

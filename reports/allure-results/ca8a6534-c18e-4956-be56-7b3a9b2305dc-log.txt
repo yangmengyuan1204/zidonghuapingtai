@@ -1,0 +1,4921 @@
+{
+  "script": "订单报价",
+  "mode": "cart_to_order",
+  "base_url": "https://jpapi.rakumart.cn",
+  "item_count": 2,
+  "item_quantity": 10,
+  "price_cut": "0",
+  "submit_order": true,
+  "started_at": "2026-06-01 16:27:54.556104",
+  "selected_items": [
+    {
+      "cart_id": 1127926,
+      "goods_id": "520137009533",
+      "goods_title": "厂家现货供应冬季真羊毛鞋垫纯羊毛皮毛一体男女保暖雪地靴鞋垫",
+      "num": 2,
+      "price": "7.50",
+      "sku_id": "5878564720680",
+      "spec_id": "bbcaa24fc7e8d2aadb0326d68158ada5",
+      "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+      "shop_name": "威县庆纯皮毛制品经销处",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1127925,
+      "goods_id": "520137009533",
+      "goods_title": "厂家现货供应冬季真羊毛鞋垫纯羊毛皮毛一体男女保暖雪地靴鞋垫",
+      "num": 2,
+      "price": "7.50",
+      "sku_id": "5878564720683",
+      "spec_id": "f4396182f62cc24fd4b37099b918587e",
+      "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+      "shop_name": "威县庆纯皮毛制品经销处",
+      "from_platform": "1688"
+    }
+  ],
+  "edits": [
+    {
+      "cart_id": 1127926,
+      "goods_id": "520137009533",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1127925,
+      "goods_id": "520137009533",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    }
+  ],
+  "create": {
+    "save": {
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data.order_sn": "2026060116275815-300001",
+      "data.message": "新订单创建成功",
+      "order_sn": "2026060116275815-300001"
+    },
+    "send": {
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data.order_sn": "2026060116275815-300001",
+      "data.message": "新订单创建成功",
+      "order_sn": "2026060116275815-300001"
+    }
+  },
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "cart_list": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "data": [
+      {
+        "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+        "shop_name": "威县庆纯皮毛制品经销处",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127926,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "520137009533",
+            "goods_title": "厂家现货供应冬季真羊毛鞋垫纯羊毛皮毛一体男女保暖雪地靴鞋垫",
+            "price_ranges": [
+              {
+                "priceMin": "7.5",
+                "priceMax": "7.5",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "6.5",
+                "priceMax": "6.5",
+                "startQuantity": 300
+              },
+              {
+                "priceMin": "5.5",
+                "priceMax": "5.5",
+                "startQuantity": 50000
+              }
+            ],
+            "price": "7.50",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01otL91w1kRwyrRbyAJ_!!2362234681-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "真羊毛皮毛一体鞋垫㊖㊎40码"
+              }
+            ],
+            "sku_id": "5878564720680",
+            "spec_id": "bbcaa24fc7e8d2aadb0326d68158ada5",
+            "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+            "shop_name": "威县庆纯皮毛制品经销处",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-520137009533-12",
+            "price_init": "7.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127925,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "520137009533",
+            "goods_title": "厂家现货供应冬季真羊毛鞋垫纯羊毛皮毛一体男女保暖雪地靴鞋垫",
+            "price_ranges": [
+              {
+                "priceMin": "7.5",
+                "priceMax": "7.5",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "6.5",
+                "priceMax": "6.5",
+                "startQuantity": 300
+              },
+              {
+                "priceMin": "5.5",
+                "priceMax": "5.5",
+                "startQuantity": 50000
+              }
+            ],
+            "price": "7.50",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01otL91w1kRwyrRbyAJ_!!2362234681-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "真羊毛皮毛一体鞋垫㊖㊎38码"
+              }
+            ],
+            "sku_id": "5878564720683",
+            "spec_id": "f4396182f62cc24fd4b37099b918587e",
+            "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+            "shop_name": "威县庆纯皮毛制品经销处",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-520137009533-9",
+            "price_init": "7.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127924,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "520137009533",
+            "goods_title": "厂家现货供应冬季真羊毛鞋垫纯羊毛皮毛一体男女保暖雪地靴鞋垫",
+            "price_ranges": [
+              {
+                "priceMin": "7.5",
+                "priceMax": "7.5",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "6.5",
+                "priceMax": "6.5",
+                "startQuantity": 300
+              },
+              {
+                "priceMin": "5.5",
+                "priceMax": "5.5",
+                "startQuantity": 50000
+              }
+            ],
+            "price": "7.50",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01otL91w1kRwyrRbyAJ_!!2362234681-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "真羊毛皮毛一体鞋垫㊖㊎39吗"
+              }
+            ],
+            "sku_id": "5878564720679",
+            "spec_id": "6ef6e36c43c0a6507d423827c6298b96",
+            "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+            "shop_name": "威县庆纯皮毛制品经销处",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-520137009533-6",
+            "price_init": "7.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127923,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "520137009533",
+            "goods_title": "厂家现货供应冬季真羊毛鞋垫纯羊毛皮毛一体男女保暖雪地靴鞋垫",
+            "price_ranges": [
+              {
+                "priceMin": "7.5",
+                "priceMax": "7.5",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "6.5",
+                "priceMax": "6.5",
+                "startQuantity": 300
+              },
+              {
+                "priceMin": "5.5",
+                "priceMax": "5.5",
+                "startQuantity": 50000
+              }
+            ],
+            "price": "7.50",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01otL91w1kRwyrRbyAJ_!!2362234681-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "真羊毛皮毛一体鞋垫㊖㊎36码"
+              }
+            ],
+            "sku_id": "5878564720673",
+            "spec_id": "3c2daebb576bec3e67367d67fd462ac9",
+            "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+            "shop_name": "威县庆纯皮毛制品经销处",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-520137009533-3",
+            "price_init": "7.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127922,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "520137009533",
+            "goods_title": "厂家现货供应冬季真羊毛鞋垫纯羊毛皮毛一体男女保暖雪地靴鞋垫",
+            "price_ranges": [
+              {
+                "priceMin": "7.5",
+                "priceMax": "7.5",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "6.5",
+                "priceMax": "6.5",
+                "startQuantity": 300
+              },
+              {
+                "priceMin": "5.5",
+                "priceMax": "5.5",
+                "startQuantity": 50000
+              }
+            ],
+            "price": "7.50",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01otL91w1kRwyrRbyAJ_!!2362234681-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "真羊毛皮毛一体鞋垫㊖㊎35码"
+              }
+            ],
+            "sku_id": "5878564720674",
+            "spec_id": "4816a99914456d5e2eb6a9de5c80c5cb",
+            "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+            "shop_name": "威县庆纯皮毛制品经销处",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-520137009533-0",
+            "price_init": "7.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+        "shop_name": "乐至县五行鞋业有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127921,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "816626181457",
+            "goods_title": "头层牛皮平底靴女2024年秋冬新款加绒短靴黑色马丁靴瘦瘦靴子",
+            "price_ranges": [
+              {
+                "priceMin": "129.0",
+                "priceMax": "129.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "129.00",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01LKrCHi1kKAFC9QYtd_!!3405334664-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "黑色皮里㊖㊎39"
+              }
+            ],
+            "sku_id": "5514171800936",
+            "spec_id": "cae7da40007a24600f28bf6a907dbca9",
+            "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+            "shop_name": "乐至县五行鞋业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-816626181457-4",
+            "price_init": "129.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127920,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "816626181457",
+            "goods_title": "头层牛皮平底靴女2024年秋冬新款加绒短靴黑色马丁靴瘦瘦靴子",
+            "price_ranges": [
+              {
+                "priceMin": "129.0",
+                "priceMax": "129.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "129.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01LKrCHi1kKAFC9QYtd_!!3405334664-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "黑色皮里㊖㊎38"
+              }
+            ],
+            "sku_id": "5514171800935",
+            "spec_id": "649f0c42b2d657c1d59fdc4ca6c22b1c",
+            "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+            "shop_name": "乐至县五行鞋业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-816626181457-3",
+            "price_init": "129.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127919,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "816626181457",
+            "goods_title": "头层牛皮平底靴女2024年秋冬新款加绒短靴黑色马丁靴瘦瘦靴子",
+            "price_ranges": [
+              {
+                "priceMin": "129.0",
+                "priceMax": "129.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "129.00",
+            "num": 5,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01LKrCHi1kKAFC9QYtd_!!3405334664-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "黑色皮里㊖㊎37"
+              }
+            ],
+            "sku_id": "5514171800934",
+            "spec_id": "28dc19900acfb0aa3b8d6880ec978894",
+            "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+            "shop_name": "乐至县五行鞋业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-816626181457-2",
+            "price_init": "129.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127918,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "816626181457",
+            "goods_title": "头层牛皮平底靴女2024年秋冬新款加绒短靴黑色马丁靴瘦瘦靴子",
+            "price_ranges": [
+              {
+                "priceMin": "129.0",
+                "priceMax": "129.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "129.00",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01LKrCHi1kKAFC9QYtd_!!3405334664-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "黑色皮里㊖㊎36"
+              }
+            ],
+            "sku_id": "5514171800933",
+            "spec_id": "3b2cc516469d3c1188deab5ab362bfe0",
+            "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+            "shop_name": "乐至县五行鞋业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-816626181457-1",
+            "price_init": "129.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127917,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "816626181457",
+            "goods_title": "头层牛皮平底靴女2024年秋冬新款加绒短靴黑色马丁靴瘦瘦靴子",
+            "price_ranges": [
+              {
+                "priceMin": "129.0",
+                "priceMax": "129.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "129.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01LKrCHi1kKAFC9QYtd_!!3405334664-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "黑色皮里㊖㊎35"
+              }
+            ],
+            "sku_id": "5514171800932",
+            "spec_id": "ecd8c6c2cde346c7508ba060b5e5c460",
+            "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+            "shop_name": "乐至县五行鞋业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-816626181457-0",
+            "price_init": "129.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+        "shop_name": "广州市悍戈鞋业有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127916,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "730350667091",
+            "goods_title": "2023运动透气户外登山鞋男防水防滑山地越野跑鞋沙漠徒步鞋作战靴",
+            "price_ranges": [
+              {
+                "priceMin": "299.0",
+                "priceMax": "299.0",
+                "startQuantity": 10
+              }
+            ],
+            "price": "299.00",
+            "num": 10,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01Fichx41Wc70wEUYCa_!!954502808-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "卡其㊖㊎44"
+              }
+            ],
+            "sku_id": "5061919181332",
+            "spec_id": "a26a0b8e03c171f3c2c3692b967c5091",
+            "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+            "shop_name": "广州市悍戈鞋业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-730350667091-4",
+            "price_init": "299.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127915,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "730350667091",
+            "goods_title": "2023运动透气户外登山鞋男防水防滑山地越野跑鞋沙漠徒步鞋作战靴",
+            "price_ranges": [
+              {
+                "priceMin": "299.0",
+                "priceMax": "299.0",
+                "startQuantity": 10
+              }
+            ],
+            "price": "299.00",
+            "num": 10,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01Fichx41Wc70wEUYCa_!!954502808-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "卡其㊖㊎43"
+              }
+            ],
+            "sku_id": "5061919181331",
+            "spec_id": "8ffaf8b75f2e6c7d3372a57d5dbb4532",
+            "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+            "shop_name": "广州市悍戈鞋业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-730350667091-3",
+            "price_init": "299.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127914,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "730350667091",
+            "goods_title": "2023运动透气户外登山鞋男防水防滑山地越野跑鞋沙漠徒步鞋作战靴",
+            "price_ranges": [
+              {
+                "priceMin": "299.0",
+                "priceMax": "299.0",
+                "startQuantity": 10
+              }
+            ],
+            "price": "299.00",
+            "num": 10,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01Fichx41Wc70wEUYCa_!!954502808-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "卡其㊖㊎42"
+              }
+            ],
+            "sku_id": "5061919181330",
+            "spec_id": "77ac052e5c5a48f618ec055e4b9a0c34",
+            "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+            "shop_name": "广州市悍戈鞋业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-730350667091-2",
+            "price_init": "299.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127913,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "730350667091",
+            "goods_title": "2023运动透气户外登山鞋男防水防滑山地越野跑鞋沙漠徒步鞋作战靴",
+            "price_ranges": [
+              {
+                "priceMin": "299.0",
+                "priceMax": "299.0",
+                "startQuantity": 10
+              }
+            ],
+            "price": "299.00",
+            "num": 10,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01Fichx41Wc70wEUYCa_!!954502808-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "卡其㊖㊎41"
+              }
+            ],
+            "sku_id": "5061919181329",
+            "spec_id": "b1a07c7b7bb7751b47bcfff74e525e49",
+            "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+            "shop_name": "广州市悍戈鞋业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-730350667091-1",
+            "price_init": "299.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127912,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "730350667091",
+            "goods_title": "2023运动透气户外登山鞋男防水防滑山地越野跑鞋沙漠徒步鞋作战靴",
+            "price_ranges": [
+              {
+                "priceMin": "299.0",
+                "priceMax": "299.0",
+                "startQuantity": 10
+              }
+            ],
+            "price": "299.00",
+            "num": 10,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01Fichx41Wc70wEUYCa_!!954502808-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "卡其㊖㊎40"
+              }
+            ],
+            "sku_id": "5061919181328",
+            "spec_id": "c4dfdfb7c92bd84b923ffe10d3ee4cf4",
+            "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+            "shop_name": "广州市悍戈鞋业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-730350667091-0",
+            "price_init": "299.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+        "shop_name": "深圳市逗乐趣环保科技有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127911,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "918591585857",
+            "goods_title": "粉色牛仔帽蕾丝靴子波浪壳适用苹果耳机壳AirPods4代/Pro2防摔2代",
+            "price_ranges": [
+              {
+                "priceMin": "4.5",
+                "priceMax": "4.5",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "4.4",
+                "priceMax": "4.4",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "4.2",
+                "priceMax": "4.2",
+                "startQuantity": 500
+              }
+            ],
+            "price": "4.50",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01FYGJYN2C3xWvtMhTT_!!2217710418419-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "粉色+圆环㊖㊎Airpods4代"
+              }
+            ],
+            "sku_id": "5953878982929",
+            "spec_id": "3cf92408e69cb42a8a73f473597d720d",
+            "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+            "shop_name": "深圳市逗乐趣环保科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-918591585857-12",
+            "price_init": "4.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127910,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "918591585857",
+            "goods_title": "粉色牛仔帽蕾丝靴子波浪壳适用苹果耳机壳AirPods4代/Pro2防摔2代",
+            "price_ranges": [
+              {
+                "priceMin": "4.5",
+                "priceMax": "4.5",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "4.4",
+                "priceMax": "4.4",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "4.2",
+                "priceMax": "4.2",
+                "startQuantity": 500
+              }
+            ],
+            "price": "4.50",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01FYGJYN2C3xWvtMhTT_!!2217710418419-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "粉色+圆环㊖㊎Airpods pro2"
+              }
+            ],
+            "sku_id": "5953878982928",
+            "spec_id": "ddfd14f9fbd12a2b6b77c2a45046e132",
+            "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+            "shop_name": "深圳市逗乐趣环保科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-918591585857-9",
+            "price_init": "4.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127909,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "918591585857",
+            "goods_title": "粉色牛仔帽蕾丝靴子波浪壳适用苹果耳机壳AirPods4代/Pro2防摔2代",
+            "price_ranges": [
+              {
+                "priceMin": "4.5",
+                "priceMax": "4.5",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "4.4",
+                "priceMax": "4.4",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "4.2",
+                "priceMax": "4.2",
+                "startQuantity": 500
+              }
+            ],
+            "price": "4.50",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01FYGJYN2C3xWvtMhTT_!!2217710418419-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "粉色+圆环㊖㊎Airpods 3 代"
+              }
+            ],
+            "sku_id": "5953878982927",
+            "spec_id": "1f58d0337f1fc9217756c0884277c3e7",
+            "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+            "shop_name": "深圳市逗乐趣环保科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-918591585857-6",
+            "price_init": "4.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127908,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "918591585857",
+            "goods_title": "粉色牛仔帽蕾丝靴子波浪壳适用苹果耳机壳AirPods4代/Pro2防摔2代",
+            "price_ranges": [
+              {
+                "priceMin": "4.5",
+                "priceMax": "4.5",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "4.4",
+                "priceMax": "4.4",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "4.2",
+                "priceMax": "4.2",
+                "startQuantity": 500
+              }
+            ],
+            "price": "4.50",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01FYGJYN2C3xWvtMhTT_!!2217710418419-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "粉色+圆环㊖㊎Airpods pro"
+              }
+            ],
+            "sku_id": "5953878982926",
+            "spec_id": "fb518e78ccc179f51f798cf886c00ee9",
+            "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+            "shop_name": "深圳市逗乐趣环保科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:25:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-918591585857-3",
+            "price_init": "4.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127853,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "918591585857",
+            "goods_title": "粉色牛仔帽蕾丝靴子波浪壳适用苹果耳机壳AirPods4代/Pro2防摔2代",
+            "price_ranges": [
+              {
+                "priceMin": "4.5",
+                "priceMax": "4.5",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "4.4",
+                "priceMax": "4.4",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "4.2",
+                "priceMax": "4.2",
+                "startQuantity": 500
+              }
+            ],
+            "price": "4.50",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01FYGJYN2C3xWvtMhTT_!!2217710418419-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "粉色+圆环"
+              },
+              {
+                "key": "适用型号",
+                "value": "airpods 1/2代"
+              }
+            ],
+            "sku_id": "5953878982925",
+            "spec_id": "b7bc14d8dd2a44d90807af2c224ec783",
+            "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+            "shop_name": "深圳市逗乐趣环保科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:48:54",
+            "updated_at": "2026-06-01 15:25:22",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "4.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBB9XbXWNPwYbOL2o0-YlzciA",
+        "shop_name": "深圳市奈果数码有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127907,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "989694596752",
+            "goods_title": "蛙蛙水杯适用苹果17PROMAX手机壳iPhone16苹果15/13/12/11通用14",
+            "price_ranges": [
+              {
+                "priceMin": "2.1",
+                "priceMax": "2.1",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "1.9",
+                "priceMax": "1.9",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "1.6",
+                "priceMax": "1.6",
+                "startQuantity": 1000
+              }
+            ],
+            "price": "2.10",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01u3xwRC2F5HZGjossw_!!2218076068828-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "蛙蛙水杯【古董白小麦壳】㊖㊎苹果16PROMAX"
+              }
+            ],
+            "sku_id": "6119648338075",
+            "spec_id": "a0c73807bc5b37e03943850f66eca956",
+            "shop_id": "BBB9XbXWNPwYbOL2o0-YlzciA",
+            "shop_name": "深圳市奈果数码有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-989694596752-12",
+            "price_init": "2.10",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127906,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "989694596752",
+            "goods_title": "蛙蛙水杯适用苹果17PROMAX手机壳iPhone16苹果15/13/12/11通用14",
+            "price_ranges": [
+              {
+                "priceMin": "2.1",
+                "priceMax": "2.1",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "1.9",
+                "priceMax": "1.9",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "1.6",
+                "priceMax": "1.6",
+                "startQuantity": 1000
+              }
+            ],
+            "price": "2.10",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01u3xwRC2F5HZGjossw_!!2218076068828-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "蛙蛙水杯【古董白小麦壳】㊖㊎苹果17"
+              }
+            ],
+            "sku_id": "6119648338074",
+            "spec_id": "80b140d0dbaffd884cde631e97054352",
+            "shop_id": "BBB9XbXWNPwYbOL2o0-YlzciA",
+            "shop_name": "深圳市奈果数码有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-989694596752-9",
+            "price_init": "2.10",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127905,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "989694596752",
+            "goods_title": "蛙蛙水杯适用苹果17PROMAX手机壳iPhone16苹果15/13/12/11通用14",
+            "price_ranges": [
+              {
+                "priceMin": "2.1",
+                "priceMax": "2.1",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "1.9",
+                "priceMax": "1.9",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "1.6",
+                "priceMax": "1.6",
+                "startQuantity": 1000
+              }
+            ],
+            "price": "2.10",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01u3xwRC2F5HZGjossw_!!2218076068828-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "蛙蛙水杯【古董白小麦壳】㊖㊎苹果17PRO"
+              }
+            ],
+            "sku_id": "6119648338073",
+            "spec_id": "344f2649b0c852368b76b01373d0a090",
+            "shop_id": "BBB9XbXWNPwYbOL2o0-YlzciA",
+            "shop_name": "深圳市奈果数码有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-989694596752-6",
+            "price_init": "2.10",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127904,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "989694596752",
+            "goods_title": "蛙蛙水杯适用苹果17PROMAX手机壳iPhone16苹果15/13/12/11通用14",
+            "price_ranges": [
+              {
+                "priceMin": "2.1",
+                "priceMax": "2.1",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "1.9",
+                "priceMax": "1.9",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "1.6",
+                "priceMax": "1.6",
+                "startQuantity": 1000
+              }
+            ],
+            "price": "2.10",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01u3xwRC2F5HZGjossw_!!2218076068828-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "蛙蛙水杯【古董白小麦壳】㊖㊎苹果17AIR"
+              }
+            ],
+            "sku_id": "6119648338072",
+            "spec_id": "55e501f6d3469a787dd10ee06510eadb",
+            "shop_id": "BBB9XbXWNPwYbOL2o0-YlzciA",
+            "shop_name": "深圳市奈果数码有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-989694596752-3",
+            "price_init": "2.10",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127903,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "989694596752",
+            "goods_title": "蛙蛙水杯适用苹果17PROMAX手机壳iPhone16苹果15/13/12/11通用14",
+            "price_ranges": [
+              {
+                "priceMin": "2.1",
+                "priceMax": "2.1",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "1.9",
+                "priceMax": "1.9",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "1.6",
+                "priceMax": "1.6",
+                "startQuantity": 1000
+              }
+            ],
+            "price": "2.10",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01u3xwRC2F5HZGjossw_!!2218076068828-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "蛙蛙水杯【古董白小麦壳】㊖㊎苹果17PROMAX"
+              }
+            ],
+            "sku_id": "6119648338071",
+            "spec_id": "f1c4bd68d702a410e76b6f6ed05576ff",
+            "shop_id": "BBB9XbXWNPwYbOL2o0-YlzciA",
+            "shop_name": "深圳市奈果数码有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-989694596752-0",
+            "price_init": "2.10",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBB3DZiNiYnTTummpAv-y_IIA",
+        "shop_name": "长沙宏腾电子商务有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127902,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "631545334177",
+            "goods_title": "动漫明星周边时代少年团肖战伪装学渣水杯幸运礼盒精美礼品",
+            "price_ranges": [
+              {
+                "priceMin": "7.7",
+                "priceMax": "7.7",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "7.5",
+                "priceMax": "7.5",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "6.9",
+                "priceMax": "6.9",
+                "startQuantity": 30000
+              }
+            ],
+            "price": "7.70",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01QiyGMN2Iic37HplvJ_!!4074839320-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "龚俊水杯幸运礼盒"
+              }
+            ],
+            "sku_id": "4938953644284",
+            "spec_id": "9dc31ca47523c523d36f4dcd4dc64c5e",
+            "shop_id": "BBB3DZiNiYnTTummpAv-y_IIA",
+            "shop_name": "长沙宏腾电子商务有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-631545334177-3",
+            "price_init": "7.70",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127901,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "631545334177",
+            "goods_title": "动漫明星周边时代少年团肖战伪装学渣水杯幸运礼盒精美礼品",
+            "price_ranges": [
+              {
+                "priceMin": "7.7",
+                "priceMax": "7.7",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "7.5",
+                "priceMax": "7.5",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "6.9",
+                "priceMax": "6.9",
+                "startQuantity": 30000
+              }
+            ],
+            "price": "7.70",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01QiyGMN2Iic37HplvJ_!!4074839320-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "INTO1水杯幸运礼盒"
+              }
+            ],
+            "sku_id": "4938953644282",
+            "spec_id": "9680b0a4f8ef1e6803d2e8dfe5551978",
+            "shop_id": "BBB3DZiNiYnTTummpAv-y_IIA",
+            "shop_name": "长沙宏腾电子商务有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-631545334177-0",
+            "price_init": "7.70",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127900,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "660383478775",
+            "goods_title": "动漫周边判官水杯幸运礼盒水杯明信片写真海报礼盒周边批发",
+            "price_ranges": [
+              {
+                "priceMin": "8.6",
+                "priceMax": "8.6",
+                "startQuantity": 2
+              },
+              {
+                "priceMin": "8.2",
+                "priceMax": "8.2",
+                "startQuantity": 200
+              },
+              {
+                "priceMin": "6.9",
+                "priceMax": "6.9",
+                "startQuantity": 5000
+              }
+            ],
+            "price": "8.60",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01Sg0U7z2Iic5O3ypUo_!!4074839320-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "判官水杯幸运礼盒"
+              }
+            ],
+            "sku_id": "4943525185533",
+            "spec_id": "7e953586aab4509b36980c6ba1529060",
+            "shop_id": "BBB3DZiNiYnTTummpAv-y_IIA",
+            "shop_name": "长沙宏腾电子商务有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-660383478775-0",
+            "price_init": "8.60",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127899,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "652638535523",
+            "goods_title": "明星周边INTO1水杯幸运礼盒礼品海报明信片写真带水杯礼盒",
+            "price_ranges": [
+              {
+                "priceMin": "8.6",
+                "priceMax": "8.6",
+                "startQuantity": 2
+              },
+              {
+                "priceMin": "8.4",
+                "priceMax": "8.4",
+                "startQuantity": 200
+              },
+              {
+                "priceMin": "6.9",
+                "priceMax": "6.9",
+                "startQuantity": 5000
+              }
+            ],
+            "price": "8.60",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01DbaiQK2Iic5M34Gow_!!4074839320-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "INTO1水杯幸运礼盒"
+              }
+            ],
+            "sku_id": "5115671795286",
+            "spec_id": "9680b0a4f8ef1e6803d2e8dfe5551978",
+            "shop_id": "BBB3DZiNiYnTTummpAv-y_IIA",
+            "shop_name": "长沙宏腾电子商务有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-652638535523-0",
+            "price_init": "8.60",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127898,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "652644203474",
+            "goods_title": "明星周边刘宇水杯幸运礼盒礼品带水杯款海报写真明信片",
+            "price_ranges": [
+              {
+                "priceMin": "8.6",
+                "priceMax": "8.6",
+                "startQuantity": 2
+              },
+              {
+                "priceMin": "8.4",
+                "priceMax": "8.4",
+                "startQuantity": 200
+              },
+              {
+                "priceMin": "6.9",
+                "priceMax": "6.9",
+                "startQuantity": 5000
+              }
+            ],
+            "price": "8.60",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01RoOdsa2Iic5HellSy_!!4074839320-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "刘宇水杯幸运礼盒"
+              }
+            ],
+            "sku_id": "4938957084287",
+            "spec_id": "561f7d4e3bbbdd55654f2db8ce31594d",
+            "shop_id": "BBB3DZiNiYnTTummpAv-y_IIA",
+            "shop_name": "长沙宏腾电子商务有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-652644203474-0",
+            "price_init": "8.60",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBB1Kh67P5V4aKAGzY2cM5KFg",
+        "shop_name": "东莞市华昱硅胶制品有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127897,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1044705167244",
+            "goods_title": "奶瓶水杯重力球吸管配件导管组合内胆牛奶杯配件母婴a类工厂供应",
+            "price_ranges": [
+              {
+                "priceMin": "0.7",
+                "priceMax": "4.9",
+                "startQuantity": 1
+              }
+            ],
+            "price": "4.90",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01MXQ2Ty2GqHro98ukK_!!980629066-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "组装内胆（全）"
+              }
+            ],
+            "sku_id": "6235510867276",
+            "spec_id": "b6397c23c38b317178ae00a0690f22c6",
+            "shop_id": "BBB1Kh67P5V4aKAGzY2cM5KFg",
+            "shop_name": "东莞市华昱硅胶制品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1044705167244-4",
+            "price_init": "4.90",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127896,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1044705167244",
+            "goods_title": "奶瓶水杯重力球吸管配件导管组合内胆牛奶杯配件母婴a类工厂供应",
+            "price_ranges": [
+              {
+                "priceMin": "0.7",
+                "priceMax": "4.9",
+                "startQuantity": 1
+              }
+            ],
+            "price": "0.70",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01MXQ2Ty2GqHro98ukK_!!980629066-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "重力球配件【硅胶】规格可选"
+              }
+            ],
+            "sku_id": "6235510867275",
+            "spec_id": "bc633a4487c275102ee3bcc1069f759c",
+            "shop_id": "BBB1Kh67P5V4aKAGzY2cM5KFg",
+            "shop_name": "东莞市华昱硅胶制品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1044705167244-3",
+            "price_init": "0.70",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127895,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1044705167244",
+            "goods_title": "奶瓶水杯重力球吸管配件导管组合内胆牛奶杯配件母婴a类工厂供应",
+            "price_ranges": [
+              {
+                "priceMin": "0.7",
+                "priceMax": "4.9",
+                "startQuantity": 1
+              }
+            ],
+            "price": "1.20",
+            "num": 5,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01MXQ2Ty2GqHro98ukK_!!980629066-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "直饮胶管配件【硅胶】规格可选12cm/15cm/20cm"
+              }
+            ],
+            "sku_id": "6235510867274",
+            "spec_id": "6dd5b8076f043f8f65d5788155d4f907",
+            "shop_id": "BBB1Kh67P5V4aKAGzY2cM5KFg",
+            "shop_name": "东莞市华昱硅胶制品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1044705167244-2",
+            "price_init": "1.20",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127894,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1044705167244",
+            "goods_title": "奶瓶水杯重力球吸管配件导管组合内胆牛奶杯配件母婴a类工厂供应",
+            "price_ranges": [
+              {
+                "priceMin": "0.7",
+                "priceMax": "4.9",
+                "startQuantity": 1
+              }
+            ],
+            "price": "2.50",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01MXQ2Ty2GqHro98ukK_!!980629066-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "顶叶片配件【硅胶】规格可选5cm/6cm/8cm"
+              }
+            ],
+            "sku_id": "6235510867273",
+            "spec_id": "d0d80afe00c2606ec3535bb5f95e9d45",
+            "shop_id": "BBB1Kh67P5V4aKAGzY2cM5KFg",
+            "shop_name": "东莞市华昱硅胶制品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1044705167244-1",
+            "price_init": "2.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127893,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1044705167244",
+            "goods_title": "奶瓶水杯重力球吸管配件导管组合内胆牛奶杯配件母婴a类工厂供应",
+            "price_ranges": [
+              {
+                "priceMin": "0.7",
+                "priceMax": "4.9",
+                "startQuantity": 1
+              }
+            ],
+            "price": "3.60",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01MXQ2Ty2GqHro98ukK_!!980629066-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "重力球配件【不锈钢】规格可选"
+              }
+            ],
+            "sku_id": "6235510867272",
+            "spec_id": "dc20103608baaf63b177f89c54f0bd2a",
+            "shop_id": "BBB1Kh67P5V4aKAGzY2cM5KFg",
+            "shop_name": "东莞市华昱硅胶制品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1044705167244-0",
+            "price_init": "3.60",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBB--kZUCX4RxYwBmLfIZRdjQ",
+        "shop_name": "上海瑜晗家居用品有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127892,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "530765068727",
+            "goods_title": "韩国皇冠网红玻璃杯小巧便携水杯少女学生可爱小清新文艺杯子",
+            "price_ranges": [
+              {
+                "priceMin": "6.5",
+                "priceMax": "6.5",
+                "startQuantity": 2
+              }
+            ],
+            "price": "6.50",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2019/980/362/11006263089_121503781.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "粉色㊖㊎401-500ml"
+              }
+            ],
+            "sku_id": "5102387006648",
+            "spec_id": "4769d0bdb3bca7b69897f5d6d68ba546",
+            "shop_id": "BBB--kZUCX4RxYwBmLfIZRdjQ",
+            "shop_name": "上海瑜晗家居用品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-530765068727-0",
+            "price_init": "6.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127891,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "45046143410",
+            "goods_title": "卡通玻璃杯可爱清新森系耐高温水杯韩版学生粉色小兔带盖勺玻璃杯",
+            "price_ranges": [
+              {
+                "priceMin": "7.0",
+                "priceMax": "7.0",
+                "startQuantity": 2
+              }
+            ],
+            "price": "7.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2020/838/380/16239083838_121503781.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "随机㊖㊎401-500ml"
+              }
+            ],
+            "sku_id": "4372688372251",
+            "spec_id": "eb4a43e5a1841c8fe0ec67a227f1a2a2",
+            "shop_id": "BBB--kZUCX4RxYwBmLfIZRdjQ",
+            "shop_name": "上海瑜晗家居用品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-45046143410-0",
+            "price_init": "7.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127890,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "520525307104",
+            "goods_title": "萌萌可爱小熊玻璃吸管杯子耐高温透明水杯桌面杯牛奶杯",
+            "price_ranges": [
+              {
+                "priceMin": "7.0",
+                "priceMax": "7.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "7.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN010FWG6k1pKE1SN5DqV_!!6000000005341-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "小熊随机"
+              }
+            ],
+            "sku_id": "4496578481961",
+            "spec_id": "ce6802f3b9ff55851c5292e1656cc040",
+            "shop_id": "BBB--kZUCX4RxYwBmLfIZRdjQ",
+            "shop_name": "上海瑜晗家居用品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-520525307104-0",
+            "price_init": "7.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127889,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "42014766863",
+            "goods_title": "创意可爱陶瓷杯子女学生韩版带盖勺马克杯情侣水杯家用早餐咖啡杯",
+            "price_ranges": [
+              {
+                "priceMin": "6.0",
+                "priceMax": "6.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "6.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2018/190/191/10203191091_121503781.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "随机"
+              }
+            ],
+            "sku_id": "4636036091441",
+            "spec_id": "6490b42d9e24bbc6453a960ccdf71167",
+            "shop_id": "BBB--kZUCX4RxYwBmLfIZRdjQ",
+            "shop_name": "上海瑜晗家居用品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-42014766863-0",
+            "price_init": "6.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127888,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "529390695451",
+            "goods_title": "玻璃杯子 茶杯 水杯饮料杯牛奶杯创意早餐杯",
+            "price_ranges": [
+              {
+                "priceMin": "3.0",
+                "priceMax": "3.0",
+                "startQuantity": 2
+              }
+            ],
+            "price": "3.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2016/686/236/2913632686_121503781.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "透明㊖㊎301-400ml"
+              }
+            ],
+            "sku_id": "3153789774469",
+            "spec_id": "eae4650c60f3a179d507d9658e23d109",
+            "shop_id": "BBB--kZUCX4RxYwBmLfIZRdjQ",
+            "shop_name": "上海瑜晗家居用品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:18:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-529390695451-0",
+            "price_init": "3.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+        "shop_name": "义乌市财酷饰品有限责任公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127887,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1025509410065",
+            "goods_title": "高亮ABS仿珍珠diy首饰米白纯白色穿孔饰品材料服装辅料珍珠批发",
+            "price_ranges": [
+              {
+                "priceMin": "3.8",
+                "priceMax": "6.8",
+                "startQuantity": 2
+              }
+            ],
+            "price": "4.80",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01SclpLq2HrwtSLZQX4_!!2215854619205-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "米白色㊖㊎6mm（100颗）"
+              }
+            ],
+            "sku_id": "6037090997209",
+            "spec_id": "5bd5b202c5b810e9129d770fbc95014e",
+            "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+            "shop_name": "义乌市财酷饰品有限责任公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1025509410065-1",
+            "price_init": "4.80",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127886,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1025509410065",
+            "goods_title": "高亮ABS仿珍珠diy首饰米白纯白色穿孔饰品材料服装辅料珍珠批发",
+            "price_ranges": [
+              {
+                "priceMin": "3.8",
+                "priceMax": "6.8",
+                "startQuantity": 2
+              }
+            ],
+            "price": "3.80",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01SclpLq2HrwtSLZQX4_!!2215854619205-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "米白色㊖㊎4mm（100颗）"
+              }
+            ],
+            "sku_id": "6037090997208",
+            "spec_id": "0ab50ddbd1a50e2aa910d12d89e2eb4f",
+            "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+            "shop_name": "义乌市财酷饰品有限责任公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1025509410065-0",
+            "price_init": "3.80",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127885,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1001609455058",
+            "goods_title": "diy散珠饰品配件塑料珠子手链项链服装米白AB彩色直孔仿珍珠色卡",
+            "price_ranges": [
+              {
+                "priceMin": "5.01",
+                "priceMax": "5.01",
+                "startQuantity": 1
+              }
+            ],
+            "price": "5.01",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN0129n8iz2HrwtbDwqFX_!!2215854619205-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_6a1d310c9bbba321",
+            "spec_id": "rakumart_6a1d310c9bbbd854",
+            "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+            "shop_name": "义乌市财酷饰品有限责任公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1001609455058-0",
+            "price_init": "5.01",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127884,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "998684324411",
+            "goods_title": "diy散珠饰品配件塑料珠子手链项链服装米白AB彩色直孔仿珍珠色卡",
+            "price_ranges": [
+              {
+                "priceMin": "5.01",
+                "priceMax": "5.01",
+                "startQuantity": 1
+              }
+            ],
+            "price": "5.01",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01e8zVXO2HrwtRaaRQk_!!2215854619205-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_6a1d3103ba3a7481",
+            "spec_id": "rakumart_6a1d3103ba3aa154",
+            "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+            "shop_name": "义乌市财酷饰品有限责任公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-998684324411-0",
+            "price_init": "5.01",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127883,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1010615377902",
+            "goods_title": "散珠diy饰品配件塑料珠子手链项链服装米白AB彩色直孔仿珍珠色卡",
+            "price_ranges": [
+              {
+                "priceMin": "5.01",
+                "priceMax": "5.01",
+                "startQuantity": 1
+              }
+            ],
+            "price": "5.01",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01e8zVXO2HrwtRaaRQk_!!2215854619205-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_6a1d3102ae1f5941",
+            "spec_id": "rakumart_6a1d3102ae1f9583",
+            "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+            "shop_name": "义乌市财酷饰品有限责任公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1010615377902-0",
+            "price_init": "5.01",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBwC2Xl-HKRR1tcX8VQubLcQ",
+        "shop_name": "深圳业升印刷制品有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127882,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1197814293",
+            "goods_title": "业升服装尺码标签衣服标码织绣字母标签大小码数标现货码数标可订",
+            "price_ranges": [
+              {
+                "priceMin": "0.04",
+                "priceMax": "4.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "3.00",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01e0kuFb2ImjpfaOkUR_!!1009209329-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "S白单卷100个"
+              }
+            ],
+            "sku_id": "5075017413664",
+            "spec_id": "cc4a741fc1c61e7bf600b9910c1756ff",
+            "shop_id": "BBBwC2Xl-HKRR1tcX8VQubLcQ",
+            "shop_name": "深圳业升印刷制品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1197814293-4",
+            "price_init": "3.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127881,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1197814293",
+            "goods_title": "业升服装尺码标签衣服标码织绣字母标签大小码数标现货码数标可订",
+            "price_ranges": [
+              {
+                "priceMin": "0.04",
+                "priceMax": "4.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "3.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01e0kuFb2ImjpfaOkUR_!!1009209329-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "XS白单卷100个"
+              }
+            ],
+            "sku_id": "5075017413660",
+            "spec_id": "b699c935927245858b25989bb1384747",
+            "shop_id": "BBBwC2Xl-HKRR1tcX8VQubLcQ",
+            "shop_name": "深圳业升印刷制品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1197814293-3",
+            "price_init": "3.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127880,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1197814293",
+            "goods_title": "业升服装尺码标签衣服标码织绣字母标签大小码数标现货码数标可订",
+            "price_ranges": [
+              {
+                "priceMin": "0.04",
+                "priceMax": "4.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "3.00",
+            "num": 5,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01e0kuFb2ImjpfaOkUR_!!1009209329-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "S码黑单卷100个"
+              }
+            ],
+            "sku_id": "5075017413659",
+            "spec_id": "b16ec307cc3f60484cbc9002c844611b",
+            "shop_id": "BBBwC2Xl-HKRR1tcX8VQubLcQ",
+            "shop_name": "深圳业升印刷制品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1197814293-2",
+            "price_init": "3.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127879,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1197814293",
+            "goods_title": "业升服装尺码标签衣服标码织绣字母标签大小码数标现货码数标可订",
+            "price_ranges": [
+              {
+                "priceMin": "0.04",
+                "priceMax": "4.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "3.00",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01e0kuFb2ImjpfaOkUR_!!1009209329-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "M码黑单卷100个"
+              }
+            ],
+            "sku_id": "5075017413655",
+            "spec_id": "d26032965af54ff19f1e240c7cdbbbc9",
+            "shop_id": "BBBwC2Xl-HKRR1tcX8VQubLcQ",
+            "shop_name": "深圳业升印刷制品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1197814293-1",
+            "price_init": "3.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127878,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1197814293",
+            "goods_title": "业升服装尺码标签衣服标码织绣字母标签大小码数标现货码数标可订",
+            "price_ranges": [
+              {
+                "priceMin": "0.04",
+                "priceMax": "4.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "0.04",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01e0kuFb2ImjpfaOkUR_!!1009209329-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "1.2*3.5黑单个"
+              }
+            ],
+            "sku_id": "5075017413657",
+            "spec_id": "819d0168e053745865b6fe91f2233e1f",
+            "shop_id": "BBBwC2Xl-HKRR1tcX8VQubLcQ",
+            "shop_name": "深圳业升印刷制品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-1197814293-0",
+            "price_init": "0.04",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+        "shop_name": "江苏主题派对文化有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127877,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "974740093847",
+            "goods_title": "公主裙女童花边儿童花童粉色婚礼小女孩礼服天使服装连衣裙六一夏",
+            "price_ranges": [
+              {
+                "priceMin": "9.9",
+                "priceMax": "139.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "29.90",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01i7ww3i2CQOyRZmWRL_!!2200589688468-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "绣球蓝翅膀㊖㊎110cm"
+              }
+            ],
+            "sku_id": "6021283713174",
+            "spec_id": "0221f8c04fb5f790f9b1bc67a4b2a695",
+            "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+            "shop_name": "江苏主题派对文化有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-974740093847-4",
+            "price_init": "29.90",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127876,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "974740093847",
+            "goods_title": "公主裙女童花边儿童花童粉色婚礼小女孩礼服天使服装连衣裙六一夏",
+            "price_ranges": [
+              {
+                "priceMin": "9.9",
+                "priceMax": "139.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "9.90",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01i7ww3i2CQOyRZmWRL_!!2200589688468-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "绣球蓝发箍㊖㊎140cm"
+              }
+            ],
+            "sku_id": "6021283713169",
+            "spec_id": "dcc544ed0e0f68438b80d64c77012256",
+            "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+            "shop_name": "江苏主题派对文化有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-974740093847-3",
+            "price_init": "9.90",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127875,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "974740093847",
+            "goods_title": "公主裙女童花边儿童花童粉色婚礼小女孩礼服天使服装连衣裙六一夏",
+            "price_ranges": [
+              {
+                "priceMin": "9.9",
+                "priceMax": "139.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "9.90",
+            "num": 5,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01i7ww3i2CQOyRZmWRL_!!2200589688468-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "绣球蓝发箍㊖㊎130cm"
+              }
+            ],
+            "sku_id": "6021283713168",
+            "spec_id": "fd8c0e23ba49a56758b1797e328f9dad",
+            "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+            "shop_name": "江苏主题派对文化有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-974740093847-2",
+            "price_init": "9.90",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127874,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "974740093847",
+            "goods_title": "公主裙女童花边儿童花童粉色婚礼小女孩礼服天使服装连衣裙六一夏",
+            "price_ranges": [
+              {
+                "priceMin": "9.9",
+                "priceMax": "139.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "9.90",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01i7ww3i2CQOyRZmWRL_!!2200589688468-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "绣球蓝发箍㊖㊎120cm"
+              }
+            ],
+            "sku_id": "6021283713167",
+            "spec_id": "8fd4ffe22a1ab35737f2bbafd1658ab3",
+            "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+            "shop_name": "江苏主题派对文化有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-974740093847-1",
+            "price_init": "9.90",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127873,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "974740093847",
+            "goods_title": "公主裙女童花边儿童花童粉色婚礼小女孩礼服天使服装连衣裙六一夏",
+            "price_ranges": [
+              {
+                "priceMin": "9.9",
+                "priceMax": "139.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "9.90",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01i7ww3i2CQOyRZmWRL_!!2200589688468-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "绣球蓝发箍㊖㊎110cm"
+              }
+            ],
+            "sku_id": "6021283713170",
+            "spec_id": "8fa4db4ae54f8c2b43ab00859f45ab07",
+            "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+            "shop_name": "江苏主题派对文化有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-974740093847-0",
+            "price_init": "9.90",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127864,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1000761107752",
+            "goods_title": "新款三眼仔儿童帽子围巾三件套手套一体围巾毛绒保暖卡通儿童冬季",
+            "price_ranges": [
+              {
+                "priceMin": "55.0",
+                "priceMax": "55.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "55.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN011xp8Ue2CQP0KCmKax_!!2200589688468-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "装扮围巾帽-三眼仔小码"
+              }
+            ],
+            "sku_id": "6187958935106",
+            "spec_id": "3a75e1df34f3bf896510fb6f6d7737da",
+            "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+            "shop_name": "江苏主题派对文化有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 14:26:00",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "55.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_name": "绍兴市灏宇纺织品有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127872,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "563511796746",
+            "goods_title": "尼龙228塔丝隆PVC羽绒服滑雪服冲锋衣面料服装防风防水尼龙布",
+            "price_ranges": [
+              {
+                "priceMin": "30.0",
+                "priceMax": "30.0",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "15.5",
+                "priceMax": "15.5",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "11.5",
+                "priceMax": "11.5",
+                "startQuantity": 1000
+              }
+            ],
+            "price": "30.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/9401455108_1416518273.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "深蓝色"
+              }
+            ],
+            "sku_id": "5000472546325",
+            "spec_id": "1cf8b7358b0145b2d4dd29af7175fcb3",
+            "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+            "shop_name": "绍兴市灏宇纺织品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-563511796746-0",
+            "price_init": "30.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127871,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "656348437945",
+            "goods_title": "加工定制高弹牙签条四面弹面料冲锋衣户外运动防水服装透气",
+            "price_ranges": [
+              {
+                "priceMin": "14.0",
+                "priceMax": "14.0",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "13.0",
+                "priceMax": "13.0",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "12.5",
+                "priceMax": "12.5",
+                "startQuantity": 1000
+              }
+            ],
+            "price": "14.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/15312255123_1416518273.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_6a1d30f083917557",
+            "spec_id": "rakumart_6a1d30f08391a553",
+            "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+            "shop_name": "绍兴市灏宇纺织品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 15:13:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-656348437945-0",
+            "price_init": "14.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127833,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "632970033979",
+            "goods_title": "涤纶阳离子皮肤衣阳涤格子 300T 服装沙滩裤登山格子面料面料",
+            "price_ranges": [
+              {
+                "priceMin": "15.0",
+                "priceMax": "15.0",
+                "startQuantity": 5
+              },
+              {
+                "priceMin": "12.0",
+                "priceMax": "12.0",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "10.5",
+                "priceMax": "10.5",
+                "startQuantity": 1000
+              }
+            ],
+            "price": "15.00",
+            "num": 6,
+            "pic": "https://cbu01.alicdn.com/img/ibank/23213186505_1416518273.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格型号",
+                "value": "-"
+              }
+            ],
+            "sku_id": "4831926797084",
+            "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+            "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+            "shop_name": "绍兴市灏宇纺织品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 11:22:28",
+            "updated_at": "2026-06-01 15:13:21",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "15.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127832,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "705330845479",
+            "goods_title": "75D涤纶菱形格面料布提花面料现货320T外套牛津布服装面料户外服",
+            "price_ranges": [
+              {
+                "priceMin": "35.0",
+                "priceMax": "35.0",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "8.2",
+                "priceMax": "8.2",
+                "startQuantity": 250
+              },
+              {
+                "priceMin": "7.5",
+                "priceMax": "7.5",
+                "startQuantity": 10000
+              }
+            ],
+            "price": "35.00",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01ZN1gXr1n0Pz692nGU_!!3330665027-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格型号",
+                "value": "-"
+              }
+            ],
+            "sku_id": "5136755443479",
+            "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+            "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+            "shop_name": "绍兴市灏宇纺织品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 11:22:27",
+            "updated_at": "2026-06-01 15:13:21",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "35.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127831,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "607170529106",
+            "goods_title": "阳离子镂空四面弹  户外运动面料 涤纶面料 服装面料",
+            "price_ranges": [
+              {
+                "priceMin": "30.0",
+                "priceMax": "30.0",
+                "startQuantity": 5
+              },
+              {
+                "priceMin": "20.0",
+                "priceMax": "20.0",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "17.0",
+                "priceMax": "17.0",
+                "startQuantity": 1000
+              }
+            ],
+            "price": "30.00",
+            "num": 6,
+            "pic": "https://cbu01.alicdn.com/img/ibank/13619267734_1416518273.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格型号",
+                "value": "红色"
+              }
+            ],
+            "sku_id": "5004847899139",
+            "spec_id": "771a294a0c88523fc115e034d398ed7a",
+            "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+            "shop_name": "绍兴市灏宇纺织品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 11:22:26",
+            "updated_at": "2026-06-01 15:13:21",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "30.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127830,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "656348437945",
+            "goods_title": "加工定制高弹牙签条四面弹面料冲锋衣户外运动防水服装透气",
+            "price_ranges": [
+              {
+                "priceMin": "14.0",
+                "priceMax": "14.0",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "13.0",
+                "priceMax": "13.0",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "12.5",
+                "priceMax": "12.5",
+                "startQuantity": 1000
+              }
+            ],
+            "price": "14.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/15312255123_1416518273.400x400.jpg",
+            "detail": [
+              {
+                "key": "属性/规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_6a1cfaf138b3d932",
+            "spec_id": "rakumart_6a1cfaf138b3f220",
+            "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+            "shop_name": "绍兴市灏宇纺织品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 11:22:25",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "14.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+        "shop_name": "义乌市万龙皮具厂",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127870,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "895189380951",
+            "goods_title": "边条服装裤边牙绳箱包家纺包边条校服滚边绳款式多样厂家供应",
+            "price_ranges": [
+              {
+                "priceMin": "2.5",
+                "priceMax": "2.5",
+                "startQuantity": 2000
+              },
+              {
+                "priceMin": "2.3",
+                "priceMax": "2.3",
+                "startQuantity": 3000
+              },
+              {
+                "priceMin": "2.2",
+                "priceMax": "2.2",
+                "startQuantity": 5000
+              }
+            ],
+            "price": "2.50",
+            "num": 2000,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01CLyuXJ2Hhs6muWMqn_!!2216723389183-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_6a1d2afc3b86b542",
+            "spec_id": "rakumart_6a1d2afc3b86e871",
+            "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+            "shop_name": "义乌市万龙皮具厂",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 14:47:34",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-895189380951-0",
+            "price_init": "2.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127869,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "895189380951",
+            "goods_title": "边条服装裤边牙绳箱包家纺包边条校服滚边绳款式多样厂家供应",
+            "price_ranges": [
+              {
+                "priceMin": "2.5",
+                "priceMax": "2.5",
+                "startQuantity": 2000
+              },
+              {
+                "priceMin": "2.3",
+                "priceMax": "2.3",
+                "startQuantity": 3000
+              },
+              {
+                "priceMin": "2.2",
+                "priceMax": "2.2",
+                "startQuantity": 5000
+              }
+            ],
+            "price": "2.50",
+            "num": 2000,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01CLyuXJ2Hhs6muWMqn_!!2216723389183-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_6a1d294e303db751",
+            "spec_id": "rakumart_6a1d294e303dd299",
+            "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+            "shop_name": "义乌市万龙皮具厂",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 1,
+            "created_at": "2026-06-01 14:40:24",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "bulk-895189380951-0",
+            "price_init": "2.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127863,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "895189380951",
+            "goods_title": "边条服装裤边牙绳箱包家纺包边条校服滚边绳款式多样厂家供应",
+            "price_ranges": [
+              {
+                "priceMin": "2.5",
+                "priceMax": "2.5",
+                "startQuantity": 2000
+              },
+              {
+                "priceMin": "2.3",
+                "priceMax": "2.3",
+                "startQuantity": 3000
+              },
+              {
+                "priceMin": "2.2",
+                "priceMax": "2.2",
+                "startQuantity": 5000
+              }
+            ],
+            "price": "2.50",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01CLyuXJ2Hhs6muWMqn_!!2216723389183-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "属性/规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_6a1d258ca5927364",
+            "spec_id": "rakumart_6a1d258ca592b399",
+            "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+            "shop_name": "义乌市万龙皮具厂",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 14:24:12",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "2.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127829,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "895189380951",
+            "goods_title": "边条服装裤边牙绳箱包家纺包边条校服滚边绳款式多样厂家供应",
+            "price_ranges": [
+              {
+                "priceMin": "2.5",
+                "priceMax": "2.5",
+                "startQuantity": 2000
+              },
+              {
+                "priceMin": "2.3",
+                "priceMax": "2.3",
+                "startQuantity": 3000
+              },
+              {
+                "priceMin": "2.2",
+                "priceMax": "2.2",
+                "startQuantity": 5000
+              }
+            ],
+            "price": "2.50",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01CLyuXJ2Hhs6muWMqn_!!2216723389183-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "属性/规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_6a1cfaf029708700",
+            "spec_id": "rakumart_6a1cfaf02970b486",
+            "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+            "shop_name": "义乌市万龙皮具厂",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 11:22:24",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "2.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127824,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "779921684201",
+            "goods_title": "现货直售钥匙包耳机包挂件 口红包包挂件零钱包量大优惠",
+            "price_ranges": [
+              {
+                "priceMin": "5.5",
+                "priceMax": "5.5",
+                "startQuantity": 10
+              },
+              {
+                "priceMin": "3.5",
+                "priceMax": "3.5",
+                "startQuantity": 1000
+              },
+              {
+                "priceMin": "3.0",
+                "priceMax": "3.0",
+                "startQuantity": 5000
+              }
+            ],
+            "price": "5.50",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01ke0du22Hhs9WMbO6U_!!2216723389183-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "粉色"
+              }
+            ],
+            "sku_id": "6065632606215",
+            "spec_id": "b1a1765aa55aec4e02d84ce81ac546d2",
+            "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+            "shop_name": "义乌市万龙皮具厂",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 10:54:20",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "5.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127822,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "894113979896",
+            "goods_title": "新款十字纹PU皮手提带 皮革提手礼盒箱包配件加厚手把多种款式",
+            "price_ranges": [
+              {
+                "priceMin": "0.8",
+                "priceMax": "0.8",
+                "startQuantity": 2000
+              },
+              {
+                "priceMin": "0.65",
+                "priceMax": "0.65",
+                "startQuantity": 3000
+              },
+              {
+                "priceMin": "0.6",
+                "priceMax": "0.6",
+                "startQuantity": 5000
+              }
+            ],
+            "price": "0.80",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01Sz9XXV2Hhs6nhX4wH_!!2216723389183-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "属性/规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_6a1cf459eb67c711",
+            "spec_id": "rakumart_6a1cf459eb67f394",
+            "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+            "shop_name": "义乌市万龙皮具厂",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 10:54:18",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "0.80",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127820,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1031980954450",
+            "goods_title": "新款苹果蓝牙耳机包拼色小书包mini零钱包钥匙扣车载挂饰包挂件",
+            "price_ranges": [
+              {
+                "priceMin": "5.0",
+                "priceMax": "5.0",
+                "startQuantity": 10
+              },
+              {
+                "priceMin": "4.5",
+                "priceMax": "4.5",
+                "startQuantity": 50
+              },
+              {
+                "priceMin": "4.0",
+                "priceMax": "4.0",
+                "startQuantity": 500
+              }
+            ],
+            "price": "5.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01Z1ZTXi2HhsCOudPLG_!!2216723389183-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "黑色"
+              }
+            ],
+            "sku_id": "6212123575248",
+            "spec_id": "f561c4f7cdb23de81fc2303ebf1e8f55",
+            "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+            "shop_name": "义乌市万龙皮具厂",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 10:54:15",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "5.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBqUSNWlOMLbjdhCQvkiEwKw",
+        "shop_name": "东莞市传奇运动用品有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127868,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "895766766680",
+            "goods_title": "热销 潜水帽1.5mm保暖游泳帽户外冲浪浮潜帽子潜水头套",
+            "price_ranges": [
+              {
+                "priceMin": "19.5",
+                "priceMax": "19.5",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "18.5",
+                "priceMax": "18.5",
+                "startQuantity": 200
+              }
+            ],
+            "price": "19.50",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN019ZzXBZ1WXXENz9ki1_!!2095422798-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "尺码",
+                "value": "均码"
+              },
+              {
+                "key": "颜色",
+                "value": "黑色"
+              }
+            ],
+            "sku_id": "5748962849610",
+            "spec_id": "54efcff85dad93d3a2bcec8a21601d09",
+            "shop_id": "BBBqUSNWlOMLbjdhCQvkiEwKw",
+            "shop_name": "东莞市传奇运动用品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 14:26:09",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "19.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBv7fDMmDBpLWxrWlBSVcb2A",
+        "shop_name": "晋州市思诺衣帽有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127867,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "577992090533",
+            "goods_title": "精品纯棉渔夫帽盆帽户外男\\女儿童双面帽子印logo刺绣印刷小黄帽",
+            "price_ranges": [
+              {
+                "priceMin": "10.0",
+                "priceMax": "10.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "10.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/9442808555_1608872997.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "红色"
+              },
+              {
+                "key": "尺码",
+                "value": "S  54学前班"
+              }
+            ],
+            "sku_id": "5054542663093",
+            "spec_id": "fd2bec762ccd1a45a6e62c4e29b05bca",
+            "shop_id": "BBBv7fDMmDBpLWxrWlBSVcb2A",
+            "shop_name": "晋州市思诺衣帽有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 14:26:08",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "10.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBRZ092IB2LJCdI7PiZYaeMA",
+        "shop_name": "深都电子商务(深圳)有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127866,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "676370498564",
+            "goods_title": "大威乐150W自动焊锡机发热芯自动焊锡机配帽子151焊台WSP150烙铁",
+            "price_ranges": [
+              {
+                "priceMin": "26.0",
+                "priceMax": "370.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "350.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01bNP3w31azFNjG8lJp_!!3918063400-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "型号",
+                "value": "150W不带定位发热芯 威乐"
+              }
+            ],
+            "sku_id": "4861660577750",
+            "spec_id": "5005ca9a9c738f8fd0c0477ae0873d86",
+            "shop_id": "BBBRZ092IB2LJCdI7PiZYaeMA",
+            "shop_name": "深都电子商务(深圳)有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 14:26:07",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "350.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBSWXu2ggMgeQcI0VoQJtcuw",
+        "shop_name": "武汉市舒暖科技有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127865,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "651349801722",
+            "goods_title": "电发热护头护颈帽子艾灸热敷男女家用抗寒防风保暖头晕头昏颈椎痛",
+            "price_ranges": [
+              {
+                "priceMin": "188.0",
+                "priceMax": "188.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "188.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01faaaft28uORWVgkkP_!!4227167992-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "【L】"
+              },
+              {
+                "key": "颜色分类",
+                "value": "黑色"
+              }
+            ],
+            "sku_id": "4992006330432",
+            "spec_id": "4e5d67ef2bbd08725d7a2136f2152ad0",
+            "shop_id": "BBBSWXu2ggMgeQcI0VoQJtcuw",
+            "shop_name": "武汉市舒暖科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 14:26:05",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "188.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+        "shop_name": "广东粘力达新材料有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127862,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "592684344857",
+            "goods_title": "ET000粘首饰珠宝饰品水粘耳环DIY发夹布料图标服饰鞋饰手机壳贴钻",
+            "price_ranges": [
+              {
+                "priceMin": "9.0",
+                "priceMax": "9.0",
+                "startQuantity": 2
+              },
+              {
+                "priceMin": "8.0",
+                "priceMax": "8.0",
+                "startQuantity": 300
+              }
+            ],
+            "price": "9.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/10846363913_732132640.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "ET000  80ML"
+              }
+            ],
+            "sku_id": "5115384266125",
+            "spec_id": "d223b64d73d7c8fb7a6c18ee825ae7d6",
+            "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+            "shop_name": "广东粘力达新材料有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 14:02:16",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "9.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127861,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "45783099642",
+            "goods_title": "b7000胶水点钻胶粘鞋皮具工艺品胶水15ml 批发B7000软性胶水",
+            "price_ranges": [
+              {
+                "priceMin": "3.5",
+                "priceMax": "3.5",
+                "startQuantity": 2
+              },
+              {
+                "priceMin": "3.0",
+                "priceMax": "3.0",
+                "startQuantity": 100
+              },
+              {
+                "priceMin": "2.5",
+                "priceMax": "2.5",
+                "startQuantity": 1200
+              }
+            ],
+            "price": "3.50",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2017/859/932/7670239958_732132640.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "B7000  15ml"
+              }
+            ],
+            "sku_id": "5058147618391",
+            "spec_id": "5390b7c9287b941d0c71ccd22e89a709",
+            "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+            "shop_name": "广东粘力达新材料有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 14:02:15",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "3.50",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127860,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "41569708009",
+            "goods_title": "E7000粘接金属皮革塑料饰品diy手机壳瓷器工艺品服饰鞋饰指甲贴钻",
+            "price_ranges": [
+              {
+                "priceMin": "7.0",
+                "priceMax": "7.0",
+                "startQuantity": 2
+              },
+              {
+                "priceMin": "6.5",
+                "priceMax": "6.5",
+                "startQuantity": 180
+              },
+              {
+                "priceMin": "5.8",
+                "priceMax": "5.8",
+                "startQuantity": 360
+              }
+            ],
+            "price": "7.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/7664263770_732132640.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "E7000胶水50ml"
+              }
+            ],
+            "sku_id": "5115435194454",
+            "spec_id": "88d6f64b0144929efb8966141bc2afe2",
+            "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+            "shop_name": "广东粘力达新材料有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 14:02:14",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "7.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127859,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "591917477838",
+            "goods_title": "ET000粘首饰珠宝饰品瓷器耳环DIY手机壳发夹干花布料图标服饰鞋饰",
+            "price_ranges": [
+              {
+                "priceMin": "6.0",
+                "priceMax": "6.0",
+                "startQuantity": 2
+              },
+              {
+                "priceMin": "5.5",
+                "priceMax": "5.5",
+                "startQuantity": 300
+              }
+            ],
+            "price": "6.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2019/319/363/10846363913_732132640.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "ET000  50ML"
+              }
+            ],
+            "sku_id": "4947281345072",
+            "spec_id": "74dfc4fc7ea41ba8222c7ee3193ac78b",
+            "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+            "shop_name": "广东粘力达新材料有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 14:02:13",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "6.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127858,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "522553346676",
+            "goods_title": "强力补鞋胶高粘快速补鞋胶透明软性鞋厂专用运动鞋补鞋胶50ml",
+            "price_ranges": [
+              {
+                "priceMin": "5.0",
+                "priceMax": "5.0",
+                "startQuantity": 2
+              },
+              {
+                "priceMin": "4.5",
+                "priceMax": "4.5",
+                "startQuantity": 360
+              },
+              {
+                "priceMin": "3.8",
+                "priceMax": "3.8",
+                "startQuantity": 3600
+              }
+            ],
+            "price": "5.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/9646104858_732132640.400x400.jpg",
+            "detail": [
+              {
+                "key": "胶体颜色",
+                "value": "透明"
+              },
+              {
+                "key": "规格",
+                "value": "强力补鞋胶 50ml"
+              }
+            ],
+            "sku_id": "5325337556774",
+            "spec_id": "8449a880c4a195bc769577c1f12b79e0",
+            "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+            "shop_name": "广东粘力达新材料有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 14:02:12",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "5.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+        "shop_name": "河南云聚合电子科技有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127857,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "888316147315",
+            "goods_title": "绒皮去污清洁剂翻毛皮鞋皮包雪地靴磨砂皮清洗护理免水测试非卖品",
+            "price_ranges": [
+              {
+                "priceMin": "39.0",
+                "priceMax": "39.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "39.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01FO7TWq21rSY5XGU1J_!!2207529907038-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "2500g"
+              }
+            ],
+            "sku_id": "6019268338985",
+            "spec_id": "44036baced4058d409f034a97e573b79",
+            "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+            "shop_name": "河南云聚合电子科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:48:59",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "39.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127856,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "891117474947",
+            "goods_title": "懒人免刷泡鞋液鞋靴活氧清洁液球鞋家具去黄去污去渍小测试非卖品",
+            "price_ranges": [
+              {
+                "priceMin": "47.0",
+                "priceMax": "47.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "47.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01C9QGex21rSY8TSBNR_!!2207529907038-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色分类",
+                "value": "免刷泡鞋液【5斤】"
+              }
+            ],
+            "sku_id": "6074159760341",
+            "spec_id": "6aaf752ac26b423b60f82b0e1225992b",
+            "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+            "shop_name": "河南云聚合电子科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:48:58",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "47.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127855,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "887734698821",
+            "goods_title": "翻毛皮鞋清洁护理剂麂皮绒面鞋反毛大黄靴雪地靴去渍翻测试非卖品",
+            "price_ranges": [
+              {
+                "priceMin": "36.0",
+                "priceMax": "36.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "36.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01zz4ZTI21rSY1JEbGR_!!2207529907038-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "翻毛皮鞋清洁剂-2500ml"
+              }
+            ],
+            "sku_id": "5927575147895",
+            "spec_id": "2e4adcda2ee1508d2201827c8c62d881",
+            "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+            "shop_name": "河南云聚合电子科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:48:57",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "36.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127854,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "908769743535",
+            "goods_title": "懒人洗鞋泡泡粉鞋靴活氧清洁液球鞋去黄粉刷洗鞋神器小测试非卖品",
+            "price_ranges": [
+              {
+                "priceMin": "24.2",
+                "priceMax": "24.2",
+                "startQuantity": 1
+              }
+            ],
+            "price": "24.20",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01JS4lKO21rSdLJkx3E_!!2207529907038-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "活氧泡鞋粉*1瓶〔500克〕"
+              }
+            ],
+            "sku_id": "6197013530639",
+            "spec_id": "34be70ab914496d30368498d2d5d6d33",
+            "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+            "shop_name": "河南云聚合电子科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:48:55",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "24.20",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBXC6_5Sw5nlnWsPCiqeZEgg",
+        "shop_name": "广州市墨之源新材料有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127852,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "709975892105",
+            "goods_title": "陶氏丙二醇化妆品级 USP/EP 1,2-丙二醇 化妆护肤品清洗剂原料",
+            "price_ranges": [
+              {
+                "priceMin": "30.0",
+                "priceMax": "30.0",
+                "startQuantity": 5
+              },
+              {
+                "priceMin": "27.0",
+                "priceMax": "27.0",
+                "startQuantity": 1000
+              }
+            ],
+            "price": "30.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01CWJiu627mJZsMPy8K_!!2201231717839-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "属性/规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_6a1d1b5d05bad405",
+            "spec_id": "rakumart_6a1d1b5d05bb1753",
+            "shop_id": "BBBXC6_5Sw5nlnWsPCiqeZEgg",
+            "shop_name": "广州市墨之源新材料有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:40:45",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "30.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBCMo9ZGGC9UPX5-GSYUapSA",
+        "shop_name": "广州广佳化工有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127851,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "641281096108",
+            "goods_title": "原装马来西亚椰树牌甘油 丙三醇食品级 USP 优级甘油 广州直销仓",
+            "price_ranges": [
+              {
+                "priceMin": "0.8",
+                "priceMax": "37.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "0.80",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01xCffNE1LFhoihJLDQ_!!2208434331270-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "包装规格",
+                "value": "100G样品，顺丰到付"
+              }
+            ],
+            "sku_id": "6217630663001",
+            "spec_id": "525be1f6bd98a5e4a2a05462757ab5de",
+            "shop_id": "BBBCMo9ZGGC9UPX5-GSYUapSA",
+            "shop_name": "广州广佳化工有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:40:43",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "0.80",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127850,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "863151331349",
+            "goods_title": "现货供应 丙二醇 陶氏丙二醇 抗冻剂 工业级 食品级usp丙二醇",
+            "price_ranges": [
+              {
+                "priceMin": "0.88",
+                "priceMax": "31.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "31.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01d7QmUc1LFi1au9Me0_!!2208434331270-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "包装规格",
+                "value": "1KG"
+              }
+            ],
+            "sku_id": "6170625250228",
+            "spec_id": "bc69b06d4732b163cefb1b9f7ee73f17",
+            "shop_id": "BBBCMo9ZGGC9UPX5-GSYUapSA",
+            "shop_name": "广州广佳化工有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:40:42",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "31.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBNHRY7JifSc4M0Yh61Y8Qwg",
+        "shop_name": "广州美是化工有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127849,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "632472448508",
+            "goods_title": "甘油丙三醇印尼绿宝，食品级甘油USP马来天然甘油一手代理",
+            "price_ranges": [
+              {
+                "priceMin": "10.0",
+                "priceMax": "10.0",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "8.5",
+                "priceMax": "8.5",
+                "startQuantity": 25
+              },
+              {
+                "priceMin": "4.6",
+                "priceMax": "4.6",
+                "startQuantity": 250
+              }
+            ],
+            "price": "10.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2020/855/144/23208441558_1230134120.400x400.jpg",
+            "detail": [
+              {
+                "key": "包装规格",
+                "value": "250公斤"
+              }
+            ],
+            "sku_id": "4689475022200",
+            "spec_id": "399c04512b5ea5374b4c3f3134b61ec4",
+            "shop_id": "BBBNHRY7JifSc4M0Yh61Y8Qwg",
+            "shop_name": "广州美是化工有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:40:41",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "10.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBdTbMPpmpnz-lwwnDzbPIGQ",
+        "shop_name": "广州中宏生物科技有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127848,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "560073485740",
+            "goods_title": "供应 丙二醇 陶氏美国 化妆品级 丙二醇（EP USP）护肤护发原",
+            "price_ranges": [
+              {
+                "priceMin": "33.0",
+                "priceMax": "33.0",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "30.0",
+                "priceMax": "30.0",
+                "startQuantity": 50
+              },
+              {
+                "priceMin": "22.0",
+                "priceMax": "22.0",
+                "startQuantity": 1075
+              }
+            ],
+            "price": "33.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/10360411093_604523798.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "215KG/桶"
+              }
+            ],
+            "sku_id": "5688706913208",
+            "spec_id": "2020a4446e6a346007174b8c59cec0d1",
+            "shop_id": "BBBdTbMPpmpnz-lwwnDzbPIGQ",
+            "shop_name": "广州中宏生物科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:40:40",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "33.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBgQA9rCUn878SmclvhvYI4A",
+        "shop_name": "深圳市旺和微科技有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127847,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "718535226455",
+            "goods_title": "厂家供应开发加工生产充电式电解水杯养生壶控制板PCBA板",
+            "price_ranges": [
+              {
+                "priceMin": "1.0",
+                "priceMax": "1.0",
+                "startQuantity": 50
+              }
+            ],
+            "price": "1.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01u4hF6H1xoTJ3ltF0X_!!2202155536490-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "产品规格",
+                "value": "FF0251"
+              }
+            ],
+            "sku_id": "5613950877888",
+            "spec_id": "b8f0e60a7153b46d144f254f5da36a1c",
+            "shop_id": "BBBgQA9rCUn878SmclvhvYI4A",
+            "shop_name": "深圳市旺和微科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:32:33",
+            "updated_at": "2026-06-01 13:56:24",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "1.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127846,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "718260141964",
+            "goods_title": "消毒液雾化杯电解富氢水杯线路板pcba控制板方案开发电路板抄板",
+            "price_ranges": [
+              {
+                "priceMin": "1.0",
+                "priceMax": "1.0",
+                "startQuantity": 100
+              }
+            ],
+            "price": "1.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01QpyCNB1xoTIqHAriE_!!2202155536490-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "产品规格",
+                "value": "FF0202"
+              }
+            ],
+            "sku_id": "5598177409063",
+            "spec_id": "695873fd2b53f6caa1924aaf0fb8d67e",
+            "shop_id": "BBBgQA9rCUn878SmclvhvYI4A",
+            "shop_name": "深圳市旺和微科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:32:32",
+            "updated_at": "2026-06-01 13:56:23",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "1.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127845,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "718738551848",
+            "goods_title": "深圳浙江实力工厂批发充电式烧水杯保温杯电热水壶电路板PCBA",
+            "price_ranges": [
+              {
+                "priceMin": "1.0",
+                "priceMax": "1.0",
+                "startQuantity": 50
+              }
+            ],
+            "price": "1.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01Ppa4Rs1xoTJ5q7uMA_!!2202155536490-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "产品规格",
+                "value": "FF0305"
+              }
+            ],
+            "sku_id": "5779702158985",
+            "spec_id": "cb9bdb61d7f48c296145271954131f91",
+            "shop_id": "BBBgQA9rCUn878SmclvhvYI4A",
+            "shop_name": "深圳市旺和微科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:32:30",
+            "updated_at": "2026-06-01 13:56:22",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "1.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127844,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "718260141578",
+            "goods_title": "恒温发热保温杯垫控制板pcba方案线路板设计水杯加热垫电路板开发",
+            "price_ranges": [
+              {
+                "priceMin": "1.0",
+                "priceMax": "1.0",
+                "startQuantity": 50
+              }
+            ],
+            "price": "1.00",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01Ppa4Rs1xoTJ5q7uMA_!!2202155536490-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "产品规格",
+                "value": "FH-3298"
+              }
+            ],
+            "sku_id": "5613502325350",
+            "spec_id": "fa171958e3afb8d6510fcd2f0ef3786c",
+            "shop_id": "BBBgQA9rCUn878SmclvhvYI4A",
+            "shop_name": "深圳市旺和微科技有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:32:29",
+            "updated_at": "2026-06-01 13:56:21",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "1.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBB9i8DWTYuy8xSbluKya3CLw",
+        "shop_name": "衡水和远橡塑制品有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127843,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "821224955369",
+            "goods_title": "黑色橡胶垫片耐磨防水螺丝密封平垫圈圆形水杯防滑环保硅橡胶垫圈",
+            "price_ranges": [
+              {
+                "priceMin": "9.9",
+                "priceMax": "9.9",
+                "startQuantity": 10
+              }
+            ],
+            "price": "9.90",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01M5r7Bb1G0zAd6X8DZ_!!2848190561-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "定制"
+              }
+            ],
+            "sku_id": "5700226711241",
+            "spec_id": "2f9e97f56ef80b8bfe3d0f6f219f826a",
+            "shop_id": "BBB9i8DWTYuy8xSbluKya3CLw",
+            "shop_name": "衡水和远橡塑制品有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:32:28",
+            "updated_at": "2026-06-01 13:56:20",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "9.90",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "10010",
+        "shop_name": "义乌市诺通电子商务商行",
+        "shop_type": "rakumart",
+        "goods": [
+          {
+            "id": 1127842,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "12018",
+            "goods_title": "耳钉女韩国气质纯银明星同款小熊耳环可爱萌萌哒个性不对称耳坠",
+            "price_ranges": [
+              {
+                "priceMin": 22.05,
+                "priceMax": 22.05,
+                "startQuantity": 1
+              },
+              {
+                "priceMin": 21.07,
+                "priceMax": 21.07,
+                "startQuantity": 5
+              },
+              {
+                "priceMin": 20.09,
+                "priceMax": 20.09,
+                "startQuantity": 50
+              }
+            ],
+            "price": "22.05",
+            "num": 2,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2017/144/919/4130919441_525500109.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "真白金"
+              }
+            ],
+            "sku_id": "rakumart_b40263c4a3eb9464f246b890f7b3aac2",
+            "spec_id": "rakumart_b40263c4a3eb9464f246b890f7b3aac2",
+            "shop_id": "10010",
+            "shop_name": "义乌市诺通电子商务商行",
+            "from_platform": "rakumart",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:25:55",
+            "updated_at": "2026-06-01 13:37:15",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "22.05",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127828,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "12019",
+            "goods_title": "韩版耳钉女热卖时尚树叶耳环微镶锆石耳饰品S925银针防过敏批发",
+            "price_ranges": [
+              {
+                "priceMin": 13.33,
+                "priceMax": 13.33,
+                "startQuantity": 1
+              },
+              {
+                "priceMin": 12.35,
+                "priceMax": 12.35,
+                "startQuantity": 5
+              },
+              {
+                "priceMin": 11.37,
+                "priceMax": 11.37,
+                "startQuantity": 50
+              }
+            ],
+            "price": "13.33",
+            "num": 5,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2017/623/594/3897495326_525500109.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "真白金"
+              }
+            ],
+            "sku_id": "rakumart_d73490118bb846e59d66fc327253ad52",
+            "spec_id": "rakumart_d73490118bb846e59d66fc327253ad52",
+            "shop_id": "10010",
+            "shop_name": "义乌市诺通电子商务商行",
+            "from_platform": "rakumart",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 10:56:03",
+            "updated_at": "2026-06-01 14:04:18",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "13.33",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127827,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "12021",
+            "goods_title": "S925银针新款半边缺角星星锆石珍珠时尚韩国耳圈耳钉耳环女",
+            "price_ranges": [
+              {
+                "priceMin": 10.29,
+                "priceMax": 10.29,
+                "startQuantity": 1
+              },
+              {
+                "priceMin": 9.8,
+                "priceMax": 9.8,
+                "startQuantity": 5
+              },
+              {
+                "priceMin": 8.82,
+                "priceMax": 8.82,
+                "startQuantity": 50
+              }
+            ],
+            "price": "10.29",
+            "num": 5,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2017/725/547/4189745527_525500109.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "真白金"
+              }
+            ],
+            "sku_id": "rakumart_bc8900b726d1006ec5fd7b5c72f46b6e",
+            "spec_id": "rakumart_bc8900b726d1006ec5fd7b5c72f46b6e",
+            "shop_id": "10010",
+            "shop_name": "义乌市诺通电子商务商行",
+            "from_platform": "rakumart",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 10:55:58",
+            "updated_at": "2026-06-01 14:04:13",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "10.29",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127826,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "12023",
+            "goods_title": "老男孩同款长款个性花朵锆石珍珠短发耳环流苏耳坠纯银耳饰品",
+            "price_ranges": [
+              {
+                "priceMin": 12.74,
+                "priceMax": 12.74,
+                "startQuantity": 1
+              },
+              {
+                "priceMin": 11.76,
+                "priceMax": 11.76,
+                "startQuantity": 5
+              },
+              {
+                "priceMin": 10.78,
+                "priceMax": 10.78,
+                "startQuantity": 50
+              }
+            ],
+            "price": "12.74",
+            "num": 5,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2017/312/551/4638155213_525500109.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "真白金"
+              }
+            ],
+            "sku_id": "rakumart_08313faf09a0d9551e5df4bb81723680",
+            "spec_id": "rakumart_08313faf09a0d9551e5df4bb81723680",
+            "shop_id": "10010",
+            "shop_name": "义乌市诺通电子商务商行",
+            "from_platform": "rakumart",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 10:55:52",
+            "updated_at": "2026-06-01 14:04:08",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "12.74",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127825,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "13911",
+            "goods_title": "S925银针耳钉女气质韩国超闪锆石花朵镶钻耳环日韩防过敏耳饰品",
+            "price_ranges": [
+              {
+                "priceMin": "11.76",
+                "priceMax": "11.76",
+                "startQuantity": "1"
+              }
+            ],
+            "price": "11.76",
+            "num": 5,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2017/540/121/3900121045_525500109.jpg",
+            "detail": [
+              {
+                "key": "手动输入规格",
+                "value": "默认"
+              }
+            ],
+            "sku_id": "rakumart_86c13ff0b9025ddc88f52221f540992b",
+            "spec_id": "rakumart_86c13ff0b9025ddc88f52221f540992b",
+            "shop_id": "10010",
+            "shop_name": "义乌市诺通电子商务商行",
+            "from_platform": "rakumart",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 10:55:47",
+            "updated_at": "2026-06-01 14:04:02",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "11.76",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127819,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "12009",
+            "goods_title": "天地盖首饰包装盒 高档戒指耳钉小盒子 钻石纹饰品纸盒",
+            "price_ranges": [
+              {
+                "priceMin": 1,
+                "priceMax": 1,
+                "startQuantity": 1
+              }
+            ],
+            "price": "1.00",
+            "num": 8,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2017/497/721/4349127794_525500109.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "钻蓝"
+              },
+              {
+                "key": "尺寸",
+                "value": "5&times;5&times;3cm"
+              }
+            ],
+            "sku_id": "rakumart_9735610ad18205fe22913a77dd3a3859",
+            "spec_id": "rakumart_9735610ad18205fe22913a77dd3a3859",
+            "shop_id": "10010",
+            "shop_name": "义乌市诺通电子商务商行",
+            "from_platform": "rakumart",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 10:44:35",
+            "updated_at": "2026-06-01 14:27:42",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "1.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+        "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127841,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1051339007077",
+            "goods_title": "新款925银一滴泪精致悬浮闪钻马眼锆石吊坠锁骨链女2026新款项链",
+            "price_ranges": [
+              {
+                "priceMin": "52.0",
+                "priceMax": "59.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "52.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01U8VWaC29eeVBiYeWq_!!2222199378093-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "白金色项链"
+              },
+              {
+                "key": "纯度",
+                "value": "925银"
+              }
+            ],
+            "sku_id": "6254468671868",
+            "spec_id": "1c68bb734c8012ed704c53e6c6aa9791",
+            "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+            "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:21:22",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "52.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127840,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1053474350307",
+            "goods_title": "中古925银四芒星罗盘项链女款爆闪罗盘锁骨链复古千金感叠戴颈链",
+            "price_ranges": [
+              {
+                "priceMin": "141.0",
+                "priceMax": "148.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "141.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01bnDLBZ29eeVG6GnMy_!!2222199378093-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "金色项链"
+              },
+              {
+                "key": "纯度",
+                "value": "925银"
+              }
+            ],
+            "sku_id": "6258533638821",
+            "spec_id": "583869ac5ef9a625ee706aab21705bb9",
+            "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+            "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:21:21",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "141.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127839,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1053121700384",
+            "goods_title": "925银波浪水滴项链女ins风百搭气质简约毛衣链小众设计轻奢锁骨链",
+            "price_ranges": [
+              {
+                "priceMin": "51.0",
+                "priceMax": "58.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "51.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01hLU6Cx29eeV8ZDhYO_!!2222199378093-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "项链"
+              },
+              {
+                "key": "纯度",
+                "value": "925银"
+              }
+            ],
+            "sku_id": "6250520418978",
+            "spec_id": "33cdecb07f24f0e8c2b4345f46be1826",
+            "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+            "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:21:20",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "51.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127838,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1053452586856",
+            "goods_title": "925银马眼水滴锆石吊坠项链女2026爆款轻奢高级气质精致锁骨链潮",
+            "price_ranges": [
+              {
+                "priceMin": "42.0",
+                "priceMax": "49.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "42.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN014oxwZt29eeVFoZPql_!!2222199378093-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "白金色项链"
+              },
+              {
+                "key": "纯度",
+                "value": "925银"
+              }
+            ],
+            "sku_id": "6094366213706",
+            "spec_id": "1c68bb734c8012ed704c53e6c6aa9791",
+            "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+            "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:21:19",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "42.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127837,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1048110754436",
+            "goods_title": "925银链条不规则碎银子项链小珍珠吊坠2026新款百搭ins锁骨链潮",
+            "price_ranges": [
+              {
+                "priceMin": "50.0",
+                "priceMax": "57.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "50.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN011l1JfJ29eeUy3l54Z_!!2222199378093-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "项链"
+              },
+              {
+                "key": "纯度",
+                "value": "925银"
+              }
+            ],
+            "sku_id": "6242232790288",
+            "spec_id": "33cdecb07f24f0e8c2b4345f46be1826",
+            "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+            "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:21:18",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "50.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127821,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "1052202105665",
+            "goods_title": "925银设计师款牛角包耳钉女韩国ins风小众简约百搭气质日常耳饰品",
+            "price_ranges": [
+              {
+                "priceMin": "86.0",
+                "priceMax": "93.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "86.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01mf0Rwb29eeV8TU4wy_!!2222199378093-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "牛角包-银色耳钉-约3.5g"
+              },
+              {
+                "key": "纯度",
+                "value": "925银"
+              }
+            ],
+            "sku_id": "6086240461912",
+            "spec_id": "0c581672c44cf17bca564045151e58bf",
+            "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+            "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 10:54:17",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "86.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBB51WfbGTe5zf2KRpzmMIL-g",
+        "shop_name": "广州市惠俐机械制造有限责任公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127836,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "545131401158",
+            "goods_title": "雪饼包装机 玩具饰品手机壳包装机 一次性筷子包装机食品包装机",
+            "price_ranges": [
+              {
+                "priceMin": "25000.0",
+                "priceMax": "25000.0",
+                "startQuantity": 1
+              },
+              {
+                "priceMin": "22000.0",
+                "priceMax": "22000.0",
+                "startQuantity": 3
+              }
+            ],
+            "price": "25000.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01ez7cy12AIUhzvC31F_!!2907398180-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "规格",
+                "value": "320"
+              }
+            ],
+            "sku_id": "5312123238776",
+            "spec_id": "fa22a7324d07ffcaed71536db8dcd1bf",
+            "shop_id": "BBB51WfbGTe5zf2KRpzmMIL-g",
+            "shop_name": "广州市惠俐机械制造有限责任公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:14:44",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "25000.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+        "shop_name": "浙江中颖袜业有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127835,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "692898359518",
+            "goods_title": "袜子女秋冬纯棉女士堆堆袜全棉纯色ins潮中筒女袜运动袜棉袜批发",
+            "price_ranges": [
+              {
+                "priceMin": "3.7",
+                "priceMax": "3.7",
+                "startQuantity": 5
+              }
+            ],
+            "price": "3.70",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01wdP03U1nL1iHJaokp_!!2212973605072-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "白色"
+              },
+              {
+                "key": "尺码",
+                "value": "女士均码（34-40码）"
+              }
+            ],
+            "sku_id": "5478576842159",
+            "spec_id": "7bc6d3031687c78cd41d9b13b4c040ce",
+            "shop_id": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+            "shop_name": "浙江中颖袜业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:06:30",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "3.70",
+            "price_update_at": null,
+            "is_black_goods": false
+          },
+          {
+            "id": 1127834,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "905917660179",
+            "goods_title": "夏季薄款袜子女黑白色中筒女袜堆堆棉袜夏天冰丝纯色女士袜子批发",
+            "price_ranges": [
+              {
+                "priceMin": "1.68",
+                "priceMax": "1.68",
+                "startQuantity": 5
+              }
+            ],
+            "price": "1.68",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN01i2PCk61PlXvghqNSg_!!0-item_pic.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "米黄色"
+              },
+              {
+                "key": "尺码",
+                "value": "均码"
+              }
+            ],
+            "sku_id": "5932127978115",
+            "spec_id": "17ff687493a63bd220e777d599446dfb",
+            "shop_id": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+            "shop_name": "浙江中颖袜业有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 13:06:29",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "1.68",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBv-F_tGGY6xKdcjMWM8u-HA",
+        "shop_name": "上海皖盼工程机械有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127823,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "999568529788",
+            "goods_title": "二手小松200挖掘机，出售国产进口挖土机/9成新卡特CAT320D2 包送",
+            "price_ranges": [
+              {
+                "priceMin": "66000.0",
+                "priceMax": "66000.0",
+                "startQuantity": 1
+              }
+            ],
+            "price": "66000.00",
+            "num": 1,
+            "pic": "https://cbu01.alicdn.com/img/ibank/O1CN013OilkK1Sms6Cq6K4e_!!2528402290-0-cib.400x400.jpg",
+            "detail": [
+              {
+                "key": "型号",
+                "value": "200"
+              }
+            ],
+            "sku_id": "5983552236618",
+            "spec_id": "3eb646371438dbbf876e6a8bc38d44ca",
+            "shop_id": "BBBv-F_tGGY6xKdcjMWM8u-HA",
+            "shop_name": "上海皖盼工程机械有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 10:54:19",
+            "updated_at": null,
+            "old_id": 0,
+            "trace": "",
+            "price_init": "66000.00",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      },
+      {
+        "shop_id": "BBBILaFNHoaWx3IH-Us3qZ9bw",
+        "shop_name": "上海柏日国际贸易有限公司",
+        "shop_type": "1688",
+        "goods": [
+          {
+            "id": 1127818,
+            "user_id": 300001,
+            "operation_id": 300001,
+            "goods_id": "473817209",
+            "goods_title": "团购羊绒背心グループを買ってくださいカシミヤベスト",
+            "price_ranges": [
+              {
+                "priceMin": "399.99",
+                "priceMax": "399.99",
+                "startQuantity": 99
+              }
+            ],
+            "price": "399.99",
+            "num": 3,
+            "pic": "https://cbu01.alicdn.com/img/ibank/2014/332/344/1367443233_937719507.400x400.jpg",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "蒙利来羊绒纱90个颜色任选"
+              },
+              {
+                "key": "尺码",
+                "value": "量身定制"
+              }
+            ],
+            "sku_id": "46473869359",
+            "spec_id": "7e85af168bd3ade9e07623747f974a9a",
+            "shop_id": "BBBILaFNHoaWx3IH-Us3qZ9bw",
+            "shop_name": "上海柏日国际贸易有限公司",
+            "from_platform": "1688",
+            "client_remark": null,
+            "from_tool": 2,
+            "created_at": "2026-06-01 10:42:46",
+            "updated_at": "2026-06-01 10:51:37",
+            "old_id": 0,
+            "trace": "",
+            "price_init": "399.99",
+            "price_update_at": null,
+            "is_black_goods": false
+          }
+        ],
+        "is_black_shop": false,
+        "shop_info": []
+      }
+    ],
+    "goods_count": 109,
+    "selected_count": 2
+  },
+  "summary": {
+    "order_sn": "2026060116275815-300001",
+    "selected_count": 2,
+    "item_quantity": 10,
+    "submit_order": true,
+    "cart_ids": [
+      1127926,
+      1127925
+    ],
+    "goods_ids": [
+      "520137009533",
+      "520137009533"
+    ]
+  },
+  "finished_at": "2026-06-01 16:28:07.183528"
+}

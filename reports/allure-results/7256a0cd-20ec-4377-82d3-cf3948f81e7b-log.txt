@@ -1,0 +1,132 @@
+{
+  "case_name": "搜索功能-按箱号精确搜索",
+  "page_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+  "steps": [
+    {
+      "name": "打开目标页面",
+      "action": "goto",
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse"
+    },
+    {
+      "name": "等待页面加载",
+      "action": "wait_for_selector",
+      "locator": "body"
+    },
+    {
+      "name": "保存页面截图",
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1781595459,
+    "datetime": "2026-06-16 15:37:39",
+    "date": "2026-06-16",
+    "uuid": "c64d6ecf-88a8-4114-b038-c43a994fad0e",
+    "random_int": 388196,
+    "random_str": "tg5vq206",
+    "random_phone": "13582813032",
+    "random_email": "test_388196@example.com",
+    "$timestamp": 1781595459,
+    "$datetime": "2026-06-16 15:37:39",
+    "$date": "2026-06-16",
+    "$uuid": "c64d6ecf-88a8-4114-b038-c43a994fad0e",
+    "$random_int": 388196,
+    "$random_str": "tg5vq206",
+    "$random_phone": "13582813032",
+    "$random_email": "test_388196@example.com",
+    "username": "Y001",
+    "password": "***"
+  },
+  "validation_issues": [
+    {
+      "severity": "warning",
+      "message": "用例缺少业务断言，执行器会跑完整步骤，但不会把结果判定为可信成功"
+    }
+  ],
+  "step_logs": [
+    {
+      "name": "打开目标页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "started_at": "2026-06-16 15:37:40.456017",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-3a2c4761-f8bd-45c9-814e-3520a39a50e1.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/login",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-8d84b1ab-b6a4-43ef-b8d7-ca1ac6167c34.png",
+      "duration_ms": 2398,
+      "finished_at": "2026-06-16 15:37:42.854787",
+      "index": 1
+    },
+    {
+      "name": "等待页面加载",
+      "action": "wait_for_selector",
+      "locator": "body",
+      "fallback_locators": [],
+      "value": null,
+      "started_at": "2026-06-16 15:37:43.221667",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-d3d00268-f7d5-47c5-96cc-03f081248047.png",
+      "used_locator": "body",
+      "matched_count": 1,
+      "current_url": "https://jpmanage.rakumart.cn/#/login",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-f18f7413-87e1-40a6-bd26-4171a5617c6c.png",
+      "duration_ms": 442,
+      "finished_at": "2026-06-16 15:37:43.664505",
+      "index": 2
+    },
+    {
+      "name": "保存页面截图",
+      "action": "screenshot",
+      "locator": "",
+      "fallback_locators": [],
+      "value": null,
+      "started_at": "2026-06-16 15:37:43.664505",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-63dabf4d-3511-437c-8ec5-4e7acd418960.png",
+      "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\701f2dbb-db40-4a0d-bfcd-07781cc86c8d.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/login",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-0a8da825-79a3-413e-8508-63098da242f6.png",
+      "duration_ms": 339,
+      "finished_at": "2026-06-16 15:37:44.003689",
+      "index": 3
+    }
+  ],
+  "started_at": "2026-06-16 15:37:39.390589",
+  "retry_config": {
+    "retry_count": 2,
+    "retry_interval_ms": 1000
+  },
+  "auth_context": {
+    "login_required": false,
+    "account_profile_id": null,
+    "login_url": "",
+    "removed_login_step_count": 0
+  },
+  "finished_at": "2026-06-16 15:37:44.146846",
+  "verification_issues": [
+    "用例缺少业务断言：没有 assert_url/assert_visible/assert_value/text_assert/success_condition，不能判定为可信成功"
+  ],
+  "verification_status": "failed_verification",
+  "business_verification": {
+    "business_assertion_count": 0,
+    "final_url": "https://jpmanage.rakumart.cn/#/login",
+    "final_text_excerpt": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录"
+  },
+  "verification_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\41800bf7-1824-443f-a4d4-79d98960145b.png",
+  "warning": "所有步骤执行通过，但最终验证未通过：用例缺少业务断言：没有 assert_url/assert_visible/assert_value/text_assert/success_condition，不能判定为可信成功"
+}

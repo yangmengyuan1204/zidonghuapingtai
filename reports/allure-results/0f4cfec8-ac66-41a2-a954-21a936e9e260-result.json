@@ -1,0 +1,27 @@
+{
+  "uuid": "0f4cfec8-ac66-41a2-a954-21a936e9e260",
+  "name": "注册页面-密码格式不符合规则提示",
+  "fullName": "ui.注册页面-密码格式不符合规则提示",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780631450538,
+  "stop": 1780631450538,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "0f4cfec8-ac66-41a2-a954-21a936e9e260-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "0f4cfec8-ac66-41a2-a954-21a936e9e260-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "case_name": "注册页面-验证码获取后倒计时显示",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "wait_for_selector",
+      "locator": "body"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "wait",
+      "value": 1000
+    },
+    {
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780636358,
+    "datetime": "2026-06-05 13:12:38",
+    "date": "2026-06-05",
+    "uuid": "3bd239df-2f5f-4386-8880-75dfcd0fc2ad",
+    "random_int": 751391,
+    "random_str": "nv1g2yz6",
+    "random_phone": "13738591004",
+    "random_email": "test_751391@example.com",
+    "$timestamp": 1780636358,
+    "$datetime": "2026-06-05 13:12:38",
+    "$date": "2026-06-05",
+    "$uuid": "3bd239df-2f5f-4386-8880-75dfcd0fc2ad",
+    "$random_int": 751391,
+    "$random_str": "nv1g2yz6",
+    "$random_phone": "13738591004",
+    "$random_email": "test_751391@example.com",
+    "username": "",
+    "password": "***",
+    "code": ""
+  },
+  "started_at": "2026-06-05 13:12:38.527417",
+  "finished_at": "2026-06-05 13:12:43.561188"
+}

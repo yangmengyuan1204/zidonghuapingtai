@@ -1,0 +1,22 @@
+{
+  "uuid": "0450dab6-304a-40aa-ba11-be52c167e791",
+  "name": "正常流程：查看已邀请客户列表",
+  "fullName": "ui.正常流程：查看已邀请客户列表",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780900878036,
+  "stop": 1780900878036,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "0450dab6-304a-40aa-ba11-be52c167e791-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

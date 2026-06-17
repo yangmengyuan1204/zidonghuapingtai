@@ -1,0 +1,160 @@
+{
+  "case_name": "注册页面-验证码有效期过期后提交失败",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "input",
+      "locator": "#el-id-2966-4",
+      "value": "{{username}}"
+    },
+    {
+      "action": "wait",
+      "value": 300000
+    },
+    {
+      "action": "input",
+      "locator": "#el-id-2966-4",
+      "value": "{{code}}"
+    },
+    {
+      "action": "input",
+      "locator": "#el-id-2966-5",
+      "value": "{{password}}"
+    },
+    {
+      "action": "check",
+      "locator": "input"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "assert_visible",
+      "locator": "text=验证码已过期，请重新获取"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1781072844,
+    "datetime": "2026-06-10 14:27:24",
+    "date": "2026-06-10",
+    "uuid": "902fd7c9-931e-45b6-9ec9-27d62317eeaa",
+    "random_int": 145667,
+    "random_str": "qrdpg3rt",
+    "random_phone": "13530380490",
+    "random_email": "test_145667@example.com",
+    "$timestamp": 1781072844,
+    "$datetime": "2026-06-10 14:27:24",
+    "$date": "2026-06-10",
+    "$uuid": "902fd7c9-931e-45b6-9ec9-27d62317eeaa",
+    "$random_int": 145667,
+    "$random_str": "qrdpg3rt",
+    "$random_phone": "13530380490",
+    "$random_email": "test_145667@example.com"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/login",
+      "started_at": "2026-06-10 14:27:27.888143",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 5800,
+      "finished_at": "2026-06-10 14:27:33.688254",
+      "index": 1
+    },
+    {
+      "name": "点击",
+      "action": "click",
+      "locator": "text=立即注册",
+      "fallback_locators": [
+        "button:has-text(\"立即注册\")",
+        "a:has-text(\"立即注册\")",
+        "[role=\"button\"]:has-text(\"立即注册\")",
+        "input[type=\"button\"][value*=\"立即注册\"]",
+        "input[type=\"submit\"][value*=\"立即注册\"]"
+      ],
+      "value": null,
+      "started_at": "2026-06-10 14:27:38.855951",
+      "status": "passed",
+      "used_locator": "text=立即注册",
+      "matched_count": 1,
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 321,
+      "finished_at": "2026-06-10 14:27:39.177637",
+      "index": 2
+    },
+    {
+      "name": "输入",
+      "action": "input",
+      "locator": "#el-id-2966-4",
+      "fallback_locators": [],
+      "value": "{{username}}",
+      "started_at": "2026-06-10 14:27:39.491777",
+      "status": "failed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 16304,
+      "finished_at": "2026-06-10 14:27:55.796726",
+      "error": "未找到可用定位器：#el-id-2966-4: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"#el-id-2966-4\").first to be visible\n",
+      "category": "定位器找不到",
+      "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+      "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+      "index": 3
+    }
+  ],
+  "started_at": "2026-06-10 14:27:24.263608",
+  "retry_config": {
+    "retry_count": 2,
+    "retry_interval_ms": 1000
+  },
+  "auth_context": {
+    "login_required": false,
+    "account_profile_id": null,
+    "login_url": "",
+    "removed_login_step_count": 0,
+    "login_trace": []
+  },
+  "error": "输入失败：定位器找不到。规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "error_category": "定位器找不到",
+  "failure_reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+  "failed_step_index": 3,
+  "failed_step": {
+    "action": "input",
+    "locator": "#el-id-2966-4",
+    "value": "{{username}}"
+  },
+  "failed_step_detail": {
+    "name": "输入",
+    "action": "input",
+    "locator": "#el-id-2966-4",
+    "fallback_locators": [],
+    "value": "{{username}}",
+    "started_at": "2026-06-10 14:27:39.491777",
+    "status": "failed",
+    "current_url": "https://promotees.rakumart.cn/login",
+    "duration_ms": 16304,
+    "finished_at": "2026-06-10 14:27:55.796726",
+    "error": "未找到可用定位器：#el-id-2966-4: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"#el-id-2966-4\").first to be visible\n",
+    "category": "定位器找不到",
+    "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+    "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+    "index": 3
+  },
+  "current_url": "https://promotees.rakumart.cn/login",
+  "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\8353412c-3be1-47aa-8ef7-74636864449b.png",
+  "finished_at": "2026-06-10 14:28:31.138556"
+}

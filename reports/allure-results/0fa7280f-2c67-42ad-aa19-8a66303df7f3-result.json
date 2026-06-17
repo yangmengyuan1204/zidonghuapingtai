@@ -1,0 +1,27 @@
+{
+  "uuid": "0fa7280f-2c67-42ad-aa19-8a66303df7f3",
+  "name": "页面标题验证",
+  "fullName": "ui.页面标题验证",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781074378687,
+  "stop": 1781074378687,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "0fa7280f-2c67-42ad-aa19-8a66303df7f3-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "0fa7280f-2c67-42ad-aa19-8a66303df7f3-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

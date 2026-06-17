@@ -1,0 +1,82 @@
+{
+  "script": "订单报价",
+  "mode": "backend_only",
+  "base_url": "https://jpapi.rakumart.cn",
+  "item_count": 2,
+  "item_quantity": 10,
+  "price_cut": "0",
+  "submit_order": true,
+  "run_backend_flow": true,
+  "started_at": "2026-06-01 17:11:53.181384",
+  "selected_items": [],
+  "edits": [],
+  "create": {},
+  "backend": {
+    "order_sn": "2026060116385036-300001",
+    "steps": [],
+    "login": {
+      "success": true,
+      "code": 0,
+      "msg": "登录成功",
+      "account": "Y001",
+      "token_extracted": true
+    },
+    "detail_before": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data.order_sn": "2026060116385036-300001",
+      "order_id": 813908,
+      "order_sn": "2026060116385036-300001",
+      "status": 22,
+      "statusName": null,
+      "detail_count": 2,
+      "details": [
+        {
+          "id": 14050683,
+          "goods_id": "788380478141",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "6.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14050684,
+          "goods_id": "793432208358",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "6.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    },
+    "translate": {
+      "success": false,
+      "code": 10000,
+      "msg": "不是待翻译状态",
+      "data": "不是待翻译状态"
+    }
+  },
+  "summary": {
+    "order_sn": "2026060116385036-300001",
+    "selected_count": 0,
+    "item_quantity": 10,
+    "submit_order": true,
+    "skip_create_order": true,
+    "backend_passed": false,
+    "reason": "订单翻译提交失败",
+    "translate": {
+      "success": false,
+      "code": 10000,
+      "msg": "不是待翻译状态",
+      "data": "不是待翻译状态"
+    }
+  },
+  "finished_at": "2026-06-01 17:11:53.796115"
+}

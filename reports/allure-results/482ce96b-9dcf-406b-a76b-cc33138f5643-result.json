@@ -1,0 +1,27 @@
+{
+  "uuid": "482ce96b-9dcf-406b-a76b-cc33138f5643",
+  "name": "搜索功能-组合搜索条件",
+  "fullName": "ui.搜索功能-组合搜索条件",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781596656066,
+  "stop": 1781596656066,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "482ce96b-9dcf-406b-a76b-cc33138f5643-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "482ce96b-9dcf-406b-a76b-cc33138f5643-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

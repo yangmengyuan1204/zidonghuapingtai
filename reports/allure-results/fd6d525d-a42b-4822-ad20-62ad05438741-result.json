@@ -1,0 +1,22 @@
+{
+  "uuid": "fd6d525d-a42b-4822-ad20-62ad05438741",
+  "name": "全流程完全体",
+  "fullName": "data_script.全流程完全体",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781334373399,
+  "stop": 1781334570863,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "fd6d525d-a42b-4822-ad20-62ad05438741-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

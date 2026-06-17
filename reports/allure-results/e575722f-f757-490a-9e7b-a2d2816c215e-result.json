@@ -1,0 +1,27 @@
+{
+  "uuid": "e575722f-f757-490a-9e7b-a2d2816c215e",
+  "name": "手机号格式错误",
+  "fullName": "ui.手机号格式错误",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781073026511,
+  "stop": 1781073026511,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "e575722f-f757-490a-9e7b-a2d2816c215e-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "e575722f-f757-490a-9e7b-a2d2816c215e-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

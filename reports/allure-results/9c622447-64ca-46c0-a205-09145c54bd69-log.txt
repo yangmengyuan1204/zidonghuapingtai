@@ -1,0 +1,542 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "气球",
+  "shop_type": "1688",
+  "target_shops": 5,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    10,
+    20,
+    30,
+    40,
+    50
+  ],
+  "allow_fallback_sku": true,
+  "verify_cart_after_add": true,
+  "cart_verify_mode": "final",
+  "started_at": "2026-06-13 15:51:14.222792",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBBuRw73hNv8wUeyXbNF5hHcg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1044949850687",
+          "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+          "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+          "sku_id": "6069052172300",
+          "spec_id": "29d7e95dbf7d8b0b61b8d59f560797c5",
+          "num": 10,
+          "price": "22.6",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1044949850687",
+          "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+          "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+          "sku_id": "6069052172301",
+          "spec_id": "876ed1b0d632d209838e10ed44799fab",
+          "num": 20,
+          "price": "22.6",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1044949850687",
+          "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+          "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+          "sku_id": "6069052172302",
+          "spec_id": "b68a9cd4bbd1e43d5f25bac53e8188d5",
+          "num": 30,
+          "price": "22.6",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBBKSDqug0idPGi0-CDSyPnRQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "677973279439",
+          "shop_id": "BBBKSDqug0idPGi0-CDSyPnRQ",
+          "shop_name": "绍兴柯桥钱清三盈绣品厂",
+          "sku_id": "4861791228986",
+          "spec_id": "acfeb1a254c15d8a3b483797a553dedc",
+          "num": 10,
+          "price": "16.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "677973279439",
+          "shop_id": "BBBKSDqug0idPGi0-CDSyPnRQ",
+          "shop_name": "绍兴柯桥钱清三盈绣品厂",
+          "sku_id": "4861791228987",
+          "spec_id": "2a8a9db3e074b4c51ef620f8b672e4d8",
+          "num": 20,
+          "price": "19.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "677973279439",
+          "shop_id": "BBBKSDqug0idPGi0-CDSyPnRQ",
+          "shop_name": "绍兴柯桥钱清三盈绣品厂",
+          "sku_id": "4861791228988",
+          "spec_id": "2c58fafac98a1e78311fc03c116be091",
+          "num": 30,
+          "price": "33.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "shop_key": "BBBhI-Mmu5Jv60zvz0H1Ye56g",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "977242969645",
+          "shop_id": "BBBhI-Mmu5Jv60zvz0H1Ye56g",
+          "shop_name": "广州市大脑壳贸易商行",
+          "sku_id": "6097794131446",
+          "spec_id": "4adb0c9cbd230844628b3d7602fd750b",
+          "num": 10,
+          "price": "2.7",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "977242969645",
+          "shop_id": "BBBhI-Mmu5Jv60zvz0H1Ye56g",
+          "shop_name": "广州市大脑壳贸易商行",
+          "sku_id": "6097794131447",
+          "spec_id": "cd3e1964131001cec9d5e1447ca378ae",
+          "num": 40,
+          "price": "2.7",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "977242969645",
+          "shop_id": "BBBhI-Mmu5Jv60zvz0H1Ye56g",
+          "shop_name": "广州市大脑壳贸易商行",
+          "sku_id": "6097794131448",
+          "spec_id": "68c06b9b73004ea95fac54c964758921",
+          "num": 20,
+          "price": "2.7",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "shop_key": "BBBG39cXU-xuwW0pMIRXYAzmQ",
+      "collected_count": 2,
+      "selected_count": 2,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "695142575398",
+          "shop_id": "BBBG39cXU-xuwW0pMIRXYAzmQ",
+          "shop_name": "潍坊铁素工艺品有限公司",
+          "sku_id": "5101605662558",
+          "spec_id": "c9141d721453a8fbd996a0649cde136e",
+          "num": 10,
+          "price": "4.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "695142575398",
+          "shop_id": "BBBG39cXU-xuwW0pMIRXYAzmQ",
+          "shop_name": "潍坊铁素工艺品有限公司",
+          "sku_id": "5101605662559",
+          "spec_id": "0556140d1adea0f2132cf321dc17c443",
+          "num": 30,
+          "price": "4.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "shop_key": "BBBF660SpVcTfeXXcCbFLfwyg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "836752529336",
+          "shop_id": "BBBF660SpVcTfeXXcCbFLfwyg",
+          "shop_name": "佛山市禅城区术腾电子商行",
+          "sku_id": "5593005904020",
+          "spec_id": "9948bde35d1766c590b5027ba190a9e9",
+          "num": 10,
+          "price": "5.1",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "836752529336",
+          "shop_id": "BBBF660SpVcTfeXXcCbFLfwyg",
+          "shop_name": "佛山市禅城区术腾电子商行",
+          "sku_id": "5593005904005",
+          "spec_id": "575e014b93420a003648f87a36f07789",
+          "num": 40,
+          "price": "5.1",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "836752529336",
+          "shop_id": "BBBF660SpVcTfeXXcCbFLfwyg",
+          "shop_name": "佛山市禅城区术腾电子商行",
+          "sku_id": "5593005904011",
+          "spec_id": "82ebd9abb13552ecd44e2eafdf860e24",
+          "num": 20,
+          "price": "5.1",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "shop_key": "BBBRZ092IB2LJCdI7PiZYaeMA",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "675732436866",
+          "shop_id": "BBBRZ092IB2LJCdI7PiZYaeMA",
+          "shop_name": "深都电子商务(深圳)有限公司",
+          "sku_id": "4857047704336",
+          "spec_id": "3bac3e1041dbfc1f7caf6e9480a0057d",
+          "num": 10,
+          "price": "8.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "675732436866",
+          "shop_id": "BBBRZ092IB2LJCdI7PiZYaeMA",
+          "shop_name": "深都电子商务(深圳)有限公司",
+          "sku_id": "4857047704337",
+          "spec_id": "74ccddbe6fd50f344de0032f6967e340",
+          "num": 20,
+          "price": "8.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "675732436866",
+          "shop_id": "BBBRZ092IB2LJCdI7PiZYaeMA",
+          "shop_name": "深都电子商务(深圳)有限公司",
+          "sku_id": "4857047704338",
+          "spec_id": "e12fcd806acb1f510d63c60978ba75b7",
+          "num": 30,
+          "price": "8.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "shop_key": "BBB9XbXWNPwYbOL2o0-YlzciA",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1006269045622",
+          "shop_id": "BBB9XbXWNPwYbOL2o0-YlzciA",
+          "shop_name": "深圳市奈果数码有限公司",
+          "sku_id": "6165784958683",
+          "spec_id": "91f1424ad3d818fc8a2e3792d6eb5726",
+          "num": 10,
+          "price": "2.9",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1006269045622",
+          "shop_id": "BBB9XbXWNPwYbOL2o0-YlzciA",
+          "shop_name": "深圳市奈果数码有限公司",
+          "sku_id": "6165784958684",
+          "spec_id": "f0b3758cb639461990d8bc50d22602e1",
+          "num": 40,
+          "price": "2.9",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1006269045622",
+          "shop_id": "BBB9XbXWNPwYbOL2o0-YlzciA",
+          "shop_name": "深圳市奈果数码有限公司",
+          "sku_id": "6165784958685",
+          "spec_id": "cfef0dd24e3be6755fa4e53878097c2e",
+          "num": 20,
+          "price": "2.9",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 25,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "userID/300001In",
+    "client_tool": "1",
+    "token_extracted": true,
+    "cached": false
+  },
+  "collection": {
+    "ready_shops": 5,
+    "collected_shops": 7,
+    "selected_items": 25,
+    "expected_total": 25,
+    "preview_items": [
+      {
+        "goods_id": "1044949850687",
+        "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+        "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+        "sku_id": "6069052172300",
+        "spec_id": "29d7e95dbf7d8b0b61b8d59f560797c5",
+        "num": 10,
+        "price": "22.6",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1044949850687",
+        "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+        "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+        "sku_id": "6069052172301",
+        "spec_id": "876ed1b0d632d209838e10ed44799fab",
+        "num": 20,
+        "price": "22.6",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1044949850687",
+        "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+        "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+        "sku_id": "6069052172302",
+        "spec_id": "b68a9cd4bbd1e43d5f25bac53e8188d5",
+        "num": 30,
+        "price": "22.6",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1044949850687",
+        "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+        "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+        "sku_id": "6069052172303",
+        "spec_id": "07614cad45f522242d9a3f2fe2142e16",
+        "num": 40,
+        "price": "22.6",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1044949850687",
+        "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+        "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+        "sku_id": "6069052172304",
+        "spec_id": "c9964e528a27cb85a93f7f4cff16360e",
+        "num": 50,
+        "price": "24.1",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "677973279439",
+        "shop_id": "BBBKSDqug0idPGi0-CDSyPnRQ",
+        "shop_name": "绍兴柯桥钱清三盈绣品厂",
+        "sku_id": "4861791228986",
+        "spec_id": "acfeb1a254c15d8a3b483797a553dedc",
+        "num": 10,
+        "price": "16.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "677973279439",
+        "shop_id": "BBBKSDqug0idPGi0-CDSyPnRQ",
+        "shop_name": "绍兴柯桥钱清三盈绣品厂",
+        "sku_id": "4861791228987",
+        "spec_id": "2a8a9db3e074b4c51ef620f8b672e4d8",
+        "num": 20,
+        "price": "19.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "677973279439",
+        "shop_id": "BBBKSDqug0idPGi0-CDSyPnRQ",
+        "shop_name": "绍兴柯桥钱清三盈绣品厂",
+        "sku_id": "4861791228988",
+        "spec_id": "2c58fafac98a1e78311fc03c116be091",
+        "num": 30,
+        "price": "33.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "677973279439",
+        "shop_id": "BBBKSDqug0idPGi0-CDSyPnRQ",
+        "shop_name": "绍兴柯桥钱清三盈绣品厂",
+        "sku_id": "4861791228989",
+        "spec_id": "b2c2cc000bbb930373b5bb63b3b5e7a8",
+        "num": 40,
+        "price": "44.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "677973279439",
+        "shop_id": "BBBKSDqug0idPGi0-CDSyPnRQ",
+        "shop_name": "绍兴柯桥钱清三盈绣品厂",
+        "sku_id": "4861791228990",
+        "spec_id": "562df219fb0057f042c3726f5860581d",
+        "num": 50,
+        "price": "55.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "977242969645",
+        "shop_id": "BBBhI-Mmu5Jv60zvz0H1Ye56g",
+        "shop_name": "广州市大脑壳贸易商行",
+        "sku_id": "6097794131446",
+        "spec_id": "4adb0c9cbd230844628b3d7602fd750b",
+        "num": 10,
+        "price": "2.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "977242969645",
+        "shop_id": "BBBhI-Mmu5Jv60zvz0H1Ye56g",
+        "shop_name": "广州市大脑壳贸易商行",
+        "sku_id": "6097794131447",
+        "spec_id": "cd3e1964131001cec9d5e1447ca378ae",
+        "num": 40,
+        "price": "2.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "977242969645",
+        "shop_id": "BBBhI-Mmu5Jv60zvz0H1Ye56g",
+        "shop_name": "广州市大脑壳贸易商行",
+        "sku_id": "6097794131448",
+        "spec_id": "68c06b9b73004ea95fac54c964758921",
+        "num": 20,
+        "price": "2.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "977242969645",
+        "shop_id": "BBBhI-Mmu5Jv60zvz0H1Ye56g",
+        "shop_name": "广州市大脑壳贸易商行",
+        "sku_id": "6097794131449",
+        "spec_id": "8d781bf0bdccdd0eb6892965d4e85df9",
+        "num": 50,
+        "price": "2.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "977242969645",
+        "shop_id": "BBBhI-Mmu5Jv60zvz0H1Ye56g",
+        "shop_name": "广州市大脑壳贸易商行",
+        "sku_id": "6097794131450",
+        "spec_id": "6e63f386440305d472e7c9f8cb516bdf",
+        "num": 30,
+        "price": "2.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "836752529336",
+        "shop_id": "BBBF660SpVcTfeXXcCbFLfwyg",
+        "shop_name": "佛山市禅城区术腾电子商行",
+        "sku_id": "5593005904020",
+        "spec_id": "9948bde35d1766c590b5027ba190a9e9",
+        "num": 10,
+        "price": "5.1",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "836752529336",
+        "shop_id": "BBBF660SpVcTfeXXcCbFLfwyg",
+        "shop_name": "佛山市禅城区术腾电子商行",
+        "sku_id": "5593005904005",
+        "spec_id": "575e014b93420a003648f87a36f07789",
+        "num": 40,
+        "price": "5.1",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "836752529336",
+        "shop_id": "BBBF660SpVcTfeXXcCbFLfwyg",
+        "shop_name": "佛山市禅城区术腾电子商行",
+        "sku_id": "5593005904011",
+        "spec_id": "82ebd9abb13552ecd44e2eafdf860e24",
+        "num": 20,
+        "price": "5.1",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "836752529336",
+        "shop_id": "BBBF660SpVcTfeXXcCbFLfwyg",
+        "shop_name": "佛山市禅城区术腾电子商行",
+        "sku_id": "5593005904009",
+        "spec_id": "6b9c41e518f0a69a80d67a56c4b58035",
+        "num": 50,
+        "price": "5.1",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "836752529336",
+        "shop_id": "BBBF660SpVcTfeXXcCbFLfwyg",
+        "shop_name": "佛山市禅城区术腾电子商行",
+        "sku_id": "5593005904023",
+        "spec_id": "832c2673576b50bd95736a924bb7a148",
+        "num": 30,
+        "price": "5.1",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "final_verification": {
+    "cart_goods_count": 241,
+    "expected_count": 25,
+    "matched_count": 25,
+    "missing_count": 0,
+    "missing_items": [],
+    "api_success": true
+  },
+  "duration_ms": 20736,
+  "summary": {
+    "keyword": "气球",
+    "shop_type": "1688",
+    "target_shops": 5,
+    "per_shop": 5,
+    "ready_shops": 5,
+    "expected_total": 25,
+    "available_expected_total": 25,
+    "added_total": 25,
+    "api_added_total": 25,
+    "verified_added_total": 25,
+    "cart_verification_enabled": true,
+    "cart_verify_mode": "final",
+    "failed_batches": [],
+    "verification_failed_batches": [],
+    "strict_shop_count": false,
+    "duration_ms": 20736
+  },
+  "finished_at": "2026-06-13 15:51:34.959553"
+}

@@ -1,0 +1,27 @@
+{
+  "uuid": "1b08e992-b276-4cdf-a872-571e1fc3f9d9",
+  "name": "搜索XSS注入关键词",
+  "fullName": "ui.搜索XSS注入关键词",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781083996361,
+  "stop": 1781083996361,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "1b08e992-b276-4cdf-a872-571e1fc3f9d9-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "1b08e992-b276-4cdf-a872-571e1fc3f9d9-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "uuid": "caaa84eb-eac3-40b0-b158-154f05c34039",
+  "name": "注册页面-验证码有效期过期后提交失败",
+  "fullName": "ui.注册页面-验证码有效期过期后提交失败",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781072911139,
+  "stop": 1781072911139,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "caaa84eb-eac3-40b0-b158-154f05c34039-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "caaa84eb-eac3-40b0-b158-154f05c34039-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

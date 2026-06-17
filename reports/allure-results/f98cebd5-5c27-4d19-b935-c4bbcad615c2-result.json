@@ -1,0 +1,22 @@
+{
+  "uuid": "f98cebd5-5c27-4d19-b935-c4bbcad615c2",
+  "name": "商品购物车",
+  "fullName": "data_script.商品购物车",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781572954594,
+  "stop": 1781572954594,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "f98cebd5-5c27-4d19-b935-c4bbcad615c2-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

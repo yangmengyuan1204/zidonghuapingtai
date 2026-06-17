@@ -1,0 +1,74 @@
+{
+  "case_name": "保持账号登录复选框状态",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "assert_visible",
+      "locator": "input[type='checkbox']"
+    },
+    {
+      "action": "assert_value",
+      "locator": "input[type='checkbox']",
+      "value": "unchecked"
+    },
+    {
+      "action": "click",
+      "locator": "input[type='checkbox']"
+    },
+    {
+      "action": "wait",
+      "value": 500
+    },
+    {
+      "action": "assert_value",
+      "locator": "input[type='checkbox']",
+      "value": "checked"
+    },
+    {
+      "action": "click",
+      "locator": "input[type='checkbox']"
+    },
+    {
+      "action": "wait",
+      "value": 500
+    },
+    {
+      "action": "assert_value",
+      "locator": "input[type='checkbox']",
+      "value": "unchecked"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780636477,
+    "datetime": "2026-06-05 13:14:37",
+    "date": "2026-06-05",
+    "uuid": "59629792-85c0-4abb-95ec-bffe93c2d102",
+    "random_int": 547687,
+    "random_str": "aqliy1bo",
+    "random_phone": "13129016296",
+    "random_email": "test_547687@example.com",
+    "$timestamp": 1780636477,
+    "$datetime": "2026-06-05 13:14:37",
+    "$date": "2026-06-05",
+    "$uuid": "59629792-85c0-4abb-95ec-bffe93c2d102",
+    "$random_int": 547687,
+    "$random_str": "aqliy1bo",
+    "$random_phone": "13129016296",
+    "$random_email": "test_547687@example.com",
+    "username": "",
+    "password": "***",
+    "code": ""
+  },
+  "started_at": "2026-06-05 13:14:37.216511",
+  "error": "assert_visible failed: locator \"input[type='checkbox']\" is not visible",
+  "finished_at": "2026-06-05 13:14:42.117989"
+}

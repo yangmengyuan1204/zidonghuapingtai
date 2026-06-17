@@ -1,0 +1,139 @@
+{
+  "case_name": "??????UI",
+  "page_url": "data:text/html,<html><body><input placeholder='??'><button onclick=\"document.body.insertAdjacentHTML('beforeend','<p id=ok>????</p>')\">??</button></body></html>",
+  "steps": [
+    {
+      "name": "????",
+      "action": "goto",
+      "value": "data:text/html,<html><body><input placeholder='??'><button onclick=\"document.body.insertAdjacentHTML('beforeend','<p id=ok>????</p>')\">??</button></body></html>"
+    },
+    {
+      "name": "????",
+      "action": "input",
+      "locator": "input[placeholder='??']",
+      "value": "tester"
+    },
+    {
+      "name": "????",
+      "action": "click",
+      "locator": "text=??",
+      "fallback_locators": [
+        "button:has-text('??')"
+      ]
+    },
+    {
+      "name": "??????",
+      "action": "text_assert",
+      "locator": "body",
+      "value": "????"
+    },
+    {
+      "name": "????",
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 10,
+  "variables": {
+    "timestamp": 1780885909,
+    "datetime": "2026-06-08 10:31:49",
+    "date": "2026-06-08",
+    "uuid": "dbefbc68-c0d0-4979-b7dc-999c6f92cb35",
+    "random_int": 452125,
+    "random_str": "e86qphez",
+    "random_phone": "13398398099",
+    "random_email": "test_452125@example.com",
+    "$timestamp": 1780885909,
+    "$datetime": "2026-06-08 10:31:49",
+    "$date": "2026-06-08",
+    "$uuid": "dbefbc68-c0d0-4979-b7dc-999c6f92cb35",
+    "$random_int": 452125,
+    "$random_str": "e86qphez",
+    "$random_phone": "13398398099",
+    "$random_email": "test_452125@example.com",
+    "username": "tester"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "????",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "data:text/html,<html><body><input placeholder='??'><button onclick=\"document.body.insertAdjacentHTML('beforeend','<p id=ok>????</p>')\">??</button></body></html>",
+      "started_at": "2026-06-08 10:31:50.425101",
+      "status": "passed",
+      "current_url": "data:text/html,<html><body><input placeholder='??%27%3E%3Cbutton%20onclick=%22document.body.insertAdjacentHTML(%27beforeend%27,%27%3Cp%20id=ok%3E????%3C/p%3E%27)%22%3E??%3C/button%3E%3C/body%3E%3C/html%3E",
+      "duration_ms": 528,
+      "finished_at": "2026-06-08 10:31:50.953823",
+      "index": 1
+    },
+    {
+      "name": "????",
+      "action": "input",
+      "locator": "input[placeholder='??']",
+      "fallback_locators": [],
+      "value": "tester",
+      "started_at": "2026-06-08 10:31:50.953869",
+      "status": "passed",
+      "used_locator": "input[placeholder='??']",
+      "matched_count": 1,
+      "current_url": "data:text/html,<html><body><input placeholder='??%27%3E%3Cbutton%20onclick=%22document.body.insertAdjacentHTML(%27beforeend%27,%27%3Cp%20id=ok%3E????%3C/p%3E%27)%22%3E??%3C/button%3E%3C/body%3E%3C/html%3E",
+      "duration_ms": 95,
+      "finished_at": "2026-06-08 10:31:51.049630",
+      "index": 2
+    },
+    {
+      "name": "????",
+      "action": "click",
+      "locator": "text=??",
+      "fallback_locators": [
+        "button:has-text('??')",
+        "button:has-text(\"??\")",
+        "a:has-text(\"??\")",
+        "[role=\"button\"]:has-text(\"??\")",
+        "input[type=\"button\"][value*=\"??\"]",
+        "input[type=\"submit\"][value*=\"??\"]"
+      ],
+      "value": null,
+      "started_at": "2026-06-08 10:31:51.049668",
+      "status": "passed",
+      "used_locator": "text=??",
+      "matched_count": 1,
+      "current_url": "data:text/html,<html><body><input placeholder='??%27%3E%3Cbutton%20onclick=%22document.body.insertAdjacentHTML(%27beforeend%27,%27%3Cp%20id=ok%3E????%3C/p%3E%27)%22%3E??%3C/button%3E%3C/body%3E%3C/html%3E",
+      "duration_ms": 56,
+      "finished_at": "2026-06-08 10:31:51.106637",
+      "index": 3
+    },
+    {
+      "name": "??????",
+      "action": "text_assert",
+      "locator": "body",
+      "fallback_locators": [],
+      "value": "????",
+      "started_at": "2026-06-08 10:31:51.106672",
+      "status": "passed",
+      "used_locator": "body",
+      "matched_count": 1,
+      "current_url": "data:text/html,<html><body><input placeholder='??%27%3E%3Cbutton%20onclick=%22document.body.insertAdjacentHTML(%27beforeend%27,%27%3Cp%20id=ok%3E????%3C/p%3E%27)%22%3E??%3C/button%3E%3C/body%3E%3C/html%3E",
+      "duration_ms": 24,
+      "finished_at": "2026-06-08 10:31:51.131447",
+      "index": 4
+    },
+    {
+      "name": "????",
+      "action": "screenshot",
+      "locator": "",
+      "fallback_locators": [],
+      "value": null,
+      "started_at": "2026-06-08 10:31:51.131466",
+      "status": "passed",
+      "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\b4cf4b4b-2911-4d99-a3f6-cc3d364585ca.png",
+      "current_url": "data:text/html,<html><body><input placeholder='??%27%3E%3Cbutton%20onclick=%22document.body.insertAdjacentHTML(%27beforeend%27,%27%3Cp%20id=ok%3E????%3C/p%3E%27)%22%3E??%3C/button%3E%3C/body%3E%3C/html%3E",
+      "duration_ms": 43,
+      "finished_at": "2026-06-08 10:31:51.174543",
+      "index": 5
+    }
+  ],
+  "started_at": "2026-06-08 10:31:49.198501",
+  "finished_at": "2026-06-08 10:31:51.568406"
+}

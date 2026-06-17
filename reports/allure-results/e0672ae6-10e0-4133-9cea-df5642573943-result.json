@@ -1,0 +1,27 @@
+{
+  "uuid": "e0672ae6-10e0-4133-9cea-df5642573943",
+  "name": "UI兼容性：不同分辨率显示",
+  "fullName": "ui.UI兼容性：不同分辨率显示",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780907198650,
+  "stop": 1780907198650,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "e0672ae6-10e0-4133-9cea-df5642573943-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "e0672ae6-10e0-4133-9cea-df5642573943-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

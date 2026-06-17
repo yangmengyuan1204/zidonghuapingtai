@@ -1,0 +1,27 @@
+{
+  "uuid": "d5e31dd9-21ac-4f10-a916-35f63ab00db7",
+  "name": "搜索框为空时点击百度一下",
+  "fullName": "ui.搜索框为空时点击百度一下",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781083977291,
+  "stop": 1781083977291,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "d5e31dd9-21ac-4f10-a916-35f63ab00db7-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "d5e31dd9-21ac-4f10-a916-35f63ab00db7-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

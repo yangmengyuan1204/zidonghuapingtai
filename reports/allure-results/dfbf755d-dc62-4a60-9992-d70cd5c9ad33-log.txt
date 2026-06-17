@@ -1,0 +1,81 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://jpapi.rakumart.cn/bill.mergePayDetail",
+    "headers": {
+      "Content-Type": "multipart/form-data"
+    },
+    "params": {},
+    "body": {
+      "serial_number": "{{serial_number}}"
+    },
+    "timeout": 30
+  },
+  "variables": {
+    "timestamp": 1780550390,
+    "datetime": "2026-06-04 13:19:50",
+    "date": "2026-06-04",
+    "uuid": "02d3af67-b82b-4ced-a00b-27d128eb4005",
+    "random_int": 363888,
+    "random_str": "48x7narc",
+    "random_phone": "13918727420",
+    "random_email": "test_363888@example.com",
+    "$timestamp": 1780550390,
+    "$datetime": "2026-06-04 13:19:50",
+    "$date": "2026-06-04",
+    "$uuid": "02d3af67-b82b-4ced-a00b-27d128eb4005",
+    "$random_int": 363888,
+    "$random_str": "48x7narc",
+    "$random_phone": "13918727420",
+    "$random_email": "test_363888@example.com",
+    "api": "https://jpapi.rakumart.cn",
+    "porder_sn": "",
+    "discounts_id": "",
+    "merge_pay": "0",
+    "account": "12345678990",
+    "password": "123456",
+    "client_tool": "1",
+    "porder_exchange_rate": "21.1",
+    "logistics_price_artificial": "775",
+    "pay_bank_method": "4",
+    "pay_reach_after_days": 0,
+    "pay_name": "自动化配送单银行付款",
+    "pay_remark": "",
+    "finance_confirm": true,
+    "finance_confirm_initial_delay": 2,
+    "finance_confirm_retries": 8,
+    "finance_confirm_delay": 2,
+    "backend_account": "Y001",
+    "backend_password": "raku@123456``",
+    "backend_system": "1",
+    "backend_code": "wnm666"
+  },
+  "started_at": "2026-06-04 13:19:50.490688",
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "Server": "nginx",
+      "Content-Type": "application/json",
+      "Transfer-Encoding": "chunked",
+      "Connection": "keep-alive",
+      "Vary": "Accept-Encoding",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, DELETE",
+      "Access-Control-Allow-Headers": "X_Requested_With,X-PINGOTHER,Cookie, Authorization,gkToken, ClientToken,ManageToken,AdminToken, PageUrlTrace,LogisticsToken, Content-Type, Depth, UserModel-Agent, X-File-Size, X-Requested-With, X-Requested-By, If-Modified-Since, X-File-Name, X-File-Type, Cache-Control, Origin, X-Real-IP, X-Forwarded-For, Fingerprint, Pragma, Lang",
+      "Cache-Control": "no-cache, private",
+      "Date": "Thu, 04 Jun 2026 05:19:50 GMT",
+      "Content-Encoding": "gzip"
+    },
+    "body": "{\"success\":false,\"code\":10001,\"msg\":\"登录失效\",\"data\":\"登录失效\"}"
+  },
+  "assertions": [
+    {
+      "type": "status_code",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    }
+  ],
+  "extracted_vars": {},
+  "finished_at": "2026-06-04 13:19:50.630707"
+}

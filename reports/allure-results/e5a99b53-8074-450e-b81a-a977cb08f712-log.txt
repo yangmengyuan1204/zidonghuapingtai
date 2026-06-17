@@ -1,0 +1,33 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://oem.rakumart.cn",
+  "keyword": "衣服",
+  "shop_type": "1688",
+  "target_shops": 4,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "started_at": "2026-06-09 14:11:57.366471",
+  "shops": [],
+  "batches": [],
+  "error": "Non-JSON response from https://oem.rakumart.cn/client/userLogin: HTTP 405 <html>\r\n<head><title>405 Not Allowed</title></head>\r\n<body>\r\n<center><h1>405 Not Allowed</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n",
+  "summary": {
+    "keyword": "衣服",
+    "shop_type": "1688",
+    "target_shops": 4,
+    "per_shop": 5,
+    "added_total": 0,
+    "error": "Non-JSON response from https://oem.rakumart.cn/client/userLogin: HTTP 405 <html>\r\n<head><title>405 Not Allowed</title></head>\r\n<body>\r\n<center><h1>405 Not Allowed</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+  },
+  "finished_at": "2026-06-09 14:11:57.497690"
+}

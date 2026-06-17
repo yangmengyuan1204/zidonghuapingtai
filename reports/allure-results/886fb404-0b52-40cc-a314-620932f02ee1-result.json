@@ -1,0 +1,22 @@
+{
+  "uuid": "886fb404-0b52-40cc-a314-620932f02ee1",
+  "name": "待拍下到商品上架",
+  "fullName": "data_script.待拍下到商品上架",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780388760063,
+  "stop": 1780388760063,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "886fb404-0b52-40cc-a314-620932f02ee1-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

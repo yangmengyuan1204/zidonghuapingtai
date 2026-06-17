@@ -1,0 +1,22 @@
+{
+  "uuid": "3f063157-2c91-4ed1-b860-a39bc18d1756",
+  "name": "????????-??????",
+  "fullName": "api.????????-??????",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780389712226,
+  "stop": 1780389712226,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "3f063157-2c91-4ed1-b860-a39bc18d1756-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

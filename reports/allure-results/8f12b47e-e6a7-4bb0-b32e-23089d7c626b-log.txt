@@ -1,0 +1,631 @@
+{
+  "script": "订单报价",
+  "mode": "cart_to_order_and_backend_quote",
+  "base_url": "https://jpapi.rakumart.cn",
+  "item_count": 2,
+  "order_shop_count": 1,
+  "order_per_shop": 2,
+  "use_shop_grouping": true,
+  "item_quantity": 10,
+  "price_cut": "1",
+  "submit_order": true,
+  "run_backend_flow": true,
+  "order_option_counts": {
+    "78": 100,
+    "79": 10,
+    "80": 10,
+    "81": 10,
+    "82": 101
+  },
+  "started_at": "2026-06-12 16:55:09.254968",
+  "selected_items": [
+    {
+      "cart_id": 1128084,
+      "goods_id": "776765235559",
+      "goods_title": "严选袜子女夏天短袜女士7A抗菌袜防臭运动船袜冰丝船袜夏季薄款白",
+      "num": 2,
+      "price": "21.70",
+      "sku_id": "5309562704006",
+      "spec_id": "c1fe426b9d9a7c82d3662af5c02ecdfa",
+      "shop_id": "BBBfVszXDO8wymcwQB92emPgQ",
+      "shop_name": "金华市杰祥袜业有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128083,
+      "goods_id": "780417809061",
+      "goods_title": "冰丝女船袜抗菌凉感浅口夏天隐形袜女士春夏款薄款不掉跟无骨袜子",
+      "num": 2,
+      "price": "4.20",
+      "sku_id": "5577177638326",
+      "spec_id": "46c443d8a6fb20bf3fe87e5a77ab8f5e",
+      "shop_id": "BBBfVszXDO8wymcwQB92emPgQ",
+      "shop_name": "金华市杰祥袜业有限公司",
+      "from_platform": "1688"
+    }
+  ],
+  "edits": [
+    {
+      "cart_id": 1128084,
+      "goods_id": "776765235559",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128083,
+      "goods_id": "780417809061",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    }
+  ],
+  "create": {
+    "save": {
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data.order_sn": "2026061216551176-71",
+      "data.message": "新订单创建成功",
+      "order_sn": "2026061216551176-71"
+    },
+    "send": {
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data.order_sn": "2026061216551176-71",
+      "data.message": "新订单创建成功",
+      "order_sn": "2026061216551176-71"
+    }
+  },
+  "login": {
+    "success": true,
+    "account": "userID/71In",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "cart_list_retry": {
+    "price_cut": "0",
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "data_count": 26,
+    "goods_count": 70
+  },
+  "cart_list": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "data_count": 26,
+    "goods_count": 70,
+    "selected_count": 2,
+    "selection": {
+      "expected_shop_count": 1,
+      "expected_per_shop": 2,
+      "expected_total": 2,
+      "available_shop_count": 26,
+      "ready_shop_count": 16,
+      "selected_shop_count": 1,
+      "selected_count": 2,
+      "shortage_count": 0,
+      "selected_shop_keys": [
+        "shop_id:BBBfVszXDO8wymcwQB92emPgQ"
+      ],
+      "shop_counts": {
+        "shop_id:BBBfVszXDO8wymcwQB92emPgQ": 5,
+        "shop_id:BBB0frRTN7G8Ny_eTTR-Qvy6Q": 5,
+        "shop_id:BBB8Wcbt3wdOy4bNKNBzP3Uzw": 5,
+        "shop_id:BBBkovzMCk89zSzJ4hnkIcP6Q": 5,
+        "shop_id:BBBMHanmIp3jIVX5ANpFexf1Q": 3,
+        "shop_id:BBBucUunKXxNIc1i3lIm4m0YQ": 3,
+        "shop_id:BBB8YFdDmZzkap6gNRdlayHAw": 3,
+        "shop_id:BBB3rnE6J9O5hsTqD0LAyaeCQ": 3,
+        "shop_id:BBBhqHIS3RmDz44qcCM2J_HAA": 3,
+        "shop_id:BBBwC2Xl-HKRR1tcX8VQubLcQ": 3,
+        "shop_id:BBBQBya0i2b4ESesASTl4mgfw": 3,
+        "shop_id:BBBp_kYIr3bI3KNVU799TfIMw": 3,
+        "shop_id:BBBGdHoE84_I8vlEndNkNUEeQ": 3,
+        "shop_id:BBB0aWLf1qFKf84jzk1w-L15w": 3,
+        "shop_id:BBBcqAYKNQwfD_PIZHyHRlPhA": 1,
+        "shop_id:BBBQt0A0bNs0RGwE7BexvGQqw": 1,
+        "shop_id:1746681998": 2,
+        "shop_id:969751649": 1,
+        "shop_name:揭阳市达美塑料五金实业有限公司|1688": 1,
+        "shop_id:2520475661": 1,
+        "shop_id:2212063231451": 1,
+        "shop_id:3058633162": 8,
+        "shop_id:2831123672": 1,
+        "shop_id:2213784319275": 1,
+        "shop_id:3608782522": 1,
+        "shop_id:3851052732": 1
+      }
+    }
+  },
+  "order_option_list": {
+    "source_path": "/client/order.optionList",
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "data_count": 16,
+    "option_count": 16
+  },
+  "order_options": {
+    "available_options": [
+      {
+        "key": "78",
+        "id": 78,
+        "name": "详细检品",
+        "label": "详细检品",
+        "name_translate": "詳細検品",
+        "price": 4,
+        "price_type": 1,
+        "unit": "%"
+      },
+      {
+        "key": "79",
+        "id": 79,
+        "name": "针检",
+        "label": "针检",
+        "name_translate": "通常検針サービス",
+        "price": "0.80",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "80",
+        "id": 80,
+        "name": "X线针检",
+        "label": "X线针检",
+        "name_translate": "X線検針サービス",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "81",
+        "id": 81,
+        "name": "X线针检往返运费",
+        "label": "X线针检往返运费",
+        "name_translate": "X線検針会社までの国内往復送料",
+        "price": "0.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "82",
+        "id": 82,
+        "name": "做布标",
+        "label": "做布标",
+        "name_translate": "織りネーム作成",
+        "price": "0.40",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "83",
+        "id": 83,
+        "name": "取布标",
+        "label": "取布标",
+        "name_translate": "織りネーム外し",
+        "price": 0.8,
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "84",
+        "id": 84,
+        "name": "缝布标",
+        "label": "缝布标",
+        "name_translate": "織りネーム縫い付け",
+        "price": 1,
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "85",
+        "id": 85,
+        "name": "做水洗标",
+        "label": "做水洗标",
+        "name_translate": "洗濯タグ作成",
+        "price": "0.16",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "86",
+        "id": 86,
+        "name": "取水洗标",
+        "label": "取水洗标",
+        "name_translate": "洗濯タグ外し",
+        "price": "0.80",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "87",
+        "id": 87,
+        "name": "缝水洗标",
+        "label": "缝水洗标",
+        "name_translate": "洗濯タグ縫付け",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "88",
+        "id": 88,
+        "name": "做吊牌",
+        "label": "做吊牌",
+        "name_translate": "下げ札作成",
+        "price": "0.12",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "89",
+        "id": 89,
+        "name": "挂吊牌",
+        "label": "挂吊牌",
+        "name_translate": "下げ札取り付け",
+        "price": 0.5,
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "90",
+        "id": 90,
+        "name": "做贴纸",
+        "label": "做贴纸",
+        "name_translate": "LOGOシール作成",
+        "price": "0.27",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "91",
+        "id": 91,
+        "name": "贴贴纸",
+        "label": "贴贴纸",
+        "name_translate": "LOGOシール貼り付け",
+        "price": "0.50",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "92",
+        "id": 92,
+        "name": "压缩包装操作费",
+        "label": "压缩包装操作费",
+        "name_translate": "圧縮包装*圧縮袋別途費用",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "93",
+        "id": 93,
+        "name": "压缩袋费用",
+        "label": "压缩袋费用",
+        "name_translate": "圧縮袋",
+        "price": "0.00",
+        "price_type": 0,
+        "unit": "元"
+      }
+    ],
+    "selected_options": [
+      {
+        "key": "78",
+        "id": 78,
+        "name": "详细检品",
+        "label": "详细检品",
+        "name_translate": "詳細検品",
+        "price": 4,
+        "price_type": 1,
+        "unit": "%",
+        "num": 100
+      },
+      {
+        "key": "79",
+        "id": 79,
+        "name": "针检",
+        "label": "针检",
+        "name_translate": "通常検針サービス",
+        "price": "0.80",
+        "price_type": 0,
+        "unit": "元",
+        "num": 10
+      },
+      {
+        "key": "80",
+        "id": 80,
+        "name": "X线针检",
+        "label": "X线针检",
+        "name_translate": "X線検針サービス",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元",
+        "num": 10
+      },
+      {
+        "key": "81",
+        "id": 81,
+        "name": "X线针检往返运费",
+        "label": "X线针检往返运费",
+        "name_translate": "X線検針会社までの国内往復送料",
+        "price": "0.00",
+        "price_type": 0,
+        "unit": "元",
+        "num": 10
+      },
+      {
+        "key": "82",
+        "id": 82,
+        "name": "做布标",
+        "label": "做布标",
+        "name_translate": "織りネーム作成",
+        "price": "0.40",
+        "price_type": 0,
+        "unit": "元",
+        "num": 101
+      }
+    ],
+    "counts": {
+      "78": 100,
+      "79": 10,
+      "80": 10,
+      "81": 10,
+      "82": 101
+    },
+    "applied_detail_count": 2,
+    "missing": []
+  },
+  "backend": {
+    "order_sn": "2026061216551176-71",
+    "steps": [],
+    "login": {
+      "success": true,
+      "code": 0,
+      "msg": "登录成功",
+      "account": "Y001",
+      "token_extracted": true
+    },
+    "detail_before": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data.order_sn": "2026061216551176-71",
+      "order_id": 813934,
+      "order_sn": "2026061216551176-71",
+      "status": 20,
+      "statusName": null,
+      "detail_count": 2,
+      "details": [
+        {
+          "id": 14050801,
+          "goods_id": "776765235559",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14050802,
+          "goods_id": "780417809061",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    },
+    "translate": {
+      "success": true,
+      "code": 0,
+      "msg": "翻译成功"
+    },
+    "detail_after_translate": {
+      "order_id": 813934,
+      "order_sn": "2026061216551176-71",
+      "status": 21,
+      "statusName": null,
+      "detail_count": 2,
+      "details": [
+        {
+          "id": 14050801,
+          "goods_id": "776765235559",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14050802,
+          "goods_id": "780417809061",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    },
+    "confirm": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 2
+    },
+    "detail_after_confirm": {
+      "order_id": 813934,
+      "order_sn": "2026061216551176-71",
+      "status": 22,
+      "statusName": null,
+      "detail_count": 2,
+      "details": [
+        {
+          "id": 14050801,
+          "goods_id": "776765235559",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14050802,
+          "goods_id": "780417809061",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    },
+    "offer": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 2
+    },
+    "detail_after_offer": {
+      "order_id": 813934,
+      "order_sn": "2026061216551176-71",
+      "status": 30,
+      "statusName": null,
+      "detail_count": 2,
+      "details": [
+        {
+          "id": 14050801,
+          "goods_id": "776765235559",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14050802,
+          "goods_id": "780417809061",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    }
+  },
+  "summary": {
+    "order_sn": "2026061216551176-71",
+    "selected_count": 2,
+    "item_quantity": 10,
+    "submit_order": true,
+    "run_backend_flow": true,
+    "cart_ids": [
+      1128084,
+      1128083
+    ],
+    "goods_ids": [
+      "776765235559",
+      "780417809061"
+    ],
+    "order_options": [
+      {
+        "key": "78",
+        "id": 78,
+        "name": "详细检品",
+        "label": "详细检品",
+        "name_translate": "詳細検品",
+        "price": 4,
+        "price_type": 1,
+        "unit": "%",
+        "num": 100
+      },
+      {
+        "key": "79",
+        "id": 79,
+        "name": "针检",
+        "label": "针检",
+        "name_translate": "通常検針サービス",
+        "price": "0.80",
+        "price_type": 0,
+        "unit": "元",
+        "num": 10
+      },
+      {
+        "key": "80",
+        "id": 80,
+        "name": "X线针检",
+        "label": "X线针检",
+        "name_translate": "X線検針サービス",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元",
+        "num": 10
+      },
+      {
+        "key": "81",
+        "id": 81,
+        "name": "X线针检往返运费",
+        "label": "X线针检往返运费",
+        "name_translate": "X線検針会社までの国内往復送料",
+        "price": "0.00",
+        "price_type": 0,
+        "unit": "元",
+        "num": 10
+      },
+      {
+        "key": "82",
+        "id": 82,
+        "name": "做布标",
+        "label": "做布标",
+        "name_translate": "織りネーム作成",
+        "price": "0.40",
+        "price_type": 0,
+        "unit": "元",
+        "num": 101
+      }
+    ],
+    "order_option_applied_detail_count": 2,
+    "expected_shop_count": 1,
+    "expected_per_shop": 2,
+    "selected_shop_count": 1,
+    "available_shop_count": 26,
+    "ready_shop_count": 16,
+    "backend_passed": true,
+    "backend_steps": [
+      "login",
+      "detail",
+      "translate",
+      "confirm",
+      "offer"
+    ],
+    "quote_unit_price": "10",
+    "backend_status": 30
+  },
+  "finished_at": "2026-06-12 16:55:21.646332"
+}

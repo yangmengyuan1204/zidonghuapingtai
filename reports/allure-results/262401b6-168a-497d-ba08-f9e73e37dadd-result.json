@@ -1,0 +1,27 @@
+{
+  "uuid": "262401b6-168a-497d-ba08-f9e73e37dadd",
+  "name": "注册后不保持登录状态",
+  "fullName": "ui.注册后不保持登录状态",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781074346140,
+  "stop": 1781074346140,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "262401b6-168a-497d-ba08-f9e73e37dadd-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "262401b6-168a-497d-ba08-f9e73e37dadd-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

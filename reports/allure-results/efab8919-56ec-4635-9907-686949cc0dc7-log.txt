@@ -1,0 +1,42 @@
+{
+  "case_name": "权限验证：未登录访问",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "assert_url",
+      "value": "https://promotees.rakumart.cn/login"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780644620,
+    "datetime": "2026-06-05 15:30:20",
+    "date": "2026-06-05",
+    "uuid": "340f05ae-4478-4ac6-b1b0-948a231f5321",
+    "random_int": 198215,
+    "random_str": "8nrqk9j8",
+    "random_phone": "13643457731",
+    "random_email": "test_198215@example.com",
+    "$timestamp": 1780644620,
+    "$datetime": "2026-06-05 15:30:20",
+    "$date": "2026-06-05",
+    "$uuid": "340f05ae-4478-4ac6-b1b0-948a231f5321",
+    "$random_int": 198215,
+    "$random_str": "8nrqk9j8",
+    "$random_phone": "13643457731",
+    "$random_email": "test_198215@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "rakumart888"
+  },
+  "started_at": "2026-06-05 15:30:20.884773",
+  "finished_at": "2026-06-05 15:30:27.528683"
+}

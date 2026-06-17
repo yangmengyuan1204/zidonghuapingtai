@@ -1,0 +1,22 @@
+{
+  "uuid": "38a578cc-7c73-4ea4-b249-cc26179ca5c2",
+  "name": "权限验证：非推广人账号访问",
+  "fullName": "ui.权限验证：非推广人账号访问",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780888001263,
+  "stop": 1780888001263,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "38a578cc-7c73-4ea4-b249-cc26179ca5c2-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

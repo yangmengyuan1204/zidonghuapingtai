@@ -1,0 +1,860 @@
+{
+  "script": "仓库提出配送单",
+  "mode": "warehouse_to_delivery_offer",
+  "base_url": "https://jpapi.rakumart.cn",
+  "send_num": 1,
+  "started_at": "2026-06-03 15:22:53.003095",
+  "warehouse_attempts": [
+    {
+      "path": "/client/wms.stockAutoList",
+      "request": {},
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data_count": 41,
+      "row_count": 193,
+      "selected_order_detail_id": "14050610"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "selected_item": {
+    "order_detail_id": "14050610",
+    "sendable_num": 5,
+    "send_num": 1,
+    "row": {
+      "id": 14050610,
+      "order_sn": "2026052713514395-300001",
+      "sorting": 1,
+      "pic": "https://cbu01.alicdn.com/img/ibank/O1CN0112B5oE2HLQPQqrmg0_!!2207333799134-0-cib.jpg",
+      "from_platform": "1688",
+      "goods_id": "671927646962",
+      "sku_id": "5005433150169",
+      "goods_title": "パジャマの女性の夏の半袖の韓国版の春と秋のかわいいズボンの薄いタイプの2025のゆったりした家の服のスーツの大きいサイズのアニメ",
+      "detail": [
+        {
+          "key": "颜色",
+          "value": "一半#牛油果"
+        },
+        {
+          "key": "尺码",
+          "value": "XL"
+        }
+      ],
+      "confirm_num": 10,
+      "confirm_price": "10.00",
+      "confirm_freight": "0.00",
+      "client_remark": "",
+      "y_reply": "",
+      "option": [
+        {
+          "id": 1,
+          "type": "0",
+          "name": "FBA贴标",
+          "name_translate": "商品ラベル貼り付け",
+          "price": "1.00",
+          "price_type": 0,
+          "unit": "元",
+          "is_overstep": 0,
+          "auto_calculate": 1,
+          "remark": "FBA贴标",
+          "icon": "",
+          "icon_selected": "",
+          "image": "",
+          "video": "",
+          "desc": "",
+          "sort": 1,
+          "num": "10",
+          "edit": false,
+          "checked": true,
+          "show": true
+        },
+        {
+          "auto_calculate": 1,
+          "checked": true,
+          "edit": false,
+          "is_overstep": 0,
+          "name": "详细检品(单价)",
+          "name_translate": "詳細検品",
+          "price_type": 0,
+          "price": 1.5,
+          "num": "10",
+          "unit": "元"
+        },
+        {
+          "id": 3,
+          "type": "0",
+          "name": "更换OPP袋子",
+          "name_translate": "通常OPP袋入れ替え",
+          "price": "0.50",
+          "price_type": 0,
+          "unit": "元",
+          "is_overstep": 0,
+          "auto_calculate": 1,
+          "remark": "更换OPP袋子",
+          "icon": "",
+          "icon_selected": "",
+          "image": "",
+          "video": "",
+          "desc": "",
+          "sort": 3,
+          "num": "10",
+          "edit": false,
+          "checked": true,
+          "show": true
+        },
+        {
+          "id": 5,
+          "type": "0",
+          "name": "缝布标",
+          "name_translate": "織りネーム・洗濯タグ縫い付け",
+          "price": 1,
+          "price_type": 0,
+          "unit": "元",
+          "is_overstep": 0,
+          "auto_calculate": 1,
+          "remark": "缝布标",
+          "icon": "",
+          "icon_selected": "",
+          "image": "",
+          "video": "",
+          "desc": "",
+          "sort": 4,
+          "num": "10",
+          "edit": false,
+          "checked": true,
+          "show": true
+        },
+        {
+          "id": 4,
+          "type": "0",
+          "name": "取布标",
+          "name_translate": "織りネーム・洗濯タグ取り外し",
+          "price": 0.8,
+          "price_type": 0,
+          "unit": "元",
+          "is_overstep": 0,
+          "auto_calculate": 1,
+          "remark": "取布标",
+          "icon": "",
+          "icon_selected": "",
+          "image": "",
+          "video": "",
+          "desc": "",
+          "sort": 5,
+          "num": "10",
+          "edit": false,
+          "checked": true,
+          "show": true
+        }
+      ],
+      "for_sn": "",
+      "set_detail_id": 0,
+      "material_id": 0,
+      "order_detail_tag": [],
+      "order_detail_label": [],
+      "order_purchase": [
+        {
+          "id": 15327229,
+          "order_detail_id": 14050610,
+          "storage_num": 10,
+          "putaway_at": "2026-06-01 09:24:57",
+          "discard_num": 0
+        }
+      ],
+      "forbid_goods": [],
+      "order_detail_wms_remark": null,
+      "material_bind": [],
+      "order_detail_file": [],
+      "order_exchange_rate": "21.20",
+      "is_box_num": 0,
+      "send_success_num": 5,
+      "not_box_num": 1,
+      "first_purchase_upstorage_at": "2026-06-01 09:24:57",
+      "is_rakumart_stcok_num": 6,
+      "first_upstorage_at": "2026-06-03 15:19:09",
+      "days_used_for_free": 2,
+      "days_surplus_for_free": 178,
+      "send_await_num": 5,
+      "send_may_num": 5
+    }
+  },
+  "porder_create": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "request": {
+      "create_type": "send",
+      "porder_sn": "P2026060315225326-300001",
+      "logistics_id": "14",
+      "order_detail_id": "14050610",
+      "send_num": 1
+    },
+    "response": {
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": ""
+    }
+  },
+  "backend_porder": {
+    "porder_sn": "P2026060315225326-300001",
+    "steps": [],
+    "login": {
+      "success": true,
+      "code": 0,
+      "msg": "登录成功",
+      "account": "Y001",
+      "token_extracted": true
+    },
+    "detail_before": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 1,
+      "details": [
+        {
+          "id": "5003228",
+          "goods_id": "671927646962",
+          "num": 1,
+          "send_num": null,
+          "wait_box_num": null,
+          "received_num": "",
+          "freight_id": null,
+          "status": null,
+          "statusName": null
+        }
+      ]
+    },
+    "submit_translate": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "porder_detail_id": "5003228"
+    },
+    "detail_after_translate": {
+      "detail_count": 1,
+      "porder_detail_id": "5003228"
+    },
+    "add_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "request": {
+        "porder_sn": "P2026060315225326-300001",
+        "count": "1",
+        "length": "58",
+        "width": "51",
+        "height": "50",
+        "weight": "10"
+      }
+    },
+    "freight_list_before_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data_count": 1,
+      "sample": [
+        {
+          "keys": [
+            "success",
+            "code",
+            "msg",
+            "data"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "porder_sn",
+            "user_id",
+            "realname",
+            "is_current",
+            "is_main",
+            "is_child",
+            "group"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "statusName",
+            "totalWeight",
+            "totalVolume",
+            "list"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "id",
+            "porder_sn",
+            "number",
+            "status",
+            "length",
+            "width",
+            "height",
+            "weight",
+            "logistics_id",
+            "express_no",
+            "box_id",
+            "maitou_print_at",
+            "is_wooden",
+            "move_box_id"
+          ],
+          "interesting": {
+            "id": 1073341
+          }
+        }
+      ]
+    },
+    "detail_after_add_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 1,
+      "details": [
+        {
+          "id": "5003228",
+          "goods_id": "671927646962",
+          "num": 1,
+          "send_num": null,
+          "wait_box_num": null,
+          "received_num": "",
+          "freight_id": null,
+          "status": null,
+          "statusName": null
+        }
+      ]
+    },
+    "into_box_preview": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data_count": 1,
+      "porder_detail_id": "5003228",
+      "freight_id": "1073341",
+      "stock_id": "714906",
+      "num_need": 1,
+      "sample": [
+        {
+          "keys": [
+            "success",
+            "code",
+            "msg",
+            "data"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "id",
+            "porder_sn",
+            "order_detail_id",
+            "num",
+            "order_detail",
+            "wms_stock",
+            "hasFreightNum",
+            "waitFreightNum"
+          ],
+          "interesting": {
+            "id": 5003228,
+            "num": 1
+          }
+        },
+        {
+          "keys": [
+            "id",
+            "order_sn",
+            "pic",
+            "sorting",
+            "detail",
+            "detail_y",
+            "order_purchase"
+          ],
+          "interesting": {
+            "id": 14050610
+          }
+        },
+        {
+          "keys": [
+            "key",
+            "value"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "key",
+            "value"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "key",
+            "value"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "key",
+            "value"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "id",
+            "order_detail_id",
+            "order_sn",
+            "possible_num",
+            "storage_num",
+            "purchase_no"
+          ],
+          "interesting": {
+            "id": 15327229,
+            "storage_num": 10
+          }
+        }
+      ]
+    },
+    "into_box_submit": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "box_num": 1
+    },
+    "detail_after_into_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 1,
+      "details": [
+        {
+          "id": "5003228",
+          "goods_id": "671927646962",
+          "num": 1,
+          "send_num": null,
+          "wait_box_num": null,
+          "received_num": "",
+          "freight_id": null,
+          "status": null,
+          "statusName": null
+        }
+      ]
+    },
+    "freight_list_after_into_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data_count": 1,
+      "boxes": [
+        {
+          "id": 1073341,
+          "porder_sn": "P2026060315225326-300001",
+          "number": 1,
+          "status": 0,
+          "statusName": null,
+          "length": 58,
+          "width": 51,
+          "height": 50,
+          "weight": 10,
+          "logistics_id": 0,
+          "box_id": 0,
+          "freight_id": null
+        }
+      ],
+      "sample": [
+        {
+          "keys": [
+            "success",
+            "code",
+            "msg",
+            "data"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "porder_sn",
+            "user_id",
+            "realname",
+            "is_current",
+            "is_main",
+            "is_child",
+            "group"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "statusName",
+            "totalWeight",
+            "totalVolume",
+            "list"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "id",
+            "porder_sn",
+            "number",
+            "status",
+            "length",
+            "width",
+            "height",
+            "weight",
+            "logistics_id",
+            "express_no",
+            "box_id",
+            "maitou_print_at",
+            "is_wooden",
+            "move_box_id"
+          ],
+          "interesting": {
+            "id": 1073341
+          }
+        }
+      ]
+    },
+    "spot_after_into_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功"
+    },
+    "complete_box_attempts": [
+      {
+        "path": "/porder.submitBox",
+        "request": {
+          "porder_sn": "P2026060315225326-300001",
+          "count": "1",
+          "length": "58",
+          "width": "51",
+          "height": "50",
+          "weight": "10"
+        },
+        "response": {
+          "success": false,
+          "code": 0,
+          "msg": "接口路由错误:https://jpapi.rakumart.cn/porder.submitBox"
+        },
+        "boxes": [
+          {
+            "id": 1073341,
+            "porder_sn": "P2026060315225326-300001",
+            "number": 1,
+            "status": 0,
+            "statusName": null,
+            "length": 58,
+            "width": 51,
+            "height": 50,
+            "weight": 10,
+            "logistics_id": 0,
+            "box_id": 0,
+            "freight_id": null
+          }
+        ],
+        "box_completed": false
+      },
+      {
+        "path": "/porder.completeBox",
+        "request": {
+          "porder_sn": "P2026060315225326-300001",
+          "count": "1",
+          "length": "58",
+          "width": "51",
+          "height": "50",
+          "weight": "10"
+        },
+        "response": {
+          "success": false,
+          "code": 10000,
+          "msg": "Argument 1 passed to Illuminate\\Database\\Query\\Builder::cleanBindings() must be of the type array, null given, called in /data/wwwroot/rakumart/vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php on line 870",
+          "data_count": 1
+        },
+        "boxes": [
+          {
+            "id": 1073341,
+            "porder_sn": "P2026060315225326-300001",
+            "number": 1,
+            "status": 0,
+            "statusName": null,
+            "length": 58,
+            "width": 51,
+            "height": 50,
+            "weight": 10,
+            "logistics_id": 0,
+            "box_id": 0,
+            "freight_id": null
+          }
+        ],
+        "box_completed": false
+      },
+      {
+        "path": "/porder.finishBox",
+        "request": {
+          "porder_sn": "P2026060315225326-300001",
+          "count": "1",
+          "length": "58",
+          "width": "51",
+          "height": "50",
+          "weight": "10"
+        },
+        "response": {
+          "success": false,
+          "code": 0,
+          "msg": "接口路由错误:https://jpapi.rakumart.cn/porder.finishBox"
+        },
+        "boxes": [
+          {
+            "id": 1073341,
+            "porder_sn": "P2026060315225326-300001",
+            "number": 1,
+            "status": 0,
+            "statusName": null,
+            "length": 58,
+            "width": 51,
+            "height": 50,
+            "weight": 10,
+            "logistics_id": 0,
+            "box_id": 0,
+            "freight_id": null
+          }
+        ],
+        "box_completed": false
+      },
+      {
+        "path": "/porder.boxComplete",
+        "request": {
+          "porder_sn": "P2026060315225326-300001",
+          "count": "1",
+          "length": "58",
+          "width": "51",
+          "height": "50",
+          "weight": "10"
+        },
+        "response": {
+          "success": false,
+          "code": 0,
+          "msg": "接口路由错误:https://jpapi.rakumart.cn/porder.boxComplete"
+        },
+        "boxes": [
+          {
+            "id": 1073341,
+            "porder_sn": "P2026060315225326-300001",
+            "number": 1,
+            "status": 0,
+            "statusName": null,
+            "length": 58,
+            "width": 51,
+            "height": 50,
+            "weight": 10,
+            "logistics_id": 0,
+            "box_id": 0,
+            "freight_id": null
+          }
+        ],
+        "box_completed": false
+      },
+      {
+        "path": "/porder.addBox",
+        "request": {
+          "porder_sn": "P2026060315225326-300001",
+          "count": "1",
+          "length": "58",
+          "width": "51",
+          "height": "50",
+          "weight": "10"
+        },
+        "response": {
+          "success": true,
+          "code": 0,
+          "msg": "操作成功",
+          "data": true
+        },
+        "boxes": [
+          {
+            "id": 1073341,
+            "porder_sn": "P2026060315225326-300001",
+            "number": 1,
+            "status": 0,
+            "statusName": null,
+            "length": 58,
+            "width": 51,
+            "height": 50,
+            "weight": 10,
+            "logistics_id": 0,
+            "box_id": 0,
+            "freight_id": null
+          },
+          {
+            "id": 1073342,
+            "porder_sn": "P2026060315225326-300001",
+            "number": 2,
+            "status": 0,
+            "statusName": null,
+            "length": 58,
+            "width": 51,
+            "height": 50,
+            "weight": 10,
+            "logistics_id": 0,
+            "box_id": 0,
+            "freight_id": null
+          }
+        ],
+        "box_completed": false
+      }
+    ],
+    "to_wait_offer": {
+      "success": false,
+      "code": 10000,
+      "msg": "本配送单或并单配送单内 有空箱子或未完成的箱子, 不可提交",
+      "data": "本配送单或并单配送单内 有空箱子或未完成的箱子, 不可提交"
+    },
+    "detail_before_to_wait_offer_retry": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 1,
+      "details": [
+        {
+          "id": "5003228",
+          "goods_id": "671927646962",
+          "num": 1,
+          "send_num": null,
+          "wait_box_num": null,
+          "received_num": "",
+          "freight_id": null,
+          "status": null,
+          "statusName": null
+        }
+      ]
+    },
+    "freight_list_before_to_wait_offer_retry": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data_count": 1,
+      "boxes": [
+        {
+          "id": 1073341,
+          "porder_sn": "P2026060315225326-300001",
+          "number": 1,
+          "status": 0,
+          "statusName": null,
+          "length": 58,
+          "width": 51,
+          "height": 50,
+          "weight": 10,
+          "logistics_id": 0,
+          "box_id": 0,
+          "freight_id": null
+        },
+        {
+          "id": 1073342,
+          "porder_sn": "P2026060315225326-300001",
+          "number": 2,
+          "status": 0,
+          "statusName": null,
+          "length": 58,
+          "width": 51,
+          "height": 50,
+          "weight": 10,
+          "logistics_id": 0,
+          "box_id": 0,
+          "freight_id": null
+        }
+      ],
+      "sample": [
+        {
+          "keys": [
+            "success",
+            "code",
+            "msg",
+            "data"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "porder_sn",
+            "user_id",
+            "realname",
+            "is_current",
+            "is_main",
+            "is_child",
+            "group"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "statusName",
+            "totalWeight",
+            "totalVolume",
+            "list"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "id",
+            "porder_sn",
+            "number",
+            "status",
+            "length",
+            "width",
+            "height",
+            "weight",
+            "logistics_id",
+            "express_no",
+            "box_id",
+            "maitou_print_at",
+            "is_wooden",
+            "move_box_id"
+          ],
+          "interesting": {
+            "id": 1073341
+          }
+        }
+      ]
+    },
+    "spot_before_to_wait_offer_retry": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功"
+    },
+    "to_wait_offer_retry": {
+      "success": false,
+      "code": 10000,
+      "msg": "本配送单或并单配送单内 有空箱子或未完成的箱子, 不可提交",
+      "data": "本配送单或并单配送单内 有空箱子或未完成的箱子, 不可提交"
+    }
+  },
+  "summary": {
+    "porder_sn": "P2026060315225326-300001",
+    "order_detail_id": "14050610",
+    "send_num": 1,
+    "warehouse_rows": 193,
+    "create_passed": true,
+    "backend_passed": false,
+    "reason": "配送单提交业务失败",
+    "to_wait_offer": {
+      "success": false,
+      "code": 10000,
+      "msg": "本配送单或并单配送单内 有空箱子或未完成的箱子, 不可提交",
+      "data": "本配送单或并单配送单内 有空箱子或未完成的箱子, 不可提交"
+    }
+  },
+  "finished_at": "2026-06-03 15:23:13.671488"
+}

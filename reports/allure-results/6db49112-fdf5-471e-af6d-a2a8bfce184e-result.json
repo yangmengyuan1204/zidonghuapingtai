@@ -1,0 +1,27 @@
+{
+  "uuid": "6db49112-fdf5-471e-af6d-a2a8bfce184e",
+  "name": "搜索超长关键词",
+  "fullName": "ui.搜索超长关键词",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781083982831,
+  "stop": 1781083982831,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "6db49112-fdf5-471e-af6d-a2a8bfce184e-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "6db49112-fdf5-471e-af6d-a2a8bfce184e-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

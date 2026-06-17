@@ -1,0 +1,67 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://jpapi.rakumart.cn/mobile/userLogin",
+    "headers": {
+      "Content-Type": "multipart/form-data"
+    },
+    "params": {},
+    "body": {
+      "account": "12345678990",
+      "password": "123456",
+      "client_tool": "2"
+    },
+    "timeout": 30
+  },
+  "variables": {
+    "timestamp": 1780301669,
+    "datetime": "2026-06-01 16:14:29",
+    "date": "2026-06-01",
+    "uuid": "d49220de-b1fb-4b3a-aaee-45d8ab5bfe2c",
+    "random_int": 805909,
+    "random_str": "7k7ow7l8",
+    "random_phone": "13274931724",
+    "random_email": "test_805909@example.com",
+    "$timestamp": 1780301669,
+    "$datetime": "2026-06-01 16:14:29",
+    "$date": "2026-06-01",
+    "$uuid": "d49220de-b1fb-4b3a-aaee-45d8ab5bfe2c",
+    "$random_int": 805909,
+    "$random_str": "7k7ow7l8",
+    "$random_phone": "13274931724",
+    "$random_email": "test_805909@example.com",
+    "api": "https://jpapi.rakumart.cn"
+  },
+  "started_at": "2026-06-01 16:14:29.940798",
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "Server": "nginx",
+      "Content-Type": "text/html; charset=UTF-8",
+      "Transfer-Encoding": "chunked",
+      "Connection": "keep-alive",
+      "Vary": "Accept-Encoding",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, DELETE",
+      "Access-Control-Allow-Headers": "X_Requested_With,X-PINGOTHER,Cookie, Authorization,gkToken, ClientToken,ManageToken,AdminToken, PageUrlTrace,LogisticsToken, Content-Type, Depth, UserModel-Agent, X-File-Size, X-Requested-With, X-Requested-By, If-Modified-Since, X-File-Name, X-File-Type, Cache-Control, Origin, X-Real-IP, X-Forwarded-For, Fingerprint, Pragma, Lang",
+      "Cache-Control": "no-cache, private",
+      "Date": "Mon, 01 Jun 2026 08:14:30 GMT",
+      "Content-Encoding": "gzip"
+    },
+    "body": "{\"success\":true,\"code\":0,\"msg\":\"ログイン成功\",\"data\":{\"userToken\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyYWt1bWFydC5jbiIsImF1ZCI6InJha3VtYXJ0LmNuIiwiaWF0IjoxNzgwMzAxNjcwLCJuYmYiOjAsImV4cCI6MTc4MjAyOTY3MCwidXNlckluZm8iOnsidG9rZW5faWQiOjMwMDAwMSwib3BlcmF0aW9uX2lkIjozMDAwMDEsInlfaWQiOjE0LCJ1c2VybmFtZSI6Ilx1NWMwZlx1Njc2OFx1NmQ0Ylx1OGJkNVx1OGQyNlx1NTNmNyIsInJlYWxuYW1lIjoiXHU1YzBmXHU2NzY4XHU2ZDRiXHU4YmQ1IiwiZW1haWwiOiIzNzcwNzU5MTJAcXEuY29tIiwibW9iaWxlIjoiMTIzNDU2Nzg5OTAiLCJnb29kc19hbW91bnQiOjU4NjcxNTMsImlzX3Vuc2V0IjowLCJjbGllbnRfdG9vbCI6IjIiLCJjbGllbnRfdG9vbF9uYW1lIjoiSDUtV0VCIn19.DKkFGySAr2LDzqM6LSlJK3tEfwuWqIGO-PNPQxfe_BM\",\"userInfo\":{\"token_id\":300001,\"operation_id\":300001,\"y_id\":14,\"username\":\"小杨测试账号\",\"realname\":\"小杨测试\",\"email\":\"377075912@qq.com\",\"mobile\":\"12345678990\",\"goods_amount\":5867153,\"is_unset\":0,\"client_tool\":\"2\",\"client_tool_name\":\"H5-WEB\",\"l\":0},\"tmpPwd\":false}}"
+  },
+  "assertions": [
+    {
+      "type": "status_code",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    }
+  ],
+  "extracted_vars": {
+    "userToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyYWt1bWFydC5jbiIsImF1ZCI6InJha3VtYXJ0LmNuIiwiaWF0IjoxNzgwMzAxNjcwLCJuYmYiOjAsImV4cCI6MTc4MjAyOTY3MCwidXNlckluZm8iOnsidG9rZW5faWQiOjMwMDAwMSwib3BlcmF0aW9uX2lkIjozMDAwMDEsInlfaWQiOjE0LCJ1c2VybmFtZSI6Ilx1NWMwZlx1Njc2OFx1NmQ0Ylx1OGJkNVx1OGQyNlx1NTNmNyIsInJlYWxuYW1lIjoiXHU1YzBmXHU2NzY4XHU2ZDRiXHU4YmQ1IiwiZW1haWwiOiIzNzcwNzU5MTJAcXEuY29tIiwibW9iaWxlIjoiMTIzNDU2Nzg5OTAiLCJnb29kc19hbW91bnQiOjU4NjcxNTMsImlzX3Vuc2V0IjowLCJjbGllbnRfdG9vbCI6IjIiLCJjbGllbnRfdG9vbF9uYW1lIjoiSDUtV0VCIn19.DKkFGySAr2LDzqM6LSlJK3tEfwuWqIGO-PNPQxfe_BM",
+    "token_id": 300001,
+    "operation_id": 300001
+  },
+  "finished_at": "2026-06-01 16:14:30.149889"
+}

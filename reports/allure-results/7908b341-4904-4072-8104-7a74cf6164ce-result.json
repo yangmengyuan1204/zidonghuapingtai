@@ -1,0 +1,27 @@
+{
+  "uuid": "7908b341-4904-4072-8104-7a74cf6164ce",
+  "name": "密码过于简单",
+  "fullName": "ui.密码过于简单",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781073956694,
+  "stop": 1781073956694,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "7908b341-4904-4072-8104-7a74cf6164ce-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "7908b341-4904-4072-8104-7a74cf6164ce-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

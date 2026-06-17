@@ -1,0 +1,33 @@
+{
+  "script": "订单报价",
+  "mode": "cart_to_order",
+  "base_url": "https://jpapi.rakumart.cn",
+  "item_count": 2,
+  "item_quantity": 10,
+  "price_cut": "1",
+  "submit_order": true,
+  "started_at": "2026-06-01 16:25:21.928744",
+  "selected_items": [],
+  "edits": [],
+  "create": {},
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "cart_list": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "goods_count": 0,
+    "selected_count": 0
+  },
+  "summary": {
+    "order_sn": "",
+    "selected_count": 0,
+    "expected_count": 2,
+    "reason": "购物车可提单商品不足"
+  },
+  "finished_at": "2026-06-01 16:26:03.436335"
+}

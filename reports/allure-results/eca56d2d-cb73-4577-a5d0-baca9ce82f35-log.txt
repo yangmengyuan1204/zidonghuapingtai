@@ -1,0 +1,29 @@
+{
+  "script": "配送单余额付款",
+  "mode": "porder_balance_payment",
+  "started_at": "2026-06-03 16:21:39.698408",
+  "payment": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "data.serial_number": "178047489980500300001689",
+    "request": {
+      "porder_sn": "P2026060315302717-300001",
+      "discounts_id": "",
+      "merge_pay": "0"
+    }
+  },
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "base_url": "https://jpapi.rakumart.cn",
+  "summary": {
+    "payment_type": "porder_balance",
+    "porder_sn": "P2026060315302717-300001",
+    "payment_passed": true
+  },
+  "finished_at": "2026-06-03 16:21:40.716588"
+}

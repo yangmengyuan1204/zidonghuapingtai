@@ -1,0 +1,42 @@
+{
+  "case_name": "未登录状态下访问个人主页",
+  "page_url": "https://promotees.rakumart.cn/homePage",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/homePage"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "assert_url",
+      "value": "https://promotees.rakumart.cn/login"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780639419,
+    "datetime": "2026-06-05 14:03:39",
+    "date": "2026-06-05",
+    "uuid": "b807d68f-6f8c-4710-8a20-8aa58aef05e2",
+    "random_int": 436894,
+    "random_str": "fna18pjb",
+    "random_phone": "13697179798",
+    "random_email": "test_436894@example.com",
+    "$timestamp": 1780639419,
+    "$datetime": "2026-06-05 14:03:39",
+    "$date": "2026-06-05",
+    "$uuid": "b807d68f-6f8c-4710-8a20-8aa58aef05e2",
+    "$random_int": 436894,
+    "$random_str": "fna18pjb",
+    "$random_phone": "13697179798",
+    "$random_email": "test_436894@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "akumart888"
+  },
+  "started_at": "2026-06-05 14:03:39.690459",
+  "finished_at": "2026-06-05 14:03:44.697194"
+}

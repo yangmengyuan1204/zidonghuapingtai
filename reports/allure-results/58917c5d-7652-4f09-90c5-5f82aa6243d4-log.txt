@@ -1,0 +1,632 @@
+{
+  "script": "商品购物车",
+  "keyword": "耳环",
+  "shop_types": [
+    "1688",
+    "taobao",
+    "tmall",
+    "rakumart"
+  ],
+  "per_shop": 5,
+  "started_at": "2026-06-01 10:04:29.188277",
+  "shops": [
+    {
+      "shop_type": "1688",
+      "added": [
+        {
+          "goods_id": 1041550640127,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1044594151201,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1047631434951,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1047929098399,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1042911510368,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1047074317148,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1051245906341,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1052037281476,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1044916437426,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1045468048325,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1039357468981,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1046094910830,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1038600587579,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1036864942712,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1054729717660,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1043833275299,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1042885606912,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1036873150387,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1046706170596,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        },
+        {
+          "goods_id": 1047040791120,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": false,
+            "code": 10001,
+            "msg": "現在のログインは無効です，再度ログインしてください。",
+            "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+          },
+          "success": false
+        }
+      ],
+      "errors": [],
+      "searches": [
+        {
+          "keyword": "耳环",
+          "shop_type": "1688",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 20
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 20
+      }
+    },
+    {
+      "shop_type": "taobao",
+      "added": [],
+      "errors": [],
+      "searches": [
+        {
+          "keyword": "耳环",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "衣服",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "鞋子",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "包",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "帽子",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "裙子",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 0
+      }
+    },
+    {
+      "shop_type": "tmall",
+      "added": [],
+      "errors": [],
+      "searches": [
+        {
+          "keyword": "耳环",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "衣服",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "鞋子",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "包",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "帽子",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "裙子",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 0
+      }
+    },
+    {
+      "shop_type": "rakumart",
+      "added": [],
+      "errors": [
+        {
+          "goods_id": 13911,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12023,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12021,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12019,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12018,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12016,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12014,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12013,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12012,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12011,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12008,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12007,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12006,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12005,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12004,
+          "error": "'str' object has no attribute 'get'"
+        },
+        {
+          "goods_id": 12003,
+          "error": "'str' object has no attribute 'get'"
+        }
+      ],
+      "searches": [
+        {
+          "keyword": "耳环",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 16
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 16
+      }
+    }
+  ],
+  "login": {
+    "status_code": 200,
+    "success": true,
+    "code": 0,
+    "msg": "ログイン成功",
+    "body": "{\"success\":true,\"code\":0,\"msg\":\"ログイン成功\",\"data\":{\"userToken\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyYWt1bWFydC5jbiIsImF1ZCI6InJha3VtYXJ0LmNuIiwiaWF0IjoxNzgwMjc5NDY1LCJuYmYiOjAsImV4cCI6MTc4MjAwNzQ2NSwidXNlckluZm8iOnsidG9rZW5faWQiOjMwMDAwMSwib3BlcmF0aW9uX2lkIjozMDAwMDEsInlfaWQiOjE0LCJ1c2VybmFtZSI6Ilx1NWMwZlx1Njc2OFx1NmQ0Ylx1OGJkNVx1OGQyNlx1NTNmNyIsInJlYWxuYW1lIjoiXHU1YzBmXHU2NzY4XHU2ZDRiXHU4YmQ1IiwiZW1haWwiOiIzNzcwNzU5MTJAcXEuY29tIiwibW9iaWxlIjoiMTIzNDU2Nzg5OTAiLCJnb29kc19hbW91bnQiOjU4NjcxNTMsImlzX3Vuc2V0IjowLCJjbGllbnRfdG9vbCI6IjIiLCJjbGllbnRfdG9vbF9uYW1lIjoiSDUtV0VCIn19.khHPnNnHZ0REGWRUz5JilNoMscMmuRrCmRQtyv3hZ14\",\"userInfo\":{\"token_id\":300001,\"operation_id\":300001,\"y_id\":14,\"username\":\"小杨测试账号\",\"realname\":\"小杨测试\",\"email\":\"377075912@qq.com\",\"mobile\":\"12345678990\",\"goods_amount\":5867153,\"is_unset\":0,\"client_tool\":\"2\",\"client_tool_name\":\"H5-WEB\",\"l\":0},\"tmpPwd\":false}}",
+    "account": "12345678990",
+    "token_extracted": true
+  },
+  "summary": {
+    "keyword": "耳环",
+    "expected_total": 20,
+    "added_total": 0,
+    "shop_types": [
+      "1688",
+      "taobao",
+      "tmall",
+      "rakumart"
+    ],
+    "reason": "未达到每个店铺加购数量要求"
+  },
+  "finished_at": "2026-06-01 10:06:04.080777"
+}

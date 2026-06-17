@@ -1,0 +1,51 @@
+{
+  "script": "余额支付",
+  "mode": "balance_payment",
+  "started_at": "2026-06-16 15:16:33.792435",
+  "order_list": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "request": {
+      "status_name": "等待付款",
+      "page": 1,
+      "pageSize": 10,
+      "order_by": "desc",
+      "keywords": "2026061615162224-71"
+    },
+    "count": 1,
+    "selected_order_sn": "2026061615162224-71",
+    "selected_status_name": "等待付款",
+    "selected_amount": "2615"
+  },
+  "payment": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "data.order_sn": "2026061615162224-71",
+    "data.serial_number": "178159419443600000071321",
+    "data.pay_amount": 2615,
+    "request": {
+      "order_sn": "2026061615162224-71",
+      "discounts_id": "",
+      "predict_logistics_price_is_pay": "0"
+    }
+  },
+  "login": {
+    "success": true,
+    "account": "userID/71In",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "base_url": "https://jpapi.rakumart.cn",
+  "duration_ms": 3718,
+  "summary": {
+    "payment_type": "balance",
+    "order_sn": "2026061615162224-71",
+    "pay_amount": "2615",
+    "payment_passed": true,
+    "serial_number": "178159419443600000071321",
+    "duration_ms": 3718
+  },
+  "finished_at": "2026-06-16 15:16:37.510760"
+}

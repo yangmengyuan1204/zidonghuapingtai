@@ -1,0 +1,22 @@
+{
+  "uuid": "691cf7eb-a218-42cc-bddf-a7ab2d43db76",
+  "name": "配送单银行付款",
+  "fullName": "data_script.配送单银行付款",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780555744292,
+  "stop": 1780555744292,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "691cf7eb-a218-42cc-bddf-a7ab2d43db76-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

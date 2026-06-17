@@ -1,0 +1,22 @@
+{
+  "uuid": "76d5536c-e99b-4d20-844d-2c19eecad20b",
+  "name": "银行支付",
+  "fullName": "data_script.银行支付",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780369022090,
+  "stop": 1780369022090,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "76d5536c-e99b-4d20-844d-2c19eecad20b-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

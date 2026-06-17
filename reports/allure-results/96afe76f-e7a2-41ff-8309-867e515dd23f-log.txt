@@ -1,0 +1,329 @@
+{
+  "script": "全流程完全体",
+  "mode": "full_flow",
+  "started_at": "2026-06-13 13:35:46.412940",
+  "stop_after_node": "checking_started",
+  "steps": [
+    {
+      "node": "shopping_cart",
+      "node_label": "商品加购完成",
+      "script": "商品购物车",
+      "passed": true,
+      "paused": false,
+      "summary": {
+        "keyword": "衣服",
+        "shop_type": "1688",
+        "target_shops": 4,
+        "per_shop": 5,
+        "ready_shops": 4,
+        "expected_total": 20,
+        "available_expected_total": 20,
+        "added_total": 20,
+        "api_added_total": 20,
+        "verified_added_total": 20,
+        "cart_verification_enabled": true,
+        "failed_batches": [],
+        "verification_failed_batches": [],
+        "strict_shop_count": false
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\9da7ceca-b251-43e8-b969-7e97ccaafcbd-result.json"
+    },
+    {
+      "node": "order_offered",
+      "node_label": "后台订单报价完成",
+      "script": "订单报价",
+      "passed": true,
+      "paused": false,
+      "summary": {
+        "order_sn": "2026061313363831-300001",
+        "selected_count": 2,
+        "item_quantity": 10,
+        "submit_order": true,
+        "run_backend_flow": true,
+        "cart_ids": [
+          1128148,
+          1128147
+        ],
+        "goods_ids": [
+          "1011796146291",
+          "1011796146291"
+        ],
+        "order_options": [
+          {
+            "key": "78",
+            "id": 78,
+            "name": "详细检品",
+            "label": "详细检品",
+            "name_translate": "詳細検品",
+            "price": 4,
+            "price_type": 1,
+            "unit": "%",
+            "num": 10
+          },
+          {
+            "key": "79",
+            "id": 79,
+            "name": "针检",
+            "label": "针检",
+            "name_translate": "通常検針サービス",
+            "price": "0.80",
+            "price_type": 0,
+            "unit": "元",
+            "num": 20
+          },
+          {
+            "key": "80",
+            "id": 80,
+            "name": "X线针检",
+            "label": "X线针检",
+            "name_translate": "X線検針サービス",
+            "price": "1.00",
+            "price_type": 0,
+            "unit": "元",
+            "num": 30
+          }
+        ],
+        "order_option_applied_detail_count": 2,
+        "expected_shop_count": 1,
+        "expected_per_shop": 2,
+        "selected_shop_count": 1,
+        "available_shop_count": 49,
+        "ready_shop_count": 32,
+        "backend_passed": true,
+        "backend_steps": [
+          "login",
+          "detail",
+          "translate",
+          "confirm",
+          "offer"
+        ],
+        "quote_unit_price": "10",
+        "backend_status": 30
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\eadbbb9e-48da-4bfe-8f24-d67f4198bfce-result.json"
+    },
+    {
+      "node": "order_paid",
+      "node_label": "订单支付完成",
+      "script": "余额支付",
+      "passed": true,
+      "paused": false,
+      "summary": {
+        "payment_type": "balance",
+        "order_sn": "2026061313363831-300001",
+        "pay_amount": "6541",
+        "payment_passed": true,
+        "serial_number": "178132901429800300001885",
+        "attempted_payment_types": [
+          "balance"
+        ]
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\e0a1faea-4b53-4d53-9681-45b6bf47e9ae-result.json"
+    },
+    {
+      "node": "checking_started",
+      "node_label": "开始核查完成",
+      "script": "待拍下到商品上架",
+      "passed": true,
+      "paused": true,
+      "summary": {
+        "order_sn": "2026061313363831-300001",
+        "purchase_no": "20260613133657",
+        "purchase_ids": [
+          15327357,
+          15327358
+        ],
+        "selected_count": 2,
+        "already_checking": false,
+        "paused": true,
+        "stopped_after_node": "checking_started",
+        "current_node": "checking_started",
+        "node_label": "开始核查完成"
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\5a57b0e0-10c5-4d92-9c17-f6d5404a6039-result.json"
+    }
+  ],
+  "shared_data": {
+    "order_sn": "2026061313363831-300001",
+    "serial_number": "178132901429800300001885",
+    "payment_type": "balance",
+    "pay_amount": "6541",
+    "purchase_no": "20260613133657",
+    "purchase_ids": [
+      15327357,
+      15327358
+    ]
+  },
+  "summary": {
+    "passed": true,
+    "paused": true,
+    "current_node": "checking_started",
+    "node_label": "开始核查完成",
+    "stop_after_node": "checking_started",
+    "total_steps": 4,
+    "success_steps": 4,
+    "node_results": [
+      {
+        "node": "shopping_cart",
+        "node_label": "商品加购完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_created",
+        "node_label": "前台提交订单完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_translated",
+        "node_label": "后台订单翻译完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_confirmed",
+        "node_label": "后台订单确认完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_offered",
+        "node_label": "后台订单报价完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_paid",
+        "node_label": "订单支付完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "pending_purchase",
+        "node_label": "订单进入待拍下",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_no_saved",
+        "node_label": "保存交易号完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_wait_modify_price",
+        "node_label": "标记待改价完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_wait_pay",
+        "node_label": "提交待财务付款完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_paid",
+        "node_label": "交易号付款完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "checking_started",
+        "node_label": "开始核查完成",
+        "status": "paused",
+        "passed": true
+      },
+      {
+        "node": "shelf_stored",
+        "node_label": "核查上架入库完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "warehouse_delivery_created",
+        "node_label": "仓库提出配送单完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_translated",
+        "node_label": "配送单待翻译完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_confirmed",
+        "node_label": "配送单确认流转完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_wait_offer",
+        "node_label": "配送单进入待报价完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_offered",
+        "node_label": "配送单报价完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_paid",
+        "node_label": "配送单支付完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "full_complete",
+        "node_label": "全流程结束",
+        "status": "pending",
+        "passed": null
+      }
+    ],
+    "steps": [
+      {
+        "node": "shopping_cart",
+        "node_label": "商品加购完成",
+        "script": "商品购物车",
+        "passed": true,
+        "paused": false
+      },
+      {
+        "node": "order_offered",
+        "node_label": "后台订单报价完成",
+        "script": "订单报价",
+        "passed": true,
+        "paused": false
+      },
+      {
+        "node": "order_paid",
+        "node_label": "订单支付完成",
+        "script": "余额支付",
+        "passed": true,
+        "paused": false
+      },
+      {
+        "node": "checking_started",
+        "node_label": "开始核查完成",
+        "script": "待拍下到商品上架",
+        "passed": true,
+        "paused": true
+      }
+    ],
+    "order_sn": "2026061313363831-300001",
+    "serial_number": "178132901429800300001885",
+    "payment_type": "balance",
+    "pay_amount": "6541",
+    "purchase_no": "20260613133657",
+    "purchase_ids": [
+      15327357,
+      15327358
+    ],
+    "stopped_after_node": "checking_started"
+  },
+  "finished_at": "2026-06-13 13:37:08.752546"
+}

@@ -1,0 +1,126 @@
+{
+  "script": "银行支付",
+  "mode": "bank_payment",
+  "started_at": "2026-06-02 10:56:48.291650",
+  "order_list": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "request": {
+      "status_name": "等待付款",
+      "page": 1,
+      "pageSize": 10,
+      "order_by": "desc"
+    },
+    "count": 10,
+    "selected_order_sn": "2026060117121823-300001",
+    "selected_status_name": "等待付款",
+    "selected_amount": "4431"
+  },
+  "payment": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "data.order_sn": "2026060117121823-300001",
+    "data.serial_number": "178036900964900300001321",
+    "data.pay_amount": "4431",
+    "request": {
+      "order_sn": "2026060117121823-300001",
+      "pay_bank_method": "1",
+      "pay_date": "2026-06-02 10:56:48",
+      "pay_reach_date": "2026-06-03 10:56:48",
+      "pay_name": "自动化测试",
+      "pay_amount": "4431",
+      "pay_remark": "自动化银行付款",
+      "discounts_id": "",
+      "predict_logistics_price_is_pay": "0"
+    },
+    "serial_number": "178036900964900300001321"
+  },
+  "finance": {
+    "login": {
+      "success": true,
+      "code": 0,
+      "msg": "登录成功",
+      "account": "Y001",
+      "token_extracted": true
+    },
+    "confirm_attempts": [
+      {
+        "success": false,
+        "code": 10000,
+        "msg": "数据不存在",
+        "data": "数据不存在",
+        "serial_number": "178036900964900300001321",
+        "attempt": 1
+      },
+      {
+        "success": false,
+        "code": 10000,
+        "msg": "数据不存在",
+        "data": "数据不存在",
+        "serial_number": "178036900964900300001321",
+        "attempt": 2
+      },
+      {
+        "success": false,
+        "code": 10000,
+        "msg": "数据不存在",
+        "data": "数据不存在",
+        "serial_number": "178036900964900300001321",
+        "attempt": 3
+      },
+      {
+        "success": false,
+        "code": 10000,
+        "msg": "数据不存在",
+        "data": "数据不存在",
+        "serial_number": "178036900964900300001321",
+        "attempt": 4
+      },
+      {
+        "success": false,
+        "code": 10000,
+        "msg": "数据不存在",
+        "data": "数据不存在",
+        "serial_number": "178036900964900300001321",
+        "attempt": 5
+      },
+      {
+        "success": false,
+        "code": 10000,
+        "msg": "数据不存在",
+        "data": "数据不存在",
+        "serial_number": "178036900964900300001321",
+        "attempt": 6
+      }
+    ],
+    "confirm": {
+      "success": false,
+      "code": 10000,
+      "msg": "数据不存在",
+      "data": "数据不存在",
+      "serial_number": "178036900964900300001321",
+      "attempt": 6
+    },
+    "reason": "财务确认入金失败：数据不存在"
+  },
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "base_url": "https://jpapi.rakumart.cn",
+  "summary": {
+    "payment_type": "bank",
+    "order_sn": "2026060117121823-300001",
+    "pay_amount": "4431",
+    "payment_passed": true,
+    "serial_number": "178036900964900300001321",
+    "finance_confirm": true,
+    "finance_passed": false,
+    "reason": "财务确认入金失败：数据不存在"
+  },
+  "finished_at": "2026-06-02 10:57:02.090281"
+}

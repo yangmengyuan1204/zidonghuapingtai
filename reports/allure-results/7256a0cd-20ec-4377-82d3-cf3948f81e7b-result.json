@@ -1,0 +1,27 @@
+{
+  "uuid": "7256a0cd-20ec-4377-82d3-cf3948f81e7b",
+  "name": "搜索功能-按箱号精确搜索",
+  "fullName": "ui.搜索功能-按箱号精确搜索",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781595464147,
+  "stop": 1781595464147,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "7256a0cd-20ec-4377-82d3-cf3948f81e7b-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "7256a0cd-20ec-4377-82d3-cf3948f81e7b-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "uuid": "ac801ecf-8ecb-497b-af3e-a3146083b091",
+  "name": "注册页面-手机号格式错误提示",
+  "fullName": "ui.注册页面-手机号格式错误提示",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780631444667,
+  "stop": 1780631444667,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "ac801ecf-8ecb-497b-af3e-a3146083b091-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "ac801ecf-8ecb-497b-af3e-a3146083b091-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

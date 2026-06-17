@@ -1,0 +1,658 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "袜子",
+  "shop_type": "1688",
+  "target_shops": 4,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "started_at": "2026-06-12 16:52:47.826055",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "905917660179",
+          "shop_id": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+          "shop_name": "浙江中颖袜业有限公司",
+          "sku_id": "5932127978115",
+          "spec_id": "17ff687493a63bd220e777d599446dfb",
+          "num": 5,
+          "price": "1.68",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "905917660179",
+          "shop_id": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+          "shop_name": "浙江中颖袜业有限公司",
+          "sku_id": "5932127978110",
+          "spec_id": "9ce76d4e383faffd7829838ec03ad7c7",
+          "num": 5,
+          "price": "1.68",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "905917660179",
+          "shop_id": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+          "shop_name": "浙江中颖袜业有限公司",
+          "sku_id": "5932127978113",
+          "spec_id": "7ccb9e57d1d5f349172254f5c3eb0f3e",
+          "num": 5,
+          "price": "1.68",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBB8Wcbt3wdOy4bNKNBzP3Uzw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "714457919379",
+          "shop_id": "BBB8Wcbt3wdOy4bNKNBzP3Uzw",
+          "shop_name": "浙江苏娜科技有限公司",
+          "sku_id": "5167491334414",
+          "spec_id": "aee4aad63194e93d425f3f1f89d13d53",
+          "num": 2,
+          "price": "14.34",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "714457919379",
+          "shop_id": "BBB8Wcbt3wdOy4bNKNBzP3Uzw",
+          "shop_name": "浙江苏娜科技有限公司",
+          "sku_id": "5167491334415",
+          "spec_id": "7ccb9e57d1d5f349172254f5c3eb0f3e",
+          "num": 3,
+          "price": "14.34",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "670654847225",
+          "shop_id": "BBB8Wcbt3wdOy4bNKNBzP3Uzw",
+          "shop_name": "浙江苏娜科技有限公司",
+          "sku_id": "4817614917333",
+          "spec_id": "aee4aad63194e93d425f3f1f89d13d53",
+          "num": 2,
+          "price": "19.8",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "shop_key": "BBB0frRTN7G8Ny_eTTR-Qvy6Q",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1050824141227",
+          "shop_id": "BBB0frRTN7G8Ny_eTTR-Qvy6Q",
+          "shop_name": "佛山市南海区晨泰袜业有限公司",
+          "sku_id": "6081610741537",
+          "spec_id": "fca1a1a81a6cbd98a251324efaeeff20",
+          "num": 6,
+          "price": "4.2",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1050824141227",
+          "shop_id": "BBB0frRTN7G8Ny_eTTR-Qvy6Q",
+          "shop_name": "佛山市南海区晨泰袜业有限公司",
+          "sku_id": "6081610741538",
+          "spec_id": "86d181fee57a88d15c730f1121eae0db",
+          "num": 6,
+          "price": "4.2",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1050824141227",
+          "shop_id": "BBB0frRTN7G8Ny_eTTR-Qvy6Q",
+          "shop_name": "佛山市南海区晨泰袜业有限公司",
+          "sku_id": "6081610741539",
+          "spec_id": "fdad29cab355bf43e18f0b1f10d2225d",
+          "num": 6,
+          "price": "4.2",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "shop_key": "BBBfVszXDO8wymcwQB92emPgQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "780417809061",
+          "shop_id": "BBBfVszXDO8wymcwQB92emPgQ",
+          "shop_name": "金华市杰祥袜业有限公司",
+          "sku_id": "5577177638324",
+          "spec_id": "a14c7fba51271ddf360c997004501a0d",
+          "num": 2,
+          "price": "4.2",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "780417809061",
+          "shop_id": "BBBfVszXDO8wymcwQB92emPgQ",
+          "shop_name": "金华市杰祥袜业有限公司",
+          "sku_id": "5577177638325",
+          "spec_id": "bbe83c28a58cbda720921af765335d93",
+          "num": 3,
+          "price": "4.2",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "780417809061",
+          "shop_id": "BBBfVszXDO8wymcwQB92emPgQ",
+          "shop_name": "金华市杰祥袜业有限公司",
+          "sku_id": "5577177638327",
+          "spec_id": "f9b5c4472a3781993b00d0e823cb41b7",
+          "num": 5,
+          "price": "4.2",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "shop_key": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+      "collected_count": 2,
+      "selected_count": 2,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "896841576299",
+          "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+          "shop_name": "河南云聚合电子科技有限公司",
+          "sku_id": "5767447328334",
+          "spec_id": "4a1563765f662ae16cac9ba3b613cfef",
+          "num": 2,
+          "price": "48.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "897249712803",
+          "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+          "shop_name": "河南云聚合电子科技有限公司",
+          "sku_id": "6229102822917",
+          "spec_id": "d53512f4af1ba079731e875828ffcf39",
+          "num": 2,
+          "price": "36.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "shop_key": "BBBDpC5B5XR4YmQYVeAn0ETBA",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "935830703738",
+          "shop_id": "BBBDpC5B5XR4YmQYVeAn0ETBA",
+          "shop_name": "上海彤保网络科技有限公司",
+          "sku_id": "5996398507055",
+          "spec_id": "01b80a864650433e9c4a0e9b7ab97585",
+          "num": 2,
+          "price": "108.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "935830703738",
+          "shop_id": "BBBDpC5B5XR4YmQYVeAn0ETBA",
+          "shop_name": "上海彤保网络科技有限公司",
+          "sku_id": "5996398507056",
+          "spec_id": "61c5f41c8695c04ae7efedeae4871e63",
+          "num": 2,
+          "price": "108.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "935830703738",
+          "shop_id": "BBBDpC5B5XR4YmQYVeAn0ETBA",
+          "shop_name": "上海彤保网络科技有限公司",
+          "sku_id": "5996398507057",
+          "spec_id": "1e9bef9cebd185e3da3900f83deffd4b",
+          "num": 2,
+          "price": "108.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "shop_key": "BBBaaFuT_woDXDdtktDgu1MUQ",
+      "collected_count": 4,
+      "selected_count": 4,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "566735928771",
+          "shop_id": "BBBaaFuT_woDXDdtktDgu1MUQ",
+          "shop_name": "金牛区聚佳盛商贸部",
+          "sku_id": "566735928771",
+          "spec_id": "566735928771",
+          "num": 2,
+          "price": "1.23",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "583266616960",
+          "shop_id": "BBBaaFuT_woDXDdtktDgu1MUQ",
+          "shop_name": "金牛区聚佳盛商贸部",
+          "sku_id": "4615491981635",
+          "spec_id": "bf4b2f0b1813bfb20d6fb712bfe8a4de",
+          "num": 10,
+          "price": "1.89",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "583266616960",
+          "shop_id": "BBBaaFuT_woDXDdtktDgu1MUQ",
+          "shop_name": "金牛区聚佳盛商贸部",
+          "sku_id": "4615491981636",
+          "spec_id": "5e443a09d48fc3caa97539bd3b615533",
+          "num": 10,
+          "price": "1.89",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "shop_key": "BBBn0f7qh6_VB4kxP38QcWQHQ",
+      "collected_count": 4,
+      "selected_count": 4,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "901831647667",
+          "shop_id": "BBBn0f7qh6_VB4kxP38QcWQHQ",
+          "shop_name": "诸暨市高盛针织有限公司",
+          "sku_id": "5759111988367",
+          "spec_id": "f56659772c14b45063a72e7b689d9dea",
+          "num": 2,
+          "price": "3.4",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "901831647667",
+          "shop_id": "BBBn0f7qh6_VB4kxP38QcWQHQ",
+          "shop_name": "诸暨市高盛针织有限公司",
+          "sku_id": "5759111988368",
+          "spec_id": "7ab3cb82e65188d4fd291e4193d02a54",
+          "num": 2,
+          "price": "3.4",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "901831647667",
+          "shop_id": "BBBn0f7qh6_VB4kxP38QcWQHQ",
+          "shop_name": "诸暨市高盛针织有限公司",
+          "sku_id": "5759111988369",
+          "spec_id": "586899fb67028701a320ae1c43c65171",
+          "num": 2,
+          "price": "3.4",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "shop_key": "BBB01DYH2icniNk7GZaCSj4Yg",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "968199285946",
+          "shop_id": "BBB01DYH2icniNk7GZaCSj4Yg",
+          "shop_name": "义乌市红蓝日化有限公司",
+          "sku_id": "6080640462112",
+          "spec_id": "b9ebb7098125598f60353777bd833424",
+          "num": 2,
+          "price": "2.6",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "shop_key": "BBBF660SpVcTfeXXcCbFLfwyg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "865141585202",
+          "shop_id": "BBBF660SpVcTfeXXcCbFLfwyg",
+          "shop_name": "佛山市禅城区术腾电子商行",
+          "sku_id": "5688590000738",
+          "spec_id": "447e3144a2d1e98a6d2d32e91a21f9a1",
+          "num": 2,
+          "price": "4.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "865141585202",
+          "shop_id": "BBBF660SpVcTfeXXcCbFLfwyg",
+          "shop_name": "佛山市禅城区术腾电子商行",
+          "sku_id": "5688590000739",
+          "spec_id": "97086cb8e2753bcec69c33d717ee0c81",
+          "num": 2,
+          "price": "4.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "865141585202",
+          "shop_id": "BBBF660SpVcTfeXXcCbFLfwyg",
+          "shop_name": "佛山市禅城区术腾电子商行",
+          "sku_id": "5688590000740",
+          "spec_id": "84620598da55471fbff45aa632e443a1",
+          "num": 2,
+          "price": "4.8",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "shop_key": "BBB9RO3JsB1z2tJR0IeuDuqbw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "998293541120",
+          "shop_id": "BBB9RO3JsB1z2tJR0IeuDuqbw",
+          "shop_name": "佛山市禅城区壳无限电子商行",
+          "sku_id": "5980941208456",
+          "spec_id": "da733523753bc67914c1cd8de16f73e4",
+          "num": 2,
+          "price": "3.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "998293541120",
+          "shop_id": "BBB9RO3JsB1z2tJR0IeuDuqbw",
+          "shop_name": "佛山市禅城区壳无限电子商行",
+          "sku_id": "5980941208455",
+          "spec_id": "feb7e32f0c4e4f545a1443c2132b59fc",
+          "num": 2,
+          "price": "3.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "998293541120",
+          "shop_id": "BBB9RO3JsB1z2tJR0IeuDuqbw",
+          "shop_name": "佛山市禅城区壳无限电子商行",
+          "sku_id": "5980941208454",
+          "spec_id": "6d28436a6d7ce529317140a3245f8d81",
+          "num": 2,
+          "price": "3.5",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 20,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "userID/71In",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "collection": {
+    "ready_shops": 4,
+    "collected_shops": 11,
+    "selected_items": 20,
+    "expected_total": 20,
+    "preview_items": [
+      {
+        "goods_id": "905917660179",
+        "shop_id": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+        "shop_name": "浙江中颖袜业有限公司",
+        "sku_id": "5932127978115",
+        "spec_id": "17ff687493a63bd220e777d599446dfb",
+        "num": 5,
+        "price": "1.68",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "905917660179",
+        "shop_id": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+        "shop_name": "浙江中颖袜业有限公司",
+        "sku_id": "5932127978110",
+        "spec_id": "9ce76d4e383faffd7829838ec03ad7c7",
+        "num": 5,
+        "price": "1.68",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "905917660179",
+        "shop_id": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+        "shop_name": "浙江中颖袜业有限公司",
+        "sku_id": "5932127978113",
+        "spec_id": "7ccb9e57d1d5f349172254f5c3eb0f3e",
+        "num": 5,
+        "price": "1.68",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "905917660179",
+        "shop_id": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+        "shop_name": "浙江中颖袜业有限公司",
+        "sku_id": "5932127978112",
+        "spec_id": "69725e1f0a17f9d0f02626717ad2a0be",
+        "num": 5,
+        "price": "1.68",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "905917660179",
+        "shop_id": "BBBkovzMCk89zSzJ4hnkIcP6Q",
+        "shop_name": "浙江中颖袜业有限公司",
+        "sku_id": "5932127978114",
+        "spec_id": "748afbd43a2942954537ee15befe4ac2",
+        "num": 5,
+        "price": "1.68",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "714457919379",
+        "shop_id": "BBB8Wcbt3wdOy4bNKNBzP3Uzw",
+        "shop_name": "浙江苏娜科技有限公司",
+        "sku_id": "5167491334414",
+        "spec_id": "aee4aad63194e93d425f3f1f89d13d53",
+        "num": 2,
+        "price": "14.34",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "714457919379",
+        "shop_id": "BBB8Wcbt3wdOy4bNKNBzP3Uzw",
+        "shop_name": "浙江苏娜科技有限公司",
+        "sku_id": "5167491334415",
+        "spec_id": "7ccb9e57d1d5f349172254f5c3eb0f3e",
+        "num": 3,
+        "price": "14.34",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "670654847225",
+        "shop_id": "BBB8Wcbt3wdOy4bNKNBzP3Uzw",
+        "shop_name": "浙江苏娜科技有限公司",
+        "sku_id": "4817614917333",
+        "spec_id": "aee4aad63194e93d425f3f1f89d13d53",
+        "num": 2,
+        "price": "19.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "670654847225",
+        "shop_id": "BBB8Wcbt3wdOy4bNKNBzP3Uzw",
+        "shop_name": "浙江苏娜科技有限公司",
+        "sku_id": "4992804182952",
+        "spec_id": "7ccb9e57d1d5f349172254f5c3eb0f3e",
+        "num": 3,
+        "price": "19.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "669575252807",
+        "shop_id": "BBB8Wcbt3wdOy4bNKNBzP3Uzw",
+        "shop_name": "浙江苏娜科技有限公司",
+        "sku_id": "4812698928049",
+        "spec_id": "69725e1f0a17f9d0f02626717ad2a0be",
+        "num": 2,
+        "price": "13.66",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1050824141227",
+        "shop_id": "BBB0frRTN7G8Ny_eTTR-Qvy6Q",
+        "shop_name": "佛山市南海区晨泰袜业有限公司",
+        "sku_id": "6081610741537",
+        "spec_id": "fca1a1a81a6cbd98a251324efaeeff20",
+        "num": 6,
+        "price": "4.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1050824141227",
+        "shop_id": "BBB0frRTN7G8Ny_eTTR-Qvy6Q",
+        "shop_name": "佛山市南海区晨泰袜业有限公司",
+        "sku_id": "6081610741538",
+        "spec_id": "86d181fee57a88d15c730f1121eae0db",
+        "num": 6,
+        "price": "4.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1050824141227",
+        "shop_id": "BBB0frRTN7G8Ny_eTTR-Qvy6Q",
+        "shop_name": "佛山市南海区晨泰袜业有限公司",
+        "sku_id": "6081610741539",
+        "spec_id": "fdad29cab355bf43e18f0b1f10d2225d",
+        "num": 6,
+        "price": "4.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1050824141227",
+        "shop_id": "BBB0frRTN7G8Ny_eTTR-Qvy6Q",
+        "shop_name": "佛山市南海区晨泰袜业有限公司",
+        "sku_id": "6081610741540",
+        "spec_id": "c15a6e721dcfd13f60f73da8260793db",
+        "num": 6,
+        "price": "4.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1050824141227",
+        "shop_id": "BBB0frRTN7G8Ny_eTTR-Qvy6Q",
+        "shop_name": "佛山市南海区晨泰袜业有限公司",
+        "sku_id": "6081610741541",
+        "spec_id": "ea2d5d39d54306684788c72509b58d4f",
+        "num": 6,
+        "price": "4.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "780417809061",
+        "shop_id": "BBBfVszXDO8wymcwQB92emPgQ",
+        "shop_name": "金华市杰祥袜业有限公司",
+        "sku_id": "5577177638324",
+        "spec_id": "a14c7fba51271ddf360c997004501a0d",
+        "num": 2,
+        "price": "4.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "780417809061",
+        "shop_id": "BBBfVszXDO8wymcwQB92emPgQ",
+        "shop_name": "金华市杰祥袜业有限公司",
+        "sku_id": "5577177638325",
+        "spec_id": "bbe83c28a58cbda720921af765335d93",
+        "num": 3,
+        "price": "4.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "780417809061",
+        "shop_id": "BBBfVszXDO8wymcwQB92emPgQ",
+        "shop_name": "金华市杰祥袜业有限公司",
+        "sku_id": "5577177638327",
+        "spec_id": "f9b5c4472a3781993b00d0e823cb41b7",
+        "num": 5,
+        "price": "4.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "780417809061",
+        "shop_id": "BBBfVszXDO8wymcwQB92emPgQ",
+        "shop_name": "金华市杰祥袜业有限公司",
+        "sku_id": "5577177638326",
+        "spec_id": "46c443d8a6fb20bf3fe87e5a77ab8f5e",
+        "num": 2,
+        "price": "4.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "776765235559",
+        "shop_id": "BBBfVszXDO8wymcwQB92emPgQ",
+        "shop_name": "金华市杰祥袜业有限公司",
+        "sku_id": "5309562704006",
+        "spec_id": "c1fe426b9d9a7c82d3662af5c02ecdfa",
+        "num": 2,
+        "price": "21.7",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "summary": {
+    "keyword": "袜子",
+    "shop_type": "1688",
+    "target_shops": 4,
+    "per_shop": 5,
+    "ready_shops": 4,
+    "expected_total": 20,
+    "available_expected_total": 20,
+    "added_total": 20,
+    "failed_batches": [],
+    "strict_shop_count": false
+  },
+  "finished_at": "2026-06-12 16:53:50.526892"
+}

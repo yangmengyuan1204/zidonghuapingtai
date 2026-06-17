@@ -1,0 +1,144 @@
+{
+  "case_name": "搜索功能-重置按钮清空所有搜索条件并刷新表格",
+  "page_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+  "steps": [
+    {
+      "name": "打开目标页面",
+      "action": "goto",
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse"
+    },
+    {
+      "name": "等待页面加载",
+      "action": "wait_for_selector",
+      "locator": "body"
+    },
+    {
+      "name": "保存页面截图",
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1781596607,
+    "datetime": "2026-06-16 15:56:47",
+    "date": "2026-06-16",
+    "uuid": "ed361af8-4ede-409e-92e2-39d05ded349a",
+    "random_int": 839126,
+    "random_str": "93tqjrsu",
+    "random_phone": "13681328383",
+    "random_email": "test_839126@example.com",
+    "$timestamp": 1781596607,
+    "$datetime": "2026-06-16 15:56:47",
+    "$date": "2026-06-16",
+    "$uuid": "ed361af8-4ede-409e-92e2-39d05ded349a",
+    "$random_int": 839126,
+    "$random_str": "93tqjrsu",
+    "$random_phone": "13681328383",
+    "$random_email": "test_839126@example.com",
+    "username": "Y001",
+    "password": "***"
+  },
+  "validation_issues": [
+    {
+      "severity": "warning",
+      "message": "用例缺少业务断言，执行器会跑完整步骤，但不会把结果判定为可信成功"
+    }
+  ],
+  "step_logs": [
+    {
+      "name": "打开目标页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "started_at": "2026-06-16 15:57:25.036666",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 首页 关联系统 汇率:0语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页 正在加载，请稍等...",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-9550b7cb-02f4-4d7e-99af-0007ff5d1ce5.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 首页 关联系统 汇率:0语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页 正在加载，请稍等...",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-3f7d531f-b934-4307-92a4-1cbc5cec2db7.png",
+      "duration_ms": 763,
+      "finished_at": "2026-06-16 15:57:25.800431",
+      "index": 1
+    },
+    {
+      "name": "等待页面加载",
+      "action": "wait_for_selector",
+      "locator": "body",
+      "fallback_locators": [],
+      "value": null,
+      "started_at": "2026-06-16 15:57:26.212935",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 首页 关联系统 汇率:0语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页 正在加载，请稍等...",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-bebf5a9a-bc3c-4e7f-936d-d09ff4e735cc.png",
+      "used_locator": "body",
+      "matched_count": 1,
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-08b6a364-e9f5-46c2-b9a5-1a684160e95a.png",
+      "duration_ms": 701,
+      "finished_at": "2026-06-16 15:57:26.913978",
+      "index": 2
+    },
+    {
+      "name": "保存页面截图",
+      "action": "screenshot",
+      "locator": "",
+      "fallback_locators": [],
+      "value": null,
+      "started_at": "2026-06-16 15:57:26.913978",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-75be9d76-79a4-4d1d-a13a-e979c66370f8.png",
+      "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\79b0e6f3-46a4-451d-9892-c8fd7e6ea2e0.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-9fd3da10-92bb-4002-9b92-500b1833fe95.png",
+      "duration_ms": 375,
+      "finished_at": "2026-06-16 15:57:27.289888",
+      "index": 3
+    }
+  ],
+  "started_at": "2026-06-16 15:56:47.528088",
+  "retry_config": {
+    "retry_count": 2,
+    "retry_interval_ms": 1000
+  },
+  "auth_context": {
+    "login_required": true,
+    "account_profile_id": 2,
+    "login_url": "",
+    "removed_login_step_count": 0,
+    "login_trace": [
+      "打开登录页：https://jpmanage.rakumart.cn/#/login",
+      "已填写登录账号：input[type=\"text\"]",
+      "已填写登录密码：input[placeholder=\"请输入密码\"]",
+      "已点击登录按钮：text=登录",
+      "首次提交后当前页面：https://jpmanage.rakumart.cn/#/login",
+      "首次点击后仍在登录页，已尝试按 Enter 再次提交",
+      "Enter 提交后当前页面：https://jpmanage.rakumart.cn/#/login",
+      "Enter 提交后仍在登录页，已尝试强制点击登录按钮",
+      "强制点击后当前页面：https://jpmanage.rakumart.cn/#/login",
+      "登录后当前页面：https://jpmanage.rakumart.cn/#/homePage"
+    ]
+  },
+  "finished_at": "2026-06-16 15:57:27.416497",
+  "verification_issues": [
+    "用例缺少业务断言：没有 assert_url/assert_visible/assert_value/text_assert/success_condition，不能判定为可信成功"
+  ],
+  "verification_status": "failed_verification",
+  "business_verification": {
+    "business_assertion_count": 0,
+    "final_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+    "final_text_excerpt": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页"
+  },
+  "verification_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\c00a417f-c520-41ac-ab98-c1743c15d482.png",
+  "warning": "所有步骤执行通过，但最终验证未通过：用例缺少业务断言：没有 assert_url/assert_visible/assert_value/text_assert/success_condition，不能判定为可信成功"
+}

@@ -1,0 +1,22 @@
+{
+  "uuid": "6831392e-b42f-49ad-b6da-f4b1cdbe4cd7",
+  "name": "页面元素展示",
+  "fullName": "ui.页面元素展示",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780900778983,
+  "stop": 1780900778983,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "6831392e-b42f-49ad-b6da-f4b1cdbe4cd7-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

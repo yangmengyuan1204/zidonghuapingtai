@@ -1,0 +1,22 @@
+{
+  "uuid": "5c3059bd-48ee-4050-98fc-eba313c2767e",
+  "name": "待拍下到商品上架",
+  "fullName": "data_script.待拍下到商品上架",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781243944774,
+  "stop": 1781243944774,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "5c3059bd-48ee-4050-98fc-eba313c2767e-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

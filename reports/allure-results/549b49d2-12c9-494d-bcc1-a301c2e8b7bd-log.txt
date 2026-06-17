@@ -1,0 +1,719 @@
+{
+  "script": "全流程完全体",
+  "mode": "full_flow",
+  "started_at": "2026-06-13 15:51:14.222503",
+  "stop_after_node": "porder_offered",
+  "input_adjustments": {},
+  "steps": [
+    {
+      "node": "shopping_cart",
+      "node_label": "商品加购完成",
+      "script": "商品购物车",
+      "passed": true,
+      "paused": false,
+      "duration_ms": 20736,
+      "summary": {
+        "keyword": "气球",
+        "shop_type": "1688",
+        "target_shops": 5,
+        "per_shop": 5,
+        "ready_shops": 5,
+        "expected_total": 25,
+        "available_expected_total": 25,
+        "added_total": 25,
+        "api_added_total": 25,
+        "verified_added_total": 25,
+        "cart_verification_enabled": true,
+        "cart_verify_mode": "final",
+        "failed_batches": [],
+        "verification_failed_batches": [],
+        "strict_shop_count": false,
+        "duration_ms": 20736
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\9c622447-64ca-46c0-a205-09145c54bd69-result.json"
+    },
+    {
+      "node": "order_offered",
+      "node_label": "后台订单报价完成",
+      "script": "订单报价",
+      "passed": true,
+      "paused": false,
+      "duration_ms": 15009,
+      "summary": {
+        "order_sn": "2026061315513792-300001",
+        "selected_count": 25,
+        "item_quantity": 10,
+        "submit_order": true,
+        "run_backend_flow": true,
+        "cart_ids": [
+          1128284,
+          1128283,
+          1128282,
+          1128281,
+          1128280,
+          1128279,
+          1128278,
+          1128277,
+          1128276,
+          1128275,
+          1128274,
+          1128273,
+          1128272,
+          1128271,
+          1128270,
+          1128269,
+          1128268,
+          1128267,
+          1128266,
+          1128265,
+          1128264,
+          1128263,
+          1128262,
+          1128261,
+          1128260
+        ],
+        "goods_ids": [
+          "675732436866",
+          "675732436866",
+          "675732436866",
+          "675732436866",
+          "675732436866",
+          "836752529336",
+          "836752529336",
+          "836752529336",
+          "836752529336",
+          "836752529336",
+          "977242969645",
+          "977242969645",
+          "977242969645",
+          "977242969645",
+          "977242969645",
+          "677973279439",
+          "677973279439",
+          "677973279439",
+          "677973279439",
+          "677973279439",
+          "1044949850687",
+          "1044949850687",
+          "1044949850687",
+          "1044949850687",
+          "1044949850687"
+        ],
+        "order_options": [
+          {
+            "key": "78",
+            "id": 78,
+            "name": "详细检品",
+            "label": "详细检品",
+            "name_translate": "詳細検品",
+            "price": 4,
+            "price_type": 1,
+            "unit": "%",
+            "num": 10
+          },
+          {
+            "key": "79",
+            "id": 79,
+            "name": "针检",
+            "label": "针检",
+            "name_translate": "通常検針サービス",
+            "price": "0.80",
+            "price_type": 0,
+            "unit": "元",
+            "num": 20
+          },
+          {
+            "key": "80",
+            "id": 80,
+            "name": "X线针检",
+            "label": "X线针检",
+            "name_translate": "X線検針サービス",
+            "price": "1.00",
+            "price_type": 0,
+            "unit": "元",
+            "num": 30
+          }
+        ],
+        "order_option_applied_detail_count": 25,
+        "expected_shop_count": 5,
+        "expected_per_shop": 5,
+        "selected_shop_count": 5,
+        "available_shop_count": 57,
+        "ready_shop_count": 31,
+        "backend_passed": true,
+        "backend_steps": [
+          "login",
+          "detail",
+          "translate",
+          "confirm",
+          "offer"
+        ],
+        "quote_unit_price": "10",
+        "backend_status": 30,
+        "duration_ms": 15009
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\611a4df8-aee5-46c5-9d9d-dd9eecd5cb54-result.json"
+    },
+    {
+      "node": "order_paid",
+      "node_label": "订单支付完成",
+      "script": "余额支付",
+      "passed": true,
+      "paused": false,
+      "duration_ms": 4494,
+      "summary": {
+        "payment_type": "balance",
+        "order_sn": "2026061315513792-300001",
+        "pay_amount": "81763",
+        "payment_passed": true,
+        "serial_number": "178133711167300300001732",
+        "duration_ms": 4494,
+        "attempted_payment_types": [
+          "balance"
+        ]
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\f0e85bef-bb93-407e-b173-fb86a0cf654e-result.json"
+    },
+    {
+      "node": "shelf_stored",
+      "node_label": "核查上架入库完成",
+      "script": "待拍下到商品上架",
+      "passed": true,
+      "paused": false,
+      "duration_ms": 12047,
+      "summary": {
+        "order_sn": "2026061315513792-300001",
+        "purchase_no": "20260613155154",
+        "selected_count": 25,
+        "purchase_ids": [
+          15327454,
+          15327455,
+          15327456,
+          15327457,
+          15327458,
+          15327459,
+          15327460,
+          15327461,
+          15327462,
+          15327463,
+          15327464,
+          15327465,
+          15327466,
+          15327467,
+          15327468,
+          15327469,
+          15327470,
+          15327471,
+          15327472,
+          15327473,
+          15327474,
+          15327475,
+          15327476,
+          15327477,
+          15327478
+        ],
+        "order_detail_ids": [
+          "14051102",
+          "14051103",
+          "14051104",
+          "14051105",
+          "14051106",
+          "14051107",
+          "14051108",
+          "14051109",
+          "14051110",
+          "14051111",
+          "14051112",
+          "14051113",
+          "14051114",
+          "14051115",
+          "14051116",
+          "14051117",
+          "14051118",
+          "14051119",
+          "14051120",
+          "14051121",
+          "14051122",
+          "14051123",
+          "14051124",
+          "14051125",
+          "14051126"
+        ],
+        "order_detail_id": "14051102",
+        "grid_id": 12427,
+        "grid_number": "【三部-FBA.1.1-FBA-003】-1-5-2",
+        "storage_count": 25,
+        "storage_passed": true,
+        "verify_passed": true,
+        "remaining_purchase_count": 0,
+        "remaining_pending_count": 0,
+        "duration_ms": 12047
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\b2d88915-3588-4c51-8997-b07a44fb650d-result.json"
+    },
+    {
+      "node": "porder_offered",
+      "node_label": "配送单报价完成",
+      "script": "仓库提出配送单",
+      "passed": true,
+      "paused": true,
+      "duration_ms": 10040,
+      "summary": {
+        "porder_sn": "P2026061315520661-300001",
+        "order_detail_id": "14051102",
+        "order_detail_ids": [
+          "14051102",
+          "14051103",
+          "14051104",
+          "14051105",
+          "14051106"
+        ],
+        "send_num": 1,
+        "total_send_num": 5,
+        "requested_warehouse_sku_count": 5,
+        "warehouse_sku_count": 5,
+        "actual_warehouse_sku_count": 5,
+        "current_order_count": 5,
+        "history_fill_count": 0,
+        "selected_sku_ids": [
+          "4857047704340",
+          "4857047704339",
+          "4857047704338",
+          "4857047704337",
+          "4857047704336"
+        ],
+        "selected_warehouse_items": [
+          {
+            "order_detail_id": "14051102",
+            "sku_id": "4857047704340",
+            "goods_id": "675732436866",
+            "goods_title": "黑色气动手阀开关BUC-8PU管快速快插气球阀开关接头HVFF4/6/10/12",
+            "sendable_num": 10,
+            "order_sn": "2026061315513792-300001",
+            "source": "current_order",
+            "send_num": 1
+          },
+          {
+            "order_detail_id": "14051103",
+            "sku_id": "4857047704339",
+            "goods_id": "675732436866",
+            "goods_title": "黑色气动手阀开关BUC-8PU管快速快插气球阀开关接头HVFF4/6/10/12",
+            "sendable_num": 10,
+            "order_sn": "2026061315513792-300001",
+            "source": "current_order",
+            "send_num": 1
+          },
+          {
+            "order_detail_id": "14051104",
+            "sku_id": "4857047704338",
+            "goods_id": "675732436866",
+            "goods_title": "黑色气动手阀开关BUC-8PU管快速快插气球阀开关接头HVFF4/6/10/12",
+            "sendable_num": 10,
+            "order_sn": "2026061315513792-300001",
+            "source": "current_order",
+            "send_num": 1
+          },
+          {
+            "order_detail_id": "14051105",
+            "sku_id": "4857047704337",
+            "goods_id": "675732436866",
+            "goods_title": "黑色气动手阀开关BUC-8PU管快速快插气球阀开关接头HVFF4/6/10/12",
+            "sendable_num": 10,
+            "order_sn": "2026061315513792-300001",
+            "source": "current_order",
+            "send_num": 1
+          },
+          {
+            "order_detail_id": "14051106",
+            "sku_id": "4857047704336",
+            "goods_id": "675732436866",
+            "goods_title": "黑色气动手阀开关BUC-8PU管快速快插气球阀开关接头HVFF4/6/10/12",
+            "sendable_num": 10,
+            "order_sn": "2026061315513792-300001",
+            "source": "current_order",
+            "send_num": 1
+          }
+        ],
+        "warehouse_rows": 344,
+        "create_passed": true,
+        "porder_detail_id": "5003247",
+        "porder_detail_ids": [
+          "5003247",
+          "5003248",
+          "5003249",
+          "5003250",
+          "5003251"
+        ],
+        "freight_id": "1073355",
+        "stock_id": "715181",
+        "stock_ids": [
+          "715181",
+          "715182",
+          "715183",
+          "715184",
+          "715185"
+        ],
+        "box_num": 1,
+        "box_nums": {
+          "5003247": 1,
+          "5003248": 1,
+          "5003249": 1,
+          "5003250": 1,
+          "5003251": 1
+        },
+        "logistics_id": "25",
+        "logistics_price_artificial": "775",
+        "backend_passed": true,
+        "backend_steps": [
+          "login",
+          "porder_detail",
+          "submit_translate",
+          "add_box",
+          "into_box_preview",
+          "into_box_submit",
+          "complete_box",
+          "to_wait_offer",
+          "batch_update_freight_logistics",
+          "freight_list",
+          "submit_offer"
+        ],
+        "paused": true,
+        "stopped_after_node": "porder_offered",
+        "current_node": "porder_offered",
+        "node_label": "配送单报价完成",
+        "duration_ms": 10040
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\93ae5362-3726-46c4-82d8-73675f9a9474-result.json"
+    }
+  ],
+  "shared_data": {
+    "order_sn": "2026061315513792-300001",
+    "serial_number": "178133711167300300001732",
+    "payment_type": "balance",
+    "pay_amount": "81763",
+    "purchase_no": "20260613155154",
+    "purchase_ids": [
+      15327454,
+      15327455,
+      15327456,
+      15327457,
+      15327458,
+      15327459,
+      15327460,
+      15327461,
+      15327462,
+      15327463,
+      15327464,
+      15327465,
+      15327466,
+      15327467,
+      15327468,
+      15327469,
+      15327470,
+      15327471,
+      15327472,
+      15327473,
+      15327474,
+      15327475,
+      15327476,
+      15327477,
+      15327478
+    ],
+    "grid_id": 12427,
+    "grid_number": "【三部-FBA.1.1-FBA-003】-1-5-2",
+    "order_detail_id": "14051102",
+    "order_detail_ids": [
+      "14051102",
+      "14051103",
+      "14051104",
+      "14051105",
+      "14051106"
+    ],
+    "porder_sn": "P2026061315520661-300001",
+    "porder_detail_id": "5003247",
+    "porder_detail_ids": [
+      "5003247",
+      "5003248",
+      "5003249",
+      "5003250",
+      "5003251"
+    ],
+    "freight_id": "1073355",
+    "warehouse_sku_count": 5,
+    "actual_warehouse_sku_count": 5,
+    "selected_sku_ids": [
+      "4857047704340",
+      "4857047704339",
+      "4857047704338",
+      "4857047704337",
+      "4857047704336"
+    ],
+    "total_send_num": 5
+  },
+  "duration_ms": 62352,
+  "summary": {
+    "passed": true,
+    "paused": true,
+    "current_node": "porder_offered",
+    "node_label": "配送单报价完成",
+    "stop_after_node": "porder_offered",
+    "total_steps": 5,
+    "success_steps": 5,
+    "node_results": [
+      {
+        "node": "shopping_cart",
+        "node_label": "商品加购完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_created",
+        "node_label": "前台提交订单完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_translated",
+        "node_label": "后台订单翻译完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_confirmed",
+        "node_label": "后台订单确认完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_offered",
+        "node_label": "后台订单报价完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_paid",
+        "node_label": "订单支付完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "pending_purchase",
+        "node_label": "订单进入待拍下",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_no_saved",
+        "node_label": "保存交易号完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_wait_modify_price",
+        "node_label": "标记待改价完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_wait_pay",
+        "node_label": "提交待财务付款完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_paid",
+        "node_label": "交易号付款完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "checking_started",
+        "node_label": "开始核查完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "shelf_stored",
+        "node_label": "核查上架入库完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "warehouse_delivery_created",
+        "node_label": "仓库提出配送单完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "porder_translated",
+        "node_label": "配送单待翻译完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "porder_confirmed",
+        "node_label": "配送单确认流转完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "porder_wait_offer",
+        "node_label": "配送单进入待报价完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "porder_offered",
+        "node_label": "配送单报价完成",
+        "status": "paused",
+        "passed": true
+      },
+      {
+        "node": "porder_paid",
+        "node_label": "配送单支付完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "full_complete",
+        "node_label": "全流程结束",
+        "status": "pending",
+        "passed": null
+      }
+    ],
+    "steps": [
+      {
+        "node": "shopping_cart",
+        "node_label": "商品加购完成",
+        "script": "商品购物车",
+        "passed": true,
+        "paused": false,
+        "duration_ms": 20736
+      },
+      {
+        "node": "order_offered",
+        "node_label": "后台订单报价完成",
+        "script": "订单报价",
+        "passed": true,
+        "paused": false,
+        "duration_ms": 15009
+      },
+      {
+        "node": "order_paid",
+        "node_label": "订单支付完成",
+        "script": "余额支付",
+        "passed": true,
+        "paused": false,
+        "duration_ms": 4494
+      },
+      {
+        "node": "shelf_stored",
+        "node_label": "核查上架入库完成",
+        "script": "待拍下到商品上架",
+        "passed": true,
+        "paused": false,
+        "duration_ms": 12047
+      },
+      {
+        "node": "porder_offered",
+        "node_label": "配送单报价完成",
+        "script": "仓库提出配送单",
+        "passed": true,
+        "paused": true,
+        "duration_ms": 10040
+      }
+    ],
+    "step_timings": [
+      {
+        "node": "shopping_cart",
+        "script": "商品购物车",
+        "duration_ms": 20736
+      },
+      {
+        "node": "order_offered",
+        "script": "订单报价",
+        "duration_ms": 15009
+      },
+      {
+        "node": "order_paid",
+        "script": "余额支付",
+        "duration_ms": 4494
+      },
+      {
+        "node": "shelf_stored",
+        "script": "待拍下到商品上架",
+        "duration_ms": 12047
+      },
+      {
+        "node": "porder_offered",
+        "script": "仓库提出配送单",
+        "duration_ms": 10040
+      }
+    ],
+    "order_sn": "2026061315513792-300001",
+    "serial_number": "178133711167300300001732",
+    "payment_type": "balance",
+    "pay_amount": "81763",
+    "purchase_no": "20260613155154",
+    "purchase_ids": [
+      15327454,
+      15327455,
+      15327456,
+      15327457,
+      15327458,
+      15327459,
+      15327460,
+      15327461,
+      15327462,
+      15327463,
+      15327464,
+      15327465,
+      15327466,
+      15327467,
+      15327468,
+      15327469,
+      15327470,
+      15327471,
+      15327472,
+      15327473,
+      15327474,
+      15327475,
+      15327476,
+      15327477,
+      15327478
+    ],
+    "grid_id": 12427,
+    "grid_number": "【三部-FBA.1.1-FBA-003】-1-5-2",
+    "order_detail_id": "14051102",
+    "order_detail_ids": [
+      "14051102",
+      "14051103",
+      "14051104",
+      "14051105",
+      "14051106"
+    ],
+    "porder_sn": "P2026061315520661-300001",
+    "porder_detail_id": "5003247",
+    "porder_detail_ids": [
+      "5003247",
+      "5003248",
+      "5003249",
+      "5003250",
+      "5003251"
+    ],
+    "freight_id": "1073355",
+    "warehouse_sku_count": 5,
+    "actual_warehouse_sku_count": 5,
+    "selected_sku_ids": [
+      "4857047704340",
+      "4857047704339",
+      "4857047704338",
+      "4857047704337",
+      "4857047704336"
+    ],
+    "total_send_num": 5,
+    "stopped_after_node": "porder_offered",
+    "duration_ms": 62352
+  },
+  "finished_at": "2026-06-13 15:52:16.574978"
+}

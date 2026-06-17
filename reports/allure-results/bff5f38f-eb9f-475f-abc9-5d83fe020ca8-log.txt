@@ -1,0 +1,49 @@
+{
+  "case_name": "注册页面-验证码重复发送限制",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "wait_for_selector",
+      "locator": "body"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "wait",
+      "value": 1000
+    },
+    {
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780636363,
+    "datetime": "2026-06-05 13:12:43",
+    "date": "2026-06-05",
+    "uuid": "0afd2ac6-d98b-49a4-a8fd-915f1503fe84",
+    "random_int": 909586,
+    "random_str": "hy0qukn8",
+    "random_phone": "13361225022",
+    "random_email": "test_909586@example.com",
+    "$timestamp": 1780636363,
+    "$datetime": "2026-06-05 13:12:43",
+    "$date": "2026-06-05",
+    "$uuid": "0afd2ac6-d98b-49a4-a8fd-915f1503fe84",
+    "$random_int": 909586,
+    "$random_str": "hy0qukn8",
+    "$random_phone": "13361225022",
+    "$random_email": "test_909586@example.com",
+    "username": "",
+    "password": "***",
+    "code": ""
+  },
+  "started_at": "2026-06-05 13:12:43.638718",
+  "finished_at": "2026-06-05 13:12:50.607417"
+}

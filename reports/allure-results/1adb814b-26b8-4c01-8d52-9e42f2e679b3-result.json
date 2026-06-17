@@ -1,0 +1,27 @@
+{
+  "uuid": "1adb814b-26b8-4c01-8d52-9e42f2e679b3",
+  "name": "正常注册流程-手机号注册",
+  "fullName": "ui.正常注册流程-手机号注册",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781073894885,
+  "stop": 1781073894885,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "1adb814b-26b8-4c01-8d52-9e42f2e679b3-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "1adb814b-26b8-4c01-8d52-9e42f2e679b3-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

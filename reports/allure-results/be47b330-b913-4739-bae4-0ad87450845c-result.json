@@ -1,0 +1,22 @@
+{
+  "uuid": "be47b330-b913-4739-bae4-0ad87450845c",
+  "name": "异常流程：搜索无结果",
+  "fullName": "ui.异常流程：搜索无结果",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780903385507,
+  "stop": 1780903385507,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "be47b330-b913-4739-bae4-0ad87450845c-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

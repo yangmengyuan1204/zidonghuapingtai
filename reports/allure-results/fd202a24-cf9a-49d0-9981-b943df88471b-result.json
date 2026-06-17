@@ -1,0 +1,22 @@
+{
+  "uuid": "fd202a24-cf9a-49d0-9981-b943df88471b",
+  "name": "异常流程：搜索无结果",
+  "fullName": "ui.异常流程：搜索无结果",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780643672408,
+  "stop": 1780643672408,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "fd202a24-cf9a-49d0-9981-b943df88471b-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

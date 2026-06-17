@@ -1,0 +1,174 @@
+{
+  "script": "仓库提出配送单",
+  "mode": "warehouse_to_delivery_offer",
+  "base_url": "https://jpapi.rakumart.cn",
+  "send_num": 1,
+  "started_at": "2026-06-03 13:34:10.223922",
+  "warehouse_attempts": [
+    {
+      "path": "/client/wms.stockAutoList",
+      "request": {},
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data_count": 42,
+      "row_count": 195,
+      "selected_order_detail_id": "14050711"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "selected_item": {
+    "order_detail_id": "14050711",
+    "sendable_num": 7,
+    "send_num": 1,
+    "row": {
+      "id": 14050711,
+      "order_sn": "2026060309311090-300001",
+      "sorting": 1,
+      "pic": "https://cbu01.alicdn.com/img/ibank/15444545554_679999019.400x400.jpg",
+      "from_platform": "1688",
+      "goods_id": "548916804550",
+      "sku_id": "4183997237818",
+      "goods_title": "满天星瑞士系列TEVISE手表商务休闲镶钻男士全自动机械日历防水表",
+      "detail": [
+        {
+          "key": "规格",
+          "value": "T807A-间金黑面"
+        }
+      ],
+      "confirm_num": 10,
+      "confirm_price": "10.00",
+      "confirm_freight": "5.00",
+      "client_remark": "",
+      "y_reply": "",
+      "option": null,
+      "for_sn": "",
+      "set_detail_id": 0,
+      "material_id": 0,
+      "order_detail_tag": [],
+      "order_detail_label": [],
+      "order_purchase": [
+        {
+          "id": 15327267,
+          "order_detail_id": 14050711,
+          "storage_num": 10,
+          "putaway_at": "2026-06-03 09:31:33",
+          "discard_num": 0
+        }
+      ],
+      "forbid_goods": [],
+      "order_detail_wms_remark": null,
+      "material_bind": [],
+      "order_detail_file": [],
+      "order_exchange_rate": "21.10",
+      "is_box_num": 0,
+      "send_success_num": 3,
+      "not_box_num": 2,
+      "first_purchase_upstorage_at": "2026-06-03 09:31:33",
+      "is_rakumart_stcok_num": 9,
+      "first_upstorage_at": "2026-06-03 11:14:29",
+      "days_used_for_free": 0,
+      "days_surplus_for_free": 180,
+      "send_await_num": 7,
+      "send_may_num": 7
+    }
+  },
+  "porder_create": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "request": {
+      "create_type": "send",
+      "porder_sn": "P2026060313341090-300001",
+      "logistics_id": "14",
+      "order_detail_id": "14050711",
+      "send_num": 1
+    },
+    "response": {
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": ""
+    }
+  },
+  "backend_porder": {
+    "porder_sn": "P2026060313341090-300001",
+    "steps": [],
+    "login": {
+      "success": true,
+      "code": 0,
+      "msg": "登录成功",
+      "account": "Y001",
+      "token_extracted": true
+    },
+    "detail_before": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 1,
+      "details": [
+        {
+          "id": "5003220",
+          "goods_id": "548916804550",
+          "num": 1,
+          "send_num": null,
+          "wait_box_num": null,
+          "received_num": "",
+          "freight_id": null,
+          "status": null,
+          "statusName": null
+        }
+      ]
+    },
+    "submit_translate": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "porder_detail_id": "5003220"
+    },
+    "detail_after_translate": {
+      "detail_count": 1,
+      "porder_detail_id": "5003220"
+    },
+    "add_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "request": {
+        "porder_sn": "P2026060313341090-300001",
+        "count": "1",
+        "length": "58",
+        "width": "51",
+        "height": "50",
+        "weight": "10"
+      }
+    },
+    "into_box_preview": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data_count": 1,
+      "porder_detail_id": "5003220",
+      "freight_id": "",
+      "stock_id": "",
+      "num_need": 1
+    }
+  },
+  "summary": {
+    "porder_sn": "P2026060313341090-300001",
+    "order_detail_id": "14050711",
+    "send_num": 1,
+    "warehouse_rows": 195,
+    "create_passed": true,
+    "backend_passed": false,
+    "reason": "未拿到箱子 freight_id，无法装箱"
+  },
+  "finished_at": "2026-06-03 13:34:17.711547"
+}

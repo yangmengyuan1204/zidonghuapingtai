@@ -1,0 +1,76 @@
+{
+  "script": "商品购物车",
+  "keyword": "裙子",
+  "shop_types": [
+    "1688"
+  ],
+  "per_shop": 1,
+  "started_at": "2026-06-01 10:42:33.428050",
+  "shops": [
+    {
+      "shop_type": "1688",
+      "added": [
+        {
+          "goods_id": 473817209,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        }
+      ],
+      "errors": [],
+      "searches": [
+        {
+          "keyword": "裙子",
+          "shop_type": "1688",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 2
+        },
+        {
+          "keyword": "衣服",
+          "shop_type": "1688",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 20
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 22
+      }
+    }
+  ],
+  "login": {
+    "status_code": 200,
+    "success": true,
+    "code": 0,
+    "msg": "ログイン成功",
+    "body": "{\"success\":true,\"code\":0,\"msg\":\"ログイン成功\",\"data\":{\"userToken\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyYWt1bWFydC5jbiIsImF1ZCI6InJha3VtYXJ0LmNuIiwiaWF0IjoxNzgwMjgxNzUzLCJuYmYiOjAsImV4cCI6MTc4MjAwOTc1MywidXNlckluZm8iOnsidG9rZW5faWQiOjMwMDAwMSwib3BlcmF0aW9uX2lkIjozMDAwMDEsInlfaWQiOjE0LCJ1c2VybmFtZSI6Ilx1NWMwZlx1Njc2OFx1NmQ0Ylx1OGJkNVx1OGQyNlx1NTNmNyIsInJlYWxuYW1lIjoiXHU1YzBmXHU2NzY4XHU2ZDRiXHU4YmQ1IiwiZW1haWwiOiIzNzcwNzU5MTJAcXEuY29tIiwibW9iaWxlIjoiMTIzNDU2Nzg5OTAiLCJnb29kc19hbW91bnQiOjU4NjcxNTMsImlzX3Vuc2V0IjowLCJjbGllbnRfdG9vbCI6IjIiLCJjbGllbnRfdG9vbF9uYW1lIjoiSDUtV0VCIn19.Pddc13380gh92K1Z_GVmTxQs6gN_uPcFgwirLM3rLjA\",\"userInfo\":{\"token_id\":300001,\"operation_id\":300001,\"y_id\":14,\"username\":\"小杨测试账号\",\"realname\":\"小杨测试\",\"email\":\"377075912@qq.com\",\"mobile\":\"12345678990\",\"goods_amount\":5867153,\"is_unset\":0,\"client_tool\":\"2\",\"client_tool_name\":\"H5-WEB\",\"l\":0},\"tmpPwd\":false}}",
+    "account": "12345678990",
+    "token_extracted": true
+  },
+  "summary": {
+    "keyword": "裙子",
+    "expected_total": 1,
+    "added_total": 1,
+    "shop_types": [
+      "1688"
+    ]
+  },
+  "finished_at": "2026-06-01 10:42:46.656328"
+}

@@ -1,0 +1,27 @@
+{
+  "uuid": "1786d280-9ef0-4195-b2b4-106008e6cdc0",
+  "name": "注册页面-验证码重复发送限制",
+  "fullName": "ui.注册页面-验证码重复发送限制",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781073740443,
+  "stop": 1781073740443,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "1786d280-9ef0-4195-b2b4-106008e6cdc0-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "1786d280-9ef0-4195-b2b4-106008e6cdc0-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

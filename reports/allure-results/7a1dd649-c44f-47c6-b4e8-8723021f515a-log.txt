@@ -1,0 +1,533 @@
+{
+  "script": "全流程完全体",
+  "mode": "full_flow",
+  "started_at": "2026-06-13 17:45:54.065826",
+  "stop_after_node": "porder_offered",
+  "input_adjustments": {},
+  "steps": [
+    {
+      "node": "shopping_cart",
+      "node_label": "商品加购完成",
+      "script": "商品购物车",
+      "passed": true,
+      "paused": false,
+      "duration_ms": 55334,
+      "summary": {
+        "keyword": "衣服",
+        "shop_type": "1688",
+        "target_shops": 8,
+        "per_shop": 5,
+        "ready_shops": 8,
+        "expected_total": 40,
+        "available_expected_total": 40,
+        "added_total": 40,
+        "api_added_total": 40,
+        "verified_added_total": 40,
+        "cart_verification_enabled": true,
+        "cart_verify_mode": "final",
+        "failed_batches": [],
+        "verification_failed_batches": [],
+        "strict_shop_count": false,
+        "duration_ms": 55334
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\4ec16b0f-3d19-413f-8cc7-3ebed3119469-result.json"
+    },
+    {
+      "node": "order_offered",
+      "node_label": "后台订单报价完成",
+      "script": "订单报价",
+      "passed": true,
+      "paused": false,
+      "duration_ms": 18217,
+      "summary": {
+        "order_sn": "2026061317465435-50",
+        "selected_count": 8,
+        "item_quantity": 1,
+        "submit_order": true,
+        "run_backend_flow": true,
+        "cart_ids": [
+          1128422,
+          1128417,
+          1128412,
+          1128407,
+          1128402,
+          1128397,
+          1128392,
+          1128387
+        ],
+        "goods_ids": [
+          "930007701741",
+          "811955375842",
+          "614399185760",
+          "1011796146291",
+          "1197814293",
+          "1003020845479",
+          "974740093847",
+          "659132014806"
+        ],
+        "order_options": [
+          {
+            "key": "78",
+            "id": 78,
+            "name": "详细检品",
+            "label": "详细检品",
+            "name_translate": "詳細検品",
+            "price": 4,
+            "price_type": 1,
+            "unit": "%",
+            "num": 10
+          },
+          {
+            "key": "79",
+            "id": 79,
+            "name": "针检",
+            "label": "针检",
+            "name_translate": "通常検針サービス",
+            "price": "0.80",
+            "price_type": 0,
+            "unit": "元",
+            "num": 20
+          },
+          {
+            "key": "80",
+            "id": 80,
+            "name": "X线针检",
+            "label": "X线针检",
+            "name_translate": "X線検針サービス",
+            "price": "1.00",
+            "price_type": 0,
+            "unit": "元",
+            "num": 30
+          }
+        ],
+        "order_option_applied_detail_count": 8,
+        "expected_shop_count": 8,
+        "expected_per_shop": 1,
+        "selected_shop_count": 8,
+        "available_shop_count": 9,
+        "ready_shop_count": 9,
+        "backend_passed": true,
+        "backend_steps": [
+          "login",
+          "detail",
+          "translate",
+          "confirm",
+          "offer"
+        ],
+        "quote_unit_price": "10",
+        "backend_status": 30,
+        "duration_ms": 18217
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\353fcf7e-78b5-46a7-8cfa-9029e34d9559-result.json"
+    },
+    {
+      "node": "order_paid",
+      "node_label": "订单支付完成",
+      "script": "余额支付",
+      "passed": true,
+      "paused": false,
+      "duration_ms": 3424,
+      "summary": {
+        "payment_type": "balance",
+        "order_sn": "2026061317465435-50",
+        "pay_amount": "10972",
+        "payment_passed": true,
+        "serial_number": "178134402825400000050727",
+        "duration_ms": 3424,
+        "attempted_payment_types": [
+          "balance"
+        ]
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\cefab734-9e18-4877-ad3e-ebf08bc6411d-result.json"
+    },
+    {
+      "node": "shelf_stored",
+      "node_label": "核查上架入库完成",
+      "script": "待拍下到商品上架",
+      "passed": true,
+      "paused": false,
+      "duration_ms": 15914,
+      "summary": {
+        "order_sn": "2026061317465435-50",
+        "purchase_no": "20260613174711",
+        "selected_count": 8,
+        "purchase_ids": [
+          15327503,
+          15327504,
+          15327505,
+          15327506,
+          15327507,
+          15327508,
+          15327509,
+          15327510
+        ],
+        "order_detail_ids": [
+          "14051183",
+          "14051184",
+          "14051185",
+          "14051186",
+          "14051187",
+          "14051188",
+          "14051189",
+          "14051190"
+        ],
+        "order_detail_id": "14051183",
+        "grid_id": 12479,
+        "grid_number": "【三部-FBA.1.1-FBA-003】-1-10-4",
+        "storage_count": 8,
+        "storage_passed": true,
+        "verify_passed": true,
+        "remaining_purchase_count": 0,
+        "remaining_pending_count": 0,
+        "duration_ms": 15914
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\ef16e489-ceee-4a7e-93c0-0b56bec99a9b-result.json"
+    },
+    {
+      "node": "porder_offered",
+      "node_label": "配送单报价完成",
+      "script": "仓库提出配送单",
+      "passed": true,
+      "paused": true,
+      "duration_ms": 16635,
+      "summary": {
+        "porder_sn": "P2026061317472609-300001",
+        "order_detail_id": "14051183",
+        "order_detail_ids": [
+          "14051183"
+        ],
+        "send_num": 1,
+        "total_send_num": 1,
+        "requested_warehouse_sku_count": 1,
+        "warehouse_sku_count": 1,
+        "actual_warehouse_sku_count": 1,
+        "current_order_count": 1,
+        "history_fill_count": 0,
+        "selected_sku_ids": [
+          "5980268826729"
+        ],
+        "selected_warehouse_items": [
+          {
+            "order_detail_id": "14051183",
+            "sku_id": "5980268826729",
+            "goods_id": "930007701741",
+            "goods_title": "服装鞋帽书包PVC软胶标牌立体橡胶标LOGO胶章硅胶商标 滴塑标定制",
+            "sendable_num": 1,
+            "order_sn": "2026061317465435-50",
+            "source": "current_order",
+            "send_num": 1
+          }
+        ],
+        "warehouse_rows": 35,
+        "create_passed": true,
+        "porder_detail_id": "5003253",
+        "porder_detail_ids": [
+          "5003253"
+        ],
+        "freight_id": "1073357",
+        "stock_id": "715247",
+        "stock_ids": [
+          "715247"
+        ],
+        "box_num": 1,
+        "box_nums": {
+          "5003253": 1
+        },
+        "logistics_id": "25",
+        "logistics_price_artificial": "775",
+        "backend_passed": true,
+        "backend_steps": [
+          "login",
+          "porder_detail",
+          "submit_translate",
+          "add_box",
+          "into_box_preview",
+          "into_box_submit",
+          "complete_box",
+          "to_wait_offer",
+          "batch_update_freight_logistics",
+          "freight_list",
+          "submit_offer"
+        ],
+        "paused": true,
+        "stopped_after_node": "porder_offered",
+        "current_node": "porder_offered",
+        "node_label": "配送单报价完成",
+        "duration_ms": 16635
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\85601ce1-ba47-41b6-a852-9d03bffb8e22-result.json"
+    }
+  ],
+  "shared_data": {
+    "order_sn": "2026061317465435-50",
+    "serial_number": "178134402825400000050727",
+    "payment_type": "balance",
+    "pay_amount": "10972",
+    "purchase_no": "20260613174711",
+    "purchase_ids": [
+      15327503,
+      15327504,
+      15327505,
+      15327506,
+      15327507,
+      15327508,
+      15327509,
+      15327510
+    ],
+    "grid_id": 12479,
+    "grid_number": "【三部-FBA.1.1-FBA-003】-1-10-4",
+    "order_detail_id": "14051183",
+    "order_detail_ids": [
+      "14051183"
+    ],
+    "porder_sn": "P2026061317472609-300001",
+    "porder_detail_id": "5003253",
+    "porder_detail_ids": [
+      "5003253"
+    ],
+    "freight_id": "1073357",
+    "warehouse_sku_count": 1,
+    "actual_warehouse_sku_count": 1,
+    "selected_sku_ids": [
+      "5980268826729"
+    ],
+    "total_send_num": 1
+  },
+  "duration_ms": 109544,
+  "summary": {
+    "passed": true,
+    "paused": true,
+    "current_node": "porder_offered",
+    "node_label": "配送单报价完成",
+    "stop_after_node": "porder_offered",
+    "total_steps": 5,
+    "success_steps": 5,
+    "node_results": [
+      {
+        "node": "shopping_cart",
+        "node_label": "商品加购完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_created",
+        "node_label": "前台提交订单完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_translated",
+        "node_label": "后台订单翻译完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_confirmed",
+        "node_label": "后台订单确认完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_offered",
+        "node_label": "后台订单报价完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_paid",
+        "node_label": "订单支付完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "pending_purchase",
+        "node_label": "订单进入待拍下",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_no_saved",
+        "node_label": "保存交易号完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_wait_modify_price",
+        "node_label": "标记待改价完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_wait_pay",
+        "node_label": "提交待财务付款完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_paid",
+        "node_label": "交易号付款完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "checking_started",
+        "node_label": "开始核查完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "shelf_stored",
+        "node_label": "核查上架入库完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "warehouse_delivery_created",
+        "node_label": "仓库提出配送单完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "porder_translated",
+        "node_label": "配送单待翻译完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "porder_confirmed",
+        "node_label": "配送单确认流转完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "porder_wait_offer",
+        "node_label": "配送单进入待报价完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "porder_offered",
+        "node_label": "配送单报价完成",
+        "status": "paused",
+        "passed": true
+      },
+      {
+        "node": "porder_paid",
+        "node_label": "配送单支付完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "full_complete",
+        "node_label": "全流程结束",
+        "status": "pending",
+        "passed": null
+      }
+    ],
+    "steps": [
+      {
+        "node": "shopping_cart",
+        "node_label": "商品加购完成",
+        "script": "商品购物车",
+        "passed": true,
+        "paused": false,
+        "duration_ms": 55334
+      },
+      {
+        "node": "order_offered",
+        "node_label": "后台订单报价完成",
+        "script": "订单报价",
+        "passed": true,
+        "paused": false,
+        "duration_ms": 18217
+      },
+      {
+        "node": "order_paid",
+        "node_label": "订单支付完成",
+        "script": "余额支付",
+        "passed": true,
+        "paused": false,
+        "duration_ms": 3424
+      },
+      {
+        "node": "shelf_stored",
+        "node_label": "核查上架入库完成",
+        "script": "待拍下到商品上架",
+        "passed": true,
+        "paused": false,
+        "duration_ms": 15914
+      },
+      {
+        "node": "porder_offered",
+        "node_label": "配送单报价完成",
+        "script": "仓库提出配送单",
+        "passed": true,
+        "paused": true,
+        "duration_ms": 16635
+      }
+    ],
+    "step_timings": [
+      {
+        "node": "shopping_cart",
+        "script": "商品购物车",
+        "duration_ms": 55334
+      },
+      {
+        "node": "order_offered",
+        "script": "订单报价",
+        "duration_ms": 18217
+      },
+      {
+        "node": "order_paid",
+        "script": "余额支付",
+        "duration_ms": 3424
+      },
+      {
+        "node": "shelf_stored",
+        "script": "待拍下到商品上架",
+        "duration_ms": 15914
+      },
+      {
+        "node": "porder_offered",
+        "script": "仓库提出配送单",
+        "duration_ms": 16635
+      }
+    ],
+    "order_sn": "2026061317465435-50",
+    "serial_number": "178134402825400000050727",
+    "payment_type": "balance",
+    "pay_amount": "10972",
+    "purchase_no": "20260613174711",
+    "purchase_ids": [
+      15327503,
+      15327504,
+      15327505,
+      15327506,
+      15327507,
+      15327508,
+      15327509,
+      15327510
+    ],
+    "grid_id": 12479,
+    "grid_number": "【三部-FBA.1.1-FBA-003】-1-10-4",
+    "order_detail_id": "14051183",
+    "order_detail_ids": [
+      "14051183"
+    ],
+    "porder_sn": "P2026061317472609-300001",
+    "porder_detail_id": "5003253",
+    "porder_detail_ids": [
+      "5003253"
+    ],
+    "freight_id": "1073357",
+    "warehouse_sku_count": 1,
+    "actual_warehouse_sku_count": 1,
+    "selected_sku_ids": [
+      "5980268826729"
+    ],
+    "total_send_num": 1,
+    "stopped_after_node": "porder_offered",
+    "duration_ms": 109544
+  },
+  "finished_at": "2026-06-13 17:47:43.610698"
+}

@@ -1,0 +1,72 @@
+{
+  "case_name": "正常流程：查看已邀请客户列表",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "input",
+      "locator": "input[placeholder=\"邮箱/手机号\"]",
+      "value": "18839953328"
+    },
+    {
+      "action": "input",
+      "locator": "input[placeholder=\"请输入密码\"]",
+      "value": "123456"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait_for_selector",
+      "locator": "text=已邀请客户",
+      "value": 10000
+    },
+    {
+      "action": "assert_visible",
+      "locator": "text=已邀请客户"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780644469,
+    "datetime": "2026-06-05 15:27:49",
+    "date": "2026-06-05",
+    "uuid": "f287db1d-3e3c-4e23-bf00-7da80cf0c2a6",
+    "random_int": 232363,
+    "random_str": "lb1gnslq",
+    "random_phone": "13106606596",
+    "random_email": "test_232363@example.com",
+    "$timestamp": 1780644469,
+    "$datetime": "2026-06-05 15:27:49",
+    "$date": "2026-06-05",
+    "$uuid": "f287db1d-3e3c-4e23-bf00-7da80cf0c2a6",
+    "$random_int": 232363,
+    "$random_str": "lb1gnslq",
+    "$random_phone": "13106606596",
+    "$random_email": "test_232363@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "rakumart888"
+  },
+  "started_at": "2026-06-05 15:27:49.226740",
+  "error": "Page.wait_for_selector: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"text=已邀请客户\") to be visible\n",
+  "failed_step_index": 7,
+  "failed_step": {
+    "action": "wait_for_selector",
+    "locator": "text=已邀请客户",
+    "value": 10000
+  },
+  "finished_at": "2026-06-05 15:28:25.773494"
+}

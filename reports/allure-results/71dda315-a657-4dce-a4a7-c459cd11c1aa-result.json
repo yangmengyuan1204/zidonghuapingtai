@@ -1,0 +1,22 @@
+{
+  "uuid": "71dda315-a657-4dce-a4a7-c459cd11c1aa",
+  "name": "待拍下到商品上架",
+  "fullName": "data_script.待拍下到商品上架",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781510998451,
+  "stop": 1781511011355,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "71dda315-a657-4dce-a4a7-c459cd11c1aa-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

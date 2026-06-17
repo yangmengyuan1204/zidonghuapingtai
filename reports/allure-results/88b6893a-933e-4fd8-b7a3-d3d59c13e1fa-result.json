@@ -1,0 +1,22 @@
+{
+  "uuid": "88b6893a-933e-4fd8-b7a3-d3d59c13e1fa",
+  "name": "正常流程：列表分页功能",
+  "fullName": "ui.正常流程：列表分页功能",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780899828977,
+  "stop": 1780899828977,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "88b6893a-933e-4fd8-b7a3-d3d59c13e1fa-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

@@ -1,0 +1,1124 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "衣服",
+  "shop_type": "1688",
+  "target_shops": 8,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    10,
+    20,
+    30,
+    40,
+    50
+  ],
+  "allow_fallback_sku": true,
+  "verify_cart_after_add": true,
+  "cart_verify_mode": "final",
+  "started_at": "2026-06-13 17:21:50.667509",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBBAo1J7ZWN_Awq2PAoXecVog",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "895189380951",
+          "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+          "shop_name": "义乌市万龙皮具厂",
+          "sku_id": "rakumart_6a2d213625b86711",
+          "spec_id": "rakumart_6a2d213625b89836",
+          "num": 2000,
+          "price": "2.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBB0aWLf1qFKf84jzk1w-L15w",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "632922593578",
+          "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+          "shop_name": "绍兴市灏宇纺织品有限公司",
+          "sku_id": "5004842743545",
+          "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+          "num": 10,
+          "price": "15.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "583227091316",
+          "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+          "shop_name": "绍兴市灏宇纺织品有限公司",
+          "sku_id": "5000471270503",
+          "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+          "num": 10,
+          "price": "35.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "655931390265",
+          "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+          "shop_name": "绍兴市灏宇纺织品有限公司",
+          "sku_id": "4827057900380",
+          "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+          "num": 10,
+          "price": "45.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "shop_key": "BBB6KXdjR6xeNDfOfrJD8mqyg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1041680022407",
+          "shop_id": "BBB6KXdjR6xeNDfOfrJD8mqyg",
+          "shop_name": "中山市品力服装科技有限公司",
+          "sku_id": "6228249339033",
+          "spec_id": "eb81c61de14f4adb405ffcc2c8a4a3fb",
+          "num": 10,
+          "price": "38.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1041680022407",
+          "shop_id": "BBB6KXdjR6xeNDfOfrJD8mqyg",
+          "shop_name": "中山市品力服装科技有限公司",
+          "sku_id": "6228249339034",
+          "spec_id": "4b2120e532948daa11e58e09bb260801",
+          "num": 30,
+          "price": "38.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1041680022407",
+          "shop_id": "BBB6KXdjR6xeNDfOfrJD8mqyg",
+          "shop_name": "中山市品力服装科技有限公司",
+          "sku_id": "6228249339035",
+          "spec_id": "b99ece08861a79e13a4dba90e97ebff8",
+          "num": 50,
+          "price": "38.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "shop_key": "BBBP2Q8ktVFZHOo1o6xPabLAA",
+      "collected_count": 3,
+      "selected_count": 3,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "849343659963",
+          "shop_id": "BBBP2Q8ktVFZHOo1o6xPabLAA",
+          "shop_name": "深圳市福田区佳盛园服装商行",
+          "sku_id": "5806889846363",
+          "spec_id": "9ce76d4e383faffd7829838ec03ad7c7",
+          "num": 10,
+          "price": "15.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "849343659963",
+          "shop_id": "BBBP2Q8ktVFZHOo1o6xPabLAA",
+          "shop_name": "深圳市福田区佳盛园服装商行",
+          "sku_id": "5806889846364",
+          "spec_id": "69725e1f0a17f9d0f02626717ad2a0be",
+          "num": 40,
+          "price": "15.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "849343659963",
+          "shop_id": "BBBP2Q8ktVFZHOo1o6xPabLAA",
+          "shop_name": "深圳市福田区佳盛园服装商行",
+          "sku_id": "5806889846365",
+          "spec_id": "7ccb9e57d1d5f349172254f5c3eb0f3e",
+          "num": 20,
+          "price": "15.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "shop_key": "BBBjs4_v4pXEcZID2W4puEQNw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "899961147998",
+          "shop_id": "BBBjs4_v4pXEcZID2W4puEQNw",
+          "shop_name": "温州市水曜服装有限公司",
+          "sku_id": "5755663444855",
+          "spec_id": "4b2120e532948daa11e58e09bb260801",
+          "num": 10,
+          "price": "62.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "899961147998",
+          "shop_id": "BBBjs4_v4pXEcZID2W4puEQNw",
+          "shop_name": "温州市水曜服装有限公司",
+          "sku_id": "5755663444856",
+          "spec_id": "b99ece08861a79e13a4dba90e97ebff8",
+          "num": 40,
+          "price": "62.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "899961147998",
+          "shop_id": "BBBjs4_v4pXEcZID2W4puEQNw",
+          "shop_name": "温州市水曜服装有限公司",
+          "sku_id": "5755663444857",
+          "spec_id": "5c337082186ff55b2d8267560ac89d59",
+          "num": 20,
+          "price": "62.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "shop_key": "BBBP8qeL0vlYrq9yRHrxjahhA",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "881094175926",
+          "shop_id": "BBBP8qeL0vlYrq9yRHrxjahhA",
+          "shop_name": "广州致厘国际贸易有限公司",
+          "sku_id": "5720918544013",
+          "spec_id": "eb81c61de14f4adb405ffcc2c8a4a3fb",
+          "num": 10,
+          "price": "44.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "881094175926",
+          "shop_id": "BBBP8qeL0vlYrq9yRHrxjahhA",
+          "shop_name": "广州致厘国际贸易有限公司",
+          "sku_id": "5720918544014",
+          "spec_id": "4b2120e532948daa11e58e09bb260801",
+          "num": 30,
+          "price": "44.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "881094175926",
+          "shop_id": "BBBP8qeL0vlYrq9yRHrxjahhA",
+          "shop_name": "广州致厘国际贸易有限公司",
+          "sku_id": "5720918544015",
+          "spec_id": "b99ece08861a79e13a4dba90e97ebff8",
+          "num": 50,
+          "price": "44.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "shop_key": "BBBwuErKh0RAgnNd_mRzZXHYA",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "919978407035",
+          "shop_id": "BBBwuErKh0RAgnNd_mRzZXHYA",
+          "shop_name": "南通蔓秋纺织品有限公司",
+          "sku_id": "5841416720460",
+          "spec_id": "93186103ae87fb959dde63698680fc1d",
+          "num": 10,
+          "price": "75.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "919978407035",
+          "shop_id": "BBBwuErKh0RAgnNd_mRzZXHYA",
+          "shop_name": "南通蔓秋纺织品有限公司",
+          "sku_id": "5841416720462",
+          "spec_id": "bafa4ffc2633231c41827946e49de47e",
+          "num": 20,
+          "price": "75.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "919978407035",
+          "shop_id": "BBBwuErKh0RAgnNd_mRzZXHYA",
+          "shop_name": "南通蔓秋纺织品有限公司",
+          "sku_id": "5841416720464",
+          "spec_id": "1bbd0acb3b8e6e4b280059fa2e96581b",
+          "num": 30,
+          "price": "75.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "shop_key": "BBBrydj76WAWaGmlwg22nex0w",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "708247380039",
+          "shop_id": "BBBrydj76WAWaGmlwg22nex0w",
+          "shop_name": "宁晋县润才服装有限公司",
+          "sku_id": "5147848323869",
+          "spec_id": "05a11839749280a09519579fe9816c3f",
+          "num": 10,
+          "price": "28.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "708247380039",
+          "shop_id": "BBBrydj76WAWaGmlwg22nex0w",
+          "shop_name": "宁晋县润才服装有限公司",
+          "sku_id": "5147848323870",
+          "spec_id": "7d98a2deec61133aa2853a717fe48951",
+          "num": 20,
+          "price": "28.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "708247380039",
+          "shop_id": "BBBrydj76WAWaGmlwg22nex0w",
+          "shop_name": "宁晋县润才服装有限公司",
+          "sku_id": "5147848323871",
+          "spec_id": "0ea74dd61d8e31f28ade612c4efcf7d4",
+          "num": 30,
+          "price": "28.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "shop_key": "BBBb6oFHr0S_XzCTDsHPVka3g",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "945279728574",
+          "shop_id": "BBBb6oFHr0S_XzCTDsHPVka3g",
+          "shop_name": "广州淘圣制衣有限公司",
+          "sku_id": "5848618657545",
+          "spec_id": "4b2120e532948daa11e58e09bb260801",
+          "num": 10,
+          "price": "53.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "945279728574",
+          "shop_id": "BBBb6oFHr0S_XzCTDsHPVka3g",
+          "shop_name": "广州淘圣制衣有限公司",
+          "sku_id": "5848618657546",
+          "spec_id": "b99ece08861a79e13a4dba90e97ebff8",
+          "num": 40,
+          "price": "53.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "945279728574",
+          "shop_id": "BBBb6oFHr0S_XzCTDsHPVka3g",
+          "shop_name": "广州淘圣制衣有限公司",
+          "sku_id": "5848618657547",
+          "spec_id": "5c337082186ff55b2d8267560ac89d59",
+          "num": 20,
+          "price": "53.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "shop_key": "BBBQO18msFlqBhMYGx-cdvSUw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "978232042978",
+          "shop_id": "BBBQO18msFlqBhMYGx-cdvSUw",
+          "shop_name": "深圳市宝安区可麦服装店",
+          "sku_id": "5933713180613",
+          "spec_id": "94d1d179497744028aa76873afdeba62",
+          "num": 10,
+          "price": "25.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "978232042978",
+          "shop_id": "BBBQO18msFlqBhMYGx-cdvSUw",
+          "shop_name": "深圳市宝安区可麦服装店",
+          "sku_id": "5933713180614",
+          "spec_id": "cef93beef156f1799e736c649f36efae",
+          "num": 40,
+          "price": "25.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "978232042978",
+          "shop_id": "BBBQO18msFlqBhMYGx-cdvSUw",
+          "shop_name": "深圳市宝安区可麦服装店",
+          "sku_id": "5933713180615",
+          "spec_id": "82114cbd2c10b5e97b01af1510807e2d",
+          "num": 20,
+          "price": "25.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "shop_key": "BBB9rjMo4MPadGSTNPADp3dIg",
+      "collected_count": 4,
+      "selected_count": 4,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "931257727668",
+          "shop_id": "BBB9rjMo4MPadGSTNPADp3dIg",
+          "shop_name": "灌云县银芝贸易有限公司",
+          "sku_id": "5817991068714",
+          "spec_id": "74cd5f4f0225a4ddd4a7f55ca6c3e7b7",
+          "num": 10,
+          "price": "24.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "931257727668",
+          "shop_id": "BBB9rjMo4MPadGSTNPADp3dIg",
+          "shop_name": "灌云县银芝贸易有限公司",
+          "sku_id": "5817991068715",
+          "spec_id": "b4939c0cb982a60d8adbd4c447cabac8",
+          "num": 20,
+          "price": "24.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "931257727668",
+          "shop_id": "BBB9rjMo4MPadGSTNPADp3dIg",
+          "shop_name": "灌云县银芝贸易有限公司",
+          "sku_id": "5817991068716",
+          "spec_id": "837be3b7422359e1ca985693d64e0110",
+          "num": 30,
+          "price": "24.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "shop_key": "BBB1M11bv8errNjYuEZuFtlsg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "784781073989",
+          "shop_id": "BBB1M11bv8errNjYuEZuFtlsg",
+          "shop_name": "广州依杰制衣有限公司",
+          "sku_id": "5360571193250",
+          "spec_id": "c81a9f6052444f9ee500af71aef3d5ef",
+          "num": 10,
+          "price": "19.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "784781073989",
+          "shop_id": "BBB1M11bv8errNjYuEZuFtlsg",
+          "shop_name": "广州依杰制衣有限公司",
+          "sku_id": "5360571193251",
+          "spec_id": "8012d5630cabddb2ee4602dd80dcb47d",
+          "num": 40,
+          "price": "19.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "784781073989",
+          "shop_id": "BBB1M11bv8errNjYuEZuFtlsg",
+          "shop_name": "广州依杰制衣有限公司",
+          "sku_id": "5360571193252",
+          "spec_id": "89f16d78751ff292cb17754b916e3b8a",
+          "num": 20,
+          "price": "19.8",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "shop_key": "BBB6SjhtlbT8Jgbxr3pWXFcKA",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "823849159337",
+          "shop_id": "BBB6SjhtlbT8Jgbxr3pWXFcKA",
+          "shop_name": "余姚市甬创服装厂",
+          "sku_id": "5539097268306",
+          "spec_id": "31d29b0fc629dc9d71ef4259427d10e7",
+          "num": 10,
+          "price": "28.99",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "823849159337",
+          "shop_id": "BBB6SjhtlbT8Jgbxr3pWXFcKA",
+          "shop_name": "余姚市甬创服装厂",
+          "sku_id": "5539097268307",
+          "spec_id": "aa9cd42a1877755aee26bae09937917a",
+          "num": 40,
+          "price": "28.99",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "823849159337",
+          "shop_id": "BBB6SjhtlbT8Jgbxr3pWXFcKA",
+          "shop_name": "余姚市甬创服装厂",
+          "sku_id": "5539097268308",
+          "spec_id": "4b4415b018360a6478b3f36fefd19da8",
+          "num": 20,
+          "price": "28.99",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "shop_key": "BBBgm4PwITiI_MaHunUA1Jm1Q",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "535891400200",
+          "shop_id": "BBBgm4PwITiI_MaHunUA1Jm1Q",
+          "shop_name": "嘉兴市秀洲区洪合麦芽毛衫经营部",
+          "sku_id": "3197856064019",
+          "spec_id": "b4ec52b39f4c3cb76bf667d126591349",
+          "num": 10,
+          "price": "40.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "535891400200",
+          "shop_id": "BBBgm4PwITiI_MaHunUA1Jm1Q",
+          "shop_name": "嘉兴市秀洲区洪合麦芽毛衫经营部",
+          "sku_id": "3197856064020",
+          "spec_id": "2e578fba8900edcb236eff5cdc5eefb5",
+          "num": 40,
+          "price": "40.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "535891400200",
+          "shop_id": "BBBgm4PwITiI_MaHunUA1Jm1Q",
+          "shop_name": "嘉兴市秀洲区洪合麦芽毛衫经营部",
+          "sku_id": "3197856064021",
+          "spec_id": "43b0e72e98731aed69e1f0cc7d64bf4d",
+          "num": 20,
+          "price": "40.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "shop_key": "BBB0oMxJXawHpW1OnZZ7a-4rw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "750521093365",
+          "shop_id": "BBB0oMxJXawHpW1OnZZ7a-4rw",
+          "shop_name": "杭州睿圣科技有限公司",
+          "sku_id": "5173346328654",
+          "spec_id": "3cc1bee7d5b4a1a709316fcdbffb5cbc",
+          "num": 10,
+          "price": "52.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "750521093365",
+          "shop_id": "BBB0oMxJXawHpW1OnZZ7a-4rw",
+          "shop_name": "杭州睿圣科技有限公司",
+          "sku_id": "5173346328655",
+          "spec_id": "2b838f41cb2bef9f009d7e49be12de8c",
+          "num": 20,
+          "price": "52.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "750521093365",
+          "shop_id": "BBB0oMxJXawHpW1OnZZ7a-4rw",
+          "shop_name": "杭州睿圣科技有限公司",
+          "sku_id": "5173346328656",
+          "spec_id": "126c96b8f7d3602c99c5a7dbf94905ac",
+          "num": 30,
+          "price": "52.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "shop_key": "BBB61n_yBY5CULt6Fllq5FjKw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "886104017736",
+          "shop_id": "BBB61n_yBY5CULt6Fllq5FjKw",
+          "shop_name": "福建省裕祥益丰服装有限公司",
+          "sku_id": "5894508154458",
+          "spec_id": "7d79e2ca0cb62f317805d3fe5633ff9d",
+          "num": 10,
+          "price": "42.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "886104017736",
+          "shop_id": "BBB61n_yBY5CULt6Fllq5FjKw",
+          "shop_name": "福建省裕祥益丰服装有限公司",
+          "sku_id": "5894508154460",
+          "spec_id": "b868cbe8f058017f8ac61bcbb960f12d",
+          "num": 40,
+          "price": "42.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "886104017736",
+          "shop_id": "BBB61n_yBY5CULt6Fllq5FjKw",
+          "shop_name": "福建省裕祥益丰服装有限公司",
+          "sku_id": "5894508154461",
+          "spec_id": "16626f2f5f2989aeb569d6987f686235",
+          "num": 20,
+          "price": "42.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "shop_key": "BBBq1-hYiz8gX4F53B7mfj8Ig",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1025536995642",
+          "shop_id": "BBBq1-hYiz8gX4F53B7mfj8Ig",
+          "shop_name": "泉州品阁丹盾服饰有限公司",
+          "sku_id": "6038256041707",
+          "spec_id": "d43cdf93d97c5a6cb4c25dcf176d53ca",
+          "num": 10,
+          "price": "26.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1025536995642",
+          "shop_id": "BBBq1-hYiz8gX4F53B7mfj8Ig",
+          "shop_name": "泉州品阁丹盾服饰有限公司",
+          "sku_id": "6038256041711",
+          "spec_id": "2db60dd6d7e15f6d1904da9a3c70ccbb",
+          "num": 40,
+          "price": "26.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1025536995642",
+          "shop_id": "BBBq1-hYiz8gX4F53B7mfj8Ig",
+          "shop_name": "泉州品阁丹盾服饰有限公司",
+          "sku_id": "6038256041710",
+          "spec_id": "aed871927e27a5d076971a4d724e8975",
+          "num": 20,
+          "price": "26.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "shop_key": "BBBBel4UEQNt4FuOzZ4R18T1Q",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "660878533600",
+          "shop_id": "BBBBel4UEQNt4FuOzZ4R18T1Q",
+          "shop_name": "义乌市珍好贸易有限公司",
+          "sku_id": "5146618897327",
+          "spec_id": "0a29610e1139c968e12193ffe06be189",
+          "num": 10,
+          "price": "13.99",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "660878533600",
+          "shop_id": "BBBBel4UEQNt4FuOzZ4R18T1Q",
+          "shop_name": "义乌市珍好贸易有限公司",
+          "sku_id": "5146618897315",
+          "spec_id": "6f8f7c0c5796553475d9f6ccddbf2d51",
+          "num": 20,
+          "price": "13.99",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "660878533600",
+          "shop_id": "BBBBel4UEQNt4FuOzZ4R18T1Q",
+          "shop_name": "义乌市珍好贸易有限公司",
+          "sku_id": "5146618897318",
+          "spec_id": "b6385669754423a36b58d925930de301",
+          "num": 30,
+          "price": "13.99",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "shop_key": "BBB1QCDEDdUNK9Z1N0-eDg_RQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "736684714140",
+          "shop_id": "BBB1QCDEDdUNK9Z1N0-eDg_RQ",
+          "shop_name": "中山市锐翔纺织科技有限公司",
+          "sku_id": "5090137865056",
+          "spec_id": "12c73826172b87493a88c78af378f5f1",
+          "num": 10,
+          "price": "169.9",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "736684714140",
+          "shop_id": "BBB1QCDEDdUNK9Z1N0-eDg_RQ",
+          "shop_name": "中山市锐翔纺织科技有限公司",
+          "sku_id": "5090137865057",
+          "spec_id": "ddc1bb75d26cdde14365647c27a267e2",
+          "num": 20,
+          "price": "169.9",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "736684714140",
+          "shop_id": "BBB1QCDEDdUNK9Z1N0-eDg_RQ",
+          "shop_name": "中山市锐翔纺织科技有限公司",
+          "sku_id": "5090137865058",
+          "spec_id": "6b3f2407feda9414856921aa2dc8e361",
+          "num": 30,
+          "price": "169.9",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "shop_key": "BBBtHYHtwTq6LOE5jd06bZs0w",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "579596681938",
+          "shop_id": "BBBtHYHtwTq6LOE5jd06bZs0w",
+          "shop_name": "石狮市摩都服饰贸易有限公司",
+          "sku_id": "3852969364989",
+          "spec_id": "43b0e72e98731aed69e1f0cc7d64bf4d",
+          "num": 10,
+          "price": "76.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "579596681938",
+          "shop_id": "BBBtHYHtwTq6LOE5jd06bZs0w",
+          "shop_name": "石狮市摩都服饰贸易有限公司",
+          "sku_id": "3852969364990",
+          "spec_id": "893746f5330dc3273d24aa1ac1a9a8b5",
+          "num": 40,
+          "price": "76.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "579596681938",
+          "shop_id": "BBBtHYHtwTq6LOE5jd06bZs0w",
+          "shop_name": "石狮市摩都服饰贸易有限公司",
+          "sku_id": "3852969364991",
+          "spec_id": "42d994cba0210528142a743d4069700f",
+          "num": 20,
+          "price": "76.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "shop_key": "BBBPKfdErLbgZh_0qra8fETTQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "906348140255",
+          "shop_id": "BBBPKfdErLbgZh_0qra8fETTQ",
+          "shop_name": "揭阳市郑好电子商务有限公司",
+          "sku_id": "5766549241441",
+          "spec_id": "4b2120e532948daa11e58e09bb260801",
+          "num": 10,
+          "price": "27.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "906348140255",
+          "shop_id": "BBBPKfdErLbgZh_0qra8fETTQ",
+          "shop_name": "揭阳市郑好电子商务有限公司",
+          "sku_id": "5766549241442",
+          "spec_id": "b99ece08861a79e13a4dba90e97ebff8",
+          "num": 40,
+          "price": "27.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "906348140255",
+          "shop_id": "BBBPKfdErLbgZh_0qra8fETTQ",
+          "shop_name": "揭阳市郑好电子商务有限公司",
+          "sku_id": "5766549241443",
+          "spec_id": "5c337082186ff55b2d8267560ac89d59",
+          "num": 20,
+          "price": "27.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "shop_key": "BBBFM9PYdJwDuUsD7k2jPzSJQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "691976112716",
+          "shop_id": "BBBFM9PYdJwDuUsD7k2jPzSJQ",
+          "shop_name": "广州市尼本服饰有限公司",
+          "sku_id": "5090833699986",
+          "spec_id": "eb81c61de14f4adb405ffcc2c8a4a3fb",
+          "num": 10,
+          "price": "60.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "691976112716",
+          "shop_id": "BBBFM9PYdJwDuUsD7k2jPzSJQ",
+          "shop_name": "广州市尼本服饰有限公司",
+          "sku_id": "5090833699987",
+          "spec_id": "4b2120e532948daa11e58e09bb260801",
+          "num": 30,
+          "price": "60.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "691976112716",
+          "shop_id": "BBBFM9PYdJwDuUsD7k2jPzSJQ",
+          "shop_name": "广州市尼本服饰有限公司",
+          "sku_id": "5090833699988",
+          "spec_id": "b99ece08861a79e13a4dba90e97ebff8",
+          "num": 50,
+          "price": "60.0",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 30,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました"
+    },
+    {
+      "batch": 2,
+      "size": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "userID/300001In",
+    "client_tool": "1",
+    "token_extracted": true,
+    "cached": false
+  },
+  "collection": {
+    "ready_shops": 8,
+    "collected_shops": 22,
+    "selected_items": 40,
+    "expected_total": 40,
+    "preview_items": [
+      {
+        "goods_id": "632922593578",
+        "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_name": "绍兴市灏宇纺织品有限公司",
+        "sku_id": "5004842743545",
+        "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+        "num": 10,
+        "price": "15.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "583227091316",
+        "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_name": "绍兴市灏宇纺织品有限公司",
+        "sku_id": "5000471270503",
+        "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+        "num": 10,
+        "price": "35.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "655931390265",
+        "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_name": "绍兴市灏宇纺织品有限公司",
+        "sku_id": "4827057900380",
+        "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+        "num": 10,
+        "price": "45.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "655899668798",
+        "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_name": "绍兴市灏宇纺织品有限公司",
+        "sku_id": "655899668798",
+        "spec_id": "655899668798",
+        "num": 10,
+        "price": "8.50",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "659132014806",
+        "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_name": "绍兴市灏宇纺织品有限公司",
+        "sku_id": "659132014806",
+        "spec_id": "659132014806",
+        "num": 10,
+        "price": "9.80",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1041680022407",
+        "shop_id": "BBB6KXdjR6xeNDfOfrJD8mqyg",
+        "shop_name": "中山市品力服装科技有限公司",
+        "sku_id": "6228249339033",
+        "spec_id": "eb81c61de14f4adb405ffcc2c8a4a3fb",
+        "num": 10,
+        "price": "38.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1041680022407",
+        "shop_id": "BBB6KXdjR6xeNDfOfrJD8mqyg",
+        "shop_name": "中山市品力服装科技有限公司",
+        "sku_id": "6228249339034",
+        "spec_id": "4b2120e532948daa11e58e09bb260801",
+        "num": 30,
+        "price": "38.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1041680022407",
+        "shop_id": "BBB6KXdjR6xeNDfOfrJD8mqyg",
+        "shop_name": "中山市品力服装科技有限公司",
+        "sku_id": "6228249339035",
+        "spec_id": "b99ece08861a79e13a4dba90e97ebff8",
+        "num": 50,
+        "price": "38.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1041680022407",
+        "shop_id": "BBB6KXdjR6xeNDfOfrJD8mqyg",
+        "shop_name": "中山市品力服装科技有限公司",
+        "sku_id": "6228249339036",
+        "spec_id": "5c337082186ff55b2d8267560ac89d59",
+        "num": 20,
+        "price": "38.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1041680022407",
+        "shop_id": "BBB6KXdjR6xeNDfOfrJD8mqyg",
+        "shop_name": "中山市品力服装科技有限公司",
+        "sku_id": "6228249339037",
+        "spec_id": "dc048f4577f72dd6b932615edef1fab6",
+        "num": 40,
+        "price": "38.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "899961147998",
+        "shop_id": "BBBjs4_v4pXEcZID2W4puEQNw",
+        "shop_name": "温州市水曜服装有限公司",
+        "sku_id": "5755663444855",
+        "spec_id": "4b2120e532948daa11e58e09bb260801",
+        "num": 10,
+        "price": "62.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "899961147998",
+        "shop_id": "BBBjs4_v4pXEcZID2W4puEQNw",
+        "shop_name": "温州市水曜服装有限公司",
+        "sku_id": "5755663444856",
+        "spec_id": "b99ece08861a79e13a4dba90e97ebff8",
+        "num": 40,
+        "price": "62.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "899961147998",
+        "shop_id": "BBBjs4_v4pXEcZID2W4puEQNw",
+        "shop_name": "温州市水曜服装有限公司",
+        "sku_id": "5755663444857",
+        "spec_id": "5c337082186ff55b2d8267560ac89d59",
+        "num": 20,
+        "price": "62.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "899961147998",
+        "shop_id": "BBBjs4_v4pXEcZID2W4puEQNw",
+        "shop_name": "温州市水曜服装有限公司",
+        "sku_id": "5755663444858",
+        "spec_id": "dc048f4577f72dd6b932615edef1fab6",
+        "num": 50,
+        "price": "62.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "899961147998",
+        "shop_id": "BBBjs4_v4pXEcZID2W4puEQNw",
+        "shop_name": "温州市水曜服装有限公司",
+        "sku_id": "5755663444859",
+        "spec_id": "02d07207e1c160be04819b06fec91879",
+        "num": 30,
+        "price": "62.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "881094175926",
+        "shop_id": "BBBP8qeL0vlYrq9yRHrxjahhA",
+        "shop_name": "广州致厘国际贸易有限公司",
+        "sku_id": "5720918544013",
+        "spec_id": "eb81c61de14f4adb405ffcc2c8a4a3fb",
+        "num": 10,
+        "price": "44.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "881094175926",
+        "shop_id": "BBBP8qeL0vlYrq9yRHrxjahhA",
+        "shop_name": "广州致厘国际贸易有限公司",
+        "sku_id": "5720918544014",
+        "spec_id": "4b2120e532948daa11e58e09bb260801",
+        "num": 30,
+        "price": "44.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "881094175926",
+        "shop_id": "BBBP8qeL0vlYrq9yRHrxjahhA",
+        "shop_name": "广州致厘国际贸易有限公司",
+        "sku_id": "5720918544015",
+        "spec_id": "b99ece08861a79e13a4dba90e97ebff8",
+        "num": 50,
+        "price": "44.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "881094175926",
+        "shop_id": "BBBP8qeL0vlYrq9yRHrxjahhA",
+        "shop_name": "广州致厘国际贸易有限公司",
+        "sku_id": "5720918544016",
+        "spec_id": "5c337082186ff55b2d8267560ac89d59",
+        "num": 20,
+        "price": "44.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "881094175926",
+        "shop_id": "BBBP8qeL0vlYrq9yRHrxjahhA",
+        "shop_name": "广州致厘国际贸易有限公司",
+        "sku_id": "5720918544017",
+        "spec_id": "94d1d179497744028aa76873afdeba62",
+        "num": 40,
+        "price": "44.0",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "final_verification": {
+    "cart_goods_count": 256,
+    "expected_count": 40,
+    "matched_count": 40,
+    "missing_count": 0,
+    "missing_items": [],
+    "api_success": true
+  },
+  "duration_ms": 40941,
+  "summary": {
+    "keyword": "衣服",
+    "shop_type": "1688",
+    "target_shops": 8,
+    "per_shop": 5,
+    "ready_shops": 8,
+    "expected_total": 40,
+    "available_expected_total": 40,
+    "added_total": 40,
+    "api_added_total": 40,
+    "verified_added_total": 40,
+    "cart_verification_enabled": true,
+    "cart_verify_mode": "final",
+    "failed_batches": [],
+    "verification_failed_batches": [],
+    "strict_shop_count": false,
+    "duration_ms": 40941
+  },
+  "finished_at": "2026-06-13 17:22:31.608801"
+}

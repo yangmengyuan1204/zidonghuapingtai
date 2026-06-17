@@ -1,0 +1,510 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "鸡肉",
+  "shop_type": "1688",
+  "target_shops": 4,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "verify_cart_after_add": true,
+  "cart_verify_mode": "batch",
+  "started_at": "2026-06-17 11:05:18.009528",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBBquIRB89Jk7z7nwy22u4Olg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1052777103127",
+          "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+          "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+          "sku_id": "6259008747404",
+          "spec_id": "caeec15f20831423452a18e0f1b28ef5",
+          "num": 2,
+          "price": "18.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1052777103127",
+          "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+          "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+          "sku_id": "6259008747405",
+          "spec_id": "32212dc0ae2d548ef5a541f105cf5e21",
+          "num": 3,
+          "price": "26.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1052777103127",
+          "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+          "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+          "sku_id": "6259008747406",
+          "spec_id": "3007230506cc3d68674cff9738a69df2",
+          "num": 5,
+          "price": "99.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBBvIkjm7svpjYNraXr0QfFLw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "987229983506",
+          "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+          "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+          "sku_id": "6140810855223",
+          "spec_id": "841a45c48da0347a1d18cf59d8fbde3b",
+          "num": 2,
+          "price": "53.22",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "987229983506",
+          "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+          "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+          "sku_id": "6140810855224",
+          "spec_id": "7c766d6b1ca773b03c383e02130a5708",
+          "num": 3,
+          "price": "99.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "987229983506",
+          "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+          "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+          "sku_id": "6140810855222",
+          "spec_id": "fd584540bf28cf662725c42e525669e1",
+          "num": 5,
+          "price": "275.4",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "shop_key": "BBBTvN9VQNSMqxq0LHxUdajeg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "880557667433",
+          "shop_id": "BBBTvN9VQNSMqxq0LHxUdajeg",
+          "shop_name": "青岛禾禧嘉食品有限公司",
+          "sku_id": "5722614437014",
+          "spec_id": "eeefaed82f0db47c9640cdcca404fa7a",
+          "num": 300,
+          "price": "50.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "880557667433",
+          "shop_id": "BBBTvN9VQNSMqxq0LHxUdajeg",
+          "shop_name": "青岛禾禧嘉食品有限公司",
+          "sku_id": "5722614437015",
+          "spec_id": "2534fb98f81ea6906c539a8034240868",
+          "num": 300,
+          "price": "52.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "822956031456",
+          "shop_id": "BBBTvN9VQNSMqxq0LHxUdajeg",
+          "shop_name": "青岛禾禧嘉食品有限公司",
+          "sku_id": "5535703984159",
+          "spec_id": "113ea36baa4fa531a119bc4f158598fe",
+          "num": 2,
+          "price": "9.9",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "shop_key": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "670212047889",
+          "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+          "shop_name": "山东古锐特宠物用品有限公司",
+          "sku_id": "5869955278286",
+          "spec_id": "5a3a3f8735b53944f1f01421a4fd8cd0",
+          "num": 2,
+          "price": "20.16",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "670212047889",
+          "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+          "shop_name": "山东古锐特宠物用品有限公司",
+          "sku_id": "5869955278287",
+          "spec_id": "b2dc721bb08a01ffe00acc273e0396ac",
+          "num": 3,
+          "price": "49.44",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "670212047889",
+          "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+          "shop_name": "山东古锐特宠物用品有限公司",
+          "sku_id": "5869955278288",
+          "spec_id": "4f0dbab3580b11f20a0a553cbb892bf8",
+          "num": 5,
+          "price": "104.61",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "shop_key": "BBBB9vTfNMg7WhZERh0EVKXkg",
+      "collected_count": 3,
+      "selected_count": 3,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "653015363015",
+          "shop_id": "BBBB9vTfNMg7WhZERh0EVKXkg",
+          "shop_name": "河北国辉实验仪器有限公司",
+          "sku_id": "5938344323039",
+          "spec_id": "e6b204540318fd00d42fa6dc5aca54da",
+          "num": 2,
+          "price": "110400.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "641723850113",
+          "shop_id": "BBBB9vTfNMg7WhZERh0EVKXkg",
+          "shop_name": "河北国辉实验仪器有限公司",
+          "sku_id": "5430861137685",
+          "spec_id": "3b607863165ab06b1639e07b56cda399",
+          "num": 2,
+          "price": "17280.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "651152879977",
+          "shop_id": "BBBB9vTfNMg7WhZERh0EVKXkg",
+          "shop_name": "河北国辉实验仪器有限公司",
+          "sku_id": "6052420540789",
+          "spec_id": "e6b204540318fd00d42fa6dc5aca54da",
+          "num": 2,
+          "price": "196000.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "shop_key": "BBB2mjGOGvsOoYEMhPkepL6pg",
+      "collected_count": 3,
+      "selected_count": 3,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "894874111158",
+          "shop_id": "BBB2mjGOGvsOoYEMhPkepL6pg",
+          "shop_name": "吉安县德仁堂消洗品厂",
+          "sku_id": "5998703067993",
+          "spec_id": "c81970107da1171e95d1241e0ad7115c",
+          "num": 2,
+          "price": "13.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "894874111158",
+          "shop_id": "BBB2mjGOGvsOoYEMhPkepL6pg",
+          "shop_name": "吉安县德仁堂消洗品厂",
+          "sku_id": "5998703067994",
+          "spec_id": "bfa2889ed9074a016c08b998bbc84bdf",
+          "num": 5,
+          "price": "13.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "894874111158",
+          "shop_id": "BBB2mjGOGvsOoYEMhPkepL6pg",
+          "shop_name": "吉安县德仁堂消洗品厂",
+          "sku_id": "5998703067995",
+          "spec_id": "c194fe7e7a7d8537f51ea7aedcfb6a62",
+          "num": 3,
+          "price": "13.5",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 20,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "verification": {
+        "cart_goods_count": 274,
+        "expected_count": 20,
+        "matched_count": 20,
+        "missing_count": 0,
+        "missing_items": [],
+        "api_success": true
+      }
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "userID/300001In",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "collection": {
+    "ready_shops": 4,
+    "collected_shops": 6,
+    "selected_items": 20,
+    "expected_total": 20,
+    "preview_items": [
+      {
+        "goods_id": "1052777103127",
+        "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+        "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+        "sku_id": "6259008747404",
+        "spec_id": "caeec15f20831423452a18e0f1b28ef5",
+        "num": 2,
+        "price": "18.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1052777103127",
+        "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+        "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+        "sku_id": "6259008747405",
+        "spec_id": "32212dc0ae2d548ef5a541f105cf5e21",
+        "num": 3,
+        "price": "26.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1052777103127",
+        "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+        "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+        "sku_id": "6259008747406",
+        "spec_id": "3007230506cc3d68674cff9738a69df2",
+        "num": 5,
+        "price": "99.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1052777103127",
+        "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+        "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+        "sku_id": "6259008747407",
+        "spec_id": "ca6f54a852c528cd1f664ad4bfe7a3e4",
+        "num": 2,
+        "price": "192.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1052777103127",
+        "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+        "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+        "sku_id": "6259008747408",
+        "spec_id": "9552a00dc09e8cc9de5e6ca543762917",
+        "num": 3,
+        "price": "276.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "987229983506",
+        "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+        "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+        "sku_id": "6140810855223",
+        "spec_id": "841a45c48da0347a1d18cf59d8fbde3b",
+        "num": 2,
+        "price": "53.22",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "987229983506",
+        "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+        "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+        "sku_id": "6140810855224",
+        "spec_id": "7c766d6b1ca773b03c383e02130a5708",
+        "num": 3,
+        "price": "99.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "987229983506",
+        "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+        "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+        "sku_id": "6140810855222",
+        "spec_id": "fd584540bf28cf662725c42e525669e1",
+        "num": 5,
+        "price": "275.4",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "987229983506",
+        "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+        "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+        "sku_id": "6140810855220",
+        "spec_id": "f54fd97c3ba0e6638bb61eebe50164c6",
+        "num": 2,
+        "price": "65.6",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "987229983506",
+        "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+        "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+        "sku_id": "6140810855221",
+        "spec_id": "667bf9133ecb3edad6694e3786e14f35",
+        "num": 3,
+        "price": "119.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "880557667433",
+        "shop_id": "BBBTvN9VQNSMqxq0LHxUdajeg",
+        "shop_name": "青岛禾禧嘉食品有限公司",
+        "sku_id": "5722614437014",
+        "spec_id": "eeefaed82f0db47c9640cdcca404fa7a",
+        "num": 300,
+        "price": "50.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "880557667433",
+        "shop_id": "BBBTvN9VQNSMqxq0LHxUdajeg",
+        "shop_name": "青岛禾禧嘉食品有限公司",
+        "sku_id": "5722614437015",
+        "spec_id": "2534fb98f81ea6906c539a8034240868",
+        "num": 300,
+        "price": "52.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "822956031456",
+        "shop_id": "BBBTvN9VQNSMqxq0LHxUdajeg",
+        "shop_name": "青岛禾禧嘉食品有限公司",
+        "sku_id": "5535703984159",
+        "spec_id": "113ea36baa4fa531a119bc4f158598fe",
+        "num": 2,
+        "price": "9.9",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "769156741590",
+        "shop_id": "BBBTvN9VQNSMqxq0LHxUdajeg",
+        "shop_name": "青岛禾禧嘉食品有限公司",
+        "sku_id": "5983613302719",
+        "spec_id": "02565b6e6c3a7aa5c98058010dafbaec",
+        "num": 100,
+        "price": "40.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "675193537171",
+        "shop_id": "BBBTvN9VQNSMqxq0LHxUdajeg",
+        "shop_name": "青岛禾禧嘉食品有限公司",
+        "sku_id": "rakumart_6a320eff28236497",
+        "spec_id": "rakumart_6a320eff28239732",
+        "num": 2,
+        "price": "10",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "670212047889",
+        "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+        "shop_name": "山东古锐特宠物用品有限公司",
+        "sku_id": "5869955278286",
+        "spec_id": "5a3a3f8735b53944f1f01421a4fd8cd0",
+        "num": 2,
+        "price": "20.16",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "670212047889",
+        "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+        "shop_name": "山东古锐特宠物用品有限公司",
+        "sku_id": "5869955278287",
+        "spec_id": "b2dc721bb08a01ffe00acc273e0396ac",
+        "num": 3,
+        "price": "49.44",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "670212047889",
+        "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+        "shop_name": "山东古锐特宠物用品有限公司",
+        "sku_id": "5869955278288",
+        "spec_id": "4f0dbab3580b11f20a0a553cbb892bf8",
+        "num": 5,
+        "price": "104.61",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "670212047889",
+        "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+        "shop_name": "山东古锐特宠物用品有限公司",
+        "sku_id": "5869955278289",
+        "spec_id": "90ee262267ec2f12119821cadb5786ed",
+        "num": 2,
+        "price": "195.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "713758030106",
+        "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+        "shop_name": "山东古锐特宠物用品有限公司",
+        "sku_id": "5169443327850",
+        "spec_id": "dd073c912a1e47752d6a7e94f4601f42",
+        "num": 2,
+        "price": "27.5",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "duration_ms": 20040,
+  "summary": {
+    "keyword": "鸡肉",
+    "shop_type": "1688",
+    "target_shops": 4,
+    "per_shop": 5,
+    "ready_shops": 4,
+    "expected_total": 20,
+    "available_expected_total": 20,
+    "added_total": 20,
+    "api_added_total": 20,
+    "verified_added_total": 20,
+    "cart_verification_enabled": true,
+    "cart_verify_mode": "batch",
+    "failed_batches": [],
+    "verification_failed_batches": [],
+    "strict_shop_count": false,
+    "duration_ms": 20040
+  },
+  "finished_at": "2026-06-17 11:05:38.050415"
+}

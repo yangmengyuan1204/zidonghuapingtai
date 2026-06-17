@@ -1,0 +1,27 @@
+{
+  "uuid": "34d29a86-a070-4ddf-b4b5-c400d23f4138",
+  "name": "权限验证：未登录访问",
+  "fullName": "ui.权限验证：未登录访问",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780652240383,
+  "stop": 1780652240383,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "34d29a86-a070-4ddf-b4b5-c400d23f4138-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "34d29a86-a070-4ddf-b4b5-c400d23f4138-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

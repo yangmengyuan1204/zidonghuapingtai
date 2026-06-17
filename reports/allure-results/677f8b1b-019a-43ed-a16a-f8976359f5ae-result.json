@@ -1,0 +1,27 @@
+{
+  "uuid": "677f8b1b-019a-43ed-a16a-f8976359f5ae",
+  "name": "正常搜索流程-输入关键词并点击百度一下按钮",
+  "fullName": "ui.正常搜索流程-输入关键词并点击百度一下按钮",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781083967197,
+  "stop": 1781083967197,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "677f8b1b-019a-43ed-a16a-f8976359f5ae-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "677f8b1b-019a-43ed-a16a-f8976359f5ae-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

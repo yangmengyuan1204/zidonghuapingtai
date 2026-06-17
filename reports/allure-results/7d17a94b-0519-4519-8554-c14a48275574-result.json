@@ -1,0 +1,22 @@
+{
+  "uuid": "7d17a94b-0519-4519-8554-c14a48275574",
+  "name": "数据脚本-财务确认入金",
+  "fullName": "api.数据脚本-财务确认入金",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780543852141,
+  "stop": 1780543852141,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "7d17a94b-0519-4519-8554-c14a48275574-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "uuid": "5a3ae564-aee8-4821-9443-fef829a1d52b",
+  "name": "??????UI",
+  "fullName": "ui.??????UI",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780885911568,
+  "stop": 1780885911568,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "5a3ae564-aee8-4821-9443-fef829a1d52b-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "5a3ae564-aee8-4821-9443-fef829a1d52b-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,453 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "耳环",
+  "shop_type": "1688",
+  "target_shops": 4,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "started_at": "2026-06-01 17:41:54.755033",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBBuRw73hNv8wUeyXbNF5hHcg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1041550640127",
+          "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+          "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+          "sku_id": "6059345996792",
+          "spec_id": "a217bd1ac443a8d37f055d4077438937",
+          "num": 2,
+          "price": "32.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1041550640127",
+          "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+          "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+          "sku_id": "6059345996793",
+          "spec_id": "f2085c5c862fd57557583e8267ef2d2a",
+          "num": 3,
+          "price": "33.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1041550640127",
+          "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+          "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+          "sku_id": "6059345996794",
+          "spec_id": "1e76992f17034b2bd69eef8c4122253c",
+          "num": 5,
+          "price": "39.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "591917477838",
+          "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+          "shop_name": "广东粘力达新材料有限公司",
+          "sku_id": "4947281345072",
+          "spec_id": "74dfc4fc7ea41ba8222c7ee3193ac78b",
+          "num": 2,
+          "price": "6.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "592684344857",
+          "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+          "shop_name": "广东粘力达新材料有限公司",
+          "sku_id": "5115384266125",
+          "spec_id": "d223b64d73d7c8fb7a6c18ee825ae7d6",
+          "num": 2,
+          "price": "9.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "593241375830",
+          "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+          "shop_name": "广东粘力达新材料有限公司",
+          "sku_id": "4942714632810",
+          "spec_id": "3c105a0e735959c28e3f6c8eb4048775",
+          "num": 2,
+          "price": "4.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "shop_key": "BBB06HsdRXM5kY7WL0gx6xu9g",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "589944302594",
+          "shop_id": "BBB06HsdRXM5kY7WL0gx6xu9g",
+          "shop_name": "义乌市国韵电子商务有限公司",
+          "sku_id": "4111224885448",
+          "spec_id": "10811d8f5c4fe9f44d1036045cadb7b7",
+          "num": 10,
+          "price": "8.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "589944302594",
+          "shop_id": "BBB06HsdRXM5kY7WL0gx6xu9g",
+          "shop_name": "义乌市国韵电子商务有限公司",
+          "sku_id": "4111224885449",
+          "spec_id": "509357c14402199a1e3500e889d87ebd",
+          "num": 10,
+          "price": "8.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "589944302594",
+          "shop_id": "BBB06HsdRXM5kY7WL0gx6xu9g",
+          "shop_name": "义乌市国韵电子商务有限公司",
+          "sku_id": "4111224885450",
+          "spec_id": "c3b229d1c84be235957cafb4987c413f",
+          "num": 10,
+          "price": "8.8",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "shop_key": "BBB3iGIWkS2-owOhEgC0Eo2mw",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "824259781019",
+          "shop_id": "BBB3iGIWkS2-owOhEgC0Eo2mw",
+          "shop_name": "广州鸿善电子商务有限公司",
+          "sku_id": "rakumart_6a1d5449b161d587",
+          "spec_id": "rakumart_6a1d5449b1620176",
+          "num": 2,
+          "price": "20.74",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "shop_key": "BBB7wRk2WA9pAWP30wJ9Ww3Lw",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "807012565332",
+          "shop_id": "BBB7wRk2WA9pAWP30wJ9Ww3Lw",
+          "shop_name": "义乌市苔雪电子商务商行",
+          "sku_id": "5485033012602",
+          "spec_id": "36c58a69219820709b9475e70bd789d4",
+          "num": 2,
+          "price": "6.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "shop_key": "BBBpV73Ki7OdR378hgDSedcPg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "771747260643",
+          "shop_id": "BBBpV73Ki7OdR378hgDSedcPg",
+          "shop_name": "义乌市楠婀电子商务商行",
+          "sku_id": "5454881546420",
+          "spec_id": "0dfc30a97f9c8f39efa01296bdaa3c6e",
+          "num": 12,
+          "price": "2.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "771747260643",
+          "shop_id": "BBBpV73Ki7OdR378hgDSedcPg",
+          "shop_name": "义乌市楠婀电子商务商行",
+          "sku_id": "5454881546421",
+          "spec_id": "d307d324fb855d3f21359933ee5e886b",
+          "num": 12,
+          "price": "2.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "771747260643",
+          "shop_id": "BBBpV73Ki7OdR378hgDSedcPg",
+          "shop_name": "义乌市楠婀电子商务商行",
+          "sku_id": "5454881546422",
+          "spec_id": "5bb90c17334265154b2ceecefe7c5660",
+          "num": 12,
+          "price": "2.5",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 20,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "collection": {
+    "ready_shops": 4,
+    "collected_shops": 6,
+    "selected_items": 20,
+    "expected_total": 20,
+    "preview_items": [
+      {
+        "goods_id": "1041550640127",
+        "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+        "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+        "sku_id": "6059345996792",
+        "spec_id": "a217bd1ac443a8d37f055d4077438937",
+        "num": 2,
+        "price": "32.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1041550640127",
+        "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+        "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+        "sku_id": "6059345996793",
+        "spec_id": "f2085c5c862fd57557583e8267ef2d2a",
+        "num": 3,
+        "price": "33.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1041550640127",
+        "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+        "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+        "sku_id": "6059345996794",
+        "spec_id": "1e76992f17034b2bd69eef8c4122253c",
+        "num": 5,
+        "price": "39.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1044594151201",
+        "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+        "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+        "sku_id": "6069691192261",
+        "spec_id": "60653ee9d2def653e2bdadf1dee1cccb",
+        "num": 2,
+        "price": "40.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1044594151201",
+        "shop_id": "BBBuRw73hNv8wUeyXbNF5hHcg",
+        "shop_name": "海丰县梅陇镇柚多米珠宝工作室",
+        "sku_id": "6069691192262",
+        "spec_id": "f2085c5c862fd57557583e8267ef2d2a",
+        "num": 3,
+        "price": "41.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "591917477838",
+        "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+        "shop_name": "广东粘力达新材料有限公司",
+        "sku_id": "4947281345072",
+        "spec_id": "74dfc4fc7ea41ba8222c7ee3193ac78b",
+        "num": 2,
+        "price": "6.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "592684344857",
+        "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+        "shop_name": "广东粘力达新材料有限公司",
+        "sku_id": "5115384266125",
+        "spec_id": "d223b64d73d7c8fb7a6c18ee825ae7d6",
+        "num": 2,
+        "price": "9.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "593241375830",
+        "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+        "shop_name": "广东粘力达新材料有限公司",
+        "sku_id": "4942714632810",
+        "spec_id": "3c105a0e735959c28e3f6c8eb4048775",
+        "num": 2,
+        "price": "4.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "921441172345",
+        "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+        "shop_name": "广东粘力达新材料有限公司",
+        "sku_id": "5960948434482",
+        "spec_id": "d16810a9d60c7792e08a1dd69cd003a1",
+        "num": 2,
+        "price": "6.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "921441172345",
+        "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+        "shop_name": "广东粘力达新材料有限公司",
+        "sku_id": "5960948434483",
+        "spec_id": "68c8866a2ea774f142c405d8c3ac75a9",
+        "num": 3,
+        "price": "9.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "589944302594",
+        "shop_id": "BBB06HsdRXM5kY7WL0gx6xu9g",
+        "shop_name": "义乌市国韵电子商务有限公司",
+        "sku_id": "4111224885448",
+        "spec_id": "10811d8f5c4fe9f44d1036045cadb7b7",
+        "num": 10,
+        "price": "8.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "589944302594",
+        "shop_id": "BBB06HsdRXM5kY7WL0gx6xu9g",
+        "shop_name": "义乌市国韵电子商务有限公司",
+        "sku_id": "4111224885449",
+        "spec_id": "509357c14402199a1e3500e889d87ebd",
+        "num": 10,
+        "price": "8.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "589944302594",
+        "shop_id": "BBB06HsdRXM5kY7WL0gx6xu9g",
+        "shop_name": "义乌市国韵电子商务有限公司",
+        "sku_id": "4111224885450",
+        "spec_id": "c3b229d1c84be235957cafb4987c413f",
+        "num": 10,
+        "price": "8.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "592546843213",
+        "shop_id": "BBB06HsdRXM5kY7WL0gx6xu9g",
+        "shop_name": "义乌市国韵电子商务有限公司",
+        "sku_id": "4254292858441",
+        "spec_id": "9fe5523102ef74b205198a967bc0ff46",
+        "num": 2,
+        "price": "6.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "592546843213",
+        "shop_id": "BBB06HsdRXM5kY7WL0gx6xu9g",
+        "shop_name": "义乌市国韵电子商务有限公司",
+        "sku_id": "4254292858437",
+        "spec_id": "bd39d2941a5a1f05c90634f3523e5c8f",
+        "num": 3,
+        "price": "6.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "771747260643",
+        "shop_id": "BBBpV73Ki7OdR378hgDSedcPg",
+        "shop_name": "义乌市楠婀电子商务商行",
+        "sku_id": "5454881546420",
+        "spec_id": "0dfc30a97f9c8f39efa01296bdaa3c6e",
+        "num": 12,
+        "price": "2.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "771747260643",
+        "shop_id": "BBBpV73Ki7OdR378hgDSedcPg",
+        "shop_name": "义乌市楠婀电子商务商行",
+        "sku_id": "5454881546421",
+        "spec_id": "d307d324fb855d3f21359933ee5e886b",
+        "num": 12,
+        "price": "2.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "771747260643",
+        "shop_id": "BBBpV73Ki7OdR378hgDSedcPg",
+        "shop_name": "义乌市楠婀电子商务商行",
+        "sku_id": "5454881546422",
+        "spec_id": "5bb90c17334265154b2ceecefe7c5660",
+        "num": 12,
+        "price": "2.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "771747260643",
+        "shop_id": "BBBpV73Ki7OdR378hgDSedcPg",
+        "shop_name": "义乌市楠婀电子商务商行",
+        "sku_id": "5454881546423",
+        "spec_id": "ede04c6ffba4745d8030ac81d302263e",
+        "num": 12,
+        "price": "2.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "771747260643",
+        "shop_id": "BBBpV73Ki7OdR378hgDSedcPg",
+        "shop_name": "义乌市楠婀电子商务商行",
+        "sku_id": "5454881546424",
+        "spec_id": "b026c40eb3b1bca4bf54024238eb14e3",
+        "num": 12,
+        "price": "2.5",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "summary": {
+    "keyword": "耳环",
+    "shop_type": "1688",
+    "target_shops": 4,
+    "per_shop": 5,
+    "ready_shops": 4,
+    "expected_total": 20,
+    "available_expected_total": 20,
+    "added_total": 20,
+    "failed_batches": [],
+    "strict_shop_count": false
+  },
+  "finished_at": "2026-06-01 17:43:37.908670"
+}

@@ -1,0 +1,27 @@
+{
+  "uuid": "47b9842d-f6bf-4b4d-b62a-d2c1de3d47e5",
+  "name": "注册页面-协议链接可点击跳转",
+  "fullName": "ui.注册页面-协议链接可点击跳转",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781073057410,
+  "stop": 1781073057410,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "47b9842d-f6bf-4b4d-b62a-d2c1de3d47e5-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "47b9842d-f6bf-4b4d-b62a-d2c1de3d47e5-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

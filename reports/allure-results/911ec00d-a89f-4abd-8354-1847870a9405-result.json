@@ -1,0 +1,22 @@
+{
+  "uuid": "911ec00d-a89f-4abd-8354-1847870a9405",
+  "name": "查询用户",
+  "fullName": "api.查询用户",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780386491408,
+  "stop": 1780386491408,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "911ec00d-a89f-4abd-8354-1847870a9405-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

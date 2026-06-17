@@ -1,0 +1,83 @@
+{
+  "script": "待拍下到商品上架(组合脚本)",
+  "mode": "chain_execution",
+  "started_at": "2026-06-12 13:08:27.575093",
+  "steps": [
+    {
+      "step": 1,
+      "script": "订单报价",
+      "passed": true,
+      "summary": {
+        "order_sn": "2026061213082888-300001",
+        "selected_count": 2,
+        "item_quantity": 10,
+        "submit_order": true,
+        "run_backend_flow": true,
+        "cart_ids": [
+          1128050,
+          1128049
+        ],
+        "goods_ids": [
+          "776765235559",
+          "776765235559"
+        ],
+        "expected_shop_count": 1,
+        "expected_per_shop": 2,
+        "selected_shop_count": 1,
+        "available_shop_count": 44,
+        "ready_shop_count": 33,
+        "backend_passed": true,
+        "backend_steps": [
+          "login",
+          "detail",
+          "translate",
+          "confirm",
+          "offer"
+        ],
+        "quote_unit_price": "10",
+        "backend_status": 30
+      }
+    },
+    {
+      "step": 2,
+      "script": "余额支付",
+      "passed": true,
+      "summary": {
+        "payment_type": "balance",
+        "order_sn": "2026061213082888-300001",
+        "pay_amount": "4431",
+        "payment_passed": true,
+        "serial_number": "178124091890000300001188"
+      }
+    },
+    {
+      "step": 3,
+      "script": "待拍下到商品上架",
+      "passed": true,
+      "summary": {
+        "order_sn": "2026061213082888-300001",
+        "purchase_no": "2026-6-12 13:08:25",
+        "selected_count": 2,
+        "purchase_ids": [
+          15327284,
+          15327285
+        ],
+        "grid_id": 12449,
+        "grid_number": "【三部-FBA.1.1-FBA-003】-1-7-4",
+        "storage_count": 2,
+        "storage_passed": true
+      }
+    }
+  ],
+  "shared_data": {
+    "order_sn": "2026061213082888-300001"
+  },
+  "finished_at": "2026-06-12 13:08:53.102890",
+  "summary": {
+    "passed": true,
+    "order_sn": "2026061213082888-300001",
+    "purchase_no": "2026-6-12 13:08:25",
+    "total_steps": 3,
+    "success_steps": 3
+  }
+}

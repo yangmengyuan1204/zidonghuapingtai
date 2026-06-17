@@ -1,0 +1,27 @@
+{
+  "uuid": "a220e842-e98d-4a05-9a49-24094c1d042d",
+  "name": "注册后跳转与状态",
+  "fullName": "ui.注册后跳转与状态",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781074056065,
+  "stop": 1781074056065,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "a220e842-e98d-4a05-9a49-24094c1d042d-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "a220e842-e98d-4a05-9a49-24094c1d042d-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

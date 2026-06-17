@@ -1,0 +1,22 @@
+{
+  "uuid": "af281cbf-efee-4682-b362-cb0a50bd0f11",
+  "name": "创建用户",
+  "fullName": "api.创建用户",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781312967030,
+  "stop": 1781312967030,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "af281cbf-efee-4682-b362-cb0a50bd0f11-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

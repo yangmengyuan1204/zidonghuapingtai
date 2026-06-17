@@ -1,0 +1,22 @@
+{
+  "uuid": "57389ac7-148b-46b6-811b-5c381ff6ea6e",
+  "name": "UI兼容性：不同分辨率显示",
+  "fullName": "ui.UI兼容性：不同分辨率显示",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780644646262,
+  "stop": 1780644646262,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "57389ac7-148b-46b6-811b-5c381ff6ea6e-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

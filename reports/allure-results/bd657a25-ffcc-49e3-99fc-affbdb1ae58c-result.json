@@ -1,0 +1,22 @@
+{
+  "uuid": "bd657a25-ffcc-49e3-99fc-affbdb1ae58c",
+  "name": "配送单出货",
+  "fullName": "data_script.配送单出货",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780477777612,
+  "stop": 1780477777612,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "bd657a25-ffcc-49e3-99fc-affbdb1ae58c-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

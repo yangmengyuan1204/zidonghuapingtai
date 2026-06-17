@@ -1,0 +1,699 @@
+{
+  "script": "仓库提出配送单",
+  "mode": "warehouse_to_delivery_offer",
+  "base_url": "https://jpapi.rakumart.cn",
+  "send_num": 10,
+  "warehouse_sku_count": 1,
+  "requested_warehouse_sku_count": 1,
+  "warehouse_fill_scope": "current_order_then_history",
+  "require_warehouse_sku_count": true,
+  "started_at": "2026-06-13 18:00:18.278434",
+  "warehouse_attempts": [
+    {
+      "attempt": 1,
+      "path": "/client/wms.stockAutoList",
+      "request": {},
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data_count": 57,
+      "row_count": 359,
+      "selected_order_detail_ids": [
+        "14051215"
+      ],
+      "selected_sku_ids": [
+        "6079972985739"
+      ],
+      "current_order_count": 1,
+      "history_fill_count": 0
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "userID/300001In",
+    "client_tool": "1",
+    "token_extracted": true,
+    "cached": true
+  },
+  "selected_item": {
+    "order_detail_id": "14051215",
+    "send_num": 1,
+    "sendable_num": 1,
+    "sku_id": "6079972985739",
+    "source": "current_order",
+    "client_remark": "",
+    "row": {
+      "id": 14051215,
+      "order_sn": "2026061317595394-300001",
+      "sorting": 1,
+      "pic": "https://cbu01.alicdn.com/img/ibank/O1CN019XzumB1FIYuhd8Hwj_!!2215999490464-0-cib.jpg",
+      "from_platform": "1688",
+      "goods_id": "1048321083060",
+      "sku_id": "6079972985739",
+      "goods_title": "LS 简约时尚镂空针织背心小衫广州十三行2026夏季新款上衣60088#",
+      "detail": [
+        {
+          "key": "规格",
+          "value": "麻色㊖㊎85斤-100斤(S)"
+        }
+      ],
+      "confirm_num": 1,
+      "confirm_price": "10.00",
+      "confirm_freight": "5.00",
+      "client_remark": "",
+      "y_reply": "",
+      "option": [
+        {
+          "id": 78,
+          "type": "4",
+          "name": "详细检品",
+          "name_translate": "詳細検品",
+          "price": 4,
+          "price_type": 1,
+          "unit": "%",
+          "is_overstep": 1,
+          "auto_calculate": 1,
+          "remark": "详细检品",
+          "icon_selected": "",
+          "image": "",
+          "video": "",
+          "sort": 1,
+          "num": "10",
+          "edit": true,
+          "checked": true
+        },
+        {
+          "id": 79,
+          "type": "4",
+          "name": "针检",
+          "name_translate": "通常検針サービス",
+          "price": "0.80",
+          "price_type": 0,
+          "unit": "元",
+          "is_overstep": 1,
+          "auto_calculate": 1,
+          "remark": "针检",
+          "icon_selected": "",
+          "image": "",
+          "video": "",
+          "sort": 2,
+          "num": "20",
+          "edit": true,
+          "checked": true
+        },
+        {
+          "id": 80,
+          "type": "4",
+          "name": "X线针检",
+          "name_translate": "X線検針サービス",
+          "price": "1.00",
+          "price_type": 0,
+          "unit": "元",
+          "is_overstep": 1,
+          "auto_calculate": 1,
+          "remark": "X线针检",
+          "icon_selected": "",
+          "image": "",
+          "video": "",
+          "sort": 3,
+          "num": "30",
+          "edit": true,
+          "checked": true
+        }
+      ],
+      "for_sn": "",
+      "set_detail_id": 0,
+      "material_id": 0,
+      "order_detail_tag": [],
+      "order_detail_label": [],
+      "order_purchase": [
+        {
+          "id": 15327519,
+          "order_detail_id": 14051215,
+          "storage_num": 1,
+          "putaway_at": "2026-06-13 18:00:16",
+          "discard_num": 0
+        }
+      ],
+      "forbid_goods": [],
+      "order_detail_wms_remark": null,
+      "material_bind": [],
+      "order_detail_file": [],
+      "order_exchange_rate": "21.10",
+      "is_box_num": 0,
+      "send_success_num": 0,
+      "not_box_num": 0,
+      "first_purchase_upstorage_at": "2026-06-13 18:00:16",
+      "is_rakumart_stcok_num": 1,
+      "first_upstorage_at": "2026-06-13 18:00:16",
+      "days_used_for_free": 0,
+      "days_surplus_for_free": 180,
+      "send_await_num": 1,
+      "send_may_num": 1,
+      "_warehouse_source": "current_order"
+    }
+  },
+  "selected_items": [
+    {
+      "order_detail_id": "14051215",
+      "send_num": 1,
+      "sendable_num": 1,
+      "sku_id": "6079972985739",
+      "source": "current_order",
+      "client_remark": ""
+    }
+  ],
+  "porder_create": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "request": {
+      "create_type": "send",
+      "porder_sn": "P2026061318001818-300001",
+      "logistics_id": "14",
+      "order_detail_id": "14051215",
+      "order_detail_ids": [
+        "14051215"
+      ],
+      "send_num": 1,
+      "total_send_num": 1,
+      "details": [
+        {
+          "order_detail_id": "14051215",
+          "send_num": 1,
+          "sendable_num": 1,
+          "sku_id": "6079972985739",
+          "source": "current_order",
+          "client_remark": ""
+        }
+      ]
+    },
+    "response": {
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": ""
+    }
+  },
+  "backend_porder": {
+    "porder_sn": "P2026061318001818-300001",
+    "steps": [],
+    "login": {
+      "success": true,
+      "code": 0,
+      "msg": "登录成功",
+      "account": "Y001",
+      "token_extracted": true
+    },
+    "detail_before": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 1,
+      "details": [
+        {
+          "id": "5003254",
+          "goods_id": "1048321083060",
+          "num": 1,
+          "send_num": null,
+          "wait_box_num": null,
+          "received_num": "",
+          "freight_id": null,
+          "status": null,
+          "statusName": null
+        }
+      ]
+    },
+    "submit_translate": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "porder_detail_ids": [
+        "5003254"
+      ]
+    },
+    "detail_after_translate": {
+      "detail_count": 1,
+      "porder_detail_ids": [
+        "5003254"
+      ]
+    },
+    "add_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "request": {
+        "porder_sn": "P2026061318001818-300001",
+        "count": "1",
+        "length": "58",
+        "width": "51",
+        "height": "50",
+        "weight": "10"
+      }
+    },
+    "freight_list_before_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data_count": 1,
+      "sample": [
+        {
+          "keys": [
+            "success",
+            "code",
+            "msg",
+            "data"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "porder_sn",
+            "user_id",
+            "realname",
+            "is_current",
+            "is_main",
+            "is_child",
+            "group"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "statusName",
+            "totalWeight",
+            "totalVolume",
+            "list"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "id",
+            "porder_sn",
+            "number",
+            "status",
+            "length",
+            "width",
+            "height",
+            "weight",
+            "logistics_id",
+            "express_no",
+            "box_id",
+            "maitou_print_at",
+            "is_wooden",
+            "move_box_id"
+          ],
+          "interesting": {
+            "id": 1073358
+          }
+        }
+      ]
+    },
+    "detail_after_add_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 1,
+      "details": [
+        {
+          "id": "5003254",
+          "goods_id": "1048321083060",
+          "num": 1,
+          "send_num": null,
+          "wait_box_num": null,
+          "received_num": "",
+          "freight_id": null,
+          "status": null,
+          "statusName": null
+        }
+      ]
+    },
+    "into_box_preview": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data_count": 1,
+      "porder_detail_id": "5003254",
+      "porder_detail_ids": [
+        "5003254"
+      ],
+      "freight_id": "1073358",
+      "stock_items": [
+        {
+          "porder_detail_id": "5003254",
+          "stock_id": "715282",
+          "num_need": 1,
+          "box_num": 1
+        }
+      ],
+      "sample": [
+        {
+          "keys": [
+            "success",
+            "code",
+            "msg",
+            "data"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "id",
+            "porder_sn",
+            "order_detail_id",
+            "num",
+            "order_detail",
+            "wms_stock",
+            "hasFreightNum",
+            "waitFreightNum"
+          ],
+          "interesting": {
+            "id": 5003254,
+            "num": 1
+          }
+        },
+        {
+          "keys": [
+            "id",
+            "order_sn",
+            "pic",
+            "sorting",
+            "detail",
+            "detail_y",
+            "order_purchase"
+          ],
+          "interesting": {
+            "id": 14051215
+          }
+        },
+        {
+          "keys": [
+            "key",
+            "value"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "key",
+            "value"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "id",
+            "order_detail_id",
+            "order_sn",
+            "possible_num",
+            "storage_num",
+            "purchase_no"
+          ],
+          "interesting": {
+            "id": 15327519,
+            "storage_num": 1
+          }
+        },
+        {
+          "keys": [
+            "id",
+            "grid_number",
+            "order_purchase_id",
+            "order_detail_id",
+            "num",
+            "not_boxed_stock",
+            "order_purchase"
+          ],
+          "interesting": {
+            "id": 715282,
+            "num": 1
+          }
+        },
+        {
+          "keys": [
+            "id",
+            "order_detail_id",
+            "purchase_no"
+          ],
+          "interesting": {
+            "id": 15327519
+          }
+        }
+      ]
+    },
+    "into_box_submit": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "box_num": 1,
+      "box_nums": {
+        "5003254": 1
+      }
+    },
+    "detail_after_into_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 1,
+      "details": [
+        {
+          "id": "5003254",
+          "goods_id": "1048321083060",
+          "num": 1,
+          "send_num": null,
+          "wait_box_num": null,
+          "received_num": "",
+          "freight_id": null,
+          "status": null,
+          "statusName": null
+        }
+      ]
+    },
+    "freight_list_after_into_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data_count": 1,
+      "boxes": [
+        {
+          "id": 1073358,
+          "porder_sn": "P2026061318001818-300001",
+          "number": 1,
+          "status": 0,
+          "statusName": null,
+          "length": 58,
+          "width": 51,
+          "height": 50,
+          "weight": 10,
+          "logistics_id": 0,
+          "box_id": 0,
+          "freight_id": null
+        }
+      ],
+      "sample": [
+        {
+          "keys": [
+            "success",
+            "code",
+            "msg",
+            "data"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "porder_sn",
+            "user_id",
+            "realname",
+            "is_current",
+            "is_main",
+            "is_child",
+            "group"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "statusName",
+            "totalWeight",
+            "totalVolume",
+            "list"
+          ],
+          "interesting": {}
+        },
+        {
+          "keys": [
+            "id",
+            "porder_sn",
+            "number",
+            "status",
+            "length",
+            "width",
+            "height",
+            "weight",
+            "logistics_id",
+            "express_no",
+            "box_id",
+            "maitou_print_at",
+            "is_wooden",
+            "move_box_id"
+          ],
+          "interesting": {
+            "id": 1073358
+          }
+        }
+      ]
+    },
+    "spot_after_into_box": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功"
+    },
+    "complete_box_attempts": [
+      {
+        "path": "/porder.completeBox",
+        "request": {
+          "porder_sn": "P2026061318001818-300001",
+          "count": "1",
+          "length": "58",
+          "width": "51",
+          "height": "50",
+          "weight": "10",
+          "freight_id_set": [
+            "1073358"
+          ]
+        },
+        "response": {
+          "success": true,
+          "code": 0,
+          "msg": "操作成功",
+          "data": true
+        },
+        "boxes": [
+          {
+            "id": 1073358,
+            "porder_sn": "P2026061318001818-300001",
+            "number": 1,
+            "status": 1,
+            "statusName": null,
+            "length": 58,
+            "width": 51,
+            "height": 50,
+            "weight": 10,
+            "logistics_id": 0,
+            "box_id": 0,
+            "freight_id": null
+          }
+        ],
+        "box_completed": true
+      }
+    ],
+    "to_wait_offer": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true
+    },
+    "batch_update_freight_logistics": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "logistics_id": "25",
+      "freight_id": "1073358"
+    },
+    "freight_list": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data_count": 1
+    },
+    "amount_current": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功"
+    },
+    "submit_offer": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "porder_detail_id": "5003254",
+      "porder_detail_ids": [
+        "5003254"
+      ],
+      "logistics_price_artificial": "775"
+    }
+  },
+  "duration_ms": 16253,
+  "summary": {
+    "porder_sn": "P2026061318001818-300001",
+    "order_detail_id": "14051215",
+    "order_detail_ids": [
+      "14051215"
+    ],
+    "send_num": 1,
+    "total_send_num": 1,
+    "requested_warehouse_sku_count": 1,
+    "warehouse_sku_count": 1,
+    "actual_warehouse_sku_count": 1,
+    "current_order_count": 1,
+    "history_fill_count": 0,
+    "selected_sku_ids": [
+      "6079972985739"
+    ],
+    "selected_warehouse_items": [
+      {
+        "order_detail_id": "14051215",
+        "sku_id": "6079972985739",
+        "goods_id": "1048321083060",
+        "goods_title": "LS 简约时尚镂空针织背心小衫广州十三行2026夏季新款上衣60088#",
+        "sendable_num": 1,
+        "order_sn": "2026061317595394-300001",
+        "source": "current_order",
+        "send_num": 1
+      }
+    ],
+    "warehouse_rows": 359,
+    "create_passed": true,
+    "porder_detail_id": "5003254",
+    "porder_detail_ids": [
+      "5003254"
+    ],
+    "freight_id": "1073358",
+    "stock_id": "715282",
+    "stock_ids": [
+      "715282"
+    ],
+    "box_num": 1,
+    "box_nums": {
+      "5003254": 1
+    },
+    "logistics_id": "25",
+    "logistics_price_artificial": "775",
+    "backend_passed": true,
+    "backend_steps": [
+      "login",
+      "porder_detail",
+      "submit_translate",
+      "add_box",
+      "into_box_preview",
+      "into_box_submit",
+      "complete_box",
+      "to_wait_offer",
+      "batch_update_freight_logistics",
+      "freight_list",
+      "submit_offer"
+    ],
+    "paused": true,
+    "stopped_after_node": "porder_offered",
+    "current_node": "porder_offered",
+    "node_label": "配送单报价完成",
+    "duration_ms": 16253
+  },
+  "finished_at": "2026-06-13 18:00:34.532181"
+}

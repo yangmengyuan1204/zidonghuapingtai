@@ -1,0 +1,493 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "衣服",
+  "shop_type": "1688",
+  "target_shops": 4,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    10,
+    20,
+    30,
+    40,
+    50
+  ],
+  "allow_fallback_sku": true,
+  "verify_cart_after_add": true,
+  "cart_verify_mode": "final",
+  "started_at": "2026-06-13 13:40:22.656480",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBBAo1J7ZWN_Awq2PAoXecVog",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "895189380951",
+          "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+          "shop_name": "义乌市万龙皮具厂",
+          "sku_id": "rakumart_6a2ced5162efc811",
+          "spec_id": "rakumart_6a2ced5162f00251",
+          "num": 2000,
+          "price": "2.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBB0aWLf1qFKf84jzk1w-L15w",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "583227091316",
+          "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+          "shop_name": "绍兴市灏宇纺织品有限公司",
+          "sku_id": "5000471270503",
+          "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+          "num": 10,
+          "price": "35.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "655931390265",
+          "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+          "shop_name": "绍兴市灏宇纺织品有限公司",
+          "sku_id": "4827057900380",
+          "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+          "num": 10,
+          "price": "45.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "655899668798",
+          "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+          "shop_name": "绍兴市灏宇纺织品有限公司",
+          "sku_id": "655899668798",
+          "spec_id": "655899668798",
+          "num": 10,
+          "price": "8.50",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "shop_key": "BBBGdHoE84_I8vlEndNkNUEeQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "974740093847",
+          "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+          "shop_name": "江苏主题派对文化有限公司",
+          "sku_id": "6021283713170",
+          "spec_id": "8fa4db4ae54f8c2b43ab00859f45ab07",
+          "num": 10,
+          "price": "9.9",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "974740093847",
+          "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+          "shop_name": "江苏主题派对文化有限公司",
+          "sku_id": "6021283713167",
+          "spec_id": "8fd4ffe22a1ab35737f2bbafd1658ab3",
+          "num": 20,
+          "price": "9.9",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "974740093847",
+          "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+          "shop_name": "江苏主题派对文化有限公司",
+          "sku_id": "6021283713168",
+          "spec_id": "fd8c0e23ba49a56758b1797e328f9dad",
+          "num": 30,
+          "price": "9.9",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "shop_key": "BBBp_kYIr3bI3KNVU799TfIMw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "998455587630",
+          "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+          "shop_name": "义乌市财酷饰品有限责任公司",
+          "sku_id": "6151461643145",
+          "spec_id": "0ab50ddbd1a50e2aa910d12d89e2eb4f",
+          "num": 10,
+          "price": "3.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "998455587630",
+          "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+          "shop_name": "义乌市财酷饰品有限责任公司",
+          "sku_id": "6151461643149",
+          "spec_id": "5bd5b202c5b810e9129d770fbc95014e",
+          "num": 20,
+          "price": "4.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "998455587630",
+          "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+          "shop_name": "义乌市财酷饰品有限责任公司",
+          "sku_id": "6151461643147",
+          "spec_id": "a7551ec4b91be3586372417c9bfa142a",
+          "num": 30,
+          "price": "5.8",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "shop_key": "BBBQBya0i2b4ESesASTl4mgfw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1011796146291",
+          "shop_id": "BBBQBya0i2b4ESesASTl4mgfw",
+          "shop_name": "义乌市曲尼电子商务有限公司",
+          "sku_id": "6239344982884",
+          "spec_id": "84cfcee85f5712179d7525ab69bda907",
+          "num": 50,
+          "price": "0.2",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1011796146291",
+          "shop_id": "BBBQBya0i2b4ESesASTl4mgfw",
+          "shop_name": "义乌市曲尼电子商务有限公司",
+          "sku_id": "6239344982883",
+          "spec_id": "5da5f6493d1eda30f553736d7d820da3",
+          "num": 50,
+          "price": "0.2",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1011796146291",
+          "shop_id": "BBBQBya0i2b4ESesASTl4mgfw",
+          "shop_name": "义乌市曲尼电子商务有限公司",
+          "sku_id": "6239344982880",
+          "spec_id": "57b7e471c794f6b50903ddbd7aef4fdf",
+          "num": 50,
+          "price": "0.2",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "shop_key": "BBBwC2Xl-HKRR1tcX8VQubLcQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1197814293",
+          "shop_id": "BBBwC2Xl-HKRR1tcX8VQubLcQ",
+          "shop_name": "深圳业升印刷制品有限公司",
+          "sku_id": "5075017413657",
+          "spec_id": "819d0168e053745865b6fe91f2233e1f",
+          "num": 10,
+          "price": "0.04",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1197814293",
+          "shop_id": "BBBwC2Xl-HKRR1tcX8VQubLcQ",
+          "shop_name": "深圳业升印刷制品有限公司",
+          "sku_id": "5075017413655",
+          "spec_id": "d26032965af54ff19f1e240c7cdbbbc9",
+          "num": 20,
+          "price": "3.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1197814293",
+          "shop_id": "BBBwC2Xl-HKRR1tcX8VQubLcQ",
+          "shop_name": "深圳业升印刷制品有限公司",
+          "sku_id": "5075017413659",
+          "spec_id": "b16ec307cc3f60484cbc9002c844611b",
+          "num": 30,
+          "price": "3.0",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 20,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "userID/300001In",
+    "client_tool": "1",
+    "token_extracted": true,
+    "cached": false
+  },
+  "collection": {
+    "ready_shops": 4,
+    "collected_shops": 6,
+    "selected_items": 20,
+    "expected_total": 20,
+    "preview_items": [
+      {
+        "goods_id": "583227091316",
+        "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_name": "绍兴市灏宇纺织品有限公司",
+        "sku_id": "5000471270503",
+        "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+        "num": 10,
+        "price": "35.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "655931390265",
+        "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_name": "绍兴市灏宇纺织品有限公司",
+        "sku_id": "4827057900380",
+        "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+        "num": 10,
+        "price": "45.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "655899668798",
+        "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_name": "绍兴市灏宇纺织品有限公司",
+        "sku_id": "655899668798",
+        "spec_id": "655899668798",
+        "num": 10,
+        "price": "8.50",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "659132014806",
+        "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_name": "绍兴市灏宇纺织品有限公司",
+        "sku_id": "659132014806",
+        "spec_id": "659132014806",
+        "num": 10,
+        "price": "9.80",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "633595915929",
+        "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_name": "绍兴市灏宇纺织品有限公司",
+        "sku_id": "5000467810792",
+        "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+        "num": 10,
+        "price": "15.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "974740093847",
+        "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+        "shop_name": "江苏主题派对文化有限公司",
+        "sku_id": "6021283713170",
+        "spec_id": "8fa4db4ae54f8c2b43ab00859f45ab07",
+        "num": 10,
+        "price": "9.9",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "974740093847",
+        "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+        "shop_name": "江苏主题派对文化有限公司",
+        "sku_id": "6021283713167",
+        "spec_id": "8fd4ffe22a1ab35737f2bbafd1658ab3",
+        "num": 20,
+        "price": "9.9",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "974740093847",
+        "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+        "shop_name": "江苏主题派对文化有限公司",
+        "sku_id": "6021283713168",
+        "spec_id": "fd8c0e23ba49a56758b1797e328f9dad",
+        "num": 30,
+        "price": "9.9",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "974740093847",
+        "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+        "shop_name": "江苏主题派对文化有限公司",
+        "sku_id": "6021283713169",
+        "spec_id": "dcc544ed0e0f68438b80d64c77012256",
+        "num": 40,
+        "price": "9.9",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "974740093847",
+        "shop_id": "BBBGdHoE84_I8vlEndNkNUEeQ",
+        "shop_name": "江苏主题派对文化有限公司",
+        "sku_id": "6021283713174",
+        "spec_id": "0221f8c04fb5f790f9b1bc67a4b2a695",
+        "num": 50,
+        "price": "29.9",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "998455587630",
+        "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+        "shop_name": "义乌市财酷饰品有限责任公司",
+        "sku_id": "6151461643145",
+        "spec_id": "0ab50ddbd1a50e2aa910d12d89e2eb4f",
+        "num": 10,
+        "price": "3.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "998455587630",
+        "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+        "shop_name": "义乌市财酷饰品有限责任公司",
+        "sku_id": "6151461643149",
+        "spec_id": "5bd5b202c5b810e9129d770fbc95014e",
+        "num": 20,
+        "price": "4.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "998455587630",
+        "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+        "shop_name": "义乌市财酷饰品有限责任公司",
+        "sku_id": "6151461643147",
+        "spec_id": "a7551ec4b91be3586372417c9bfa142a",
+        "num": 30,
+        "price": "5.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "998455587630",
+        "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+        "shop_name": "义乌市财酷饰品有限责任公司",
+        "sku_id": "6151461643143",
+        "spec_id": "29095aba4d45a45a0400e1354433b3b1",
+        "num": 40,
+        "price": "6.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "998455587630",
+        "shop_id": "BBBp_kYIr3bI3KNVU799TfIMw",
+        "shop_name": "义乌市财酷饰品有限责任公司",
+        "sku_id": "6151461643144",
+        "spec_id": "df5c6d82c3fcfce66205bc2d39457dcd",
+        "num": 50,
+        "price": "3.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1011796146291",
+        "shop_id": "BBBQBya0i2b4ESesASTl4mgfw",
+        "shop_name": "义乌市曲尼电子商务有限公司",
+        "sku_id": "6239344982884",
+        "spec_id": "84cfcee85f5712179d7525ab69bda907",
+        "num": 50,
+        "price": "0.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1011796146291",
+        "shop_id": "BBBQBya0i2b4ESesASTl4mgfw",
+        "shop_name": "义乌市曲尼电子商务有限公司",
+        "sku_id": "6239344982883",
+        "spec_id": "5da5f6493d1eda30f553736d7d820da3",
+        "num": 50,
+        "price": "0.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1011796146291",
+        "shop_id": "BBBQBya0i2b4ESesASTl4mgfw",
+        "shop_name": "义乌市曲尼电子商务有限公司",
+        "sku_id": "6239344982880",
+        "spec_id": "57b7e471c794f6b50903ddbd7aef4fdf",
+        "num": 50,
+        "price": "0.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1011796146291",
+        "shop_id": "BBBQBya0i2b4ESesASTl4mgfw",
+        "shop_name": "义乌市曲尼电子商务有限公司",
+        "sku_id": "6239344982881",
+        "spec_id": "a3ed915e9a565afbd85dcc4cda9c72ca",
+        "num": 50,
+        "price": "0.2",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1011796146291",
+        "shop_id": "BBBQBya0i2b4ESesASTl4mgfw",
+        "shop_name": "义乌市曲尼电子商务有限公司",
+        "sku_id": "6239344982882",
+        "spec_id": "06a7e834766f1a55ec11ad81565b6b95",
+        "num": 50,
+        "price": "0.2",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "final_verification": {
+    "cart_goods_count": 202,
+    "expected_count": 20,
+    "matched_count": 20,
+    "missing_count": 0,
+    "missing_items": [],
+    "api_success": true
+  },
+  "duration_ms": 46424,
+  "summary": {
+    "keyword": "衣服",
+    "shop_type": "1688",
+    "target_shops": 4,
+    "per_shop": 5,
+    "ready_shops": 4,
+    "expected_total": 20,
+    "available_expected_total": 20,
+    "added_total": 20,
+    "api_added_total": 20,
+    "verified_added_total": 20,
+    "cart_verification_enabled": true,
+    "cart_verify_mode": "final",
+    "failed_batches": [],
+    "verification_failed_batches": [],
+    "strict_shop_count": false,
+    "duration_ms": 46424
+  },
+  "finished_at": "2026-06-13 13:41:09.081042"
+}

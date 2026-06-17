@@ -1,0 +1,432 @@
+{
+  "case_name": "页面元素完整性检查：长存仓库页面标题、搜索区域、表格列标题、操作按钮均正确显示",
+  "page_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+  "steps": [
+    {
+      "name": "打开长存仓库页面",
+      "action": "goto",
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "timeout": 30000
+    },
+    {
+      "name": "检查页面标题是否为长存仓库",
+      "action": "assert_visible",
+      "locator": "text=长存仓库",
+      "fallback_locators": [
+        "span:has-text('长存仓库')",
+        "h1:has-text('长存仓库')"
+      ],
+      "timeout": 10000
+    },
+    {
+      "name": "检查搜索区域存在客户ID/名称字段",
+      "action": "assert_visible",
+      "locator": "text=客户ID/名称",
+      "fallback_locators": [
+        "input[placeholder*='客户ID']",
+        "label:has-text('客户ID/名称')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查搜索区域存在订单号字段",
+      "action": "assert_visible",
+      "locator": "text=订单号",
+      "fallback_locators": [
+        "input[placeholder*='订单号']",
+        "label:has-text('订单号')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查搜索区域存在箱号字段",
+      "action": "assert_visible",
+      "locator": "text=箱号",
+      "fallback_locators": [
+        "input[placeholder*='箱号']",
+        "label:has-text('箱号')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查搜索区域存在库位字段",
+      "action": "assert_visible",
+      "locator": "text=库位",
+      "fallback_locators": [
+        "input[placeholder*='库位']",
+        "label:has-text('库位')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查搜索区域存在入库时间字段",
+      "action": "assert_visible",
+      "locator": "text=入库时间",
+      "fallback_locators": [
+        "input[placeholder*='入库时间']",
+        "label:has-text('入库时间')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查搜索区域存在保管天数字段",
+      "action": "assert_visible",
+      "locator": "text=保管天数",
+      "fallback_locators": [
+        "input[placeholder*='保管天数']",
+        "label:has-text('保管天数')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查搜索区域存在业务员字段",
+      "action": "assert_visible",
+      "locator": "text=业务员",
+      "fallback_locators": [
+        "input[placeholder*='业务员']",
+        "label:has-text('业务员')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查搜索区域存在装箱操作人字段",
+      "action": "assert_visible",
+      "locator": "text=装箱操作人",
+      "fallback_locators": [
+        "input[placeholder*='装箱操作人']",
+        "label:has-text('装箱操作人')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含No",
+      "action": "assert_visible",
+      "locator": "text=No",
+      "fallback_locators": [
+        "th:has-text('No')",
+        "div:has-text('No')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含客户信息",
+      "action": "assert_visible",
+      "locator": "text=客户信息",
+      "fallback_locators": [
+        "th:has-text('客户信息')",
+        "div:has-text('客户信息')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含箱号",
+      "action": "assert_visible",
+      "locator": "text=箱号",
+      "fallback_locators": [
+        "th:has-text('箱号')",
+        "div:has-text('箱号')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含库位",
+      "action": "assert_visible",
+      "locator": "text=库位",
+      "fallback_locators": [
+        "th:has-text('库位')",
+        "div:has-text('库位')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含箱内SKU数",
+      "action": "assert_visible",
+      "locator": "text=箱内SKU数",
+      "fallback_locators": [
+        "th:has-text('箱内SKU数')",
+        "div:has-text('箱内SKU数')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含箱内商品数",
+      "action": "assert_visible",
+      "locator": "text=箱内商品数",
+      "fallback_locators": [
+        "th:has-text('箱内商品数')",
+        "div:has-text('箱内商品数')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含实际重量",
+      "action": "assert_visible",
+      "locator": "text=实际重量",
+      "fallback_locators": [
+        "th:has-text('实际重量')",
+        "div:has-text('实际重量')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含箱子尺寸",
+      "action": "assert_visible",
+      "locator": "text=箱子尺寸",
+      "fallback_locators": [
+        "th:has-text('箱子尺寸')",
+        "div:has-text('箱子尺寸')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含保管天数",
+      "action": "assert_visible",
+      "locator": "text=保管天数",
+      "fallback_locators": [
+        "th:has-text('保管天数')",
+        "div:has-text('保管天数')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含入库时间",
+      "action": "assert_visible",
+      "locator": "text=入库时间",
+      "fallback_locators": [
+        "th:has-text('入库时间')",
+        "div:has-text('入库时间')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含库龄",
+      "action": "assert_visible",
+      "locator": "text=库龄",
+      "fallback_locators": [
+        "th:has-text('库龄')",
+        "div:has-text('库龄')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含商品价值",
+      "action": "assert_visible",
+      "locator": "text=商品价值",
+      "fallback_locators": [
+        "th:has-text('商品价值')",
+        "div:has-text('商品价值')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含已产生仓储费",
+      "action": "assert_visible",
+      "locator": "text=已产生仓储费",
+      "fallback_locators": [
+        "th:has-text('已产生仓储费')",
+        "div:has-text('已产生仓储费')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含待支付仓储费",
+      "action": "assert_visible",
+      "locator": "text=待支付仓储费",
+      "fallback_locators": [
+        "th:has-text('待支付仓储费')",
+        "div:has-text('待支付仓储费')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含装箱操作人",
+      "action": "assert_visible",
+      "locator": "text=装箱操作人",
+      "fallback_locators": [
+        "th:has-text('装箱操作人')",
+        "div:has-text('装箱操作人')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查表格列标题包含客户对应人",
+      "action": "assert_visible",
+      "locator": "text=客户对应人",
+      "fallback_locators": [
+        "th:has-text('客户对应人')",
+        "div:has-text('客户对应人')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查退回普通仓库按钮是否存在",
+      "action": "assert_visible",
+      "locator": "text=退回普通仓库",
+      "fallback_locators": [
+        "button:has-text('退回普通仓库')",
+        "span:has-text('退回普通仓库')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查提出配送单按钮是否存在",
+      "action": "assert_visible",
+      "locator": "text=提出配送单",
+      "fallback_locators": [
+        "button:has-text('提出配送单')",
+        "span:has-text('提出配送单')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "检查库存导出按钮是否存在",
+      "action": "assert_visible",
+      "locator": "text=库存导出",
+      "fallback_locators": [
+        "button:has-text('库存导出')",
+        "span:has-text('库存导出')"
+      ],
+      "timeout": 5000
+    },
+    {
+      "name": "截图验证页面整体",
+      "action": "screenshot",
+      "value": "longTermStorage_fullpage.png"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1781595259,
+    "datetime": "2026-06-16 15:34:19",
+    "date": "2026-06-16",
+    "uuid": "bc9fa120-84c4-4cff-9fdf-64081a71019b",
+    "random_int": 394330,
+    "random_str": "tmq77xh2",
+    "random_phone": "13564010172",
+    "random_email": "test_394330@example.com",
+    "$timestamp": 1781595259,
+    "$datetime": "2026-06-16 15:34:19",
+    "$date": "2026-06-16",
+    "$uuid": "bc9fa120-84c4-4cff-9fdf-64081a71019b",
+    "$random_int": 394330,
+    "$random_str": "tmq77xh2",
+    "$random_phone": "13564010172",
+    "$random_email": "test_394330@example.com",
+    "username": "Y001",
+    "password": "***"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "打开长存仓库页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "started_at": "2026-06-16 15:34:20.935112",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-eb68a297-ae29-4175-9ca5-b426a316198c.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/login",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-6aaaa7c9-76b8-40e9-8f23-4917d33b9508.png",
+      "duration_ms": 2601,
+      "finished_at": "2026-06-16 15:34:23.536186",
+      "index": 1
+    },
+    {
+      "name": "检查页面标题是否为长存仓库",
+      "action": "assert_visible",
+      "locator": "text=长存仓库",
+      "fallback_locators": [
+        "span:has-text('长存仓库')",
+        "h1:has-text('长存仓库')",
+        "button:has-text(\"长存仓库\")",
+        "a:has-text(\"长存仓库\")",
+        "[role=\"button\"]:has-text(\"长存仓库\")",
+        "input[type=\"button\"][value*=\"长存仓库\"]",
+        "input[type=\"submit\"][value*=\"长存仓库\"]"
+      ],
+      "value": null,
+      "started_at": "2026-06-16 15:34:23.888859",
+      "status": "failed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-4e050c07-6be8-45e7-bbfd-f8b6642f7f8c.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/login",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "duration_ms": 121925,
+      "finished_at": "2026-06-16 15:36:25.814384",
+      "error": "未找到可用定位器：a:has-text(\"长存仓库\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"a:has-text(\\\"长存仓库\\\")\").first to be visible\n；[role=\"button\"]:has-text(\"长存仓库\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"[role=\\\"button\\\"]:has-text(\\\"长存仓库\\\")\").first to be visible\n；input[type=\"button\"][value*=\"长存仓库\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"button\\\"][value*=\\\"长存仓库\\\"]\").first to be visible\n；input[type=\"submit\"][value*=\"长存仓库\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"submit\\\"][value*=\\\"长存仓库\\\"]\").first to be visible\n",
+      "category": "定位器找不到",
+      "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+      "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+      "failure_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-failed-722f8017-a575-47c2-9ddd-65c79a07444b.png",
+      "index": 2
+    }
+  ],
+  "started_at": "2026-06-16 15:34:19.933849",
+  "retry_config": {
+    "retry_count": 2,
+    "retry_interval_ms": 1000
+  },
+  "auth_context": {
+    "login_required": false,
+    "account_profile_id": null,
+    "login_url": "",
+    "removed_login_step_count": 0,
+    "login_trace": []
+  },
+  "error": "检查页面标题是否为长存仓库失败：定位器找不到。规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "error_category": "定位器找不到",
+  "failure_reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+  "failed_step_index": 2,
+  "failed_step": {
+    "name": "检查页面标题是否为长存仓库",
+    "action": "assert_visible",
+    "locator": "text=长存仓库",
+    "fallback_locators": [
+      "span:has-text('长存仓库')",
+      "h1:has-text('长存仓库')"
+    ],
+    "timeout": 10000
+  },
+  "failed_step_detail": {
+    "name": "检查页面标题是否为长存仓库",
+    "action": "assert_visible",
+    "locator": "text=长存仓库",
+    "fallback_locators": [
+      "span:has-text('长存仓库')",
+      "h1:has-text('长存仓库')",
+      "button:has-text(\"长存仓库\")",
+      "a:has-text(\"长存仓库\")",
+      "[role=\"button\"]:has-text(\"长存仓库\")",
+      "input[type=\"button\"][value*=\"长存仓库\"]",
+      "input[type=\"submit\"][value*=\"长存仓库\"]"
+    ],
+    "value": null,
+    "started_at": "2026-06-16 15:34:23.888859",
+    "status": "failed",
+    "current_url_before": "https://jpmanage.rakumart.cn/#/login",
+    "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+    "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-4e050c07-6be8-45e7-bbfd-f8b6642f7f8c.png",
+    "current_url": "https://jpmanage.rakumart.cn/#/login",
+    "current_url_after": "https://jpmanage.rakumart.cn/#/login",
+    "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+    "duration_ms": 121925,
+    "finished_at": "2026-06-16 15:36:25.814384",
+    "error": "未找到可用定位器：a:has-text(\"长存仓库\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"a:has-text(\\\"长存仓库\\\")\").first to be visible\n；[role=\"button\"]:has-text(\"长存仓库\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"[role=\\\"button\\\"]:has-text(\\\"长存仓库\\\")\").first to be visible\n；input[type=\"button\"][value*=\"长存仓库\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"button\\\"][value*=\\\"长存仓库\\\"]\").first to be visible\n；input[type=\"submit\"][value*=\"长存仓库\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"submit\\\"][value*=\\\"长存仓库\\\"]\").first to be visible\n",
+    "category": "定位器找不到",
+    "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+    "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+    "failure_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-failed-722f8017-a575-47c2-9ddd-65c79a07444b.png",
+    "index": 2
+  },
+  "current_url": "https://jpmanage.rakumart.cn/#/login",
+  "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\77fffd17-fc28-48a6-8409-ff1a2959d6b8.png",
+  "finished_at": "2026-06-16 15:36:25.986686"
+}

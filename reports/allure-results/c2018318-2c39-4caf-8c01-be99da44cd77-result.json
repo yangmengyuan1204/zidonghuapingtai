@@ -1,0 +1,22 @@
+{
+  "uuid": "c2018318-2c39-4caf-8c01-be99da44cd77",
+  "name": "数据脚本-配送单获取物流单号",
+  "fullName": "api.数据脚本-配送单获取物流单号",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780554493334,
+  "stop": 1780554493334,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "c2018318-2c39-4caf-8c01-be99da44cd77-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

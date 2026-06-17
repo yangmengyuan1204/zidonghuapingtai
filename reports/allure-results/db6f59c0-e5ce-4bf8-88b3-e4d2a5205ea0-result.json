@@ -1,0 +1,22 @@
+{
+  "uuid": "db6f59c0-e5ce-4bf8-88b3-e4d2a5205ea0",
+  "name": "数据脚本-配送单详情",
+  "fullName": "api.数据脚本-配送单详情",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780543836253,
+  "stop": 1780543836253,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "db6f59c0-e5ce-4bf8-88b3-e4d2a5205ea0-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

@@ -1,0 +1,480 @@
+{
+  "script": "商品购物车",
+  "keyword": "鞋",
+  "keyword_candidates": [
+    "鞋",
+    "衣服",
+    "鞋子",
+    "包",
+    "耳环",
+    "usp",
+    "手表",
+    "袜子",
+    "手机壳",
+    "帽子",
+    "水杯",
+    "项链",
+    "收纳",
+    "裙子",
+    "文具"
+  ],
+  "preferred_keywords": [
+    "衣服",
+    "鞋子",
+    "鞋",
+    "包"
+  ],
+  "shop_types": [
+    "1688",
+    "taobao",
+    "tmall",
+    "rakumart"
+  ],
+  "per_shop": 5,
+  "candidate_limit": 15,
+  "candidate_target": 10,
+  "keyword_max_rounds": 6,
+  "empty_search_stop": 6,
+  "boost_keywords": [
+    "衣服",
+    "鞋子",
+    "包"
+  ],
+  "started_at": "2026-06-01 14:01:59.691918",
+  "shops": [
+    {
+      "shop_type": "1688",
+      "added": [
+        {
+          "goods_id": 522553346676,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 591917477838,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 41569708009,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 45783099642,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 592684344857,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        }
+      ],
+      "errors": [],
+      "searches": [
+        {
+          "keyword": "鞋",
+          "shop_type": "1688",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 20
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 15,
+        "candidate_limit": 15,
+        "candidate_target": 10,
+        "keyword_max_rounds": 6,
+        "empty_search_stop": 6,
+        "search_calls": 1,
+        "break_reason": "candidate_target_reached",
+        "candidate_status": "enough_candidates"
+      }
+    },
+    {
+      "shop_type": "taobao",
+      "added": [],
+      "errors": [],
+      "searches": [
+        {
+          "keyword": "鞋",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "衣服",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "鞋子",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "包",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "耳环",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "usp",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 0,
+        "candidate_limit": 15,
+        "candidate_target": 10,
+        "keyword_max_rounds": 6,
+        "empty_search_stop": 6,
+        "search_calls": 6,
+        "break_reason": "empty_search_stop",
+        "candidate_status": "no_results"
+      }
+    },
+    {
+      "shop_type": "tmall",
+      "added": [],
+      "errors": [],
+      "searches": [
+        {
+          "keyword": "鞋",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "衣服",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "鞋子",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "包",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "耳环",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "usp",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 0,
+        "candidate_limit": 15,
+        "candidate_target": 10,
+        "keyword_max_rounds": 6,
+        "empty_search_stop": 6,
+        "search_calls": 6,
+        "break_reason": "empty_search_stop",
+        "candidate_status": "no_results"
+      }
+    },
+    {
+      "shop_type": "rakumart",
+      "added": [
+        {
+          "goods_id": 12009,
+          "shop_type": "rakumart",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 13911,
+          "shop_type": "rakumart",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 12023,
+          "shop_type": "rakumart",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 12021,
+          "shop_type": "rakumart",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 12019,
+          "shop_type": "rakumart",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        }
+      ],
+      "errors": [],
+      "searches": [
+        {
+          "keyword": "鞋",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "衣服",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "鞋子",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "包",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 1
+        },
+        {
+          "keyword": "耳环",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 16
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 15,
+        "candidate_limit": 15,
+        "candidate_target": 10,
+        "keyword_max_rounds": 6,
+        "empty_search_stop": 6,
+        "search_calls": 5,
+        "break_reason": "candidate_target_reached",
+        "candidate_status": "enough_candidates"
+      }
+    }
+  ],
+  "login": {
+    "status_code": 200,
+    "success": true,
+    "code": 0,
+    "msg": "ログイン成功",
+    "body": "{\"success\":true,\"code\":0,\"msg\":\"ログイン成功\",\"data\":{\"userToken\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyYWt1bWFydC5jbiIsImF1ZCI6InJha3VtYXJ0LmNuIiwiaWF0IjoxNzgwMjkzNzE5LCJuYmYiOjAsImV4cCI6MTc4MjAyMTcxOSwidXNlckluZm8iOnsidG9rZW5faWQiOjMwMDAwMSwib3BlcmF0aW9uX2lkIjozMDAwMDEsInlfaWQiOjE0LCJ1c2VybmFtZSI6Ilx1NWMwZlx1Njc2OFx1NmQ0Ylx1OGJkNVx1OGQyNlx1NTNmNyIsInJlYWxuYW1lIjoiXHU1YzBmXHU2NzY4XHU2ZDRiXHU4YmQ1IiwiZW1haWwiOiIzNzcwNzU5MTJAcXEuY29tIiwibW9iaWxlIjoiMTIzNDU2Nzg5OTAiLCJnb29kc19hbW91bnQiOjU4NjcxNTMsImlzX3Vuc2V0IjowLCJjbGllbnRfdG9vbCI6IjIiLCJjbGllbnRfdG9vbF9uYW1lIjoiSDUtV0VCIn19.rG2J6-XBkdKaYdV2BtDK7JRP1_jwrB4oFFdwqMtyYmU\",\"userInfo\":{\"token_id\":300001,\"operation_id\":300001,\"y_id\":14,\"username\":\"小杨测试账号\",\"realname\":\"小杨测试\",\"email\":\"377075912@qq.com\",\"mobile\":\"12345678990\",\"goods_amount\":5867153,\"is_unset\":0,\"client_tool\":\"2\",\"client_tool_name\":\"H5-WEB\",\"l\":0},\"tmpPwd\":false}}",
+    "account": "12345678990",
+    "token_extracted": true
+  },
+  "summary": {
+    "keyword": "鞋",
+    "expected_total": 20,
+    "available_expected_total": 10,
+    "added_total": 10,
+    "shop_types": [
+      "1688",
+      "taobao",
+      "tmall",
+      "rakumart"
+    ],
+    "skipped_shop_types": [
+      "taobao",
+      "tmall"
+    ],
+    "failed_shop_types": [],
+    "strict_shop_count": false
+  },
+  "finished_at": "2026-06-01 14:04:18.605845"
+}

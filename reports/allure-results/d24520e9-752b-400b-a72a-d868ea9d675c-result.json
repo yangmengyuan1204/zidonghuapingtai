@@ -1,0 +1,22 @@
+{
+  "uuid": "d24520e9-752b-400b-a72a-d868ea9d675c",
+  "name": "待拍下到商品上架(组合脚本)",
+  "fullName": "data_script.待拍下到商品上架(组合脚本)",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781240979974,
+  "stop": 1781240979974,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "d24520e9-752b-400b-a72a-d868ea9d675c-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

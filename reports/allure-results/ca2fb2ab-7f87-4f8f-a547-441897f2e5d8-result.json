@@ -1,0 +1,22 @@
+{
+  "uuid": "ca2fb2ab-7f87-4f8f-a547-441897f2e5d8",
+  "name": "订单报价",
+  "fullName": "data_script.订单报价",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781496766001,
+  "stop": 1781496766001,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "ca2fb2ab-7f87-4f8f-a547-441897f2e5d8-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

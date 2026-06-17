@@ -1,0 +1,22 @@
+{
+  "uuid": "fa959692-6b38-475a-b3d8-969be72e6712",
+  "name": "创建用户",
+  "fullName": "api.创建用户",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780301853861,
+  "stop": 1780301853861,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "fa959692-6b38-475a-b3d8-969be72e6712-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

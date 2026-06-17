@@ -1,0 +1,109 @@
+{
+  "script": "配送单余额付款",
+  "mode": "porder_balance_payment",
+  "started_at": "2026-06-16 13:44:25.461533",
+  "porder_sn": "P2026061613435255-300001",
+  "backend_porder": {
+    "skipped": true,
+    "reason": "配送单已待支付，跳过后台流程"
+  },
+  "order_list": {},
+  "payment": {
+    "success": false,
+    "code": 10000,
+    "msg": "現在の配送依頼書の状態では支払いできません。",
+    "data": "現在の配送依頼書の状態では支払いできません。",
+    "request": {
+      "porder_sn": "P2026061613435255-300001",
+      "discounts_id": "",
+      "merge_pay": "0"
+    }
+  },
+  "login": {
+    "success": true,
+    "account": "userID/300001In",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "base_url": "https://jpapi.rakumart.cn",
+  "porder_amount": {
+    "attempts": [
+      {
+        "success": false,
+        "code": 0,
+        "msg": "接口路由错误:https://jpapi.rakumart.cn/client/porder.porderPayDetail",
+        "path": "/client/porder.porderPayDetail",
+        "request": {
+          "porder_sn": "P2026061613435255-300001"
+        },
+        "pay_amount": "0"
+      },
+      {
+        "success": false,
+        "code": 0,
+        "msg": "接口路由错误:https://jpapi.rakumart.cn/client/porder.payDetail",
+        "path": "/client/porder.payDetail",
+        "request": {
+          "porder_sn": "P2026061613435255-300001"
+        },
+        "pay_amount": "0"
+      },
+      {
+        "success": false,
+        "code": 0,
+        "msg": "接口路由错误:https://jpapi.rakumart.cn/client/porder.paymentDetail",
+        "path": "/client/porder.paymentDetail",
+        "request": {
+          "porder_sn": "P2026061613435255-300001"
+        },
+        "pay_amount": "0"
+      },
+      {
+        "success": true,
+        "code": 0,
+        "msg": "操作が成功しました",
+        "path": "/client/porder.porderDetail",
+        "request": {
+          "porder_sn": "P2026061613435255-300001"
+        },
+        "pay_amount": "0"
+      },
+      {
+        "success": false,
+        "code": 0,
+        "msg": "接口路由错误:https://jpapi.rakumart.cn/client/porder.detail",
+        "path": "/client/porder.detail",
+        "request": {
+          "porder_sn": "P2026061613435255-300001"
+        },
+        "pay_amount": "0"
+      },
+      {
+        "success": false,
+        "code": 10000,
+        "msg": "状態を入力してください",
+        "path": "/client/porder.porderList",
+        "request": {
+          "porder_sn": "P2026061613435255-300001",
+          "keywords": "P2026061613435255-300001",
+          "page": 1,
+          "pageSize": 10
+        },
+        "pay_amount": "0"
+      }
+    ],
+    "pay_amount": "0"
+  },
+  "duration_ms": 1235,
+  "summary": {
+    "payment_type": "balance",
+    "porder_sn": "P2026061613435255-300001",
+    "pay_amount": "0",
+    "payment_passed": false,
+    "porder_matched": true,
+    "reason": "現在の配送依頼書の状態では支払いできません。",
+    "backend_passed": true,
+    "duration_ms": 1235
+  },
+  "finished_at": "2026-06-16 13:44:26.696968"
+}

@@ -1,0 +1,22 @@
+{
+  "uuid": "d1b7172b-6936-45fc-bf17-a2511e2833cc",
+  "name": "查询用户",
+  "fullName": "api.查询用户",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780469453495,
+  "stop": 1780469453495,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "d1b7172b-6936-45fc-bf17-a2511e2833cc-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

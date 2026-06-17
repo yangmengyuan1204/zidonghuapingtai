@@ -1,0 +1,27 @@
+{
+  "uuid": "8121c702-a1cc-4938-9651-3487dbc071e3",
+  "name": "页面元素展示",
+  "fullName": "ui.页面元素展示",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780912128683,
+  "stop": 1780912128683,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "8121c702-a1cc-4938-9651-3487dbc071e3-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "8121c702-a1cc-4938-9651-3487dbc071e3-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

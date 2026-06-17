@@ -1,0 +1,27 @@
+{
+  "uuid": "fa9fa8f5-7342-40cb-a05d-3df67b447f03",
+  "name": "注册页面-输入错误验证码提交失败",
+  "fullName": "ui.注册页面-输入错误验证码提交失败",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780632031345,
+  "stop": 1780632031345,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "fa9fa8f5-7342-40cb-a05d-3df67b447f03-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "fa9fa8f5-7342-40cb-a05d-3df67b447f03-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "uuid": "ee16da61-8d26-49b9-90f5-e54abe666ebf",
+  "name": "注册页面-已注册手机号提示重复",
+  "fullName": "ui.注册页面-已注册手机号提示重复",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780632039819,
+  "stop": 1780632039819,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "ee16da61-8d26-49b9-90f5-e54abe666ebf-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "ee16da61-8d26-49b9-90f5-e54abe666ebf-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "uuid": "0a451668-34bc-4a22-aed5-a8b1a8397db6",
+  "name": "注册页面-密码输入时显示/隐藏切换",
+  "fullName": "ui.注册页面-密码输入时显示/隐藏切换",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781073850075,
+  "stop": 1781073850075,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "0a451668-34bc-4a22-aed5-a8b1a8397db6-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "0a451668-34bc-4a22-aed5-a8b1a8397db6-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

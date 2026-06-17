@@ -1,0 +1,27 @@
+{
+  "uuid": "68503eed-30e9-48db-bde7-a16cf11b5a3c",
+  "name": "注册页面-验证码获取后倒计时显示",
+  "fullName": "ui.注册页面-验证码获取后倒计时显示",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781072323530,
+  "stop": 1781072323530,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "68503eed-30e9-48db-bde7-a16cf11b5a3c-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "68503eed-30e9-48db-bde7-a16cf11b5a3c-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

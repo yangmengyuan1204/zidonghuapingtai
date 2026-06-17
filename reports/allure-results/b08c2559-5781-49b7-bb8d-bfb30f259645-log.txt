@@ -1,0 +1,355 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "测试",
+  "shop_type": "1688",
+  "target_shops": 4,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "started_at": "2026-06-09 15:20:07.101560",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBB9i8DWTYuy8xSbluKya3CLw",
+      "collected_count": 2,
+      "selected_count": 2,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "780123949571",
+          "shop_id": "BBB9i8DWTYuy8xSbluKya3CLw",
+          "shop_name": "衡水和远橡塑制品有限公司",
+          "sku_id": "5330135973422",
+          "spec_id": "98a1aef4627573a900a4d5bebd352586",
+          "num": 10,
+          "price": "4.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "780123949571",
+          "shop_id": "BBB9i8DWTYuy8xSbluKya3CLw",
+          "shop_name": "衡水和远橡塑制品有限公司",
+          "sku_id": "5330135973423",
+          "spec_id": "9e1584f9fa4e9cdcb19437aca088c4ea",
+          "num": 10,
+          "price": "4.9",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBBR9zC-PHkxU1OhoaiomBMCA",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "705580387732",
+          "shop_id": "BBBR9zC-PHkxU1OhoaiomBMCA",
+          "shop_name": "秒准科学仪器(深圳)有限公司",
+          "sku_id": "5649644408335",
+          "spec_id": "4fe48b815c5fdd523ffcce2448e8088d",
+          "num": 2,
+          "price": "19800.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "857437076061",
+          "shop_id": "BBBR9zC-PHkxU1OhoaiomBMCA",
+          "shop_name": "秒准科学仪器(深圳)有限公司",
+          "sku_id": "5833394175016",
+          "spec_id": "f3bd3cee37c0f38ff60dac876b2ee148",
+          "num": 2,
+          "price": "5900.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "828523857014",
+          "shop_id": "BBBR9zC-PHkxU1OhoaiomBMCA",
+          "shop_name": "秒准科学仪器(深圳)有限公司",
+          "sku_id": "5725099078906",
+          "spec_id": "bad535d3b31ab17f99ceecb53da56911",
+          "num": 2,
+          "price": "5900.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "shop_key": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "910049533093",
+          "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+          "shop_name": "河南云聚合电子科技有限公司",
+          "sku_id": "5772816857427",
+          "spec_id": "ddf23250b668e115c6c6c24c542b0bf6",
+          "num": 2,
+          "price": "33.99",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "910049533093",
+          "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+          "shop_name": "河南云聚合电子科技有限公司",
+          "sku_id": "5772816857428",
+          "spec_id": "edc29cc3a1066ad6c40c7b569e66747d",
+          "num": 3,
+          "price": "57.99",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "910049533093",
+          "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+          "shop_name": "河南云聚合电子科技有限公司",
+          "sku_id": "5772816857429",
+          "spec_id": "e88360f0935be9830ddfd27cb508e7e8",
+          "num": 5,
+          "price": "57.99",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "shop_key": "BBBbsxxLlhkzyHWEwDxWF7kNg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "521078652132",
+          "shop_id": "BBBbsxxLlhkzyHWEwDxWF7kNg",
+          "shop_name": "山东恒美电子科技有限公司",
+          "sku_id": "5709151737461",
+          "spec_id": "86ad7497a3f403c7b5841f3a35d77517",
+          "num": 2,
+          "price": "3200.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "521078652132",
+          "shop_id": "BBBbsxxLlhkzyHWEwDxWF7kNg",
+          "shop_name": "山东恒美电子科技有限公司",
+          "sku_id": "5709151737462",
+          "spec_id": "e01576acd278a28550ae82afd5af00e2",
+          "num": 3,
+          "price": "5000.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "521078652132",
+          "shop_id": "BBBbsxxLlhkzyHWEwDxWF7kNg",
+          "shop_name": "山东恒美电子科技有限公司",
+          "sku_id": "5709151737463",
+          "spec_id": "0cdaf3969f1cb4574c1912c1ab1db80a",
+          "num": 5,
+          "price": "8000.0",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 15,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "collection": {
+    "ready_shops": 3,
+    "collected_shops": 4,
+    "selected_items": 15,
+    "expected_total": 20,
+    "preview_items": [
+      {
+        "goods_id": "705580387732",
+        "shop_id": "BBBR9zC-PHkxU1OhoaiomBMCA",
+        "shop_name": "秒准科学仪器(深圳)有限公司",
+        "sku_id": "5649644408335",
+        "spec_id": "4fe48b815c5fdd523ffcce2448e8088d",
+        "num": 2,
+        "price": "19800.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "857437076061",
+        "shop_id": "BBBR9zC-PHkxU1OhoaiomBMCA",
+        "shop_name": "秒准科学仪器(深圳)有限公司",
+        "sku_id": "5833394175016",
+        "spec_id": "f3bd3cee37c0f38ff60dac876b2ee148",
+        "num": 2,
+        "price": "5900.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "828523857014",
+        "shop_id": "BBBR9zC-PHkxU1OhoaiomBMCA",
+        "shop_name": "秒准科学仪器(深圳)有限公司",
+        "sku_id": "5725099078906",
+        "spec_id": "bad535d3b31ab17f99ceecb53da56911",
+        "num": 2,
+        "price": "5900.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "668978686913",
+        "shop_id": "BBBR9zC-PHkxU1OhoaiomBMCA",
+        "shop_name": "秒准科学仪器(深圳)有限公司",
+        "sku_id": "5649422220811",
+        "spec_id": "6c90fc9d75fae2b012bf14734eea1a10",
+        "num": 2,
+        "price": "3600.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "675715400590",
+        "shop_id": "BBBR9zC-PHkxU1OhoaiomBMCA",
+        "shop_name": "秒准科学仪器(深圳)有限公司",
+        "sku_id": "5817362722779",
+        "spec_id": "14ac62d41919dd29530992898b3f4231",
+        "num": 2,
+        "price": "49000.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "910049533093",
+        "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+        "shop_name": "河南云聚合电子科技有限公司",
+        "sku_id": "5772816857427",
+        "spec_id": "ddf23250b668e115c6c6c24c542b0bf6",
+        "num": 2,
+        "price": "33.99",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "910049533093",
+        "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+        "shop_name": "河南云聚合电子科技有限公司",
+        "sku_id": "5772816857428",
+        "spec_id": "edc29cc3a1066ad6c40c7b569e66747d",
+        "num": 3,
+        "price": "57.99",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "910049533093",
+        "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+        "shop_name": "河南云聚合电子科技有限公司",
+        "sku_id": "5772816857429",
+        "spec_id": "e88360f0935be9830ddfd27cb508e7e8",
+        "num": 5,
+        "price": "57.99",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "910049533093",
+        "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+        "shop_name": "河南云聚合电子科技有限公司",
+        "sku_id": "5772816857432",
+        "spec_id": "9f0d14ec3cd47d7cc900e7e0a9d977b1",
+        "num": 2,
+        "price": "57.99",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "910049533093",
+        "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+        "shop_name": "河南云聚合电子科技有限公司",
+        "sku_id": "5772816857433",
+        "spec_id": "d42ca7dc5486298418a1b5069e2a2bf3",
+        "num": 3,
+        "price": "57.99",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "521078652132",
+        "shop_id": "BBBbsxxLlhkzyHWEwDxWF7kNg",
+        "shop_name": "山东恒美电子科技有限公司",
+        "sku_id": "5709151737461",
+        "spec_id": "86ad7497a3f403c7b5841f3a35d77517",
+        "num": 2,
+        "price": "3200.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "521078652132",
+        "shop_id": "BBBbsxxLlhkzyHWEwDxWF7kNg",
+        "shop_name": "山东恒美电子科技有限公司",
+        "sku_id": "5709151737462",
+        "spec_id": "e01576acd278a28550ae82afd5af00e2",
+        "num": 3,
+        "price": "5000.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "521078652132",
+        "shop_id": "BBBbsxxLlhkzyHWEwDxWF7kNg",
+        "shop_name": "山东恒美电子科技有限公司",
+        "sku_id": "5709151737463",
+        "spec_id": "0cdaf3969f1cb4574c1912c1ab1db80a",
+        "num": 5,
+        "price": "8000.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "521078652132",
+        "shop_id": "BBBbsxxLlhkzyHWEwDxWF7kNg",
+        "shop_name": "山东恒美电子科技有限公司",
+        "sku_id": "5709151737464",
+        "spec_id": "356cb2b78405aac5cd792f92e35071a9",
+        "num": 2,
+        "price": "9800.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "521078652132",
+        "shop_id": "BBBbsxxLlhkzyHWEwDxWF7kNg",
+        "shop_name": "山东恒美电子科技有限公司",
+        "sku_id": "5709151737465",
+        "spec_id": "9648fdeda209f6e7ed17cfdbb1c99a8f",
+        "num": 3,
+        "price": "19000.0",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "summary": {
+    "keyword": "测试",
+    "shop_type": "1688",
+    "target_shops": 4,
+    "per_shop": 5,
+    "ready_shops": 3,
+    "expected_total": 20,
+    "available_expected_total": 15,
+    "added_total": 15,
+    "failed_batches": [],
+    "strict_shop_count": false
+  },
+  "finished_at": "2026-06-09 15:23:19.672706"
+}

@@ -1,0 +1,275 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "手机壳",
+  "shop_type": "1688",
+  "target_shops": 10,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "started_at": "2026-06-04 14:59:39.510194",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBB51WfbGTe5zf2KRpzmMIL-g",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "545131401158",
+          "shop_id": "BBB51WfbGTe5zf2KRpzmMIL-g",
+          "shop_name": "广州市惠俐机械制造有限责任公司",
+          "sku_id": "5312123238776",
+          "spec_id": "fa22a7324d07ffcaed71536db8dcd1bf",
+          "num": 2,
+          "price": "25000.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBB0tMC05Q7YM13XsD1uq1PXw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "775143000398",
+          "shop_id": "BBB0tMC05Q7YM13XsD1uq1PXw",
+          "shop_name": "广东鑫蓝泰实业有限公司",
+          "sku_id": "rakumart_6a21226c293ab667",
+          "spec_id": "rakumart_6a21226c293ae269",
+          "num": 2,
+          "price": "6",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "772274657795",
+          "shop_id": "BBB0tMC05Q7YM13XsD1uq1PXw",
+          "shop_name": "广东鑫蓝泰实业有限公司",
+          "sku_id": "5290045297879",
+          "spec_id": "e4c4176f4ae6a4ac8c9d5e6b0a2b1ccf",
+          "num": 25,
+          "price": "10.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "772274657795",
+          "shop_id": "BBB0tMC05Q7YM13XsD1uq1PXw",
+          "shop_name": "广东鑫蓝泰实业有限公司",
+          "sku_id": "5290045297880",
+          "spec_id": "cc030c3fa98943237947a4110fbc26c9",
+          "num": 25,
+          "price": "10.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "shop_key": "BBBcL1nnUbkpTkwedXdClsYpw",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "769812823122",
+          "shop_id": "BBBcL1nnUbkpTkwedXdClsYpw",
+          "shop_name": "广东鑫蓝泰实业有限公司",
+          "sku_id": "rakumart_6a21226cb7a4a930",
+          "spec_id": "rakumart_6a21226cb7a4d666",
+          "num": 2,
+          "price": "4.3",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "shop_key": "BBBXTjo3AbPlqu0wEi0vj1-Bg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "873093045205",
+          "shop_id": "BBBXTjo3AbPlqu0wEi0vj1-Bg",
+          "shop_name": "广州沧海饰品有限公司",
+          "sku_id": "5965598622188",
+          "spec_id": "2a9fcac960e80179bdec817da0b72053",
+          "num": 2,
+          "price": "3.7",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "873093045205",
+          "shop_id": "BBBXTjo3AbPlqu0wEi0vj1-Bg",
+          "shop_name": "广州沧海饰品有限公司",
+          "sku_id": "5873801026799",
+          "spec_id": "24b14436bc9484355d7e378bdb32a608",
+          "num": 3,
+          "price": "3.7",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "873093045205",
+          "shop_id": "BBBXTjo3AbPlqu0wEi0vj1-Bg",
+          "shop_name": "广州沧海饰品有限公司",
+          "sku_id": "5873801026803",
+          "spec_id": "aef2f69372690947452df2b3d3ebb7c3",
+          "num": 5,
+          "price": "3.7",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "collection": {
+    "ready_shops": 2,
+    "collected_shops": 4,
+    "selected_items": 10,
+    "expected_total": 50,
+    "preview_items": [
+      {
+        "goods_id": "775143000398",
+        "shop_id": "BBB0tMC05Q7YM13XsD1uq1PXw",
+        "shop_name": "广东鑫蓝泰实业有限公司",
+        "sku_id": "rakumart_6a21226c293ab667",
+        "spec_id": "rakumart_6a21226c293ae269",
+        "num": 2,
+        "price": "6",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "772274657795",
+        "shop_id": "BBB0tMC05Q7YM13XsD1uq1PXw",
+        "shop_name": "广东鑫蓝泰实业有限公司",
+        "sku_id": "5290045297879",
+        "spec_id": "e4c4176f4ae6a4ac8c9d5e6b0a2b1ccf",
+        "num": 25,
+        "price": "10.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "772274657795",
+        "shop_id": "BBB0tMC05Q7YM13XsD1uq1PXw",
+        "shop_name": "广东鑫蓝泰实业有限公司",
+        "sku_id": "5290045297880",
+        "spec_id": "cc030c3fa98943237947a4110fbc26c9",
+        "num": 25,
+        "price": "10.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "772274657795",
+        "shop_id": "BBB0tMC05Q7YM13XsD1uq1PXw",
+        "shop_name": "广东鑫蓝泰实业有限公司",
+        "sku_id": "5290045297881",
+        "spec_id": "f4df99b65476232bfc0dd2a93dc56730",
+        "num": 25,
+        "price": "10.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "772274657795",
+        "shop_id": "BBB0tMC05Q7YM13XsD1uq1PXw",
+        "shop_name": "广东鑫蓝泰实业有限公司",
+        "sku_id": "5290045297882",
+        "spec_id": "8e81e6d9f7b92bc38b6d431a0e126317",
+        "num": 25,
+        "price": "10.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "873093045205",
+        "shop_id": "BBBXTjo3AbPlqu0wEi0vj1-Bg",
+        "shop_name": "广州沧海饰品有限公司",
+        "sku_id": "5965598622188",
+        "spec_id": "2a9fcac960e80179bdec817da0b72053",
+        "num": 2,
+        "price": "3.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "873093045205",
+        "shop_id": "BBBXTjo3AbPlqu0wEi0vj1-Bg",
+        "shop_name": "广州沧海饰品有限公司",
+        "sku_id": "5873801026799",
+        "spec_id": "24b14436bc9484355d7e378bdb32a608",
+        "num": 3,
+        "price": "3.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "873093045205",
+        "shop_id": "BBBXTjo3AbPlqu0wEi0vj1-Bg",
+        "shop_name": "广州沧海饰品有限公司",
+        "sku_id": "5873801026803",
+        "spec_id": "aef2f69372690947452df2b3d3ebb7c3",
+        "num": 5,
+        "price": "3.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "873093045205",
+        "shop_id": "BBBXTjo3AbPlqu0wEi0vj1-Bg",
+        "shop_name": "广州沧海饰品有限公司",
+        "sku_id": "5873801026804",
+        "spec_id": "fceca28827f3b55fefcbe10f55687071",
+        "num": 2,
+        "price": "3.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "873093045205",
+        "shop_id": "BBBXTjo3AbPlqu0wEi0vj1-Bg",
+        "shop_name": "广州沧海饰品有限公司",
+        "sku_id": "5873801026806",
+        "spec_id": "7948738eb566cd420b4010fe635354c2",
+        "num": 3,
+        "price": "3.7",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "summary": {
+    "keyword": "手机壳",
+    "shop_type": "1688",
+    "target_shops": 10,
+    "per_shop": 5,
+    "ready_shops": 2,
+    "expected_total": 50,
+    "available_expected_total": 10,
+    "added_total": 10,
+    "failed_batches": [],
+    "strict_shop_count": false
+  },
+  "finished_at": "2026-06-04 15:00:27.687220"
+}

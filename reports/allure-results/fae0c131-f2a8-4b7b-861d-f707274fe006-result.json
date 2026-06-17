@@ -1,0 +1,22 @@
+{
+  "uuid": "fae0c131-f2a8-4b7b-861d-f707274fe006",
+  "name": "仓库提出配送单",
+  "fullName": "data_script.仓库提出配送单",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781573186375,
+  "stop": 1781573186375,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "fae0c131-f2a8-4b7b-861d-f707274fe006-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

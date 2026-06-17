@@ -1,0 +1,27 @@
+{
+  "uuid": "af461bff-1fa6-452e-bab7-177fc14e8f55",
+  "name": "密码长度不足",
+  "fullName": "ui.密码长度不足",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780636469075,
+  "stop": 1780636469075,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "af461bff-1fa6-452e-bab7-177fc14e8f55-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "af461bff-1fa6-452e-bab7-177fc14e8f55-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

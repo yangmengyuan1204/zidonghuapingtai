@@ -1,0 +1,198 @@
+{
+  "case_name": "权限验证：非推广人账号访问",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "input",
+      "locator": "input[placeholder=\"邮箱/手机号\"]",
+      "value": "18839953328"
+    },
+    {
+      "action": "input",
+      "locator": "input[placeholder=\"请输入密码\"]",
+      "value": "123456"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "assert_url",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780887971,
+    "datetime": "2026-06-08 11:06:11",
+    "date": "2026-06-08",
+    "uuid": "9e1b2848-72e6-4384-985d-b05665c4ad8a",
+    "random_int": 919191,
+    "random_str": "3wgw4ta8",
+    "random_phone": "13914967970",
+    "random_email": "test_919191@example.com",
+    "$timestamp": 1780887971,
+    "$datetime": "2026-06-08 11:06:11",
+    "$date": "2026-06-08",
+    "$uuid": "9e1b2848-72e6-4384-985d-b05665c4ad8a",
+    "$random_int": 919191,
+    "$random_str": "3wgw4ta8",
+    "$random_phone": "13914967970",
+    "$random_email": "test_919191@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "rakumart888"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/login",
+      "started_at": "2026-06-08 11:06:13.862151",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 5854,
+      "finished_at": "2026-06-08 11:06:19.716433",
+      "index": 1
+    },
+    {
+      "name": "输入",
+      "action": "input",
+      "locator": "input[placeholder=\"邮箱/手机号\"]",
+      "fallback_locators": [],
+      "value": "18839953328",
+      "started_at": "2026-06-08 11:06:19.716511",
+      "status": "passed",
+      "used_locator": "input[placeholder=\"邮箱/手机号\"]",
+      "matched_count": 1,
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 145,
+      "finished_at": "2026-06-08 11:06:19.861877",
+      "index": 2
+    },
+    {
+      "name": "输入",
+      "action": "input",
+      "locator": "input[placeholder=\"请输入密码\"]",
+      "fallback_locators": [],
+      "value": "123456",
+      "started_at": "2026-06-08 11:06:19.861931",
+      "status": "passed",
+      "used_locator": "input[placeholder=\"请输入密码\"]",
+      "matched_count": 1,
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 141,
+      "finished_at": "2026-06-08 11:06:20.002993",
+      "index": 3
+    },
+    {
+      "name": "点击",
+      "action": "click",
+      "locator": "text=立即注册",
+      "fallback_locators": [
+        "button:has-text(\"立即注册\")",
+        "a:has-text(\"立即注册\")",
+        "[role=\"button\"]:has-text(\"立即注册\")",
+        "input[type=\"button\"][value*=\"立即注册\"]",
+        "input[type=\"submit\"][value*=\"立即注册\"]"
+      ],
+      "value": null,
+      "started_at": "2026-06-08 11:06:20.003053",
+      "status": "passed",
+      "used_locator": "text=立即注册",
+      "matched_count": 1,
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 284,
+      "finished_at": "2026-06-08 11:06:20.287374",
+      "index": 4
+    },
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited",
+      "started_at": "2026-06-08 11:06:20.287406",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 5788,
+      "finished_at": "2026-06-08 11:06:26.076063",
+      "index": 5
+    },
+    {
+      "name": "等待",
+      "action": "wait",
+      "locator": "",
+      "fallback_locators": [],
+      "value": 2000,
+      "started_at": "2026-06-08 11:06:26.076097",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 2007,
+      "finished_at": "2026-06-08 11:06:28.083892",
+      "index": 6
+    },
+    {
+      "name": "检查页面地址",
+      "action": "assert_url",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited",
+      "started_at": "2026-06-08 11:06:28.083923",
+      "status": "failed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 12205,
+      "finished_at": "2026-06-08 11:06:40.289223",
+      "error": "assert_url failed: expected contains 'https://promotees.rakumart.cn/customerHasBeenInvited', actual 'https://promotees.rakumart.cn/login'",
+      "category": "页面未跳转或跳转地址不符合预期",
+      "reason": "执行后当前 URL 和预期不一致。",
+      "suggestion": "确认提交是否成功、登录态是否有效、预期跳转地址是否正确。",
+      "index": 7
+    }
+  ],
+  "started_at": "2026-06-08 11:06:11.586083",
+  "error": "检查页面地址失败：页面未跳转或跳转地址不符合预期。执行后当前 URL 和预期不一致。",
+  "error_category": "页面未跳转或跳转地址不符合预期",
+  "failure_reason": "执行后当前 URL 和预期不一致。",
+  "suggestion": "确认提交是否成功、登录态是否有效、预期跳转地址是否正确。",
+  "failed_step_index": 7,
+  "failed_step": {
+    "action": "assert_url",
+    "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+  },
+  "failed_step_detail": {
+    "name": "检查页面地址",
+    "action": "assert_url",
+    "locator": "",
+    "fallback_locators": [],
+    "value": "https://promotees.rakumart.cn/customerHasBeenInvited",
+    "started_at": "2026-06-08 11:06:28.083923",
+    "status": "failed",
+    "current_url": "https://promotees.rakumart.cn/login",
+    "duration_ms": 12205,
+    "finished_at": "2026-06-08 11:06:40.289223",
+    "error": "assert_url failed: expected contains 'https://promotees.rakumart.cn/customerHasBeenInvited', actual 'https://promotees.rakumart.cn/login'",
+    "category": "页面未跳转或跳转地址不符合预期",
+    "reason": "执行后当前 URL 和预期不一致。",
+    "suggestion": "确认提交是否成功、登录态是否有效、预期跳转地址是否正确。",
+    "index": 7
+  },
+  "current_url": "https://promotees.rakumart.cn/login",
+  "screenshot": "",
+  "finished_at": "2026-06-08 11:06:41.262206"
+}

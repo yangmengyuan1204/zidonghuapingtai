@@ -1,0 +1,193 @@
+{
+  "case_name": "搜索功能-按入库时间范围搜索（开始和结束日期均指定）",
+  "page_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse"
+    },
+    {
+      "name": "点击入库时间开始日期输入框并填入起始日期",
+      "action": "input",
+      "value": "2024-01-01",
+      "locator": "input[placeholder*=\"开始日期\"]",
+      "fallback_locators": [
+        "input[placeholder*=\"开始\"]",
+        ".el-date-editor:first-child input",
+        "input[placeholder*=\"入库时间\"]:first"
+      ],
+      "optional": false
+    },
+    {
+      "name": "点击入库时间结束日期输入框并填入结束日期",
+      "action": "input",
+      "value": "2024-01-31",
+      "locator": "input[placeholder*=\"结束日期\"]",
+      "fallback_locators": [
+        "input[placeholder*=\"结束\"]",
+        ".el-date-editor:last-child input",
+        "input[placeholder*=\"入库时间\"]:last"
+      ],
+      "optional": false
+    },
+    {
+      "name": "点击搜索按钮",
+      "action": "click",
+      "locator": "text=搜索",
+      "fallback_locators": [
+        "button:has-text(\"搜索\")",
+        "input[type=\"submit\"][value=\"搜索\"]",
+        "button:contains(\"搜索\")"
+      ]
+    },
+    {
+      "name": "等待搜索结果表格加载完成",
+      "action": "wait_for_selector",
+      "locator": ".el-table__body",
+      "fallback_locators": [
+        "[class*=\"table\"]",
+        ".el-table"
+      ],
+      "timeout": 10000
+    },
+    {
+      "name": "截图保存搜索结果",
+      "action": "screenshot",
+      "value": "search_result_by_date_range.png"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1781595478,
+    "datetime": "2026-06-16 15:37:58",
+    "date": "2026-06-16",
+    "uuid": "017bcbbb-88e4-443f-9fd7-f9472d06aa77",
+    "random_int": 788250,
+    "random_str": "kc3c4asv",
+    "random_phone": "13570311810",
+    "random_email": "test_788250@example.com",
+    "$timestamp": 1781595478,
+    "$datetime": "2026-06-16 15:37:58",
+    "$date": "2026-06-16",
+    "$uuid": "017bcbbb-88e4-443f-9fd7-f9472d06aa77",
+    "$random_int": 788250,
+    "$random_str": "kc3c4asv",
+    "$random_phone": "13570311810",
+    "$random_email": "test_788250@example.com",
+    "username": "Y001",
+    "password": "***"
+  },
+  "validation_issues": [
+    {
+      "severity": "warning",
+      "message": "用例缺少业务断言，执行器会跑完整步骤，但不会把结果判定为可信成功"
+    }
+  ],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "started_at": "2026-06-16 15:37:59.381170",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-cedf3e2c-1c13-481e-b86e-8722e14bcddc.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/login",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-2a9261d2-5e3e-4af3-bb16-23efe65e96f4.png",
+      "duration_ms": 2285,
+      "finished_at": "2026-06-16 15:38:01.667119",
+      "index": 1
+    },
+    {
+      "name": "点击入库时间开始日期输入框并填入起始日期",
+      "action": "input",
+      "locator": "input[placeholder*=\"开始日期\"]",
+      "fallback_locators": [
+        "input[placeholder*=\"开始\"]",
+        ".el-date-editor:first-child input",
+        "input[placeholder*=\"入库时间\"]:first"
+      ],
+      "value": "2024-01-01",
+      "started_at": "2026-06-16 15:38:02.027676",
+      "status": "failed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-5a761015-0f28-4aae-9a58-2ab2552f8bab.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/login",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "duration_ms": 46662,
+      "finished_at": "2026-06-16 15:38:48.690499",
+      "error": "未找到可用定位器：input[placeholder*=\"开始日期\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"开始日期\\\"]\").first to be visible\n；input[placeholder*=\"开始\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"开始\\\"]\").first to be visible\n；.el-date-editor:first-child input: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\".el-date-editor:first-child input\").first to be visible\n；input[placeholder*=\"入库时间\"]:first: Locator.wait_for: SyntaxError: Failed to execute 'querySelectorAll' on 'Document': 'input[placeholder*=\"入库时间\"]:first' is not a valid selector.\n    at query (<anonymous>:5334:41)\n    at <anonymous>:5344:7\n    at SelectorEvaluatorImpl._cached (<anonymous>:5121:20)\n    at SelectorEvaluatorImpl._queryCSS (<anonymous>:5331:17)\n    at SelectorEvaluatorImpl._querySimple (<anonymous>:5211:19)\n    at <anonymous>:5159:29\n    at SelectorEvaluatorImpl._cached (<anonymous>:5121:20)\n    at SelectorEvaluatorImpl.query (<anonymous>:5152:19)\n    at Object.query (<anonymous>:5366:44)\n    at <anonymous>:5324:21\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"入库时间\\\"]:first\").first to be visible\n",
+      "category": "定位器找不到",
+      "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+      "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+      "failure_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-failed-6a6d641d-52cb-4d8f-8acd-3f943e93e8e2.png",
+      "index": 2
+    }
+  ],
+  "started_at": "2026-06-16 15:37:58.168974",
+  "retry_config": {
+    "retry_count": 2,
+    "retry_interval_ms": 1000
+  },
+  "auth_context": {
+    "login_required": false,
+    "account_profile_id": null,
+    "login_url": "",
+    "removed_login_step_count": 0,
+    "login_trace": []
+  },
+  "error": "点击入库时间开始日期输入框并填入起始日期失败：定位器找不到。规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "error_category": "定位器找不到",
+  "failure_reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+  "failed_step_index": 2,
+  "failed_step": {
+    "name": "点击入库时间开始日期输入框并填入起始日期",
+    "action": "input",
+    "value": "2024-01-01",
+    "locator": "input[placeholder*=\"开始日期\"]",
+    "fallback_locators": [
+      "input[placeholder*=\"开始\"]",
+      ".el-date-editor:first-child input",
+      "input[placeholder*=\"入库时间\"]:first"
+    ],
+    "optional": false
+  },
+  "failed_step_detail": {
+    "name": "点击入库时间开始日期输入框并填入起始日期",
+    "action": "input",
+    "locator": "input[placeholder*=\"开始日期\"]",
+    "fallback_locators": [
+      "input[placeholder*=\"开始\"]",
+      ".el-date-editor:first-child input",
+      "input[placeholder*=\"入库时间\"]:first"
+    ],
+    "value": "2024-01-01",
+    "started_at": "2026-06-16 15:38:02.027676",
+    "status": "failed",
+    "current_url_before": "https://jpmanage.rakumart.cn/#/login",
+    "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+    "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-5a761015-0f28-4aae-9a58-2ab2552f8bab.png",
+    "current_url": "https://jpmanage.rakumart.cn/#/login",
+    "current_url_after": "https://jpmanage.rakumart.cn/#/login",
+    "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+    "duration_ms": 46662,
+    "finished_at": "2026-06-16 15:38:48.690499",
+    "error": "未找到可用定位器：input[placeholder*=\"开始日期\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"开始日期\\\"]\").first to be visible\n；input[placeholder*=\"开始\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"开始\\\"]\").first to be visible\n；.el-date-editor:first-child input: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\".el-date-editor:first-child input\").first to be visible\n；input[placeholder*=\"入库时间\"]:first: Locator.wait_for: SyntaxError: Failed to execute 'querySelectorAll' on 'Document': 'input[placeholder*=\"入库时间\"]:first' is not a valid selector.\n    at query (<anonymous>:5334:41)\n    at <anonymous>:5344:7\n    at SelectorEvaluatorImpl._cached (<anonymous>:5121:20)\n    at SelectorEvaluatorImpl._queryCSS (<anonymous>:5331:17)\n    at SelectorEvaluatorImpl._querySimple (<anonymous>:5211:19)\n    at <anonymous>:5159:29\n    at SelectorEvaluatorImpl._cached (<anonymous>:5121:20)\n    at SelectorEvaluatorImpl.query (<anonymous>:5152:19)\n    at Object.query (<anonymous>:5366:44)\n    at <anonymous>:5324:21\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"入库时间\\\"]:first\").first to be visible\n",
+    "category": "定位器找不到",
+    "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+    "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+    "failure_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-failed-6a6d641d-52cb-4d8f-8acd-3f943e93e8e2.png",
+    "index": 2
+  },
+  "current_url": "https://jpmanage.rakumart.cn/#/login",
+  "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\a59bda62-442f-4bfa-bab6-5c367081894f.png",
+  "finished_at": "2026-06-16 15:40:24.704589"
+}

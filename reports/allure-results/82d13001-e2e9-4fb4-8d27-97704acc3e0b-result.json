@@ -1,0 +1,22 @@
+{
+  "uuid": "82d13001-e2e9-4fb4-8d27-97704acc3e0b",
+  "name": "数据脚本-配送单国际运费列表",
+  "fullName": "api.数据脚本-配送单国际运费列表",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780556837565,
+  "stop": 1780556837565,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "82d13001-e2e9-4fb4-8d27-97704acc3e0b-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

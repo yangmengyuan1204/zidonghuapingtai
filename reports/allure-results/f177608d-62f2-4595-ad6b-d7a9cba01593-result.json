@@ -1,0 +1,22 @@
+{
+  "uuid": "f177608d-62f2-4595-ad6b-d7a9cba01593",
+  "name": "余额支付",
+  "fullName": "data_script.余额支付",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781342563058,
+  "stop": 1781342566462,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "f177608d-62f2-4595-ad6b-d7a9cba01593-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

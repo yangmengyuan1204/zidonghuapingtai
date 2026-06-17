@@ -1,0 +1,22 @@
+{
+  "uuid": "cf42074c-a216-4562-9200-a24c6cac127e",
+  "name": "商品购物车",
+  "fullName": "data_script.商品购物车",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780133110024,
+  "stop": 1780133110024,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "cf42074c-a216-4562-9200-a24c6cac127e-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

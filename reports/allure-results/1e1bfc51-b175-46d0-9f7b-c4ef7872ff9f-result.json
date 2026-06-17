@@ -1,0 +1,27 @@
+{
+  "uuid": "1e1bfc51-b175-46d0-9f7b-c4ef7872ff9f",
+  "name": "邮箱格式错误",
+  "fullName": "ui.邮箱格式错误",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781073926599,
+  "stop": 1781073926599,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "1e1bfc51-b175-46d0-9f7b-c4ef7872ff9f-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "1e1bfc51-b175-46d0-9f7b-c4ef7872ff9f-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

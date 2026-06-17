@@ -1,0 +1,27 @@
+{
+  "uuid": "cff026e9-6666-459d-8b2b-c5668a322918",
+  "name": "注册页面-必填项为空时提交失败并提示",
+  "fullName": "ui.注册页面-必填项为空时提交失败并提示",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780631972681,
+  "stop": 1780631972681,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "cff026e9-6666-459d-8b2b-c5668a322918-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "cff026e9-6666-459d-8b2b-c5668a322918-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

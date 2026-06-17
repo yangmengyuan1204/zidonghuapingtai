@@ -1,0 +1,49 @@
+{
+  "script": "仓库提出配送单",
+  "mode": "warehouse_to_delivery_create",
+  "base_url": "https://jpapi.rakumart.cn",
+  "send_num": 1,
+  "started_at": "2026-06-03 10:49:42.959043",
+  "warehouse_attempts": [],
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "selected_item": {
+    "order_detail_id": "14050711",
+    "sendable_num": 1,
+    "send_num": 1,
+    "row": {
+      "order_detail_id": "14050711",
+      "send_num": 1
+    }
+  },
+  "porder_create": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "request": {
+      "create_type": "send",
+      "porder_sn": "P2026060310494234-300001",
+      "logistics_id": "14",
+      "order_detail_id": "14050711",
+      "send_num": 1
+    },
+    "response": {
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": ""
+    }
+  },
+  "summary": {
+    "porder_sn": "P2026060310494234-300001",
+    "order_detail_id": "14050711",
+    "send_num": 1,
+    "warehouse_rows": 0,
+    "create_passed": true
+  },
+  "finished_at": "2026-06-03 10:49:44.833830"
+}

@@ -1,0 +1,1479 @@
+{
+  "script": "订单报价",
+  "mode": "cart_to_order_and_backend_quote",
+  "base_url": "https://jpapi.rakumart.cn",
+  "item_count": 25,
+  "order_shop_count": 5,
+  "order_per_shop": 5,
+  "use_shop_grouping": true,
+  "item_quantity": 10,
+  "price_cut": "0",
+  "submit_order": true,
+  "run_backend_flow": true,
+  "order_option_counts": {
+    "78": 10,
+    "79": 20,
+    "80": 30
+  },
+  "started_at": "2026-06-13 15:23:13.179345",
+  "selected_items": [
+    {
+      "cart_id": 1128259,
+      "goods_id": "659132014806",
+      "goods_title": "【加工定制】纯色涤纶斜纹布  春秋时装裤装服装里布面料",
+      "num": 10,
+      "price": "9.80",
+      "sku_id": "659132014806",
+      "spec_id": "659132014806",
+      "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+      "shop_name": "绍兴市灏宇纺织品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128258,
+      "goods_id": "655899668798",
+      "goods_title": "加工定制四面弹面透气防水加密弹力复合布沙滩防晒服装面料",
+      "num": 10,
+      "price": "8.50",
+      "sku_id": "655899668798",
+      "spec_id": "655899668798",
+      "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+      "shop_name": "绍兴市灏宇纺织品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128158,
+      "goods_id": "655931390265",
+      "goods_title": "现货 30D双层尼龙四面弹布料 户外运动服装面料 尼龙平纹弹力布料",
+      "num": 30,
+      "price": "45.00",
+      "sku_id": "4827057900380",
+      "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+      "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+      "shop_name": "绍兴市灏宇纺织品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128157,
+      "goods_id": "583227091316",
+      "goods_title": "140D尼龙斜纹四面弹校服服装面料运动弹力面料登山服耐磨户外",
+      "num": 30,
+      "price": "35.00",
+      "sku_id": "5000471270503",
+      "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+      "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+      "shop_name": "绍兴市灏宇纺织品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128156,
+      "goods_id": "632922593578",
+      "goods_title": "纯色涤纶斜纹布 240T弹力面料 春秋时装裤装服装里布面料",
+      "num": 30,
+      "price": "15.00",
+      "sku_id": "5004842743545",
+      "spec_id": "ea7cf12b6ff7593f0adfc82b78accbba",
+      "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+      "shop_name": "绍兴市灏宇纺织品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128205,
+      "goods_id": "686479000637",
+      "goods_title": "厂家成年猫粮牛肉味5斤装批发无谷猫粮成猫幼猫蓝猫通用猫粮批发",
+      "num": 10,
+      "price": "39.00",
+      "sku_id": "5074430307396",
+      "spec_id": "4d076438ec8ae07a822bbf86833b7fa7",
+      "shop_id": "BBBA0K_-sKDm0LiQ6qWUBEFaA",
+      "shop_name": "邢台酷宝宠物食品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128204,
+      "goods_id": "714588649504",
+      "goods_title": "厂家批发全价无谷冻干猫粮牛肉虾鳕鱼猫咪主食成猫幼猫通用猫咖",
+      "num": 10,
+      "price": "59.90",
+      "sku_id": "4997550144691",
+      "spec_id": "eddb2fef85124258b6034b5aaba7981c",
+      "shop_id": "BBBA0K_-sKDm0LiQ6qWUBEFaA",
+      "shop_name": "邢台酷宝宠物食品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128203,
+      "goods_id": "714582413923",
+      "goods_title": "无谷冻干猫粮成猫幼猫鱼油全价猫粮 猫咖冻干猫粮1.5kg现货",
+      "num": 10,
+      "price": "45.00",
+      "sku_id": "rakumart_6a2d01b1cdd76561",
+      "spec_id": "rakumart_6a2d01b1cdd7a666",
+      "shop_id": "BBBA0K_-sKDm0LiQ6qWUBEFaA",
+      "shop_name": "邢台酷宝宠物食品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128202,
+      "goods_id": "625206039875",
+      "goods_title": "宠物猫粮6个月以上奶糕深海鱼鱼肉幼猫咪主粮 20斤批发",
+      "num": 10,
+      "price": "158.00",
+      "sku_id": "4593219206929",
+      "spec_id": "c0cd6415322d520c362170e723c16534",
+      "shop_id": "BBBA0K_-sKDm0LiQ6qWUBEFaA",
+      "shop_name": "邢台酷宝宠物食品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128201,
+      "goods_id": "624920578225",
+      "goods_title": "宠物幼猫猫粮1-6个月奶糕深海鱼鱼肉幼猫粮 20斤",
+      "num": 20,
+      "price": "230.00",
+      "sku_id": "5773017896578",
+      "spec_id": "88fd1cd69b7c348bb3a269707694b88e",
+      "shop_id": "BBBA0K_-sKDm0LiQ6qWUBEFaA",
+      "shop_name": "邢台酷宝宠物食品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128195,
+      "goods_id": "886935374836",
+      "goods_title": "古锐特批发全价冻干小猫猫粮肠道呵护成猫幼猫通用无谷猫粮10斤",
+      "num": 10,
+      "price": "26.45",
+      "sku_id": "5734044352575",
+      "spec_id": "d160951d89f4fd63a182acbd97933720",
+      "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+      "shop_name": "山东古锐特宠物用品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128194,
+      "goods_id": "729104327576",
+      "goods_title": "古锐特批发厂家酶解鲜肉猫粮肠道呵护成猫幼猫通用3斤5斤无谷猫粮",
+      "num": 20,
+      "price": "56.99",
+      "sku_id": "5222926706623",
+      "spec_id": "5561c74ccab4ea002aec117157d82696",
+      "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+      "shop_name": "山东古锐特宠物用品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128193,
+      "goods_id": "729104327576",
+      "goods_title": "古锐特批发厂家酶解鲜肉猫粮肠道呵护成猫幼猫通用3斤5斤无谷猫粮",
+      "num": 10,
+      "price": "36.50",
+      "sku_id": "5222926706622",
+      "spec_id": "f86268ec892eca8b9d9a88a06190532c",
+      "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+      "shop_name": "山东古锐特宠物用品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128192,
+      "goods_id": "671408789058",
+      "goods_title": "古锐特猫粮宠物品牌分销益生菌配方无谷鲜肉高蛋白批发一件代发",
+      "num": 10,
+      "price": "64.20",
+      "sku_id": "5272472576625",
+      "spec_id": "e2af65cc722ee9eb6741d99413644c71",
+      "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+      "shop_name": "山东古锐特宠物用品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128191,
+      "goods_id": "669362877414",
+      "goods_title": "古锐特猫粮10kg无谷低敏配方猫舍高蛋白全阶段大包装20斤一件代发",
+      "num": 50,
+      "price": "232.80",
+      "sku_id": "4988426954694",
+      "spec_id": "afa506dfac85c510d3a81b3f1a2a198b",
+      "shop_id": "BBBx94vK2sjEjJZ_Pb-TOwgdw",
+      "shop_name": "山东古锐特宠物用品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128190,
+      "goods_id": "866475523340",
+      "goods_title": "粒健牧哥宠物食品厂家批发全价全期猫咪主粮无谷通用型拼冻干猫粮",
+      "num": 40,
+      "price": "49.90",
+      "sku_id": "6207880030665",
+      "spec_id": "dfbd6571d48a14d4be5c84fee1669191",
+      "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+      "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128189,
+      "goods_id": "866475523340",
+      "goods_title": "粒健牧哥宠物食品厂家批发全价全期猫咪主粮无谷通用型拼冻干猫粮",
+      "num": 30,
+      "price": "128.70",
+      "sku_id": "6207880030667",
+      "spec_id": "e67af385ec6dc6102dbacb230506b042",
+      "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+      "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128188,
+      "goods_id": "866475523340",
+      "goods_title": "粒健牧哥宠物食品厂家批发全价全期猫咪主粮无谷通用型拼冻干猫粮",
+      "num": 20,
+      "price": "85.80",
+      "sku_id": "6207880030664",
+      "spec_id": "fe8a7fc0e67154c62ded0a1b0999e332",
+      "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+      "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128187,
+      "goods_id": "866475523340",
+      "goods_title": "粒健牧哥宠物食品厂家批发全价全期猫咪主粮无谷通用型拼冻干猫粮",
+      "num": 10,
+      "price": "46.27",
+      "sku_id": "5944801096480",
+      "spec_id": "655532807690e18ed3c3194b51462aea",
+      "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+      "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128186,
+      "goods_id": "868248551570",
+      "goods_title": "粒健牧哥厂家批发全价全期猫粮3斤无谷通用型宠物粮拼冻干猫主粮",
+      "num": 10,
+      "price": "236.00",
+      "sku_id": "5863772206437",
+      "spec_id": "3072b191924b35f9c0b9e9e39c323343",
+      "shop_id": "BBBvIkjm7svpjYNraXr0QfFLw",
+      "shop_name": "绍兴粒健牧哥宠物用品有限公司",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128185,
+      "goods_id": "1052777103127",
+      "goods_title": "鲜鸡肉味低温烘焙猫粮成猫幼猫通用猫咪营养生骨肉高蛋白全价猫粮",
+      "num": 10,
+      "price": "469.00",
+      "sku_id": "6259008747409",
+      "spec_id": "f966a6c842e2ecda011466f3cb08610a",
+      "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+      "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128184,
+      "goods_id": "1052777103127",
+      "goods_title": "鲜鸡肉味低温烘焙猫粮成猫幼猫通用猫咪营养生骨肉高蛋白全价猫粮",
+      "num": 50,
+      "price": "276.00",
+      "sku_id": "6259008747408",
+      "spec_id": "9552a00dc09e8cc9de5e6ca543762917",
+      "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+      "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128183,
+      "goods_id": "1052777103127",
+      "goods_title": "鲜鸡肉味低温烘焙猫粮成猫幼猫通用猫咪营养生骨肉高蛋白全价猫粮",
+      "num": 40,
+      "price": "192.00",
+      "sku_id": "6259008747407",
+      "spec_id": "ca6f54a852c528cd1f664ad4bfe7a3e4",
+      "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+      "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128182,
+      "goods_id": "1052777103127",
+      "goods_title": "鲜鸡肉味低温烘焙猫粮成猫幼猫通用猫咪营养生骨肉高蛋白全价猫粮",
+      "num": 30,
+      "price": "99.00",
+      "sku_id": "6259008747406",
+      "spec_id": "3007230506cc3d68674cff9738a69df2",
+      "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+      "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+      "from_platform": "1688"
+    },
+    {
+      "cart_id": 1128181,
+      "goods_id": "1052777103127",
+      "goods_title": "鲜鸡肉味低温烘焙猫粮成猫幼猫通用猫咪营养生骨肉高蛋白全价猫粮",
+      "num": 20,
+      "price": "26.00",
+      "sku_id": "6259008747405",
+      "spec_id": "32212dc0ae2d548ef5a541f105cf5e21",
+      "shop_id": "BBBquIRB89Jk7z7nwy22u4Olg",
+      "shop_name": "绍兴市柯桥区虎妈撸猫宠物用品店",
+      "from_platform": "1688"
+    }
+  ],
+  "edits": [
+    {
+      "cart_id": 1128259,
+      "goods_id": "659132014806",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128258,
+      "goods_id": "655899668798",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128158,
+      "goods_id": "655931390265",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128157,
+      "goods_id": "583227091316",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128156,
+      "goods_id": "632922593578",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128205,
+      "goods_id": "686479000637",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128204,
+      "goods_id": "714588649504",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128203,
+      "goods_id": "714582413923",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128202,
+      "goods_id": "625206039875",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128201,
+      "goods_id": "624920578225",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128195,
+      "goods_id": "886935374836",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128194,
+      "goods_id": "729104327576",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128193,
+      "goods_id": "729104327576",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128192,
+      "goods_id": "671408789058",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128191,
+      "goods_id": "669362877414",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128190,
+      "goods_id": "866475523340",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128189,
+      "goods_id": "866475523340",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128188,
+      "goods_id": "866475523340",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128187,
+      "goods_id": "866475523340",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128186,
+      "goods_id": "868248551570",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128185,
+      "goods_id": "1052777103127",
+      "num": 10,
+      "success": true,
+      "skipped": true,
+      "reason": "quantity_already_matched"
+    },
+    {
+      "cart_id": 1128184,
+      "goods_id": "1052777103127",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128183,
+      "goods_id": "1052777103127",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128182,
+      "goods_id": "1052777103127",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    },
+    {
+      "cart_id": 1128181,
+      "goods_id": "1052777103127",
+      "num": 10,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data": true
+    }
+  ],
+  "create": {
+    "save": {
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data.order_sn": "2026061315231596-300001",
+      "data.message": "新订单创建成功",
+      "order_sn": "2026061315231596-300001"
+    },
+    "send": {
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "data.order_sn": "2026061315231596-300001",
+      "data.message": "新订单创建成功",
+      "order_sn": "2026061315231596-300001"
+    }
+  },
+  "login": {
+    "success": true,
+    "account": "userID/300001In",
+    "client_tool": "1",
+    "token_extracted": true,
+    "cached": true
+  },
+  "cart_list": {
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "data_count": 54,
+    "goods_count": 241,
+    "selected_count": 25,
+    "selection": {
+      "expected_shop_count": 5,
+      "expected_per_shop": 5,
+      "expected_total": 25,
+      "available_shop_count": 54,
+      "ready_shop_count": 28,
+      "selected_shop_count": 5,
+      "selected_count": 25,
+      "shortage_count": 0,
+      "selected_shop_keys": [
+        "shop_id:BBB0aWLf1qFKf84jzk1w-L15w",
+        "shop_id:BBBA0K_-sKDm0LiQ6qWUBEFaA",
+        "shop_id:BBBx94vK2sjEjJZ_Pb-TOwgdw",
+        "shop_id:BBBvIkjm7svpjYNraXr0QfFLw",
+        "shop_id:BBBquIRB89Jk7z7nwy22u4Olg"
+      ],
+      "shop_counts": {
+        "shop_id:BBB0aWLf1qFKf84jzk1w-L15w": 9,
+        "shop_id:BBBA0K_-sKDm0LiQ6qWUBEFaA": 10,
+        "shop_id:BBBx94vK2sjEjJZ_Pb-TOwgdw": 10,
+        "shop_id:BBBvIkjm7svpjYNraXr0QfFLw": 10,
+        "shop_id:BBBquIRB89Jk7z7nwy22u4Olg": 10,
+        "shop_id:BBBxgrN-VbO0_h7T4Aey235Vw": 5,
+        "shop_id:BBBp_kYIr3bI3KNVU799TfIMw": 7,
+        "shop_id:BBBQBya0i2b4ESesASTl4mgfw": 5,
+        "shop_id:BBB1YWXRQvAoZ2TENo03wLezQ": 1,
+        "shop_id:BBBiBEvv8WzfJW7rf_AQsmoiQ": 1,
+        "shop_id:BBBinaCEWCi_bM-nEwqkMZVrg": 1,
+        "shop_id:BBB9RO3JsB1z2tJR0IeuDuqbw": 3,
+        "shop_id:BBBR9zC-PHkxU1OhoaiomBMCA": 8,
+        "shop_id:BBBdq1T8gJ8WRnpCsnlSTiMBA": 14,
+        "shop_id:BBBfVszXDO8wymcwQB92emPgQ": 1,
+        "shop_id:BBBNru7YpbeedL8yVNBWii8Aw": 1,
+        "shop_id:BBBUkl_n_mM6R4gpdG_zxnYkw": 3,
+        "shop_id:BBBbsxxLlhkzyHWEwDxWF7kNg": 5,
+        "shop_id:BBBD7KPYi98Rd01R_Vwnfytzw": 5,
+        "shop_id:BBB0tMC05Q7YM13XsD1uq1PXw": 2,
+        "shop_id:BBB8Wcbt3wdOy4bNKNBzP3Uzw": 2,
+        "shop_id:BBB0frRTN7G8Ny_eTTR-Qvy6Q": 1,
+        "shop_id:BBBkovzMCk89zSzJ4hnkIcP6Q": 6,
+        "shop_id:BBB89n9Qq_gVPyuMF8n7IVy4g": 2,
+        "shop_id:BBBHRFQH5xNw-8DbNjwYibJPQ": 16,
+        "shop_id:BBBpV73Ki7OdR378hgDSedcPg": 3,
+        "shop_id:BBB06HsdRXM5kY7WL0gx6xu9g": 5,
+        "shop_id:BBBuRw73hNv8wUeyXbNF5hHcg": 11,
+        "shop_id:BBB1S7x9ij-u5r4d8TP7mzFdw": 5,
+        "shop_id:BBBmxUl6o2Pn73f0R-jTnJEIA": 3,
+        "shop_id:BBBErXn3fN2FXLZapouUMlAsg": 5,
+        "shop_id:BBBjV3UXGjrx2TMYVW40zP1qw": 5,
+        "shop_id:BBBY7bwKs_gO00OkFTQCFHlRQ": 5,
+        "shop_id:BBB9XbXWNPwYbOL2o0-YlzciA": 5,
+        "shop_id:BBB3DZiNiYnTTummpAv-y_IIA": 5,
+        "shop_id:BBB1Kh67P5V4aKAGzY2cM5KFg": 5,
+        "shop_id:BBB--kZUCX4RxYwBmLfIZRdjQ": 5,
+        "shop_id:BBBwC2Xl-HKRR1tcX8VQubLcQ": 5,
+        "shop_id:BBBGdHoE84_I8vlEndNkNUEeQ": 6,
+        "shop_id:BBBAo1J7ZWN_Awq2PAoXecVog": 7,
+        "shop_id:BBBqUSNWlOMLbjdhCQvkiEwKw": 1,
+        "shop_id:BBBv7fDMmDBpLWxrWlBSVcb2A": 1,
+        "shop_id:BBBRZ092IB2LJCdI7PiZYaeMA": 1,
+        "shop_id:BBBSWXu2ggMgeQcI0VoQJtcuw": 1,
+        "shop_id:BBBXC6_5Sw5nlnWsPCiqeZEgg": 1,
+        "shop_id:BBBCMo9ZGGC9UPX5-GSYUapSA": 2,
+        "shop_id:BBBNHRY7JifSc4M0Yh61Y8Qwg": 1,
+        "shop_id:BBBdTbMPpmpnz-lwwnDzbPIGQ": 1,
+        "shop_id:BBBgQA9rCUn878SmclvhvYI4A": 4,
+        "shop_id:BBB9i8DWTYuy8xSbluKya3CLw": 1,
+        "shop_id:10010": 6,
+        "shop_id:BBB51WfbGTe5zf2KRpzmMIL-g": 1,
+        "shop_id:BBBv-F_tGGY6xKdcjMWM8u-HA": 1,
+        "shop_id:BBBILaFNHoaWx3IH-Us3qZ9bw": 1
+      }
+    }
+  },
+  "order_option_list": {
+    "source_path": "/client/order.optionList",
+    "success": true,
+    "code": 0,
+    "msg": "操作が成功しました",
+    "data_count": 16,
+    "option_count": 16
+  },
+  "order_options": {
+    "available_options": [
+      {
+        "key": "78",
+        "id": 78,
+        "name": "详细检品",
+        "label": "详细检品",
+        "name_translate": "詳細検品",
+        "price": 4,
+        "price_type": 1,
+        "unit": "%"
+      },
+      {
+        "key": "79",
+        "id": 79,
+        "name": "针检",
+        "label": "针检",
+        "name_translate": "通常検針サービス",
+        "price": "0.80",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "80",
+        "id": 80,
+        "name": "X线针检",
+        "label": "X线针检",
+        "name_translate": "X線検針サービス",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "81",
+        "id": 81,
+        "name": "X线针检往返运费",
+        "label": "X线针检往返运费",
+        "name_translate": "X線検針会社までの国内往復送料",
+        "price": "0.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "82",
+        "id": 82,
+        "name": "做布标",
+        "label": "做布标",
+        "name_translate": "織りネーム作成",
+        "price": "0.40",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "83",
+        "id": 83,
+        "name": "取布标",
+        "label": "取布标",
+        "name_translate": "織りネーム外し",
+        "price": 0.8,
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "84",
+        "id": 84,
+        "name": "缝布标",
+        "label": "缝布标",
+        "name_translate": "織りネーム縫い付け",
+        "price": 1,
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "85",
+        "id": 85,
+        "name": "做水洗标",
+        "label": "做水洗标",
+        "name_translate": "洗濯タグ作成",
+        "price": "0.16",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "86",
+        "id": 86,
+        "name": "取水洗标",
+        "label": "取水洗标",
+        "name_translate": "洗濯タグ外し",
+        "price": "0.80",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "87",
+        "id": 87,
+        "name": "缝水洗标",
+        "label": "缝水洗标",
+        "name_translate": "洗濯タグ縫付け",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "88",
+        "id": 88,
+        "name": "做吊牌",
+        "label": "做吊牌",
+        "name_translate": "下げ札作成",
+        "price": "0.12",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "89",
+        "id": 89,
+        "name": "挂吊牌",
+        "label": "挂吊牌",
+        "name_translate": "下げ札取り付け",
+        "price": 0.5,
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "90",
+        "id": 90,
+        "name": "做贴纸",
+        "label": "做贴纸",
+        "name_translate": "LOGOシール作成",
+        "price": "0.27",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "91",
+        "id": 91,
+        "name": "贴贴纸",
+        "label": "贴贴纸",
+        "name_translate": "LOGOシール貼り付け",
+        "price": "0.50",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "92",
+        "id": 92,
+        "name": "压缩包装操作费",
+        "label": "压缩包装操作费",
+        "name_translate": "圧縮包装*圧縮袋別途費用",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "93",
+        "id": 93,
+        "name": "压缩袋费用",
+        "label": "压缩袋费用",
+        "name_translate": "圧縮袋",
+        "price": "0.00",
+        "price_type": 0,
+        "unit": "元"
+      }
+    ],
+    "selected_options": [
+      {
+        "key": "78",
+        "id": 78,
+        "name": "详细检品",
+        "label": "详细检品",
+        "name_translate": "詳細検品",
+        "price": 4,
+        "price_type": 1,
+        "unit": "%",
+        "num": 10
+      },
+      {
+        "key": "79",
+        "id": 79,
+        "name": "针检",
+        "label": "针检",
+        "name_translate": "通常検針サービス",
+        "price": "0.80",
+        "price_type": 0,
+        "unit": "元",
+        "num": 20
+      },
+      {
+        "key": "80",
+        "id": 80,
+        "name": "X线针检",
+        "label": "X线针检",
+        "name_translate": "X線検針サービス",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元",
+        "num": 30
+      }
+    ],
+    "counts": {
+      "78": 10,
+      "79": 20,
+      "80": 30
+    },
+    "applied_detail_count": 25,
+    "missing": []
+  },
+  "backend": {
+    "order_sn": "2026061315231596-300001",
+    "steps": [],
+    "login": {
+      "success": true,
+      "code": 0,
+      "msg": "登录成功",
+      "account": "Y001",
+      "token_extracted": true
+    },
+    "detail_before": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data.order_sn": "2026061315231596-300001",
+      "order_id": 813944,
+      "order_sn": "2026061315231596-300001",
+      "status": 20,
+      "statusName": null,
+      "detail_count": 25,
+      "details": [
+        {
+          "id": 14051052,
+          "goods_id": "659132014806",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051053,
+          "goods_id": "655899668798",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051054,
+          "goods_id": "655931390265",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051055,
+          "goods_id": "583227091316",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051056,
+          "goods_id": "632922593578",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051057,
+          "goods_id": "686479000637",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051058,
+          "goods_id": "714588649504",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051059,
+          "goods_id": "714582413923",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051060,
+          "goods_id": "625206039875",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051061,
+          "goods_id": "624920578225",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    },
+    "translate": {
+      "success": true,
+      "code": 0,
+      "msg": "翻译成功"
+    },
+    "detail_after_translate": {
+      "order_id": 813944,
+      "order_sn": "2026061315231596-300001",
+      "status": 21,
+      "statusName": null,
+      "detail_count": 25,
+      "details": [
+        {
+          "id": 14051052,
+          "goods_id": "659132014806",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051053,
+          "goods_id": "655899668798",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051054,
+          "goods_id": "655931390265",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051055,
+          "goods_id": "583227091316",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051056,
+          "goods_id": "632922593578",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051057,
+          "goods_id": "686479000637",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051058,
+          "goods_id": "714588649504",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051059,
+          "goods_id": "714582413923",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051060,
+          "goods_id": "625206039875",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051061,
+          "goods_id": "624920578225",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    },
+    "confirm": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 25
+    },
+    "detail_after_confirm": {
+      "order_id": 813944,
+      "order_sn": "2026061315231596-300001",
+      "status": 22,
+      "statusName": null,
+      "detail_count": 25,
+      "details": [
+        {
+          "id": 14051052,
+          "goods_id": "659132014806",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051053,
+          "goods_id": "655899668798",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051054,
+          "goods_id": "655931390265",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051055,
+          "goods_id": "583227091316",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051056,
+          "goods_id": "632922593578",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051057,
+          "goods_id": "686479000637",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051058,
+          "goods_id": "714588649504",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051059,
+          "goods_id": "714582413923",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051060,
+          "goods_id": "625206039875",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051061,
+          "goods_id": "624920578225",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    },
+    "offer": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 25
+    },
+    "detail_after_offer": {
+      "order_id": 813944,
+      "order_sn": "2026061315231596-300001",
+      "status": 30,
+      "statusName": null,
+      "detail_count": 25,
+      "details": [
+        {
+          "id": 14051052,
+          "goods_id": "659132014806",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051053,
+          "goods_id": "655899668798",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051054,
+          "goods_id": "655931390265",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051055,
+          "goods_id": "583227091316",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051056,
+          "goods_id": "632922593578",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051057,
+          "goods_id": "686479000637",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051058,
+          "goods_id": "714588649504",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051059,
+          "goods_id": "714582413923",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051060,
+          "goods_id": "625206039875",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051061,
+          "goods_id": "624920578225",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    }
+  },
+  "duration_ms": 13161,
+  "summary": {
+    "order_sn": "2026061315231596-300001",
+    "selected_count": 25,
+    "item_quantity": 10,
+    "submit_order": true,
+    "run_backend_flow": true,
+    "cart_ids": [
+      1128259,
+      1128258,
+      1128158,
+      1128157,
+      1128156,
+      1128205,
+      1128204,
+      1128203,
+      1128202,
+      1128201,
+      1128195,
+      1128194,
+      1128193,
+      1128192,
+      1128191,
+      1128190,
+      1128189,
+      1128188,
+      1128187,
+      1128186,
+      1128185,
+      1128184,
+      1128183,
+      1128182,
+      1128181
+    ],
+    "goods_ids": [
+      "659132014806",
+      "655899668798",
+      "655931390265",
+      "583227091316",
+      "632922593578",
+      "686479000637",
+      "714588649504",
+      "714582413923",
+      "625206039875",
+      "624920578225",
+      "886935374836",
+      "729104327576",
+      "729104327576",
+      "671408789058",
+      "669362877414",
+      "866475523340",
+      "866475523340",
+      "866475523340",
+      "866475523340",
+      "868248551570",
+      "1052777103127",
+      "1052777103127",
+      "1052777103127",
+      "1052777103127",
+      "1052777103127"
+    ],
+    "order_options": [
+      {
+        "key": "78",
+        "id": 78,
+        "name": "详细检品",
+        "label": "详细检品",
+        "name_translate": "詳細検品",
+        "price": 4,
+        "price_type": 1,
+        "unit": "%",
+        "num": 10
+      },
+      {
+        "key": "79",
+        "id": 79,
+        "name": "针检",
+        "label": "针检",
+        "name_translate": "通常検針サービス",
+        "price": "0.80",
+        "price_type": 0,
+        "unit": "元",
+        "num": 20
+      },
+      {
+        "key": "80",
+        "id": 80,
+        "name": "X线针检",
+        "label": "X线针检",
+        "name_translate": "X線検針サービス",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元",
+        "num": 30
+      }
+    ],
+    "order_option_applied_detail_count": 25,
+    "expected_shop_count": 5,
+    "expected_per_shop": 5,
+    "selected_shop_count": 5,
+    "available_shop_count": 54,
+    "ready_shop_count": 28,
+    "backend_passed": true,
+    "backend_steps": [
+      "login",
+      "detail",
+      "translate",
+      "confirm",
+      "offer"
+    ],
+    "quote_unit_price": "10",
+    "backend_status": 30,
+    "duration_ms": 13161
+  },
+  "finished_at": "2026-06-13 15:23:26.341106"
+}

@@ -1,0 +1,27 @@
+{
+  "uuid": "67c535aa-8427-43fa-a199-71ffc2a3a1ae",
+  "name": "已注册账号重复注册",
+  "fullName": "ui.已注册账号重复注册",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781073077089,
+  "stop": 1781073077089,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "67c535aa-8427-43fa-a199-71ffc2a3a1ae-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "67c535aa-8427-43fa-a199-71ffc2a3a1ae-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

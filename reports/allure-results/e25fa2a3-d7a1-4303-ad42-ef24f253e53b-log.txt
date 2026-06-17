@@ -1,0 +1,256 @@
+{
+  "case_name": "搜索功能-按订单号精确搜索",
+  "page_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse"
+    },
+    {
+      "name": "在订单号输入框输入完整订单号",
+      "action": "input",
+      "locator": "input[placeholder=\"请输入订单号\"]",
+      "value": "{{orderNumber}}",
+      "fallback_locators": [
+        "input[placeholder=\"订单号\"]",
+        "input[aria-label=\"订单号搜索\"]",
+        "input[placeholder*=\"订单\"]"
+      ],
+      "timeout": 5000,
+      "optional": false
+    },
+    {
+      "name": "点击搜索按钮",
+      "action": "click",
+      "locator": "text=搜索",
+      "fallback_locators": [
+        "button:has-text(\"搜索\")",
+        "button[aria-label=\"搜索\"]",
+        "span:has-text(\"搜索\")"
+      ],
+      "timeout": 5000,
+      "optional": false
+    },
+    {
+      "name": "验证表格仅显示该订单号对应的数据",
+      "action": "text_assert",
+      "locator": "text={{orderNumber}}",
+      "value": "{{orderNumber}}",
+      "fallback_locators": [
+        "table tbody:has-text(\"{{orderNumber}}\")",
+        "div[class*=\"table\"]:has-text(\"{{orderNumber}}\")",
+        "tr:has-text(\"{{orderNumber}}\")"
+      ],
+      "timeout": 10000,
+      "optional": false
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1781596126,
+    "datetime": "2026-06-16 15:48:46",
+    "date": "2026-06-16",
+    "uuid": "a358d44f-340d-43aa-9ee8-b6034835d35b",
+    "random_int": 484271,
+    "random_str": "e20pnz1f",
+    "random_phone": "13225643722",
+    "random_email": "test_484271@example.com",
+    "$timestamp": 1781596126,
+    "$datetime": "2026-06-16 15:48:46",
+    "$date": "2026-06-16",
+    "$uuid": "a358d44f-340d-43aa-9ee8-b6034835d35b",
+    "$random_int": 484271,
+    "$random_str": "e20pnz1f",
+    "$random_phone": "13225643722",
+    "$random_email": "test_484271@example.com",
+    "username": "Y001",
+    "password": "***"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "started_at": "2026-06-16 15:49:24.777457",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 首页 关联系统 汇率:0语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页 正在加载，请稍等...",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-814cc938-34ce-4829-bc33-c9d6f614933a.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 首页 关联系统 汇率:0语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页 正在加载，请稍等...",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-481780ff-8b9c-41b9-8691-44036b21c1ef.png",
+      "duration_ms": 477,
+      "finished_at": "2026-06-16 15:49:25.254614",
+      "index": 1
+    },
+    {
+      "name": "在订单号输入框输入完整订单号",
+      "action": "input",
+      "locator": "input[placeholder=\"请输入订单号\"]",
+      "fallback_locators": [
+        "input[placeholder=\"订单号\"]",
+        "input[aria-label=\"订单号搜索\"]",
+        "input[placeholder*=\"订单\"]"
+      ],
+      "value": "{{orderNumber}}",
+      "started_at": "2026-06-16 15:49:25.618047",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 首页 关联系统 汇率:0语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页 正在加载，请稍等...",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-bd1aa0e1-694d-4505-857d-c775197b94e1.png",
+      "used_locator": "input[placeholder=\"订单号\"]",
+      "matched_count": 1,
+      "healed": true,
+      "original_locator": "input[placeholder=\"请输入订单号\"]",
+      "suggested_locator": "input[placeholder=\"订单号\"]",
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-a919f51a-b87a-42e1-8106-3e5f0ae2e800.png",
+      "duration_ms": 5404,
+      "finished_at": "2026-06-16 15:49:31.022794",
+      "index": 2
+    },
+    {
+      "name": "点击搜索按钮",
+      "action": "click",
+      "locator": "text=搜索",
+      "fallback_locators": [
+        "button:has-text(\"搜索\")",
+        "button[aria-label=\"搜索\"]",
+        "span:has-text(\"搜索\")",
+        "a:has-text(\"搜索\")",
+        "[role=\"button\"]:has-text(\"搜索\")",
+        "input[type=\"button\"][value*=\"搜索\"]",
+        "input[type=\"submit\"][value*=\"搜索\"]"
+      ],
+      "value": null,
+      "started_at": "2026-06-16 15:49:31.480713",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-b7099af0-d636-4d05-a9c2-ddabf9c23f88.png",
+      "used_locator": "text=搜索",
+      "matched_count": 1,
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页 正在加载，请稍等...",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-f48a74f4-4ea5-43a4-bf0f-23c353638ccf.png",
+      "duration_ms": 433,
+      "finished_at": "2026-06-16 15:49:31.912911",
+      "index": 3
+    },
+    {
+      "name": "验证表格仅显示该订单号对应的数据",
+      "action": "text_assert",
+      "locator": "text={{orderNumber}}",
+      "fallback_locators": [
+        "table tbody:has-text(\"{{orderNumber}}\")",
+        "div[class*=\"table\"]:has-text(\"{{orderNumber}}\")",
+        "tr:has-text(\"{{orderNumber}}\")",
+        "button:has-text(\"{{orderNumber}}\")",
+        "a:has-text(\"{{orderNumber}}\")",
+        "[role=\"button\"]:has-text(\"{{orderNumber}}\")",
+        "input[type=\"button\"][value*=\"{{orderNumber}}\"]",
+        "input[type=\"submit\"][value*=\"{{orderNumber}}\"]"
+      ],
+      "value": "{{orderNumber}}",
+      "started_at": "2026-06-16 15:49:32.268578",
+      "status": "failed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_before": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页 正在加载，请稍等...",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-17c3fe34-a98b-491d-b7a8-325e19b64351.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页",
+      "duration_ms": 137165,
+      "finished_at": "2026-06-16 15:51:49.434476",
+      "error": "未找到可用定位器：a:has-text(\"{{orderNumber}}\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"a:has-text(\\\"{{orderNumber}}\\\")\").first to be visible\n；[role=\"button\"]:has-text(\"{{orderNumber}}\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"[role=\\\"button\\\"]:has-text(\\\"{{orderNumber}}\\\")\").first to be visible\n；input[type=\"button\"][value*=\"{{orderNumber}}\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"button\\\"][value*=\\\"{{orderNumber}}\\\"]\").first to be visible\n；input[type=\"submit\"][value*=\"{{orderNumber}}\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"submit\\\"][value*=\\\"{{orderNumber}}\\\"]\").first to be visible\n",
+      "category": "定位器找不到",
+      "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+      "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+      "failure_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-failed-beb129ec-f8ea-4418-9ed3-22fc2658f12b.png",
+      "index": 4
+    }
+  ],
+  "started_at": "2026-06-16 15:48:46.668406",
+  "retry_config": {
+    "retry_count": 2,
+    "retry_interval_ms": 1000
+  },
+  "auth_context": {
+    "login_required": true,
+    "account_profile_id": 2,
+    "login_url": "",
+    "removed_login_step_count": 0,
+    "login_trace": [
+      "打开登录页：https://jpmanage.rakumart.cn/#/login",
+      "已填写登录账号：input[type=\"text\"]",
+      "已填写登录密码：input[placeholder=\"请输入密码\"]",
+      "已点击登录按钮：text=登录",
+      "首次提交后当前页面：https://jpmanage.rakumart.cn/#/login",
+      "首次点击后仍在登录页，已尝试按 Enter 再次提交",
+      "Enter 提交后当前页面：https://jpmanage.rakumart.cn/#/login",
+      "Enter 提交后仍在登录页，已尝试强制点击登录按钮",
+      "强制点击后当前页面：https://jpmanage.rakumart.cn/#/login",
+      "登录后当前页面：https://jpmanage.rakumart.cn/#/homePage"
+    ]
+  },
+  "error": "验证表格仅显示该订单号对应的数据失败：定位器找不到。规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "error_category": "定位器找不到",
+  "failure_reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+  "failed_step_index": 4,
+  "failed_step": {
+    "name": "验证表格仅显示该订单号对应的数据",
+    "action": "text_assert",
+    "locator": "text={{orderNumber}}",
+    "value": "{{orderNumber}}",
+    "fallback_locators": [
+      "table tbody:has-text(\"{{orderNumber}}\")",
+      "div[class*=\"table\"]:has-text(\"{{orderNumber}}\")",
+      "tr:has-text(\"{{orderNumber}}\")"
+    ],
+    "timeout": 10000,
+    "optional": false
+  },
+  "failed_step_detail": {
+    "name": "验证表格仅显示该订单号对应的数据",
+    "action": "text_assert",
+    "locator": "text={{orderNumber}}",
+    "fallback_locators": [
+      "table tbody:has-text(\"{{orderNumber}}\")",
+      "div[class*=\"table\"]:has-text(\"{{orderNumber}}\")",
+      "tr:has-text(\"{{orderNumber}}\")",
+      "button:has-text(\"{{orderNumber}}\")",
+      "a:has-text(\"{{orderNumber}}\")",
+      "[role=\"button\"]:has-text(\"{{orderNumber}}\")",
+      "input[type=\"button\"][value*=\"{{orderNumber}}\"]",
+      "input[type=\"submit\"][value*=\"{{orderNumber}}\"]"
+    ],
+    "value": "{{orderNumber}}",
+    "started_at": "2026-06-16 15:49:32.268578",
+    "status": "failed",
+    "current_url_before": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+    "visible_text_before": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页 正在加载，请稍等...",
+    "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-17c3fe34-a98b-491d-b7a8-325e19b64351.png",
+    "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+    "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+    "visible_text_after": "折叠面板 组织架构 部门列表 用户列表 角色列表 检品比例一览表 首页 组织架构 订单 签收 资金 仓库 运维 客户管理 日本事务所 关联系统 汇率:21.2语言 : 大舘 仓库/ 长存仓库 搜索重置 库存导出退回普通仓库提出配送单 No 客户信息 箱号 库位 箱内SKU数 箱内商品数 实际重量(kg) 箱子尺寸 入库时间-开始 保管天数 箱内商品价值（元） 已产生仓储费（元） 待支付仓储费（元） 装箱操作人 客户对应人 共 0 条 1 前往页",
+    "duration_ms": 137165,
+    "finished_at": "2026-06-16 15:51:49.434476",
+    "error": "未找到可用定位器：a:has-text(\"{{orderNumber}}\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"a:has-text(\\\"{{orderNumber}}\\\")\").first to be visible\n；[role=\"button\"]:has-text(\"{{orderNumber}}\"): Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"[role=\\\"button\\\"]:has-text(\\\"{{orderNumber}}\\\")\").first to be visible\n；input[type=\"button\"][value*=\"{{orderNumber}}\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"button\\\"][value*=\\\"{{orderNumber}}\\\"]\").first to be visible\n；input[type=\"submit\"][value*=\"{{orderNumber}}\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"submit\\\"][value*=\\\"{{orderNumber}}\\\"]\").first to be visible\n",
+    "category": "定位器找不到",
+    "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+    "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+    "failure_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-failed-beb129ec-f8ea-4418-9ed3-22fc2658f12b.png",
+    "index": 4
+  },
+  "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+  "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\002e9872-6e01-4e72-9773-bdb76917c057.png",
+  "finished_at": "2026-06-16 15:51:49.666557"
+}

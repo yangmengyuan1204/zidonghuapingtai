@@ -1,0 +1,27 @@
+{
+  "uuid": "ed257f24-cedb-4ec2-a3dc-30c14eb75200",
+  "name": "必填项为空-密码为空",
+  "fullName": "ui.必填项为空-密码为空",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781073156200,
+  "stop": 1781073156200,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "ed257f24-cedb-4ec2-a3dc-30c14eb75200-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "ed257f24-cedb-4ec2-a3dc-30c14eb75200-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

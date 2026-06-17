@@ -1,0 +1,48 @@
+{
+  "case_name": "注册页面正常流程-输入有效手机号、验证码、密码并勾选协议后提交成功",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "wait_for_selector",
+      "locator": "body"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "wait",
+      "value": 1000
+    },
+    {
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780630619,
+    "datetime": "2026-06-05 11:36:59",
+    "date": "2026-06-05",
+    "uuid": "6c1fe540-41ee-48af-afce-8672685ca490",
+    "random_int": 575989,
+    "random_str": "ezoubhu2",
+    "random_phone": "13664212420",
+    "random_email": "test_575989@example.com",
+    "$timestamp": 1780630619,
+    "$datetime": "2026-06-05 11:36:59",
+    "$date": "2026-06-05",
+    "$uuid": "6c1fe540-41ee-48af-afce-8672685ca490",
+    "$random_int": 575989,
+    "$random_str": "ezoubhu2",
+    "$random_phone": "13664212420",
+    "$random_email": "test_575989@example.com"
+  },
+  "started_at": "2026-06-05 11:36:59.541670",
+  "error": "Playwright 不可用：No module named 'greenlet._greenlet'",
+  "hint": "请先执行：python -m playwright install",
+  "finished_at": "2026-06-05 11:36:59.559415"
+}

@@ -1,0 +1,22 @@
+{
+  "uuid": "9915a9a9-6496-4c92-abcd-8aeacfd01977",
+  "name": "权限验证：非推广人账号访问",
+  "fullName": "ui.权限验证：非推广人账号访问",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780900070654,
+  "stop": 1780900070654,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "9915a9a9-6496-4c92-abcd-8aeacfd01977-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

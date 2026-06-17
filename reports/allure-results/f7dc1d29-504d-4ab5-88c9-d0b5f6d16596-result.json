@@ -1,0 +1,22 @@
+{
+  "uuid": "f7dc1d29-504d-4ab5-88c9-d0b5f6d16596",
+  "name": "注册页面-必填项为空时提交失败并提示",
+  "fullName": "ui.注册页面-必填项为空时提交失败并提示",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780630619567,
+  "stop": 1780630619567,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "f7dc1d29-504d-4ab5-88c9-d0b5f6d16596-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

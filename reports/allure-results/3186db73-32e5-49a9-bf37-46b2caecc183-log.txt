@@ -1,0 +1,41 @@
+{
+  "case_name": "必填项为空-邮箱/手机号为空",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "wait_for_selector",
+      "locator": "body"
+    },
+    {
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780636448,
+    "datetime": "2026-06-05 13:14:08",
+    "date": "2026-06-05",
+    "uuid": "eb4b9309-17ab-4235-b732-b935cfafc113",
+    "random_int": 213433,
+    "random_str": "2270f7gm",
+    "random_phone": "13872564544",
+    "random_email": "test_213433@example.com",
+    "$timestamp": 1780636448,
+    "$datetime": "2026-06-05 13:14:08",
+    "$date": "2026-06-05",
+    "$uuid": "eb4b9309-17ab-4235-b732-b935cfafc113",
+    "$random_int": 213433,
+    "$random_str": "2270f7gm",
+    "$random_phone": "13872564544",
+    "$random_email": "test_213433@example.com",
+    "username": "",
+    "password": "***",
+    "code": ""
+  },
+  "started_at": "2026-06-05 13:14:08.851470",
+  "finished_at": "2026-06-05 13:14:13.611813"
+}

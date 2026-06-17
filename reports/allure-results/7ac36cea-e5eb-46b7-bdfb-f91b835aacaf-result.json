@@ -1,0 +1,22 @@
+{
+  "uuid": "7ac36cea-e5eb-46b7-bdfb-f91b835aacaf",
+  "name": "数据脚本-配送单详情",
+  "fullName": "api.数据脚本-配送单详情",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780556837401,
+  "stop": 1780556837401,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "7ac36cea-e5eb-46b7-bdfb-f91b835aacaf-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

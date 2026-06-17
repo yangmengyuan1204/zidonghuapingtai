@@ -1,0 +1,27 @@
+{
+  "uuid": "088765a6-9a9e-45b2-a429-8dd42ae644e9",
+  "name": "正常注册流程-邮箱注册",
+  "fullName": "ui.正常注册流程-邮箱注册",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780636443969,
+  "stop": 1780636443969,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "088765a6-9a9e-45b2-a429-8dd42ae644e9-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "088765a6-9a9e-45b2-a429-8dd42ae644e9-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

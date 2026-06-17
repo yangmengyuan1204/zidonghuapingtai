@@ -1,0 +1,22 @@
+{
+  "uuid": "9543d1e7-1252-46b4-ac4b-510aaab74266",
+  "name": "数据脚本-配送单保存物流单号",
+  "fullName": "api.数据脚本-配送单保存物流单号",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780556837875,
+  "stop": 1780556837875,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "9543d1e7-1252-46b4-ac4b-510aaab74266-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

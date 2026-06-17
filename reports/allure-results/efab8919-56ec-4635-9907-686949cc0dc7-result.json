@@ -1,0 +1,27 @@
+{
+  "uuid": "efab8919-56ec-4635-9907-686949cc0dc7",
+  "name": "权限验证：未登录访问",
+  "fullName": "ui.权限验证：未登录访问",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780644627528,
+  "stop": 1780644627528,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "efab8919-56ec-4635-9907-686949cc0dc7-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "efab8919-56ec-4635-9907-686949cc0dc7-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,423 @@
+{
+  "script": "商品购物车",
+  "keyword": "水杯",
+  "keyword_candidates": [
+    "水杯",
+    "鞋",
+    "衣服",
+    "包",
+    "文具",
+    "鞋子",
+    "手表",
+    "项链",
+    "耳环",
+    "帽子",
+    "袜子",
+    "收纳",
+    "usp",
+    "裙子",
+    "手机壳"
+  ],
+  "shop_types": [
+    "1688",
+    "taobao",
+    "tmall",
+    "rakumart"
+  ],
+  "per_shop": 5,
+  "candidate_limit": 15,
+  "candidate_target": 10,
+  "keyword_max_rounds": 6,
+  "empty_search_stop": 6,
+  "boost_keywords": [
+    "衣服",
+    "鞋子",
+    "包"
+  ],
+  "started_at": "2026-06-01 13:56:06.876589",
+  "shops": [
+    {
+      "shop_type": "1688",
+      "added": [
+        {
+          "goods_id": 821224955369,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 718260141578,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 718738551848,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 718260141964,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        },
+        {
+          "goods_id": 718535226455,
+          "shop_type": "1688",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        }
+      ],
+      "errors": [
+        {
+          "goods_id": 817897486078,
+          "error": "商品详情未找到可用库存/SKU"
+        }
+      ],
+      "searches": [
+        {
+          "keyword": "水杯",
+          "shop_type": "1688",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 20
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 15,
+        "candidate_limit": 15,
+        "candidate_target": 10,
+        "keyword_max_rounds": 6,
+        "empty_search_stop": 6,
+        "search_calls": 1,
+        "break_reason": "candidate_target_reached",
+        "candidate_status": "enough_candidates"
+      }
+    },
+    {
+      "shop_type": "taobao",
+      "added": [],
+      "errors": [],
+      "searches": [
+        {
+          "keyword": "水杯",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "鞋",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "衣服",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "包",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "文具",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "鞋子",
+          "shop_type": "taobao",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 0,
+        "candidate_limit": 15,
+        "candidate_target": 10,
+        "keyword_max_rounds": 6,
+        "empty_search_stop": 6,
+        "search_calls": 6,
+        "break_reason": "empty_search_stop",
+        "candidate_status": "no_results"
+      }
+    },
+    {
+      "shop_type": "tmall",
+      "added": [],
+      "errors": [],
+      "searches": [
+        {
+          "keyword": "水杯",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "鞋",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "衣服",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "包",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "文具",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "鞋子",
+          "shop_type": "tmall",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 0,
+        "candidate_limit": 15,
+        "candidate_target": 10,
+        "keyword_max_rounds": 6,
+        "empty_search_stop": 6,
+        "search_calls": 6,
+        "break_reason": "empty_search_stop",
+        "candidate_status": "no_results"
+      }
+    },
+    {
+      "shop_type": "rakumart",
+      "added": [
+        {
+          "goods_id": 12009,
+          "shop_type": "rakumart",
+          "detail": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "商品の詳細情報を取得できました"
+          },
+          "cart": {
+            "status_code": 200,
+            "success": true,
+            "code": 0,
+            "msg": "操作が成功しました"
+          },
+          "success": true
+        }
+      ],
+      "errors": [],
+      "searches": [
+        {
+          "keyword": "水杯",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "鞋",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "衣服",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "包",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 1
+        },
+        {
+          "keyword": "文具",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        },
+        {
+          "keyword": "鞋子",
+          "shop_type": "rakumart",
+          "status_code": 200,
+          "success": true,
+          "code": 0,
+          "msg": "操作が成功しました",
+          "count": 0
+        }
+      ],
+      "search": {
+        "status_code": 200,
+        "count": 1,
+        "candidate_limit": 15,
+        "candidate_target": 10,
+        "keyword_max_rounds": 6,
+        "empty_search_stop": 6,
+        "search_calls": 6,
+        "break_reason": "search_exhausted_partial_candidates",
+        "candidate_status": "partial_candidates"
+      }
+    }
+  ],
+  "login": {
+    "status_code": 200,
+    "success": true,
+    "code": 0,
+    "msg": "ログイン成功",
+    "body": "{\"success\":true,\"code\":0,\"msg\":\"ログイン成功\",\"data\":{\"userToken\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyYWt1bWFydC5jbiIsImF1ZCI6InJha3VtYXJ0LmNuIiwiaWF0IjoxNzgwMjkzMzY3LCJuYmYiOjAsImV4cCI6MTc4MjAyMTM2NywidXNlckluZm8iOnsidG9rZW5faWQiOjMwMDAwMSwib3BlcmF0aW9uX2lkIjozMDAwMDEsInlfaWQiOjE0LCJ1c2VybmFtZSI6Ilx1NWMwZlx1Njc2OFx1NmQ0Ylx1OGJkNVx1OGQyNlx1NTNmNyIsInJlYWxuYW1lIjoiXHU1YzBmXHU2NzY4XHU2ZDRiXHU4YmQ1IiwiZW1haWwiOiIzNzcwNzU5MTJAcXEuY29tIiwibW9iaWxlIjoiMTIzNDU2Nzg5OTAiLCJnb29kc19hbW91bnQiOjU4NjcxNTMsImlzX3Vuc2V0IjowLCJjbGllbnRfdG9vbCI6IjIiLCJjbGllbnRfdG9vbF9uYW1lIjoiSDUtV0VCIn19.E_V0Ag2f-ZOKafkFs1A4iefwcAqhboKwvTpFj4H7iXs\",\"userInfo\":{\"token_id\":300001,\"operation_id\":300001,\"y_id\":14,\"username\":\"小杨测试账号\",\"realname\":\"小杨测试\",\"email\":\"377075912@qq.com\",\"mobile\":\"12345678990\",\"goods_amount\":5867153,\"is_unset\":0,\"client_tool\":\"2\",\"client_tool_name\":\"H5-WEB\",\"l\":0},\"tmpPwd\":false}}",
+    "account": "12345678990",
+    "token_extracted": true
+  },
+  "summary": {
+    "keyword": "水杯",
+    "expected_total": 20,
+    "available_expected_total": 10,
+    "added_total": 6,
+    "shop_types": [
+      "1688",
+      "taobao",
+      "tmall",
+      "rakumart"
+    ],
+    "skipped_shop_types": [
+      "taobao",
+      "tmall"
+    ],
+    "failed_shop_types": [
+      "rakumart"
+    ],
+    "strict_shop_count": false,
+    "reason": "有商品数据的店铺未加购到要求数量"
+  },
+  "finished_at": "2026-06-01 13:57:58.985218"
+}

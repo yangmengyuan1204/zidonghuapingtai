@@ -1,0 +1,22 @@
+{
+  "uuid": "1c95321a-31e1-4067-93ab-66deebdcaa9f",
+  "name": "正常访问推广人合作伙伴个人主页",
+  "fullName": "ui.正常访问推广人合作伙伴个人主页",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780639419674,
+  "stop": 1780639419674,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "1c95321a-31e1-4067-93ab-66deebdcaa9f-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

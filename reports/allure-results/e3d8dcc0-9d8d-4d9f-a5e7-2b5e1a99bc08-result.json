@@ -1,0 +1,22 @@
+{
+  "uuid": "e3d8dcc0-9d8d-4d9f-a5e7-2b5e1a99bc08",
+  "name": "配送单余额付款",
+  "fullName": "data_script.配送单余额付款",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780555942579,
+  "stop": 1780555942579,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "e3d8dcc0-9d8d-4d9f-a5e7-2b5e1a99bc08-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://jpapi.rakumart.cn/mobile/cart.goodsToCart",
+    "headers": {
+      "Content-Type": "multipart/form-data",
+      "Authorization": "Bearer {{userToken}}",
+      "userToken": "{{userToken}}"
+    },
+    "params": {},
+    "body": {
+      "to_cart[0][goods_id]": "{{cart_goods_id}}",
+      "to_cart[0][goods_title]": "{{cart_title}}",
+      "to_cart[0][price]": "{{cart_price}}",
+      "to_cart[0][num]": "1",
+      "to_cart[0][pic]": "{{cart_pic}}",
+      "to_cart[0][detail]": "[]",
+      "to_cart[0][sku_id]": "{{cart_sku_id}}",
+      "to_cart[0][spec_id]": "{{cart_spec_id}}",
+      "to_cart[0][shop_id]": "{{cart_shop_id}}",
+      "to_cart[0][shop_name]": "{{cart_shop_name}}",
+      "to_cart[0][from_platform]": "{{cart_from_platform}}",
+      "to_cart[0][price_ranges]": "[]"
+    },
+    "timeout": 30
+  },
+  "variables": {
+    "timestamp": 1780134865,
+    "datetime": "2026-05-30 17:54:25",
+    "date": "2026-05-30",
+    "uuid": "3c99063c-30c3-4d0e-8974-ee9879fd8bf9",
+    "random_int": 315313,
+    "random_str": "fyg5ben1",
+    "random_phone": "13930831312",
+    "random_email": "test_315313@example.com",
+    "$timestamp": 1780134865,
+    "$datetime": "2026-05-30 17:54:25",
+    "$date": "2026-05-30",
+    "$uuid": "3c99063c-30c3-4d0e-8974-ee9879fd8bf9",
+    "$random_int": 315313,
+    "$random_str": "fyg5ben1",
+    "$random_phone": "13930831312",
+    "$random_email": "test_315313@example.com",
+    "api": "https://jpapi.rakumart.cn"
+  },
+  "started_at": "2026-05-30 17:54:25.652561",
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "Server": "nginx",
+      "Content-Type": "application/json",
+      "Transfer-Encoding": "chunked",
+      "Connection": "keep-alive",
+      "Vary": "Accept-Encoding",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, DELETE",
+      "Access-Control-Allow-Headers": "X_Requested_With,X-PINGOTHER,Cookie, Authorization,gkToken, ClientToken,ManageToken,AdminToken, PageUrlTrace,LogisticsToken, Content-Type, Depth, UserModel-Agent, X-File-Size, X-Requested-With, X-Requested-By, If-Modified-Since, X-File-Name, X-File-Type, Cache-Control, Origin, X-Real-IP, X-Forwarded-For, Fingerprint, Pragma, Lang",
+      "Cache-Control": "no-cache, private",
+      "Date": "Sat, 30 May 2026 09:54:26 GMT",
+      "Content-Encoding": "gzip"
+    },
+    "body": "{\"success\":false,\"code\":10001,\"msg\":\"現在のログインは無効です，再度ログインしてください。\",\"data\":\"現在のログインは無効です，再度ログインしてください。\"}"
+  },
+  "assertions": [
+    {
+      "type": "status_code",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    }
+  ],
+  "extracted_vars": {},
+  "finished_at": "2026-05-30 17:54:25.812675"
+}

@@ -1,0 +1,22 @@
+{
+  "uuid": "d2b0115d-23a5-49fa-9965-f6b1804910b8",
+  "name": "test-登录",
+  "fullName": "api.test-登录",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780131310006,
+  "stop": 1780131310006,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "d2b0115d-23a5-49fa-9965-f6b1804910b8-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

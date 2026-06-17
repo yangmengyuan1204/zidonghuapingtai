@@ -1,0 +1,52 @@
+{
+  "case_name": "正常访问推广人合作伙伴个人主页",
+  "page_url": "https://promotees.rakumart.cn/homePage",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/homePage"
+    },
+    {
+      "action": "wait",
+      "value": 3000
+    },
+    {
+      "action": "assert_url",
+      "value": "https://promotees.rakumart.cn/homePage"
+    },
+    {
+      "action": "assert_visible",
+      "locator": "[data-testid=\"partner-home-page\"]"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780639413,
+    "datetime": "2026-06-05 14:03:33",
+    "date": "2026-06-05",
+    "uuid": "77572208-c02f-4dc0-8006-d42e7816d14c",
+    "random_int": 728959,
+    "random_str": "n7tjkrwb",
+    "random_phone": "13833707264",
+    "random_email": "test_728959@example.com",
+    "$timestamp": 1780639413,
+    "$datetime": "2026-06-05 14:03:33",
+    "$date": "2026-06-05",
+    "$uuid": "77572208-c02f-4dc0-8006-d42e7816d14c",
+    "$random_int": 728959,
+    "$random_str": "n7tjkrwb",
+    "$random_phone": "13833707264",
+    "$random_email": "test_728959@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "akumart888"
+  },
+  "started_at": "2026-06-05 14:03:33.086122",
+  "error": "assert_url failed: expected contains 'https://promotees.rakumart.cn/homePage', actual 'https://promotees.rakumart.cn/login'",
+  "failed_step_index": 3,
+  "failed_step": {
+    "action": "assert_url",
+    "value": "https://promotees.rakumart.cn/homePage"
+  },
+  "finished_at": "2026-06-05 14:03:39.673982"
+}

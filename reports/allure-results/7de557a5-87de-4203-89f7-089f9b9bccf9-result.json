@@ -1,0 +1,22 @@
+{
+  "uuid": "7de557a5-87de-4203-89f7-089f9b9bccf9",
+  "name": "数据脚本-配送单国际物流配送提出",
+  "fullName": "api.数据脚本-配送单国际物流配送提出",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780556838037,
+  "stop": 1780556838037,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "7de557a5-87de-4203-89f7-089f9b9bccf9-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

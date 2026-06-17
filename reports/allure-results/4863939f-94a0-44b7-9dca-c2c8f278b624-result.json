@@ -1,0 +1,22 @@
+{
+  "uuid": "4863939f-94a0-44b7-9dca-c2c8f278b624",
+  "name": "个人主页页面布局响应式测试",
+  "fullName": "ui.个人主页页面布局响应式测试",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780639434554,
+  "stop": 1780639434554,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "4863939f-94a0-44b7-9dca-c2c8f278b624-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

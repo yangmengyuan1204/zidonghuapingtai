@@ -1,0 +1,521 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "手表",
+  "shop_type": "1688",
+  "target_shops": 4,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "started_at": "2026-06-02 17:51:12.163286",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBB23SnruQNlKYwRvSFZVg9Iw",
+      "collected_count": 2,
+      "selected_count": 2,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "831099927578",
+          "shop_id": "BBB23SnruQNlKYwRvSFZVg9Iw",
+          "shop_name": "深圳市爱保护科技有限公司",
+          "sku_id": "5573284697435",
+          "spec_id": "f561c4f7cdb23de81fc2303ebf1e8f55",
+          "num": 2,
+          "price": "200.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "831099927578",
+          "shop_id": "BBB23SnruQNlKYwRvSFZVg9Iw",
+          "shop_name": "深圳市爱保护科技有限公司",
+          "sku_id": "5573284697436",
+          "spec_id": "a89757ed5044b513f702f9e2e38cde40",
+          "num": 2,
+          "price": "200.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "676458878608",
+          "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+          "shop_name": "广东粘力达新材料有限公司",
+          "sku_id": "5030471154568",
+          "spec_id": "0663d320cfb8b568991000bab86a9362",
+          "num": 2,
+          "price": "18.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "696365407191",
+          "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+          "shop_name": "广东粘力达新材料有限公司",
+          "sku_id": "5111905775284",
+          "spec_id": "5347ba6ce57659bc75e4e338b5eae5a7",
+          "num": 2,
+          "price": "6.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "829723020544",
+          "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+          "shop_name": "广东粘力达新材料有限公司",
+          "sku_id": "5563576709162",
+          "spec_id": "86ab6e6fcdb528b98c1fa220b5b18c7c",
+          "num": 2,
+          "price": "15.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "shop_key": "BBB1S7x9ij-u5r4d8TP7mzFdw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "741191315812",
+          "shop_id": "BBB1S7x9ij-u5r4d8TP7mzFdw",
+          "shop_name": "夏邑县澄纪百货有限公司",
+          "sku_id": "5280529406259",
+          "spec_id": "29c6c4de5c98de9b8118cce679a09a50",
+          "num": 2,
+          "price": "38.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "741191315812",
+          "shop_id": "BBB1S7x9ij-u5r4d8TP7mzFdw",
+          "shop_name": "夏邑县澄纪百货有限公司",
+          "sku_id": "5280529406260",
+          "spec_id": "2690a2a4e08edc7b18acc0eade524d77",
+          "num": 3,
+          "price": "38.8",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "741191315812",
+          "shop_id": "BBB1S7x9ij-u5r4d8TP7mzFdw",
+          "shop_name": "夏邑县澄纪百货有限公司",
+          "sku_id": "5280529406261",
+          "spec_id": "e852e4d91c3a41e2e868db00582bc304",
+          "num": 5,
+          "price": "38.8",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "shop_key": "BBBc0-yJ3WZ33GzY_ggC9vFvw",
+      "collected_count": 4,
+      "selected_count": 4,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "964589612321",
+          "shop_id": "BBBc0-yJ3WZ33GzY_ggC9vFvw",
+          "shop_name": "深圳市百佳创展科技有限公司",
+          "sku_id": "5900899364926",
+          "spec_id": "45e4584305fe2595e1fbf102dc6f2c3a",
+          "num": 2,
+          "price": "188.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "964589612321",
+          "shop_id": "BBBc0-yJ3WZ33GzY_ggC9vFvw",
+          "shop_name": "深圳市百佳创展科技有限公司",
+          "sku_id": "5900899364927",
+          "spec_id": "55267724a3649617f618a9a9dee11c01",
+          "num": 2,
+          "price": "188.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "964589612321",
+          "shop_id": "BBBc0-yJ3WZ33GzY_ggC9vFvw",
+          "shop_name": "深圳市百佳创展科技有限公司",
+          "sku_id": "5900899364928",
+          "spec_id": "e6205144eb0334559c61e37218000548",
+          "num": 2,
+          "price": "188.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "shop_key": "BBBT5saTaLM56RrR5Oioox66w",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "581408686969",
+          "shop_id": "BBBT5saTaLM56RrR5Oioox66w",
+          "shop_name": "深圳市鸿锦旭电子科技有限公司",
+          "sku_id": "rakumart_6a1ea7a2e9f53255",
+          "spec_id": "rakumart_6a1ea7a2e9f55409",
+          "num": 3,
+          "price": "9.9",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "shop_key": "BBB89n9Qq_gVPyuMF8n7IVy4g",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "883358085393",
+          "shop_id": "BBB89n9Qq_gVPyuMF8n7IVy4g",
+          "shop_name": "惠州市墨雅手表有限公司",
+          "sku_id": "5891182327192",
+          "spec_id": "f561c4f7cdb23de81fc2303ebf1e8f55",
+          "num": 2,
+          "price": "13.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "883358085393",
+          "shop_id": "BBB89n9Qq_gVPyuMF8n7IVy4g",
+          "shop_name": "惠州市墨雅手表有限公司",
+          "sku_id": "5891182327193",
+          "spec_id": "fc8b0279bc54c456e890b4e780ca3b8b",
+          "num": 2,
+          "price": "13.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "883358085393",
+          "shop_id": "BBB89n9Qq_gVPyuMF8n7IVy4g",
+          "shop_name": "惠州市墨雅手表有限公司",
+          "sku_id": "5891182327194",
+          "spec_id": "54aef7e7e801e5109fddde7780c22e1f",
+          "num": 2,
+          "price": "13.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "shop_key": "BBBBMyrqDYlyZ2BgLdnvWyXnw",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "563588045874",
+          "shop_id": "BBBBMyrqDYlyZ2BgLdnvWyXnw",
+          "shop_name": "广州诺柏金钟表有限公司",
+          "sku_id": "4690128337129",
+          "spec_id": "8b98bfb99d271327918017ffc40548d8",
+          "num": 2,
+          "price": "98.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "shop_key": "BBBCy2WTjCdw2lij5Sx9k4DSw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "548916804550",
+          "shop_id": "BBBCy2WTjCdw2lij5Sx9k4DSw",
+          "shop_name": "广州市特威斯钟表有限公司",
+          "sku_id": "4183997237822",
+          "spec_id": "13568a228b99505e7b1cab3a08efc150",
+          "num": 2,
+          "price": "90.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "548916804550",
+          "shop_id": "BBBCy2WTjCdw2lij5Sx9k4DSw",
+          "shop_name": "广州市特威斯钟表有限公司",
+          "sku_id": "4183997237823",
+          "spec_id": "5e3f3228e1b9b8a12498a45606e3a374",
+          "num": 2,
+          "price": "90.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "548916804550",
+          "shop_id": "BBBCy2WTjCdw2lij5Sx9k4DSw",
+          "shop_name": "广州市特威斯钟表有限公司",
+          "sku_id": "4183997237818",
+          "spec_id": "d7b2ee68e5c2e5ce159a12d7115fb30e",
+          "num": 2,
+          "price": "90.0",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 20,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "collection": {
+    "ready_shops": 4,
+    "collected_shops": 8,
+    "selected_items": 20,
+    "expected_total": 20,
+    "preview_items": [
+      {
+        "goods_id": "676458878608",
+        "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+        "shop_name": "广东粘力达新材料有限公司",
+        "sku_id": "5030471154568",
+        "spec_id": "0663d320cfb8b568991000bab86a9362",
+        "num": 2,
+        "price": "18.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "696365407191",
+        "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+        "shop_name": "广东粘力达新材料有限公司",
+        "sku_id": "5111905775284",
+        "spec_id": "5347ba6ce57659bc75e4e338b5eae5a7",
+        "num": 2,
+        "price": "6.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "829723020544",
+        "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+        "shop_name": "广东粘力达新材料有限公司",
+        "sku_id": "5563576709162",
+        "spec_id": "86ab6e6fcdb528b98c1fa220b5b18c7c",
+        "num": 2,
+        "price": "15.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "829723020544",
+        "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+        "shop_name": "广东粘力达新材料有限公司",
+        "sku_id": "5563576709163",
+        "spec_id": "3df8d5ca54c59ca995599957f22f181f",
+        "num": 3,
+        "price": "15.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "676140349366",
+        "shop_id": "BBBHRFQH5xNw-8DbNjwYibJPQ",
+        "shop_name": "广东粘力达新材料有限公司",
+        "sku_id": "5117503750625",
+        "spec_id": "4b79817e3ab14c559b99becbfedb5474",
+        "num": 2,
+        "price": "4.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "741191315812",
+        "shop_id": "BBB1S7x9ij-u5r4d8TP7mzFdw",
+        "shop_name": "夏邑县澄纪百货有限公司",
+        "sku_id": "5280529406259",
+        "spec_id": "29c6c4de5c98de9b8118cce679a09a50",
+        "num": 2,
+        "price": "38.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "741191315812",
+        "shop_id": "BBB1S7x9ij-u5r4d8TP7mzFdw",
+        "shop_name": "夏邑县澄纪百货有限公司",
+        "sku_id": "5280529406260",
+        "spec_id": "2690a2a4e08edc7b18acc0eade524d77",
+        "num": 3,
+        "price": "38.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "741191315812",
+        "shop_id": "BBB1S7x9ij-u5r4d8TP7mzFdw",
+        "shop_name": "夏邑县澄纪百货有限公司",
+        "sku_id": "5280529406261",
+        "spec_id": "e852e4d91c3a41e2e868db00582bc304",
+        "num": 5,
+        "price": "38.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "741191315812",
+        "shop_id": "BBB1S7x9ij-u5r4d8TP7mzFdw",
+        "shop_name": "夏邑县澄纪百货有限公司",
+        "sku_id": "5280529406262",
+        "spec_id": "d9b8a8fbf922f88b8abb33158069f3ba",
+        "num": 2,
+        "price": "38.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "741191315812",
+        "shop_id": "BBB1S7x9ij-u5r4d8TP7mzFdw",
+        "shop_name": "夏邑县澄纪百货有限公司",
+        "sku_id": "5280529406263",
+        "spec_id": "677f1ea0088d687aa56949a939542824",
+        "num": 3,
+        "price": "38.8",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "883358085393",
+        "shop_id": "BBB89n9Qq_gVPyuMF8n7IVy4g",
+        "shop_name": "惠州市墨雅手表有限公司",
+        "sku_id": "5891182327192",
+        "spec_id": "f561c4f7cdb23de81fc2303ebf1e8f55",
+        "num": 2,
+        "price": "13.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "883358085393",
+        "shop_id": "BBB89n9Qq_gVPyuMF8n7IVy4g",
+        "shop_name": "惠州市墨雅手表有限公司",
+        "sku_id": "5891182327193",
+        "spec_id": "fc8b0279bc54c456e890b4e780ca3b8b",
+        "num": 2,
+        "price": "13.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "883358085393",
+        "shop_id": "BBB89n9Qq_gVPyuMF8n7IVy4g",
+        "shop_name": "惠州市墨雅手表有限公司",
+        "sku_id": "5891182327194",
+        "spec_id": "54aef7e7e801e5109fddde7780c22e1f",
+        "num": 2,
+        "price": "13.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "883358085393",
+        "shop_id": "BBB89n9Qq_gVPyuMF8n7IVy4g",
+        "shop_name": "惠州市墨雅手表有限公司",
+        "sku_id": "5891182327195",
+        "spec_id": "2278d73c10c2290138bdd90dbbdb69c0",
+        "num": 2,
+        "price": "13.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "883358085393",
+        "shop_id": "BBB89n9Qq_gVPyuMF8n7IVy4g",
+        "shop_name": "惠州市墨雅手表有限公司",
+        "sku_id": "5891182327196",
+        "spec_id": "948a2bbef7e7ea96837bfed90c14c70d",
+        "num": 2,
+        "price": "13.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "548916804550",
+        "shop_id": "BBBCy2WTjCdw2lij5Sx9k4DSw",
+        "shop_name": "广州市特威斯钟表有限公司",
+        "sku_id": "4183997237822",
+        "spec_id": "13568a228b99505e7b1cab3a08efc150",
+        "num": 2,
+        "price": "90.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "548916804550",
+        "shop_id": "BBBCy2WTjCdw2lij5Sx9k4DSw",
+        "shop_name": "广州市特威斯钟表有限公司",
+        "sku_id": "4183997237823",
+        "spec_id": "5e3f3228e1b9b8a12498a45606e3a374",
+        "num": 2,
+        "price": "90.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "548916804550",
+        "shop_id": "BBBCy2WTjCdw2lij5Sx9k4DSw",
+        "shop_name": "广州市特威斯钟表有限公司",
+        "sku_id": "4183997237818",
+        "spec_id": "d7b2ee68e5c2e5ce159a12d7115fb30e",
+        "num": 2,
+        "price": "90.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "548916804550",
+        "shop_id": "BBBCy2WTjCdw2lij5Sx9k4DSw",
+        "shop_name": "广州市特威斯钟表有限公司",
+        "sku_id": "4183997237820",
+        "spec_id": "e5a94ac3ab974c8824fccf698554ae48",
+        "num": 2,
+        "price": "90.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "548916804550",
+        "shop_id": "BBBCy2WTjCdw2lij5Sx9k4DSw",
+        "shop_name": "广州市特威斯钟表有限公司",
+        "sku_id": "4183997237821",
+        "spec_id": "9142b27a77ed8282973c161a33c25ab4",
+        "num": 2,
+        "price": "90.0",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "summary": {
+    "keyword": "手表",
+    "shop_type": "1688",
+    "target_shops": 4,
+    "per_shop": 5,
+    "ready_shops": 4,
+    "expected_total": 20,
+    "available_expected_total": 20,
+    "added_total": 20,
+    "failed_batches": [],
+    "strict_shop_count": false
+  },
+  "finished_at": "2026-06-02 17:51:32.504967"
+}

@@ -1,0 +1,57 @@
+{
+  "case_name": "正常流程：搜索已邀请客户",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "input",
+      "locator": "input[placeholder=\"邮箱/手机号\"]",
+      "value": "18839953328"
+    },
+    {
+      "action": "click",
+      "locator": "text=搜索"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780644540,
+    "datetime": "2026-06-05 15:29:00",
+    "date": "2026-06-05",
+    "uuid": "97bcfeae-d1be-4613-922f-baa66929d18b",
+    "random_int": 517258,
+    "random_str": "ft31oxh6",
+    "random_phone": "13443636871",
+    "random_email": "test_517258@example.com",
+    "$timestamp": 1780644540,
+    "$datetime": "2026-06-05 15:29:00",
+    "$date": "2026-06-05",
+    "$uuid": "97bcfeae-d1be-4613-922f-baa66929d18b",
+    "$random_int": 517258,
+    "$random_str": "ft31oxh6",
+    "$random_phone": "13443636871",
+    "$random_email": "test_517258@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "rakumart888"
+  },
+  "started_at": "2026-06-05 15:29:00.622698",
+  "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"text=搜索\")\n",
+  "failed_step_index": 4,
+  "failed_step": {
+    "action": "click",
+    "locator": "text=搜索"
+  },
+  "finished_at": "2026-06-05 15:29:35.536732"
+}

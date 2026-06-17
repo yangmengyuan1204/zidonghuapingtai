@@ -1,0 +1,107 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "衣服",
+  "shop_type": "1688",
+  "target_shops": 1,
+  "per_shop": 1,
+  "page_size": 20,
+  "max_pages": 2,
+  "batch_size": 10,
+  "detail_workers": 2,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "started_at": "2026-06-01 14:47:14.253093",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBBAo1J7ZWN_Awq2PAoXecVog",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "895189380951",
+          "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+          "shop_name": "义乌市万龙皮具厂",
+          "sku_id": "rakumart_6a1d2afc3b86b542",
+          "spec_id": "rakumart_6a1d2afc3b86e871",
+          "num": 2000,
+          "price": "2.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBB0aWLf1qFKf84jzk1w-L15w",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "656348437945",
+          "shop_id": "BBB0aWLf1qFKf84jzk1w-L15w",
+          "shop_name": "绍兴市灏宇纺织品有限公司",
+          "sku_id": "rakumart_6a1d2afd193be497",
+          "spec_id": "rakumart_6a1d2afd193c0807",
+          "num": 2,
+          "price": "14.0",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 1,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "collection": {
+    "ready_shops": 1,
+    "collected_shops": 2,
+    "selected_items": 1,
+    "expected_total": 1,
+    "preview_items": [
+      {
+        "goods_id": "895189380951",
+        "shop_id": "BBBAo1J7ZWN_Awq2PAoXecVog",
+        "shop_name": "义乌市万龙皮具厂",
+        "sku_id": "rakumart_6a1d2afc3b86b542",
+        "spec_id": "rakumart_6a1d2afc3b86e871",
+        "num": 2000,
+        "price": "2.5",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "summary": {
+    "keyword": "衣服",
+    "shop_type": "1688",
+    "target_shops": 1,
+    "per_shop": 1,
+    "ready_shops": 1,
+    "expected_total": 1,
+    "available_expected_total": 1,
+    "added_total": 1,
+    "failed_batches": [],
+    "strict_shop_count": false
+  },
+  "finished_at": "2026-06-01 14:47:33.938945"
+}

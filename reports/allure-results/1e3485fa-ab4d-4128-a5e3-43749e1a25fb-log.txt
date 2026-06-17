@@ -1,0 +1,66 @@
+{
+  "case_name": "权限验证：非推广人账号访问",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "input",
+      "locator": "input[placeholder=\"邮箱/手机号\"]",
+      "value": "18839953328"
+    },
+    {
+      "action": "input",
+      "locator": "input[placeholder=\"请输入密码\"]",
+      "value": "123456"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait",
+      "value": 2000
+    },
+    {
+      "action": "assert_url",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780643677,
+    "datetime": "2026-06-05 15:14:37",
+    "date": "2026-06-05",
+    "uuid": "56a71089-4f65-4573-8af8-a8fd9a05084a",
+    "random_int": 387732,
+    "random_str": "riqvk6me",
+    "random_phone": "13944569183",
+    "random_email": "test_387732@example.com",
+    "$timestamp": 1780643677,
+    "$datetime": "2026-06-05 15:14:37",
+    "$date": "2026-06-05",
+    "$uuid": "56a71089-4f65-4573-8af8-a8fd9a05084a",
+    "$random_int": 387732,
+    "$random_str": "riqvk6me",
+    "$random_phone": "13944569183",
+    "$random_email": "test_387732@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "rakumart888"
+  },
+  "started_at": "2026-06-05 15:14:37.590178",
+  "error": "assert_url failed: expected contains 'https://promotees.rakumart.cn/customerHasBeenInvited', actual 'https://promotees.rakumart.cn/login'",
+  "failed_step_index": 7,
+  "failed_step": {
+    "action": "assert_url",
+    "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+  },
+  "finished_at": "2026-06-05 15:14:45.611856"
+}

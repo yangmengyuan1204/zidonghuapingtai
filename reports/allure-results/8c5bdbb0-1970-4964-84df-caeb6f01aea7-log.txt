@@ -1,0 +1,70 @@
+{
+  "case_name": "注册页面-验证码有效期过期后提交失败",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "input",
+      "locator": "#el-id-2966-4",
+      "value": ""
+    },
+    {
+      "action": "wait",
+      "value": 300000
+    },
+    {
+      "action": "input",
+      "locator": "#el-id-2966-4",
+      "value": ""
+    },
+    {
+      "action": "input",
+      "locator": "#el-id-2966-5",
+      "value": ""
+    },
+    {
+      "action": "check",
+      "locator": "input"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "assert_visible",
+      "locator": "text=验证码已过期，请重新获取"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780632039,
+    "datetime": "2026-06-05 12:00:39",
+    "date": "2026-06-05",
+    "uuid": "2d007228-ebc4-4569-b0de-886aa608080b",
+    "random_int": 568476,
+    "random_str": "ry9rdl6u",
+    "random_phone": "13123255783",
+    "random_email": "test_568476@example.com",
+    "$timestamp": 1780632039,
+    "$datetime": "2026-06-05 12:00:39",
+    "$date": "2026-06-05",
+    "$uuid": "2d007228-ebc4-4569-b0de-886aa608080b",
+    "$random_int": 568476,
+    "$random_str": "ry9rdl6u",
+    "$random_phone": "13123255783",
+    "$random_email": "test_568476@example.com",
+    "username": "",
+    "password": "***",
+    "code": ""
+  },
+  "started_at": "2026-06-05 12:00:39.856893",
+  "error": "Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"#el-id-2966-4\")\n",
+  "finished_at": "2026-06-05 12:01:12.852668"
+}

@@ -1,0 +1,493 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "鞋子",
+  "shop_type": "1688",
+  "target_shops": 4,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "started_at": "2026-06-01 15:23:47.444681",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "918591585857",
+          "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+          "shop_name": "深圳市逗乐趣环保科技有限公司",
+          "sku_id": "5953878982925",
+          "spec_id": "b7bc14d8dd2a44d90807af2c224ec783",
+          "num": 2,
+          "price": "4.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "918591585857",
+          "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+          "shop_name": "深圳市逗乐趣环保科技有限公司",
+          "sku_id": "5953878982926",
+          "spec_id": "fb518e78ccc179f51f798cf886c00ee9",
+          "num": 2,
+          "price": "4.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "918591585857",
+          "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+          "shop_name": "深圳市逗乐趣环保科技有限公司",
+          "sku_id": "5953878982927",
+          "spec_id": "1f58d0337f1fc9217756c0884277c3e7",
+          "num": 2,
+          "price": "4.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+      "collected_count": 4,
+      "selected_count": 4,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "908769743535",
+          "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+          "shop_name": "河南云聚合电子科技有限公司",
+          "sku_id": "6197013530639",
+          "spec_id": "34be70ab914496d30368498d2d5d6d33",
+          "num": 2,
+          "price": "24.2",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "887734698821",
+          "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+          "shop_name": "河南云聚合电子科技有限公司",
+          "sku_id": "5927575147895",
+          "spec_id": "2e4adcda2ee1508d2201827c8c62d881",
+          "num": 2,
+          "price": "36.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "891117474947",
+          "shop_id": "BBBdq1T8gJ8WRnpCsnlSTiMBA",
+          "shop_name": "河南云聚合电子科技有限公司",
+          "sku_id": "6074159760341",
+          "spec_id": "6aaf752ac26b423b60f82b0e1225992b",
+          "num": 2,
+          "price": "47.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "shop_key": "BBBjV3UXGjrx2TMYVW40zP1qw",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "730350667091",
+          "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+          "shop_name": "广州市悍戈鞋业有限公司",
+          "sku_id": "5061919181328",
+          "spec_id": "c4dfdfb7c92bd84b923ffe10d3ee4cf4",
+          "num": 10,
+          "price": "299.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "730350667091",
+          "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+          "shop_name": "广州市悍戈鞋业有限公司",
+          "sku_id": "5061919181329",
+          "spec_id": "b1a07c7b7bb7751b47bcfff74e525e49",
+          "num": 10,
+          "price": "299.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "730350667091",
+          "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+          "shop_name": "广州市悍戈鞋业有限公司",
+          "sku_id": "5061919181330",
+          "spec_id": "77ac052e5c5a48f618ec055e4b9a0c34",
+          "num": 10,
+          "price": "299.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "shop_key": "BBBErXn3fN2FXLZapouUMlAsg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "816626181457",
+          "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+          "shop_name": "乐至县五行鞋业有限公司",
+          "sku_id": "5514171800932",
+          "spec_id": "ecd8c6c2cde346c7508ba060b5e5c460",
+          "num": 2,
+          "price": "129.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "816626181457",
+          "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+          "shop_name": "乐至县五行鞋业有限公司",
+          "sku_id": "5514171800933",
+          "spec_id": "3b2cc516469d3c1188deab5ab362bfe0",
+          "num": 3,
+          "price": "129.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "816626181457",
+          "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+          "shop_name": "乐至县五行鞋业有限公司",
+          "sku_id": "5514171800934",
+          "spec_id": "28dc19900acfb0aa3b8d6880ec978894",
+          "num": 5,
+          "price": "129.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "shop_key": "BBBRh2u5qinlcyLxxXFzqAbTw",
+      "collected_count": 4,
+      "selected_count": 4,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "962510220532",
+          "shop_id": "BBBRh2u5qinlcyLxxXFzqAbTw",
+          "shop_name": "深圳帝德普科技有限公司",
+          "sku_id": "6061043014632",
+          "spec_id": "fb0d819d99e0dc1c583123f2498ecbef",
+          "num": 2,
+          "price": "145.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "962510220532",
+          "shop_id": "BBBRh2u5qinlcyLxxXFzqAbTw",
+          "shop_name": "深圳帝德普科技有限公司",
+          "sku_id": "6061043014633",
+          "spec_id": "2c1d23d60f275b6d89c989b4f6601683",
+          "num": 2,
+          "price": "145.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "962510220532",
+          "shop_id": "BBBRh2u5qinlcyLxxXFzqAbTw",
+          "shop_name": "深圳帝德普科技有限公司",
+          "sku_id": "6061043014634",
+          "spec_id": "935a7c8a18077a1549c119ea3834e8a0",
+          "num": 2,
+          "price": "145.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "shop_key": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "520137009533",
+          "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+          "shop_name": "威县庆纯皮毛制品经销处",
+          "sku_id": "5878564720674",
+          "spec_id": "4816a99914456d5e2eb6a9de5c80c5cb",
+          "num": 2,
+          "price": "7.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "520137009533",
+          "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+          "shop_name": "威县庆纯皮毛制品经销处",
+          "sku_id": "5878564720673",
+          "spec_id": "3c2daebb576bec3e67367d67fd462ac9",
+          "num": 2,
+          "price": "7.5",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "520137009533",
+          "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+          "shop_name": "威县庆纯皮毛制品经销处",
+          "sku_id": "5878564720679",
+          "spec_id": "6ef6e36c43c0a6507d423827c6298b96",
+          "num": 2,
+          "price": "7.5",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 20,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました"
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "12345678990",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "collection": {
+    "ready_shops": 4,
+    "collected_shops": 6,
+    "selected_items": 20,
+    "expected_total": 20,
+    "preview_items": [
+      {
+        "goods_id": "918591585857",
+        "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+        "shop_name": "深圳市逗乐趣环保科技有限公司",
+        "sku_id": "5953878982925",
+        "spec_id": "b7bc14d8dd2a44d90807af2c224ec783",
+        "num": 2,
+        "price": "4.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "918591585857",
+        "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+        "shop_name": "深圳市逗乐趣环保科技有限公司",
+        "sku_id": "5953878982926",
+        "spec_id": "fb518e78ccc179f51f798cf886c00ee9",
+        "num": 2,
+        "price": "4.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "918591585857",
+        "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+        "shop_name": "深圳市逗乐趣环保科技有限公司",
+        "sku_id": "5953878982927",
+        "spec_id": "1f58d0337f1fc9217756c0884277c3e7",
+        "num": 2,
+        "price": "4.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "918591585857",
+        "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+        "shop_name": "深圳市逗乐趣环保科技有限公司",
+        "sku_id": "5953878982928",
+        "spec_id": "ddfd14f9fbd12a2b6b77c2a45046e132",
+        "num": 2,
+        "price": "4.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "918591585857",
+        "shop_id": "BBBY7bwKs_gO00OkFTQCFHlRQ",
+        "shop_name": "深圳市逗乐趣环保科技有限公司",
+        "sku_id": "5953878982929",
+        "spec_id": "3cf92408e69cb42a8a73f473597d720d",
+        "num": 2,
+        "price": "4.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "730350667091",
+        "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+        "shop_name": "广州市悍戈鞋业有限公司",
+        "sku_id": "5061919181328",
+        "spec_id": "c4dfdfb7c92bd84b923ffe10d3ee4cf4",
+        "num": 10,
+        "price": "299.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "730350667091",
+        "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+        "shop_name": "广州市悍戈鞋业有限公司",
+        "sku_id": "5061919181329",
+        "spec_id": "b1a07c7b7bb7751b47bcfff74e525e49",
+        "num": 10,
+        "price": "299.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "730350667091",
+        "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+        "shop_name": "广州市悍戈鞋业有限公司",
+        "sku_id": "5061919181330",
+        "spec_id": "77ac052e5c5a48f618ec055e4b9a0c34",
+        "num": 10,
+        "price": "299.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "730350667091",
+        "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+        "shop_name": "广州市悍戈鞋业有限公司",
+        "sku_id": "5061919181331",
+        "spec_id": "8ffaf8b75f2e6c7d3372a57d5dbb4532",
+        "num": 10,
+        "price": "299.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "730350667091",
+        "shop_id": "BBBjV3UXGjrx2TMYVW40zP1qw",
+        "shop_name": "广州市悍戈鞋业有限公司",
+        "sku_id": "5061919181332",
+        "spec_id": "a26a0b8e03c171f3c2c3692b967c5091",
+        "num": 10,
+        "price": "299.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "816626181457",
+        "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+        "shop_name": "乐至县五行鞋业有限公司",
+        "sku_id": "5514171800932",
+        "spec_id": "ecd8c6c2cde346c7508ba060b5e5c460",
+        "num": 2,
+        "price": "129.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "816626181457",
+        "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+        "shop_name": "乐至县五行鞋业有限公司",
+        "sku_id": "5514171800933",
+        "spec_id": "3b2cc516469d3c1188deab5ab362bfe0",
+        "num": 3,
+        "price": "129.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "816626181457",
+        "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+        "shop_name": "乐至县五行鞋业有限公司",
+        "sku_id": "5514171800934",
+        "spec_id": "28dc19900acfb0aa3b8d6880ec978894",
+        "num": 5,
+        "price": "129.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "816626181457",
+        "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+        "shop_name": "乐至县五行鞋业有限公司",
+        "sku_id": "5514171800935",
+        "spec_id": "649f0c42b2d657c1d59fdc4ca6c22b1c",
+        "num": 2,
+        "price": "129.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "816626181457",
+        "shop_id": "BBBErXn3fN2FXLZapouUMlAsg",
+        "shop_name": "乐至县五行鞋业有限公司",
+        "sku_id": "5514171800936",
+        "spec_id": "cae7da40007a24600f28bf6a907dbca9",
+        "num": 3,
+        "price": "129.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "520137009533",
+        "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+        "shop_name": "威县庆纯皮毛制品经销处",
+        "sku_id": "5878564720674",
+        "spec_id": "4816a99914456d5e2eb6a9de5c80c5cb",
+        "num": 2,
+        "price": "7.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "520137009533",
+        "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+        "shop_name": "威县庆纯皮毛制品经销处",
+        "sku_id": "5878564720673",
+        "spec_id": "3c2daebb576bec3e67367d67fd462ac9",
+        "num": 2,
+        "price": "7.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "520137009533",
+        "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+        "shop_name": "威县庆纯皮毛制品经销处",
+        "sku_id": "5878564720679",
+        "spec_id": "6ef6e36c43c0a6507d423827c6298b96",
+        "num": 2,
+        "price": "7.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "520137009533",
+        "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+        "shop_name": "威县庆纯皮毛制品经销处",
+        "sku_id": "5878564720683",
+        "spec_id": "f4396182f62cc24fd4b37099b918587e",
+        "num": 2,
+        "price": "7.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "520137009533",
+        "shop_id": "BBBmxUl6o2Pn73f0R-jTnJEIA",
+        "shop_name": "威县庆纯皮毛制品经销处",
+        "sku_id": "5878564720680",
+        "spec_id": "bbcaa24fc7e8d2aadb0326d68158ada5",
+        "num": 2,
+        "price": "7.5",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "summary": {
+    "keyword": "鞋子",
+    "shop_type": "1688",
+    "target_shops": 4,
+    "per_shop": 5,
+    "ready_shops": 4,
+    "expected_total": 20,
+    "available_expected_total": 20,
+    "added_total": 20,
+    "failed_batches": [],
+    "strict_shop_count": false
+  },
+  "finished_at": "2026-06-01 15:25:22.525715"
+}

@@ -1,0 +1,22 @@
+{
+  "uuid": "7c3fbfff-1820-46cc-a8e5-aabebea417cd",
+  "name": "全流程完全体",
+  "fullName": "data_script.全流程完全体",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781313865753,
+  "stop": 1781313865753,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "7c3fbfff-1820-46cc-a8e5-aabebea417cd-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

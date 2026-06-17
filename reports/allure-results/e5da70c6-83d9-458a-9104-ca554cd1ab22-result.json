@@ -1,0 +1,22 @@
+{
+  "uuid": "e5da70c6-83d9-458a-9104-ca554cd1ab22",
+  "name": "银行支付",
+  "fullName": "data_script.银行支付",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780450583770,
+  "stop": 1780450583770,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "e5da70c6-83d9-458a-9104-ca554cd1ab22-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

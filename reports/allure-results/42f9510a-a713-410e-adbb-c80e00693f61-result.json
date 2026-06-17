@@ -1,0 +1,22 @@
+{
+  "uuid": "42f9510a-a713-410e-adbb-c80e00693f61",
+  "name": "异常流程：搜索无结果",
+  "fullName": "ui.异常流程：搜索无结果",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1780652229132,
+  "stop": 1780652229132,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "42f9510a-a713-410e-adbb-c80e00693f61-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

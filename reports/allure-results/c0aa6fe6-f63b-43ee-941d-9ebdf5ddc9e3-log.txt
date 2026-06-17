@@ -1,0 +1,58 @@
+{
+  "case_name": "页面元素展示",
+  "page_url": "https://promotees.rakumart.cn/customerHasBeenInvited",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/customerHasBeenInvited"
+    },
+    {
+      "action": "wait_for_selector",
+      "locator": "text=推广人已邀请客户",
+      "value": "visible"
+    },
+    {
+      "action": "assert_visible",
+      "locator": "text=推广人已邀请客户"
+    },
+    {
+      "action": "assert_visible",
+      "locator": "table"
+    },
+    {
+      "action": "assert_visible",
+      "locator": "button"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780644438,
+    "datetime": "2026-06-05 15:27:18",
+    "date": "2026-06-05",
+    "uuid": "b51c7306-c4a9-42fe-8e51-d48df34c940f",
+    "random_int": 140805,
+    "random_str": "85qdld0s",
+    "random_phone": "13430524506",
+    "random_email": "test_140805@example.com",
+    "$timestamp": 1780644438,
+    "$datetime": "2026-06-05 15:27:18",
+    "$date": "2026-06-05",
+    "$uuid": "b51c7306-c4a9-42fe-8e51-d48df34c940f",
+    "$random_int": 140805,
+    "$random_str": "85qdld0s",
+    "$random_phone": "13430524506",
+    "$random_email": "test_140805@example.com",
+    "username": "18839953328",
+    "password": "***",
+    "code": "rakumart888"
+  },
+  "started_at": "2026-06-05 15:27:18.260362",
+  "error": "Page.wait_for_selector: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"text=推广人已邀请客户\") to be visible\n",
+  "failed_step_index": 2,
+  "failed_step": {
+    "action": "wait_for_selector",
+    "locator": "text=推广人已邀请客户",
+    "value": "visible"
+  },
+  "finished_at": "2026-06-05 15:27:53.125512"
+}

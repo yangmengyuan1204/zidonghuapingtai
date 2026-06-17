@@ -1,0 +1,49 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://example.test/users/U123",
+    "headers": {},
+    "params": {},
+    "body": null,
+    "timeout": 30
+  },
+  "variables": {
+    "timestamp": 1780368373,
+    "datetime": "2026-06-02 10:46:13",
+    "date": "2026-06-02",
+    "uuid": "b46388bc-1a72-42d6-bbaa-a61d10487865",
+    "random_int": 240591,
+    "random_str": "41zvcb2d",
+    "random_phone": "13211082819",
+    "random_email": "test_240591@example.com",
+    "$timestamp": 1780368373,
+    "$datetime": "2026-06-02 10:46:13",
+    "$date": "2026-06-02",
+    "$uuid": "b46388bc-1a72-42d6-bbaa-a61d10487865",
+    "$random_int": 240591,
+    "$random_str": "41zvcb2d",
+    "$random_phone": "13211082819",
+    "$random_email": "test_240591@example.com",
+    "prefix": "qa",
+    "username": "alice",
+    "user_id": "U123"
+  },
+  "started_at": "2026-06-02 10:46:13.817401",
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": "{\"ok\": true}"
+  },
+  "assertions": [
+    {
+      "type": "status_code",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    }
+  ],
+  "extracted_vars": {},
+  "finished_at": "2026-06-02 10:46:13.817401"
+}

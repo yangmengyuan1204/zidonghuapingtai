@@ -1,0 +1,45 @@
+{
+  "script": "待拍下到商品上架",
+  "mode": "purchase_to_shelf",
+  "base_url": "https://jpapi.rakumart.cn",
+  "order_sn": "2026050909262197-300001",
+  "purchase_no": "20260602170727",
+  "started_at": "2026-06-02 17:07:27.597192",
+  "steps": [
+    {
+      "name": "purchase_list",
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "request": {
+        "page": 1,
+        "pageSize": 20,
+        "status": "全部",
+        "dateStart": "",
+        "dateEnd": "",
+        "user_id": "",
+        "order_sn": "2026050909262197-300001",
+        "g_id": "",
+        "is_urgent": "",
+        "overdue": ""
+      },
+      "row_count": 0,
+      "selected_count": 0,
+      "selected_items": []
+    }
+  ],
+  "login": {
+    "success": true,
+    "code": 0,
+    "msg": "登录成功",
+    "account": "Y001",
+    "token_extracted": true
+  },
+  "summary": {
+    "order_sn": "2026050909262197-300001",
+    "purchase_no": "20260602170727",
+    "selected_count": 0,
+    "reason": "未查询到可操作的待拍下商品"
+  },
+  "finished_at": "2026-06-02 17:07:27.946824"
+}

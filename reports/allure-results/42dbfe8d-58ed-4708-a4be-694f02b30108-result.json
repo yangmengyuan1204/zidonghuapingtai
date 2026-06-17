@@ -1,0 +1,22 @@
+{
+  "uuid": "42dbfe8d-58ed-4708-a4be-694f02b30108",
+  "name": "数据脚本-配送单余额付款",
+  "fullName": "api.数据脚本-配送单余额付款",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1780550366160,
+  "stop": 1780550366160,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "42dbfe8d-58ed-4708-a4be-694f02b30108-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

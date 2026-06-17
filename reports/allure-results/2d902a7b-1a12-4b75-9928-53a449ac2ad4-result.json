@@ -1,0 +1,27 @@
+{
+  "uuid": "2d902a7b-1a12-4b75-9928-53a449ac2ad4",
+  "name": "注册页面正常流程-输入有效手机号、验证码、密码并勾选协议后提交成功",
+  "fullName": "ui.注册页面正常流程-输入有效手机号、验证码、密码并勾选协议后提交成功",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781073679995,
+  "stop": 1781073679995,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "2d902a7b-1a12-4b75-9928-53a449ac2ad4-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "2d902a7b-1a12-4b75-9928-53a449ac2ad4-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

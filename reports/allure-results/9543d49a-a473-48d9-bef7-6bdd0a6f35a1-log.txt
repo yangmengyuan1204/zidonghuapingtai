@@ -1,0 +1,587 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://jpapi.rakumart.cn",
+  "keyword": "火腿肠",
+  "shop_type": "1688",
+  "target_shops": 4,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "verify_cart_after_add": true,
+  "cart_verify_mode": "batch",
+  "started_at": "2026-06-17 11:04:37.202650",
+  "shops": [
+    {
+      "index": 1,
+      "shop_key": "BBB3awQuBw1MlMxgjqTcYrV6g",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "1133169642",
+          "shop_id": "BBB3awQuBw1MlMxgjqTcYrV6g",
+          "shop_name": "南宁东恒华道生物科技有限责任公司",
+          "sku_id": "rakumart_6a320ed193951210",
+          "spec_id": "rakumart_6a320ed193954560",
+          "num": 2,
+          "price": "70.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "shop_key": "BBBOljBJ34kVtOxr_SZAfkCzA",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1008280273106",
+          "shop_id": "BBBOljBJ34kVtOxr_SZAfkCzA",
+          "shop_name": "石狮市裘斯贸易有限公司",
+          "sku_id": "6005839141195",
+          "spec_id": "91060e9f25d26d45f6a8401484b6bf42",
+          "num": 2,
+          "price": "8.86",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1008280273106",
+          "shop_id": "BBBOljBJ34kVtOxr_SZAfkCzA",
+          "shop_name": "石狮市裘斯贸易有限公司",
+          "sku_id": "6005839141196",
+          "spec_id": "d06fd701f7556590ff00af1525f0f446",
+          "num": 3,
+          "price": "15.25",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1008280273106",
+          "shop_id": "BBBOljBJ34kVtOxr_SZAfkCzA",
+          "shop_name": "石狮市裘斯贸易有限公司",
+          "sku_id": "6005839141197",
+          "spec_id": "00bc219a574ca32069c0bcc591dcf7b1",
+          "num": 5,
+          "price": "21.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "shop_key": "BBBNRswAJ92xIgCcf9PhqQqkg",
+      "collected_count": 3,
+      "selected_count": 3,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "950231234036",
+          "shop_id": "BBBNRswAJ92xIgCcf9PhqQqkg",
+          "shop_name": "湖北良品铺子电子商务有限公司",
+          "sku_id": "6230884559158",
+          "spec_id": "1cd49ae23d46a9f620e5a717a9cc9a04",
+          "num": 2,
+          "price": "10.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "950231234036",
+          "shop_id": "BBBNRswAJ92xIgCcf9PhqQqkg",
+          "shop_name": "湖北良品铺子电子商务有限公司",
+          "sku_id": "6230884559159",
+          "spec_id": "d9f689301da1426f42c13655227e893b",
+          "num": 3,
+          "price": "10.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "911577344213",
+          "shop_id": "BBBNRswAJ92xIgCcf9PhqQqkg",
+          "shop_name": "湖北良品铺子电子商务有限公司",
+          "sku_id": "5939993042049",
+          "spec_id": "3a6fec32806aa280782ea756ef5ce772",
+          "num": 2,
+          "price": "7.5",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "shop_key": "BBB1YWXRQvAoZ2TENo03wLezQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "671088915755",
+          "shop_id": "BBB1YWXRQvAoZ2TENo03wLezQ",
+          "shop_name": "亳州市谯城区泰成商贸有限公司",
+          "sku_id": "5000096335911",
+          "spec_id": "05529e146e3f62fe0b48ab83b02d6643",
+          "num": 60,
+          "price": "0.89",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "671088915755",
+          "shop_id": "BBB1YWXRQvAoZ2TENo03wLezQ",
+          "shop_name": "亳州市谯城区泰成商贸有限公司",
+          "sku_id": "5000096335912",
+          "spec_id": "4c16a453c4576ec7824a3e6d1112c785",
+          "num": 60,
+          "price": "0.89",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "671088915755",
+          "shop_id": "BBB1YWXRQvAoZ2TENo03wLezQ",
+          "shop_name": "亳州市谯城区泰成商贸有限公司",
+          "sku_id": "5000096335913",
+          "spec_id": "4e413690c68ff3f454beef8001caa90e",
+          "num": 60,
+          "price": "0.89",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "shop_key": "BBBHdwCv05x9ElSyNHfloDeEg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1047508914366",
+          "shop_id": "BBBHdwCv05x9ElSyNHfloDeEg",
+          "shop_name": "深圳市静林食品有限公司",
+          "sku_id": "6240851375215",
+          "spec_id": "84d4b918764b81522cd79b4b34d0dca1",
+          "num": 2,
+          "price": "36.9",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1047508914366",
+          "shop_id": "BBBHdwCv05x9ElSyNHfloDeEg",
+          "shop_name": "深圳市静林食品有限公司",
+          "sku_id": "6240851375216",
+          "spec_id": "8ae3c99550b0f3cfe8ff4745f214a89d",
+          "num": 3,
+          "price": "36.9",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1047508914366",
+          "shop_id": "BBBHdwCv05x9ElSyNHfloDeEg",
+          "shop_name": "深圳市静林食品有限公司",
+          "sku_id": "6240851375217",
+          "spec_id": "4927319fd195769e178507210fe80491",
+          "num": 5,
+          "price": "67.7",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "shop_key": "BBB1hoDgVX818g3tZB-8ON41w",
+      "collected_count": 1,
+      "selected_count": 1,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "645210363785",
+          "shop_id": "BBB1hoDgVX818g3tZB-8ON41w",
+          "shop_name": "揭阳市伯泰食品有限公司",
+          "sku_id": "5700396438710",
+          "spec_id": "07d6e941031450dcc53d07fd46f7282a",
+          "num": 2,
+          "price": "30.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "shop_key": "BBB0zx-doEygXZY6ooAQN4jRg",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "896824458440",
+          "shop_id": "BBB0zx-doEygXZY6ooAQN4jRg",
+          "shop_name": "金磨坊食品股份有限公司",
+          "sku_id": "5916556814526",
+          "spec_id": "31840f4b7546708f8e73a88d4f87053e",
+          "num": 2,
+          "price": "260.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "896824458440",
+          "shop_id": "BBB0zx-doEygXZY6ooAQN4jRg",
+          "shop_name": "金磨坊食品股份有限公司",
+          "sku_id": "5916556814527",
+          "spec_id": "c41e4f9880e9d1cda261bce318399bd2",
+          "num": 3,
+          "price": "260.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "896824458440",
+          "shop_id": "BBB0zx-doEygXZY6ooAQN4jRg",
+          "shop_name": "金磨坊食品股份有限公司",
+          "sku_id": "5751214269097",
+          "spec_id": "51eaacbc3f99e511e6fdcf55b64fb4c4",
+          "num": 5,
+          "price": "260.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "shop_key": "BBBeJIZZ6npnP7EOs6g7gauOQ",
+      "collected_count": 4,
+      "selected_count": 4,
+      "ready": false,
+      "sample_items": [
+        {
+          "goods_id": "663195846746",
+          "shop_id": "BBBeJIZZ6npnP7EOs6g7gauOQ",
+          "shop_name": "广州市数佰科技有限公司",
+          "sku_id": "4777601404181",
+          "spec_id": "00d2cd07b99465f3fb5d2300b17b025e",
+          "num": 2,
+          "price": "8.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "663195846746",
+          "shop_id": "BBBeJIZZ6npnP7EOs6g7gauOQ",
+          "shop_name": "广州市数佰科技有限公司",
+          "sku_id": "4777601404182",
+          "spec_id": "c767d6a4cfaa5ba88c77d7366cca22ca",
+          "num": 3,
+          "price": "8.0",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "663195846746",
+          "shop_id": "BBBeJIZZ6npnP7EOs6g7gauOQ",
+          "shop_name": "广州市数佰科技有限公司",
+          "sku_id": "4777601404183",
+          "spec_id": "e3b739d3cc2bb601ebadaa8c0d26ce14",
+          "num": 5,
+          "price": "8.0",
+          "from_platform": "1688"
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "shop_key": "BBBiBEvv8WzfJW7rf_AQsmoiQ",
+      "collected_count": 5,
+      "selected_count": 5,
+      "ready": true,
+      "sample_items": [
+        {
+          "goods_id": "1010641028295",
+          "shop_id": "BBBiBEvv8WzfJW7rf_AQsmoiQ",
+          "shop_name": "清河县喆芳贸易商行",
+          "sku_id": "6010398781091",
+          "spec_id": "cbfa4ddceef641ceedf70e241f44c5f2",
+          "num": 2,
+          "price": "16.47",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1010641028295",
+          "shop_id": "BBBiBEvv8WzfJW7rf_AQsmoiQ",
+          "shop_name": "清河县喆芳贸易商行",
+          "sku_id": "6010398781092",
+          "spec_id": "77e06698bd85d2c6d11ddfce2a321b43",
+          "num": 3,
+          "price": "32.27",
+          "from_platform": "1688"
+        },
+        {
+          "goods_id": "1010641028295",
+          "shop_id": "BBBiBEvv8WzfJW7rf_AQsmoiQ",
+          "shop_name": "清河县喆芳贸易商行",
+          "sku_id": "6010398781093",
+          "spec_id": "f24d6da7a82296bf16095d6227658f9c",
+          "num": 5,
+          "price": "41.99",
+          "from_platform": "1688"
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "size": 20,
+      "success": true,
+      "code": 0,
+      "msg": "操作が成功しました",
+      "verification": {
+        "cart_goods_count": 255,
+        "expected_count": 20,
+        "matched_count": 20,
+        "missing_count": 0,
+        "missing_items": [],
+        "api_success": true
+      }
+    }
+  ],
+  "login": {
+    "success": true,
+    "account": "userID/300001In",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "collection": {
+    "ready_shops": 4,
+    "collected_shops": 9,
+    "selected_items": 20,
+    "expected_total": 20,
+    "preview_items": [
+      {
+        "goods_id": "1008280273106",
+        "shop_id": "BBBOljBJ34kVtOxr_SZAfkCzA",
+        "shop_name": "石狮市裘斯贸易有限公司",
+        "sku_id": "6005839141195",
+        "spec_id": "91060e9f25d26d45f6a8401484b6bf42",
+        "num": 2,
+        "price": "8.86",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1008280273106",
+        "shop_id": "BBBOljBJ34kVtOxr_SZAfkCzA",
+        "shop_name": "石狮市裘斯贸易有限公司",
+        "sku_id": "6005839141196",
+        "spec_id": "d06fd701f7556590ff00af1525f0f446",
+        "num": 3,
+        "price": "15.25",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1008280273106",
+        "shop_id": "BBBOljBJ34kVtOxr_SZAfkCzA",
+        "shop_name": "石狮市裘斯贸易有限公司",
+        "sku_id": "6005839141197",
+        "spec_id": "00bc219a574ca32069c0bcc591dcf7b1",
+        "num": 5,
+        "price": "21.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1008280273106",
+        "shop_id": "BBBOljBJ34kVtOxr_SZAfkCzA",
+        "shop_name": "石狮市裘斯贸易有限公司",
+        "sku_id": "6005839141198",
+        "spec_id": "138514b415b73b840b4da96de27e53a7",
+        "num": 2,
+        "price": "8.86",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1008280273106",
+        "shop_id": "BBBOljBJ34kVtOxr_SZAfkCzA",
+        "shop_name": "石狮市裘斯贸易有限公司",
+        "sku_id": "6005839141199",
+        "spec_id": "4cefbd363bbaae327cf8ebc271d886a7",
+        "num": 3,
+        "price": "15.25",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "671088915755",
+        "shop_id": "BBB1YWXRQvAoZ2TENo03wLezQ",
+        "shop_name": "亳州市谯城区泰成商贸有限公司",
+        "sku_id": "5000096335911",
+        "spec_id": "05529e146e3f62fe0b48ab83b02d6643",
+        "num": 60,
+        "price": "0.89",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "671088915755",
+        "shop_id": "BBB1YWXRQvAoZ2TENo03wLezQ",
+        "shop_name": "亳州市谯城区泰成商贸有限公司",
+        "sku_id": "5000096335912",
+        "spec_id": "4c16a453c4576ec7824a3e6d1112c785",
+        "num": 60,
+        "price": "0.89",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "671088915755",
+        "shop_id": "BBB1YWXRQvAoZ2TENo03wLezQ",
+        "shop_name": "亳州市谯城区泰成商贸有限公司",
+        "sku_id": "5000096335913",
+        "spec_id": "4e413690c68ff3f454beef8001caa90e",
+        "num": 60,
+        "price": "0.89",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "671088915755",
+        "shop_id": "BBB1YWXRQvAoZ2TENo03wLezQ",
+        "shop_name": "亳州市谯城区泰成商贸有限公司",
+        "sku_id": "5000096335914",
+        "spec_id": "c4900a08fb2c25837af6e86c29f85832",
+        "num": 60,
+        "price": "0.89",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "671088915755",
+        "shop_id": "BBB1YWXRQvAoZ2TENo03wLezQ",
+        "shop_name": "亳州市谯城区泰成商贸有限公司",
+        "sku_id": "5000096335915",
+        "spec_id": "5afba23b2256d6ba7efcb27ac696c38b",
+        "num": 60,
+        "price": "0.89",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1047508914366",
+        "shop_id": "BBBHdwCv05x9ElSyNHfloDeEg",
+        "shop_name": "深圳市静林食品有限公司",
+        "sku_id": "6240851375215",
+        "spec_id": "84d4b918764b81522cd79b4b34d0dca1",
+        "num": 2,
+        "price": "36.9",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1047508914366",
+        "shop_id": "BBBHdwCv05x9ElSyNHfloDeEg",
+        "shop_name": "深圳市静林食品有限公司",
+        "sku_id": "6240851375216",
+        "spec_id": "8ae3c99550b0f3cfe8ff4745f214a89d",
+        "num": 3,
+        "price": "36.9",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1047508914366",
+        "shop_id": "BBBHdwCv05x9ElSyNHfloDeEg",
+        "shop_name": "深圳市静林食品有限公司",
+        "sku_id": "6240851375217",
+        "spec_id": "4927319fd195769e178507210fe80491",
+        "num": 5,
+        "price": "67.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1047508914366",
+        "shop_id": "BBBHdwCv05x9ElSyNHfloDeEg",
+        "shop_name": "深圳市静林食品有限公司",
+        "sku_id": "6240851375218",
+        "spec_id": "d2259f32bed40867c1a5453f22ce7e93",
+        "num": 2,
+        "price": "67.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "1047508914366",
+        "shop_id": "BBBHdwCv05x9ElSyNHfloDeEg",
+        "shop_name": "深圳市静林食品有限公司",
+        "sku_id": "6240851375219",
+        "spec_id": "9d6331ce8ccf85a2a73c69b0741f0989",
+        "num": 3,
+        "price": "67.7",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "896824458440",
+        "shop_id": "BBB0zx-doEygXZY6ooAQN4jRg",
+        "shop_name": "金磨坊食品股份有限公司",
+        "sku_id": "5916556814526",
+        "spec_id": "31840f4b7546708f8e73a88d4f87053e",
+        "num": 2,
+        "price": "260.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "896824458440",
+        "shop_id": "BBB0zx-doEygXZY6ooAQN4jRg",
+        "shop_name": "金磨坊食品股份有限公司",
+        "sku_id": "5916556814527",
+        "spec_id": "c41e4f9880e9d1cda261bce318399bd2",
+        "num": 3,
+        "price": "260.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "896824458440",
+        "shop_id": "BBB0zx-doEygXZY6ooAQN4jRg",
+        "shop_name": "金磨坊食品股份有限公司",
+        "sku_id": "5751214269097",
+        "spec_id": "51eaacbc3f99e511e6fdcf55b64fb4c4",
+        "num": 5,
+        "price": "260.0",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "828059860713",
+        "shop_id": "BBB0zx-doEygXZY6ooAQN4jRg",
+        "shop_name": "金磨坊食品股份有限公司",
+        "sku_id": "5722440038985",
+        "spec_id": "45bce65ca5acbe6ae515d5850d813389",
+        "num": 2,
+        "price": "13.5",
+        "from_platform": "1688"
+      },
+      {
+        "goods_id": "828059860713",
+        "shop_id": "BBB0zx-doEygXZY6ooAQN4jRg",
+        "shop_name": "金磨坊食品股份有限公司",
+        "sku_id": "5722440038986",
+        "spec_id": "8f6b89161136c80f600bae8138653286",
+        "num": 3,
+        "price": "13.5",
+        "from_platform": "1688"
+      }
+    ]
+  },
+  "duration_ms": 18758,
+  "summary": {
+    "keyword": "火腿肠",
+    "shop_type": "1688",
+    "target_shops": 4,
+    "per_shop": 5,
+    "ready_shops": 4,
+    "expected_total": 20,
+    "available_expected_total": 20,
+    "added_total": 20,
+    "api_added_total": 20,
+    "verified_added_total": 20,
+    "cart_verification_enabled": true,
+    "cart_verify_mode": "batch",
+    "failed_batches": [],
+    "verification_failed_batches": [],
+    "strict_shop_count": false,
+    "duration_ms": 18758
+  },
+  "finished_at": "2026-06-17 11:04:55.961566"
+}

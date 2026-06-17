@@ -1,0 +1,22 @@
+{
+  "uuid": "a2508826-4de2-4b30-85de-b3a12a062999",
+  "name": "直接装箱上架",
+  "fullName": "data_script.直接装箱上架",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781512306211,
+  "stop": 1781512360160,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "a2508826-4de2-4b30-85de-b3a12a062999-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

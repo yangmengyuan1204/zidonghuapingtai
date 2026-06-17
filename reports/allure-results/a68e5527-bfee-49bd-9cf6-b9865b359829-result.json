@@ -1,0 +1,22 @@
+{
+  "uuid": "a68e5527-bfee-49bd-9cf6-b9865b359829",
+  "name": "订单报价",
+  "fullName": "data_script.订单报价",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781505768457,
+  "stop": 1781505768457,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "a68e5527-bfee-49bd-9cf6-b9865b359829-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

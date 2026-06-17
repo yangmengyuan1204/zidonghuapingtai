@@ -1,0 +1,27 @@
+{
+  "uuid": "da86aae4-faff-4247-9f03-553964129a0b",
+  "name": "搜索功能-按订单号精确搜索",
+  "fullName": "ui.搜索功能-按订单号精确搜索",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781595590063,
+  "stop": 1781595590063,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "da86aae4-faff-4247-9f03-553964129a0b-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "da86aae4-faff-4247-9f03-553964129a0b-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

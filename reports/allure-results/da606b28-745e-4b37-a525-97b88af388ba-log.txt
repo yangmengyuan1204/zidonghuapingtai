@@ -1,0 +1,135 @@
+{
+  "case_name": "注册页面-手机号格式错误提示",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "wait_for_selector",
+      "locator": "body"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "wait",
+      "value": 1000
+    },
+    {
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1781072293,
+    "datetime": "2026-06-10 14:18:13",
+    "date": "2026-06-10",
+    "uuid": "2fa373aa-c9b8-4aad-99c4-2494d254ffda",
+    "random_int": 339006,
+    "random_str": "id7owala",
+    "random_phone": "13952133265",
+    "random_email": "test_339006@example.com",
+    "$timestamp": 1781072293,
+    "$datetime": "2026-06-10 14:18:13",
+    "$date": "2026-06-10",
+    "$uuid": "2fa373aa-c9b8-4aad-99c4-2494d254ffda",
+    "$random_int": 339006,
+    "$random_str": "id7owala",
+    "$random_phone": "13952133265",
+    "$random_email": "test_339006@example.com"
+  },
+  "validation_issues": [],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://promotees.rakumart.cn/login",
+      "started_at": "2026-06-10 14:18:14.201157",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 4716,
+      "finished_at": "2026-06-10 14:18:18.917850",
+      "index": 1
+    },
+    {
+      "name": "等待元素",
+      "action": "wait_for_selector",
+      "locator": "body",
+      "fallback_locators": [],
+      "value": null,
+      "started_at": "2026-06-10 14:18:19.242701",
+      "status": "passed",
+      "used_locator": "body",
+      "matched_count": 1,
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 179,
+      "finished_at": "2026-06-10 14:18:19.422109",
+      "index": 2
+    },
+    {
+      "name": "点击",
+      "action": "click",
+      "locator": "text=立即注册",
+      "fallback_locators": [
+        "button:has-text(\"立即注册\")",
+        "a:has-text(\"立即注册\")",
+        "[role=\"button\"]:has-text(\"立即注册\")",
+        "input[type=\"button\"][value*=\"立即注册\"]",
+        "input[type=\"submit\"][value*=\"立即注册\"]"
+      ],
+      "value": null,
+      "started_at": "2026-06-10 14:18:19.734565",
+      "status": "passed",
+      "used_locator": "text=立即注册",
+      "matched_count": 1,
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 240,
+      "finished_at": "2026-06-10 14:18:19.975091",
+      "index": 3
+    },
+    {
+      "name": "等待",
+      "action": "wait",
+      "locator": "",
+      "fallback_locators": [],
+      "value": 1000,
+      "started_at": "2026-06-10 14:18:19.980811",
+      "status": "passed",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 1010,
+      "finished_at": "2026-06-10 14:18:20.991569",
+      "index": 4
+    },
+    {
+      "name": "截图",
+      "action": "screenshot",
+      "locator": "",
+      "fallback_locators": [],
+      "value": null,
+      "started_at": "2026-06-10 14:18:20.991618",
+      "status": "passed",
+      "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\7f69974f-1ebd-4f5e-b0e2-4bfe1549164a.png",
+      "current_url": "https://promotees.rakumart.cn/login",
+      "duration_ms": 273,
+      "finished_at": "2026-06-10 14:18:21.265003",
+      "index": 5
+    }
+  ],
+  "started_at": "2026-06-10 14:18:13.355454",
+  "retry_config": {
+    "retry_count": 2,
+    "retry_interval_ms": 1000
+  },
+  "auth_context": {
+    "login_required": false,
+    "account_profile_id": null,
+    "login_url": "",
+    "removed_login_step_count": 0
+  },
+  "finished_at": "2026-06-10 14:18:21.265015"
+}

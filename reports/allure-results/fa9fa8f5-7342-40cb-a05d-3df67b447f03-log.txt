@@ -1,0 +1,49 @@
+{
+  "case_name": "注册页面-输入错误验证码提交失败",
+  "page_url": "https://promotees.rakumart.cn/login",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://promotees.rakumart.cn/login"
+    },
+    {
+      "action": "wait_for_selector",
+      "locator": "body"
+    },
+    {
+      "action": "click",
+      "locator": "text=立即注册"
+    },
+    {
+      "action": "wait",
+      "value": 1000
+    },
+    {
+      "action": "screenshot"
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1780632026,
+    "datetime": "2026-06-05 12:00:26",
+    "date": "2026-06-05",
+    "uuid": "c97ae89d-786d-4cff-851e-268b98dd4848",
+    "random_int": 876956,
+    "random_str": "nhbnlp2t",
+    "random_phone": "13268366144",
+    "random_email": "test_876956@example.com",
+    "$timestamp": 1780632026,
+    "$datetime": "2026-06-05 12:00:26",
+    "$date": "2026-06-05",
+    "$uuid": "c97ae89d-786d-4cff-851e-268b98dd4848",
+    "$random_int": 876956,
+    "$random_str": "nhbnlp2t",
+    "$random_phone": "13268366144",
+    "$random_email": "test_876956@example.com",
+    "username": "",
+    "password": "***",
+    "code": ""
+  },
+  "started_at": "2026-06-05 12:00:26.915961",
+  "finished_at": "2026-06-05 12:00:31.345666"
+}

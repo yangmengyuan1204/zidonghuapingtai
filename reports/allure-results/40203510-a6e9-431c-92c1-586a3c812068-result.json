@@ -1,0 +1,27 @@
+{
+  "uuid": "40203510-a6e9-431c-92c1-586a3c812068",
+  "name": "注册页面-未勾选用户协议时提交失败",
+  "fullName": "ui.注册页面-未勾选用户协议时提交失败",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781072947088,
+  "stop": 1781072947088,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "40203510-a6e9-431c-92c1-586a3c812068-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "40203510-a6e9-431c-92c1-586a3c812068-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}
