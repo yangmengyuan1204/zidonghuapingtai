@@ -169,8 +169,61 @@ class FunctionalCaseUpdate(BaseModel):
     precondition: Optional[str] = None
     steps: Optional[str] = None
     expected: Optional[str] = None
+    category: Optional[str] = None
     priority: Optional[str] = None
     automation_status: Optional[str] = None
+
+
+class FunctionalImpactItemCreate(BaseModel):
+    item_type: str = "manual"
+    ref_id: Optional[int] = None
+    title: str
+    target: Optional[str] = ""
+    risk_level: Optional[str] = "P1"
+    test_result: Optional[str] = "untested"
+    source: Optional[str] = "manual"
+    reason: Optional[str] = ""
+    remark: Optional[str] = ""
+
+
+class FunctionalImpactItemUpdate(BaseModel):
+    item_type: Optional[str] = None
+    ref_id: Optional[int] = None
+    title: Optional[str] = None
+    target: Optional[str] = None
+    risk_level: Optional[str] = None
+    test_result: Optional[str] = None
+    source: Optional[str] = None
+    reason: Optional[str] = None
+    remark: Optional[str] = None
+
+
+class FunctionalDataCheckRuleCreate(BaseModel):
+    rule_name: str
+    check_type: str = "page_api_consistency"
+    page_value: Optional[str] = ""
+    api_method: Optional[str] = "GET"
+    api_url: Optional[str] = ""
+    api_headers: Any = None
+    api_body: Any = None
+    api_value_path: Optional[str] = "json"
+    compare_rule: Any = None
+    expected_value: Optional[str] = ""
+    status: Optional[str] = "active"
+
+
+class FunctionalDataCheckRuleUpdate(BaseModel):
+    rule_name: Optional[str] = None
+    check_type: Optional[str] = None
+    page_value: Optional[str] = None
+    api_method: Optional[str] = None
+    api_url: Optional[str] = None
+    api_headers: Any = None
+    api_body: Any = None
+    api_value_path: Optional[str] = None
+    compare_rule: Any = None
+    expected_value: Optional[str] = None
+    status: Optional[str] = None
 
 
 class FunctionalRequirementNoteCreate(BaseModel):
@@ -210,6 +263,15 @@ class FunctionalCaseBatchStatusUpdate(BaseModel):
     test_result: str = "untested"
 
 
+class FunctionalCaseBatchIds(BaseModel):
+    case_ids: list[int] = []
+
+
+class FunctionalCaseBatchAutomationUpdate(BaseModel):
+    case_ids: list[int] = []
+    automation_status: str = "approved"
+
+
 class FunctionalCaseStats(BaseModel):
     total: int = 0
     untested: int = 0
@@ -224,6 +286,8 @@ class FunctionalExecuteRequest(BaseModel):
     account_profile_id: Optional[int] = None
     account_mode: Optional[str] = "default"
     case_id: Optional[int] = None
+    case_ids: list[int] = []
+    force: bool = False
 
 
 class CaseGenerationTaskCreate(BaseModel):

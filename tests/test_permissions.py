@@ -1,3 +1,4 @@
+import atexit
 import base64
 import json
 import os
@@ -5,6 +6,13 @@ from pathlib import Path
 from types import SimpleNamespace
 
 TEST_DB = Path(__file__).resolve().parent / "test_platform.db"
+# 确保测试退出后清理数据库文件（忽略文件被锁等错误）
+def _cleanup_test_db():
+    try:
+        TEST_DB.unlink(missing_ok=True)
+    except Exception:
+        pass
+atexit.register(_cleanup_test_db)
 if TEST_DB.exists():
     TEST_DB.unlink()
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB.as_posix()}"
@@ -69,6 +77,27 @@ def test_normal_user_cannot_create_project():
         assert blocked.status_code == 403
 
 
+def test_legacy_plaintext_password_is_migrated_and_login_keeps_working():
+    username = "legacy_plaintext_user"
+    password = "legacy-pass-123"
+    db = SessionLocal()
+    try:
+        db.query(main.User).filter(main.User.username == username).delete(synchronize_session=False)
+        db.add(main.User(username=username, password=password, role="normal", create_time=main.datetime.now()))
+        db.commit()
+        main.migrate_legacy_plaintext_passwords(db)
+        user = db.query(main.User).filter(main.User.username == username).first()
+        assert user is not None
+        assert user.password != password
+        assert main.verify_password(password, user.password)
+    finally:
+        db.close()
+
+    with TestClient(app) as client:
+        token = login(client, username, password)
+        assert token
+
+
 class FakeResponse:
     def __init__(self, status_code, payload):
         self.status_code = status_code
@@ -95,6 +124,237 @@ def create_project_env(client: TestClient, headers: dict, name: str = "data-scri
         },
     ).json()
     return project, env
+
+
+def test_action_template_crud_and_test_run(monkeypatch):
+    def fake_execute_ui_case(ui_case, variables):
+        steps = json.loads(ui_case.steps)
+        assert steps[0]["action"] == "click"
+        return True, "template-ok", "", "template-report"
+
+    monkeypatch.setattr(executors, "execute_ui_case", fake_execute_ui_case)
+
+    with TestClient(app) as client:
+        admin_token = login(client, "admin", "admin123")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        project = client.post("/api/projects", headers=headers, json={"name": "template-project", "desc": ""}).json()
+
+        missing_project = client.post(
+            "/api/action-templates",
+            headers=headers,
+            json={"project_id": 999999, "name": "missing-project-template", "steps": []},
+        )
+        created = client.post(
+            "/api/action-templates",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "name": "login-template",
+                "description": "login action",
+                "trigger_keywords": ["login"],
+                "steps": [{"action": "click", "locator": "#submit"}],
+                "variables": {"account": "alice"},
+                "locator_fallbacks": {"#submit": ["button[type=submit]"]},
+            },
+        )
+
+        assert missing_project.status_code == 400
+        assert created.status_code == 200
+        template = created.json()
+        assert template["trigger_keywords"] == ["login"]
+        assert template["steps"][0]["locator"] == "#submit"
+
+        updated = client.put(
+            f"/api/action-templates/{template['id']}",
+            headers=headers,
+            json={"name": "login-template-v2", "trigger_keywords": ["sign in"], "steps": [{"action": "click", "locator": "#go"}]},
+        )
+        run_result = client.get(f"/api/action-templates/{template['id']}/test-run", headers=headers)
+
+    assert updated.status_code == 200
+    assert updated.json()["name"] == "login-template-v2"
+    assert updated.json()["trigger_keywords"] == ["sign in"]
+    assert run_result.status_code == 200
+    assert run_result.json()["passed"] is True
+
+
+def test_api_case_rejects_cross_project_env_on_create_and_update():
+    with TestClient(app) as client:
+        admin_token = login(client, "admin", "admin123")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        project_1, env_1 = create_project_env(client, headers, "api-case-project-1")
+        project_2, env_2 = create_project_env(client, headers, "api-case-project-2")
+
+        cross_create = client.post(
+            "/api/api-cases",
+            headers=headers,
+            json={
+                "project_id": project_1["id"],
+                "env_id": env_2["id"],
+                "case_name": "cross-project-env",
+                "method": "GET",
+                "url": "/health",
+                "headers": {},
+                "params": {},
+                "body": "",
+                "assert_rule": {},
+                "status": "active",
+            },
+        )
+        valid = client.post(
+            "/api/api-cases",
+            headers=headers,
+            json={
+                "project_id": project_1["id"],
+                "env_id": env_1["id"],
+                "case_name": "same-project-env",
+                "method": "GET",
+                "url": "/health",
+                "headers": {},
+                "params": {},
+                "body": "",
+                "assert_rule": {},
+                "status": "active",
+            },
+        )
+        cross_env_update = client.put(
+            f"/api/api-cases/{valid.json()['id']}",
+            headers=headers,
+            json={"env_id": env_2["id"]},
+        )
+        cross_project_update = client.put(
+            f"/api/api-cases/{valid.json()['id']}",
+            headers=headers,
+            json={"project_id": project_2["id"]},
+        )
+
+    assert cross_create.status_code == 400
+    assert valid.status_code == 200
+    assert cross_env_update.status_code == 400
+    assert cross_project_update.status_code == 400
+
+
+def test_env_delete_rejects_referenced_api_cases():
+    with TestClient(app) as client:
+        admin_token = login(client, "admin", "admin123")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        project, env = create_project_env(client, headers, "env-delete-project")
+        created = client.post(
+            "/api/api-cases",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "env_id": env["id"],
+                "case_name": "env-delete-guard",
+                "method": "GET",
+                "url": "/health",
+                "headers": {},
+                "params": {},
+                "body": "",
+                "assert_rule": {},
+                "status": "active",
+            },
+        )
+        deleted = client.delete(f"/api/envs/{env['id']}", headers=headers)
+        envs = client.get("/api/envs", headers=headers, params={"project_id": project["id"]})
+
+    assert created.status_code == 200
+    assert deleted.status_code == 400
+    assert any(item["id"] == env["id"] for item in envs.json())
+
+
+def test_dashboard_counts_project_scoped_records_without_case_ids():
+    with TestClient(app) as client:
+        admin_token = login(client, "admin", "admin123")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        project = client.post("/api/projects", headers=headers, json={"name": "dashboard-record-project", "desc": ""}).json()
+
+        db = SessionLocal()
+        try:
+            record = main.TestRecord(
+                case_type="api",
+                case_id=0,
+                project_id=project["id"],
+                result="passed",
+                log="{}",
+                screenshot="",
+                report_path="",
+                execute_time=main.datetime.now(),
+            )
+            db.add(record)
+            db.commit()
+            db.refresh(record)
+            record_id = record.id
+        finally:
+            db.close()
+
+        records = client.get("/api/test-records", headers=headers, params={"project_id": project["id"], "case_type": "api"})
+        dashboard = client.get("/api/dashboard", headers=headers, params={"project_id": project["id"]})
+
+    assert records.status_code == 200
+    assert records.json()["total"] == 1
+    assert dashboard.status_code == 200
+    assert dashboard.json()["record_count"] == 1
+    assert dashboard.json()["latest_records"][0]["id"] == record_id
+
+
+def test_core_config_rejects_invalid_inputs():
+    with TestClient(app) as client:
+        admin_token = login(client, "admin", "admin123")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+
+        blank_project = client.post("/api/projects", headers=headers, json={"name": "   ", "desc": ""})
+        project = client.post("/api/projects", headers=headers, json={"name": "validation-project", "desc": ""}).json()
+        blank_env = client.post(
+            "/api/envs",
+            headers=headers,
+            json={"project_id": project["id"], "env_name": "", "base_url": "", "global_headers": {}, "global_vars": {}, "timeout": 30},
+        )
+        negative_timeout = client.post(
+            "/api/envs",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "env_name": "bad-timeout-env",
+                "base_url": "https://example.test",
+                "global_headers": {},
+                "global_vars": {},
+                "timeout": -1,
+            },
+        )
+        env = client.post(
+            "/api/envs",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "env_name": "validation-env",
+                "base_url": "https://example.test",
+                "global_headers": {},
+                "global_vars": {},
+                "timeout": 30,
+            },
+        ).json()
+        invalid_method = client.post(
+            "/api/api-cases",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "env_id": env["id"],
+                "case_name": "invalid-method",
+                "method": "BREW",
+                "url": "/health",
+                "headers": {},
+                "params": {},
+                "body": "",
+                "assert_rule": {},
+                "status": "active",
+            },
+        )
+
+    assert blank_project.status_code == 400
+    assert blank_env.status_code == 400
+    assert negative_timeout.status_code == 400
+    assert invalid_method.status_code == 400
 
 
 def test_batch_api_execution_passes_extracted_variables(monkeypatch):
@@ -273,8 +533,10 @@ def test_data_script_record_saves_project_and_filters_records(monkeypatch):
     assert response.status_code == 200
     record = response.json()
     assert record["project_id"] == project["id"]
-    assert any(item["id"] == record["id"] and item["project_id"] == project["id"] for item in records.json())
-    assert all(item["id"] != record["id"] for item in other_records.json())
+    records_data = records.json()["items"]
+    other_records_data = other_records.json()["items"]
+    assert any(item["id"] == record["id"] and item["project_id"] == project["id"] for item in records_data)
+    assert all(item["id"] != record["id"] for item in other_records_data)
 
 
 def test_data_script_builtin_cases_bind_to_japan_project():
@@ -1332,3 +1594,121 @@ def test_full_flow_endpoint_returns_summary(monkeypatch):
     assert response.status_code == 200
     assert response.json()["summary"]["current_node"] == "pending_purchase"
     assert response.json()["summary"]["order_sn"] == "ORDER-ENDPOINT"
+
+
+def test_requirement_pack_impact_data_check_and_conclusion(monkeypatch):
+    def fake_proxy(method, url, headers, body, timeout):
+        assert method == "GET"
+        assert "order/detail" in url
+        return FakeResponse(200, {"data": {"amount": "12.3"}})
+
+    monkeypatch.setattr(main, "guarded_proxy_request", fake_proxy)
+
+    with TestClient(app) as client:
+        admin_token = login(client, "admin", "admin123")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        project = client.post("/api/projects", headers=headers, json={"name": "requirement-pack-project", "desc": ""}).json()
+        old_task = client.post(
+            "/api/functional-tasks",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "iteration_name": "订单金额历史需求",
+                "target_url": "https://example.test/orders",
+                "requirement_text": "订单金额状态",
+            },
+        ).json()
+        new_task = client.post(
+            "/api/functional-tasks",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "iteration_name": "订单金额状态改造",
+                "target_url": "https://example.test/orders/detail",
+                "requirement_text": "验证订单金额和状态流转正确",
+            },
+        ).json()
+
+        db = SessionLocal()
+        try:
+            db.add(
+                main.FunctionalCase(
+                    task_id=old_task["id"],
+                    title="订单金额状态历史回归",
+                    precondition="",
+                    steps="查看订单金额状态",
+                    expected="金额状态正确",
+                    category="数据结果",
+                    priority="P1",
+                    automation_status="draft",
+                    test_result="failed",
+                    ui_case_id=None,
+                    create_time=main.datetime.now(),
+                )
+            )
+            db.add(
+                main.FunctionalCase(
+                    task_id=new_task["id"],
+                    title="订单金额状态主流程",
+                    precondition="",
+                    steps="提交订单并查看金额",
+                    expected="金额状态正确",
+                    category="数据结果",
+                    priority="P0",
+                    automation_status="draft",
+                    test_result="passed",
+                    ui_case_id=None,
+                    create_time=main.datetime.now(),
+                )
+            )
+            db.commit()
+        finally:
+            db.close()
+
+        impact_resp = client.post(f"/api/functional-tasks/{new_task['id']}/impact-items/analyze", headers=headers)
+        assert impact_resp.status_code == 200
+        assert impact_resp.json()["created"] >= 1
+        impact_id = impact_resp.json()["items"][0]["id"]
+
+        rule_resp = client.post(
+            f"/api/functional-tasks/{new_task['id']}/data-check-rules",
+            headers=headers,
+            json={
+                "rule_name": "订单金额页面/API一致",
+                "check_type": "amount_quantity",
+                "page_value": "12.30",
+                "api_method": "GET",
+                "api_url": "/order/detail",
+                "api_value_path": "json.data.amount",
+            },
+        )
+        assert rule_resp.status_code == 200
+        rule_id = rule_resp.json()["rule"]["id"]
+
+        run_resp = client.post(f"/api/functional-data-check-rules/{rule_id}/execute", headers=headers)
+        assert run_resp.status_code == 200
+        assert run_resp.json()["result"]["result"] == "passed"
+
+        conclusion_resp = client.get(f"/api/functional-tasks/{new_task['id']}/conclusion", headers=headers)
+        assert conclusion_resp.status_code == 200
+        assert conclusion_resp.json()["conclusion"]["decision"] == "ready"
+
+        failed_impact = client.put(
+            f"/api/functional-impact-items/{impact_id}",
+            headers=headers,
+            json={"test_result": "failed"},
+        )
+        assert failed_impact.status_code == 200
+        risky_resp = client.get(f"/api/functional-tasks/{new_task['id']}/conclusion", headers=headers)
+        assert risky_resp.json()["conclusion"]["decision"] == "risky"
+
+        update_rule = client.put(
+            f"/api/functional-data-check-rules/{rule_id}",
+            headers=headers,
+            json={"page_value": "15.00"},
+        )
+        assert update_rule.status_code == 200
+        failed_check = client.post(f"/api/functional-data-check-rules/{rule_id}/execute", headers=headers)
+        assert failed_check.json()["result"]["result"] == "failed"
+        blocked_resp = client.get(f"/api/functional-tasks/{new_task['id']}/conclusion", headers=headers)
+        assert blocked_resp.json()["conclusion"]["decision"] == "not_recommended"

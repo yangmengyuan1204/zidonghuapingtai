@@ -18,9 +18,13 @@ def main() -> None:
     args = parser.parse_args()
 
     log_dir = BASE_DIR / "logs"
-    log_dir.mkdir(exist_ok=True)
-    sys.stdout = (log_dir / "uvicorn.out.log").open("a", encoding="utf-8", buffering=1)
-    sys.stderr = (log_dir / "uvicorn.err.log").open("a", encoding="utf-8", buffering=1)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    # 将日志重定向到文件，失败时仅警告不退出
+    try:
+        sys.stdout = (log_dir / "uvicorn.out.log").open("a", encoding="utf-8", buffering=1)
+        sys.stderr = (log_dir / "uvicorn.err.log").open("a", encoding="utf-8", buffering=1)
+    except OSError as exc:
+        print(f"警告: 无法打开日志文件，将使用控制台输出: {exc}")
 
     import uvicorn
 

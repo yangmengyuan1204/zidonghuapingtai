@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from html import unescape
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -13,6 +14,9 @@ from typing import Any, Dict, Iterable
 from urllib.parse import urlparse
 from uuid import uuid4
 import zipfile
+
+
+logger = logging.getLogger(__name__)
 
 import requests
 
@@ -64,11 +68,38 @@ def store_axure_file(filename: str, content: bytes) -> str:
     return str(target)
 
 
+# 常见图片格式魔数
+_IMAGE_MAGIC_BYTES: dict[bytes, tuple[str, ...]] = {
+    b"\x89PNG\r\n\x1a\n": (".png",),
+    b"\xff\xd8\xff": (".jpg", ".jpeg"),
+    b"RIFF": (".webp",),  # WebP 以 RIFF....WEBP 开头，需要进一步判断
+}
+
+
+def _validate_image_content(content: bytes, suffix: str) -> None:
+    """校验文件内容魔数是否匹配声明的后缀。"""
+    if len(content) < 12:
+        raise ValueError(f"文件内容过短 ({len(content)} bytes)，不是有效的图片文件")
+    for magic, extensions in _IMAGE_MAGIC_BYTES.items():
+        if content.startswith(magic):
+            if suffix in extensions:
+                return  # 魔数匹配
+            # 魔数指向另一种格式，拒绝
+            expected_exts = "/".join(extensions)
+            raise ValueError(f"文件内容为 {expected_exts} 格式，但后缀名为 {suffix}")
+    # WebP 额外检测：RIFF....WEBP
+    if suffix == ".webp" and content.startswith(b"RIFF") and content[8:12] == b"WEBP":
+        return
+    raise ValueError(f"无法识别的图片格式或文件内容与后缀 {suffix} 不匹配")
+
+
 def store_functional_screenshot_file(filename: str, content: bytes) -> str:
     ensure_functional_dirs()
     suffix = Path(filename or "screenshot.png").suffix.lower() or ".png"
     if suffix not in {".png", ".jpg", ".jpeg", ".webp"}:
         raise ValueError("只支持上传 PNG/JPG/WebP 截图")
+    # 魔数校验
+    _validate_image_content(content, suffix)
     target = FUNCTIONAL_SCREENSHOT_DIR / f"{uuid4()}{suffix}"
     target.write_bytes(content)
     return str(target)
@@ -360,6 +391,51 @@ def _json_from_text(text: str) -> Any:
         return None
 
 
+def _extract_supported_model_names(text: str) -> list[str]:
+    raw = str(text or "")
+    match = re.search(
+        r"supported API model names are\s+([^\"。；;]+?)(?:,\s*but\b|\.|$)",
+        raw,
+        flags=re.I,
+    )
+    if match:
+        candidates = re.findall(r"[A-Za-z0-9_.:-]+", match.group(1))
+    else:
+        candidates = re.findall(r"\bdeepseek-[A-Za-z0-9_.:-]+\b", raw)
+    ignored = {"or", "and", "are", "is"}
+    names: list[str] = []
+    for item in candidates:
+        name = item.strip(" ,.;")
+        if not name or name.lower() in ignored or name in names:
+            continue
+        names.append(name)
+    return names
+
+
+def _unsupported_model_name(text: str) -> str:
+    match = re.search(r"but you passed\s+([A-Za-z0-9_.:-]+)", str(text or ""), flags=re.I)
+    return match.group(1) if match else ""
+
+
+def _retry_model_from_error(current_model: str, response_text: str) -> str:
+    supported = [item for item in _extract_supported_model_names(response_text) if item != current_model]
+    if not supported:
+        return ""
+    flash = next((item for item in supported if "flash" in item.lower()), "")
+    return flash or supported[0]
+
+
+def _openai_chat_payload(model: str, prompt: str) -> Dict[str, Any]:
+    return {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "你是资深软件测试工程师，只输出合法 JSON。"},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.2,
+    }
+
+
 def _format_model_http_error(response: requests.Response) -> str:
     status_code = response.status_code
     url = response.url
@@ -374,6 +450,11 @@ def _format_model_http_error(response: requests.Response) -> str:
     except Exception:
         response_text = ""
 
+    supported_models = _extract_supported_model_names(response_text)
+    if status_code == 400 and supported_models:
+        passed_model = _unsupported_model_name(response_text)
+        prefix = f"当前配置为 {passed_model}，" if passed_model else ""
+        return f"模型名称不被当前接口支持，{prefix}当前接口支持：{', '.join(supported_models)}。请在 AI配置 中改成其中一个模型。"
     if status_code == 400 and "image" in response_text.lower():
         return "当前模型接口不支持图片输入；系统会先提取截图 OCR 文本，再交给文本模型生成测试点。"
     if status_code == 401:
@@ -428,16 +509,25 @@ def call_local_model_json(config: AiConfig | None, prompt: str, timeout: int = 9
     response = requests.post(
         endpoint,
         headers=headers,
-        json={
-            "model": config.model,
-            "messages": [
-                {"role": "system", "content": "你是资深软件测试工程师，只输出合法 JSON。"},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.2,
-        },
+        json=_openai_chat_payload(config.model, prompt),
         timeout=timeout,
     )
+    if not response.ok and response.status_code == 400:
+        response_text = ""
+        try:
+            response_text = response.text
+        except Exception:
+            response_text = ""
+        retry_model = _retry_model_from_error(config.model or "", response_text)
+        if retry_model:
+            logger.warning("AI 模型 %s 不被当前接口支持，自动重试 %s", config.model, retry_model)
+            retry_response = requests.post(
+                endpoint,
+                headers=headers,
+                json=_openai_chat_payload(retry_model, prompt),
+                timeout=timeout,
+            )
+            response = retry_response
     _raise_for_model_response(response)
     payload = response.json()
     content = payload.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -600,6 +690,31 @@ def _ocr_python_candidates() -> list[str]:
     return candidates
 
 
+def _compact_ocr_error(error: Any, limit: int = 260) -> str:
+    text = re.sub(r"\s+", " ", str(error or "")).strip()
+    if not text:
+        return ""
+    lower = text.lower()
+    if "numpy" in lower and ("c-extensions failed" in lower or "_multiarray_umath" in lower):
+        return "OCR 运行环境的 NumPy/PaddleOCR 与当前 Python 不兼容，请重建 .venv_ocr，或把 OCR_PYTHON 指向可正常导入 paddleocr 的 Python 3.11/3.12 环境。"
+    if "no module named 'paddleocr'" in lower or "no module named paddleocr" in lower:
+        return "OCR 运行环境未安装 PaddleOCR，请安装 paddleocr，或把 OCR_PYTHON 指向已安装 PaddleOCR 的 Python 环境。"
+    if "paddleocr unavailable" in lower:
+        return "OCR 运行环境无法导入 PaddleOCR，请检查 .venv_ocr 或 OCR_PYTHON 配置。"
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "..."
+
+
+def _join_ocr_errors(errors: list[str]) -> str:
+    compacted: list[str] = []
+    for item in errors:
+        message = _compact_ocr_error(item)
+        if message and message not in compacted:
+            compacted.append(message)
+    return "；".join(compacted)
+
+
 def _run_external_paddle_ocr(image_paths: list[str]) -> tuple[list[dict[str, Any]], str]:
     if not PADDLE_OCR_WORKER.exists():
         return [], "OCR 子进程脚本不存在"
@@ -626,6 +741,8 @@ def _run_external_paddle_ocr(image_paths: list[str]) -> tuple[list[dict[str, Any
         except Exception as exc:
             errors.append(f"{python_path}: {exc}")
             continue
+        if completed.stderr.strip():
+            logger.warning("OCR 子进程 stderr 输出 [%s]: %s", python_path, completed.stderr.strip()[:500])
         if completed.returncode != 0 and not completed.stdout.strip():
             errors.append(f"{python_path}: {completed.stderr.strip()[:500]}")
             continue
@@ -638,9 +755,9 @@ def _run_external_paddle_ocr(image_paths: list[str]) -> tuple[list[dict[str, Any
             errors.append(f"{python_path}: {payload.get('error')}")
         results = payload.get("results") if isinstance(payload, dict) else []
         if isinstance(results, list) and results:
-            return results, "; ".join(errors)
+            return results, _join_ocr_errors(errors)
     if errors:
-        return [], "; ".join(errors)
+        return [], _join_ocr_errors(errors)
     return [], "未配置 OCR_PYTHON，也未找到 .venv_ocr；请使用 Python 3.11/3.12 安装 PaddleOCR 运行时"
 
 
@@ -666,15 +783,15 @@ def _run_ocr_candidates(image_paths: list[str]) -> tuple[list[dict[str, Any]], s
             try:
                 results.append({"image_path": image_path, "items": _flatten_paddle_result(ocr.ocr(image_path, cls=True)), "error": ""})
             except Exception as exc:
-                results.append({"image_path": image_path, "items": [], "error": str(exc)})
+                results.append({"image_path": image_path, "items": [], "error": _compact_ocr_error(exc)})
     except Exception as exc:
-        local_error = str(exc)
+        local_error = _compact_ocr_error(exc)
         results, external_error = _run_external_paddle_ocr(image_paths)
         external_has_result = any((item.get("items") if isinstance(item, dict) else []) for item in results)
         if external_has_result:
             local_error = external_error or ""
         elif external_error:
-            local_error = f"{local_error}; {external_error}" if local_error else external_error
+            local_error = _join_ocr_errors([local_error, external_error])
 
     candidates: list[dict[str, Any]] = []
     best: dict[str, Any] = {"items": [], "image_path": image_paths[0] if image_paths else "", "score": 0}
@@ -686,7 +803,7 @@ def _run_ocr_candidates(image_paths: list[str]) -> tuple[list[dict[str, Any]], s
             "image_path": result.get("image_path"),
             "text_count": len(items),
             "score": round(score, 3),
-            "error": result.get("error") or "",
+            "error": _compact_ocr_error(result.get("error") or ""),
         }
         candidates.append(candidate)
         if score > float(best.get("score") or 0):
@@ -766,7 +883,7 @@ def extract_screenshot_material(image_path: str) -> dict[str, Any]:
     return {
         "analysis_source": "ocr_material",
         "ocr_available": bool(ocr_items),
-        "ocr_error": ocr_error,
+        "ocr_error": _compact_ocr_error(ocr_error),
         "image_path": str(original),
         "preprocessed_image_path": processed,
         "preprocessed_candidates": variants,
@@ -873,10 +990,30 @@ def _normalize_generated_cases(payload: Any) -> list[Dict[str, Any]]:
                 "steps": str(item.get("steps") or item.get("步骤") or "").strip(),
                 "expected": str(item.get("expected") or item.get("预期结果") or "").strip(),
                 "priority": str(item.get("priority") or item.get("优先级") or ("P0" if index == 1 else "P1")).strip()[:20],
+                "category": normalize_case_category(item.get("category") or item.get("分类") or item.get("type") or "", title),
                 "automation_status": "draft",
             }
         )
     return result[:100]
+
+
+def normalize_case_category(value: Any, fallback_text: str = "") -> str:
+    text = str(value or "").strip()
+    allowed = ["页面展示", "输入校验", "主流程", "异常流程", "权限/状态", "数据结果"]
+    if text in allowed:
+        return text
+    source = f"{text} {fallback_text}".lower()
+    keyword_map = [
+        ("数据结果", ("金额", "数量", "库存", "数据", "接口", "计算", "合计", "price", "amount", "total")),
+        ("权限/状态", ("权限", "状态", "审核", "启用", "禁用", "登录", "角色", "status", "auth")),
+        ("异常流程", ("异常", "失败", "错误", "为空", "重复", "非法", "超限", "error", "fail")),
+        ("输入校验", ("输入", "必填", "格式", "校验", "长度", "手机号", "邮箱", "validate")),
+        ("页面展示", ("展示", "显示", "列表", "弹窗", "按钮", "文案", "页面", "display")),
+    ]
+    for category, keywords in keyword_map:
+        if any(keyword in source for keyword in keywords):
+            return category
+    return "主流程"
 
 
 def _extract_json_list_field(text: str, field_name: str) -> list[str]:
@@ -913,6 +1050,7 @@ def rule_generate_cases(task: FunctionalTask, axure_text: str, extra_context: st
                 "precondition": "测试账号可登录，测试环境数据可用。",
                 "steps": f"1. 打开目标页面\n2. 按需求执行：{line}\n3. 观察页面反馈和数据变化",
                 "expected": "页面提示正确，数据状态符合需求，核心流程无报错。",
+                "category": normalize_case_category("", title),
                 "priority": "P0" if index <= 2 else "P1",
                 "automation_status": "draft",
             }
@@ -940,7 +1078,7 @@ def generate_functional_cases(
 6. 请生成足够多（至少40条）的功能测试用例，覆盖上面提到的所有页面和功能模块
 
 输出格式：
-{{"cases":[{{"title":"","precondition":"","steps":"","expected":"","priority":"P0/P1/P2"}}],"questions_for_product":["问题1","问题2"]}}
+{{"cases":[{{"title":"","precondition":"","steps":"","expected":"","category":"页面展示/输入校验/主流程/异常流程/权限/状态/数据结果","priority":"P0/P1/P2"}}],"questions_for_product":["问题1","问题2"]}}
 
 {requirement_context}
 """
@@ -1154,44 +1292,64 @@ def _fill_auto_input(page: Any, value: str, kind: str, name: str, trace: list[st
 
 
 def _click_login_submit(page: Any, locators: list[str], trace: list[str]) -> str:
+    """点击登录按钮 + 按 Enter 双重保险（SPA 兼容）"""
+    clicked = None
+    # 1. 优先使用 locator 点击
     try:
-        return _click_first_available(page, locators, "登录按钮", trace)
+        clicked = _click_first_available(page, locators, "登录按钮", trace)
+        page.wait_for_timeout(500)
     except FunctionalScanError:
         pass
 
-    fallback_locators = [
-        'button:has-text("登录")',
-        'button:has-text("登入")',
-        'button:has-text("Login")',
-        'button:has-text("Sign in")',
-        'button:has-text("ログイン")',
-        '[role="button"]:has-text("登录")',
-        '[role="button"]:has-text("Login")',
-        '.el-button:has-text("登录")',
-        '.ant-btn:has-text("登录")',
-        '[class*="btn"]:has-text("登录")',
-        '[class*="button"]:has-text("登录")',
-        'text=登录',
-        'text=Login',
-    ]
-    for locator in fallback_locators:
-        try:
-            target = page.locator(locator).last
-            target.wait_for(state="visible", timeout=2500)
-            target.click()
-            _scan_trace(trace, f"已通过兜底规则点击登录按钮：{locator}")
-            return locator
-        except Exception:
-            continue
+    # 2. 尝试 button:has-text 系列
+    if not clicked:
+        fallback_locators = [
+            'button:has-text("登录")',
+            'button:has-text("登入")',
+            'button:has-text("Login")',
+            'button:has-text("Sign in")',
+            'button:has-text("ログイン")',
+            '[role="button"]:has-text("登录")',
+            '[role="button"]:has-text("Login")',
+            '.el-button--primary',
+            '.ant-btn-primary',
+            '.el-button:has-text("登录")',
+            '.ant-btn:has-text("登录")',
+            '[class*="btn-primary"]',
+            '[class*="el-button--primary"]',
+            'button[type="submit"]',
+            'input[type="submit"]',
+            'text=登录',
+            'text=Login',
+        ]
+        for locator in fallback_locators:
+            try:
+                target = page.locator(locator).last
+                target.wait_for(state="visible", timeout=3000)
+                target.click()
+                page.wait_for_timeout(500)
+                clicked = locator
+                _scan_trace(trace, f"已点击登录按钮(兜底)：{locator}")
+                break
+            except Exception:
+                continue
 
+    # 3. 在密码框按 Enter 提交 — 这是最可靠的 SPA 表单提交方式
+    _scan_trace(trace, "在密码框按 Enter 提交（确保表单提交触发）...")
     try:
-        page.keyboard.press("Enter")
-        _scan_trace(trace, "未定位到登录按钮，已尝试按 Enter 提交")
-        return "keyboard:Enter"
-    except Exception as exc:
-        raise _scan_error(f"登录未成功，登录按钮定位失败，且 Enter 提交失败：{str(exc)[:300]}", trace)
+        password_input = page.locator('input[type="password"]').first
+        if password_input.is_visible():
+            password_input.focus()
+            page.wait_for_timeout(200)
+            password_input.press("Enter")
+            page.wait_for_timeout(1500)
+            _scan_trace(trace, "已在密码框按 Enter 提交")
+    except Exception:
+        pass
 
-
+    if clicked:
+        return clicked
+    raise _scan_error("登录未成功，找不到登录按钮", trace)
 def _check_keep_login(page: Any, trace: list[str]) -> None:
     checkbox_locators = [
         'label:has-text("保持账号登录")',
@@ -1260,14 +1418,20 @@ def _attach_login_network_trace(page: Any, trace: list[str]) -> list[str]:
 
 
 def _is_login_response(response: Any) -> bool:
+    """宽松检测：所有 POST 请求都视为潜在登录请求"""
     try:
-        url = response.url.lower()
         method = response.request.method.upper()
-        return method == "POST" and any(keyword in url for keyword in ["login", "auth", "token", "partnerlogin"])
+        if method != "POST":
+            return False
+        url = response.url.lower()
+        # 优先匹配已知登录关键词
+        if any(keyword in url for keyword in ["login", "auth", "token", "partnerlogin", "signin", "sign-in", "logon", "authenticate"]):
+            return True
+        # 兜底：任何 POST 到同源的 JSON/XHR 请求都尝试捕获
+        # 避免漏掉不包含关键词的登录 API
+        return True
     except Exception:
         return False
-
-
 def _redacted_response_summary(response: Any) -> str:
     try:
         payload = response.json()
@@ -1410,7 +1574,13 @@ def _login_before_scan(page: Any, page_url: str, auth: Dict[str, Any], timeout: 
         auth.get("submit_locator"),
         [
             'button[type="submit"]',
+            'button:has-text("登录")',
+            'button:has-text("Login")',
+            'button:has-text("Sign in")',
+            'button:has-text("ログイン")',
             'input[type="submit"]',
+            'a:has-text("登录")',
+            'a:has-text("Login")',
             "text=登录",
             "text=登入",
             "text=登陆",
@@ -1420,9 +1590,13 @@ def _login_before_scan(page: Any, page_url: str, auth: Dict[str, Any], timeout: 
         ],
     )
 
-    _scan_trace(trace, f"打开登录页：{login_url}")
-    page.goto(login_url, wait_until="domcontentloaded")
-    page.wait_for_timeout(500)
+    # 如果当前页面已经是登录页，跳过重复导航（支持 SPA hash 路由）
+    if not _looks_like_login_page(page):
+      _scan_trace(trace, f"打开登录页：{login_url}")
+      page.goto(login_url, wait_until="domcontentloaded")
+      page.wait_for_timeout(500)
+    else:
+      _scan_trace(trace, f"当前页面已是登录页，跳过导航：{page.url}")
     try:
         _fill_first_available(page, username_locators, username, "账号输入框", trace)
     except FunctionalScanError:
@@ -1476,6 +1650,16 @@ def _login_before_scan(page: Any, page_url: str, auth: Dict[str, Any], timeout: 
     except Exception:
         page.wait_for_timeout(1200)
     if _looks_like_login_page(page, expected_url=page_url):
+        # 检查页面是否有错误提示信息
+        try:
+            error_texts = ["密码错误", "账号错误", "用户名错误", "验证码错误", "登录失败", "account", "password", "invalid", "error"]
+            for err_text in error_texts:
+                err_el = page.locator(f'text={err_text}').first
+                if err_el.is_visible(timeout=500):
+                    _scan_trace(trace, f"页面检测到错误提示(含「{err_text}」)：{err_el.inner_text()[:100]}")
+                    break
+        except Exception:
+            pass
         raise _scan_error(f"登录未成功，请检查账号密码或登录定位器。当前页面：{page.url}", trace)
     _scan_trace(trace, f"目标页面已打开：{page.url}")
 
@@ -1761,6 +1945,7 @@ def scan_page_dom(page_url: str, timeout: int = 30, auth: Dict[str, Any] | None 
         raise _scan_error(f"Playwright 不可用：{exc}", trace) from exc
 
     browser = None
+    context = None
     page = None
     screenshot_path = SCREENSHOT_DIR / f"functional-{uuid4()}.png"
     if proxy is None:
@@ -1770,7 +1955,8 @@ def scan_page_dom(page_url: str, timeout: int = 30, auth: Dict[str, Any] | None 
         with sync_playwright() as p:
             _scan_trace(trace, "启动浏览器..." + (f" (代理: {proxy})" if proxy else ""))
             browser = _scan_launch(p, headless=True, proxy=proxy)
-            page = browser.new_page()
+            context = browser.new_context()
+            page = context.new_page()
             page.on("console", lambda msg: console_errors.append(f"{msg.type}: {msg.text}") if msg.type in {"error", "warning"} else None)
             page.on("requestfailed", lambda request: network_errors.append(f"{request.method} {request.url}: {request.failure.get('errorText') if request.failure else 'request failed'}"))
 
@@ -1800,6 +1986,16 @@ def scan_page_dom(page_url: str, timeout: int = 30, auth: Dict[str, Any] | None 
             except Exception:
                 pass
     finally:
+        if page:
+            try:
+                page.close()
+            except Exception:
+                pass
+        if context:
+            try:
+                context.close()
+            except Exception:
+                pass
         if browser:
             try:
                 browser.close()

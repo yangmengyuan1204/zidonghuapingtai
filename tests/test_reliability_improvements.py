@@ -1,9 +1,17 @@
+import atexit
 import base64
 import os
 from pathlib import Path
 from types import SimpleNamespace
 
 TEST_DB = Path(__file__).resolve().parent / "test_platform_reliability.db"
+# 确保测试退出后清理数据库文件（忽略文件被锁等错误）
+def _cleanup_test_db():
+    try:
+        TEST_DB.unlink(missing_ok=True)
+    except Exception:
+        pass
+atexit.register(_cleanup_test_db)
 if TEST_DB.exists():
     TEST_DB.unlink()
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{TEST_DB.as_posix()}")
@@ -57,6 +65,53 @@ def test_deepseek_screenshot_analysis_uses_ocr_material_not_image_url(monkeypatc
     raw = functional_testing.analyze_functional_screenshot(task, screenshot, config)
     assert '"analysis_source": "ocr_deepseek"' in raw
     assert '"ocr_material"' in raw
+
+
+def test_deepseek_model_name_error_retries_supported_flash(monkeypatch):
+    calls = []
+
+    class FakeResponse:
+        def __init__(self, status_code, text="", payload=None):
+            self.status_code = status_code
+            self.text = text
+            self._payload = payload or {}
+            self.url = "https://api.deepseek.com/v1/chat/completions"
+
+        @property
+        def ok(self):
+            return 200 <= self.status_code < 300
+
+        def json(self):
+            return self._payload
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        calls.append(json["model"])
+        if len(calls) == 1:
+            return FakeResponse(
+                400,
+                '{"error":{"message":"The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-vl2."}}',
+            )
+        return FakeResponse(200, payload={"choices": [{"message": {"content": '{"ok": true}'}}]})
+
+    monkeypatch.setattr(functional_testing.requests, "post", fake_post)
+    config = SimpleNamespace(provider="openai_compatible", base_url="https://api.deepseek.com", model="deepseek-vl2", api_key="x")
+
+    assert functional_testing.call_local_model_json(config, "生成 JSON") == {"ok": True}
+    assert calls == ["deepseek-vl2", "deepseek-v4-flash"]
+
+
+def test_ocr_numpy_runtime_error_is_compacted():
+    raw = (
+        "No module named 'paddleocr'; D:\\A_zidonghuapingtai\\.venv_ocr\\Scripts\\python.exe: "
+        "paddleocr unavailable: IMPORTANT: PLEASE READ THIS FOR ADVICE! "
+        "Importing the numpy C-extensions failed. _multiarray_umath.cp314-win_amd64.pyd"
+    )
+
+    message = functional_testing._compact_ocr_error(raw)
+
+    assert "NumPy/PaddleOCR" in message
+    assert "IMPORTANT" not in message
+    assert "_multiarray_umath" not in message
 
 
 def test_steps_without_business_assertion_are_not_trusted_success():

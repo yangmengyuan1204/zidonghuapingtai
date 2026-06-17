@@ -111,10 +111,14 @@ class FunctionalCase(Base):
     precondition = Column(Text, nullable=True)
     steps = Column(Text, nullable=True)
     expected = Column(Text, nullable=True)
+    category = Column(String(40), nullable=True)
     priority = Column(String(20), nullable=True)
     automation_status = Column(String(32), nullable=False)
     test_result = Column(String(20), nullable=True, default="untested")
     ui_case_id = Column(Integer, nullable=True)
+    quality_status = Column(String(32), nullable=True, default="unchecked")
+    quality_report = Column(Text, nullable=True)
+    failure_count = Column(Integer, nullable=True, default=0)
     create_time = Column(DateTime, nullable=False)
 
 
@@ -158,6 +162,64 @@ class FunctionalRun(Base):
     log = Column(Text, nullable=True)
     passed_count = Column(Integer, nullable=False)
     failed_count = Column(Integer, nullable=False)
+    execute_time = Column(DateTime, nullable=False)
+
+
+class FunctionalImpactItem(Base):
+    __tablename__ = "functional_impact_item"
+    __table_args__ = (
+        Index("ix_func_impact_task_result", "task_id", "test_result"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    item_type = Column(String(40), nullable=False)
+    ref_id = Column(Integer, nullable=True, index=True)
+    title = Column(String(200), nullable=False)
+    target = Column(String(500), nullable=True)
+    risk_level = Column(String(20), nullable=True)
+    test_result = Column(String(20), nullable=True, default="untested")
+    source = Column(String(40), nullable=True)
+    reason = Column(Text, nullable=True)
+    remark = Column(Text, nullable=True)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class FunctionalDataCheckRule(Base):
+    __tablename__ = "functional_data_check_rule"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    rule_name = Column(String(160), nullable=False)
+    check_type = Column(String(40), nullable=False)
+    page_value = Column(Text, nullable=True)
+    api_method = Column(String(16), nullable=True)
+    api_url = Column(String(500), nullable=True)
+    api_headers = Column(Text, nullable=True)
+    api_body = Column(Text, nullable=True)
+    api_value_path = Column(String(200), nullable=True)
+    compare_rule = Column(Text, nullable=True)
+    expected_value = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="active")
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class FunctionalDataCheckResult(Base):
+    __tablename__ = "functional_data_check_result"
+    __table_args__ = (
+        Index("ix_func_data_check_task_result", "task_id", "result"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    rule_id = Column(Integer, nullable=False, index=True)
+    result = Column(String(32), nullable=False)
+    page_value = Column(Text, nullable=True)
+    api_value = Column(Text, nullable=True)
+    message = Column(Text, nullable=True)
+    detail = Column(Text, nullable=True)
     execute_time = Column(DateTime, nullable=False)
 
 

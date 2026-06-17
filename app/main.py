@@ -1,6 +1,7 @@
 ﻿import base64
 import hashlib
 import ipaddress
+import logging
 import os
 import queue
 import re
@@ -8,8 +9,10 @@ import secrets
 import socket
 import threading
 import time
+from collections import Counter
 from contextlib import asynccontextmanager
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,8 +20,11 @@ from typing import Any, Dict, Iterable, Type
 from urllib.parse import urljoin, urlparse
 from uuid import uuid4
 
+
+logger = logging.getLogger(__name__)
+
 import requests
-from fastapi import Body, Depends, FastAPI, File, HTTPException, Query, UploadFile, status
+from fastapi import Body, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -26,7 +32,7 @@ from sqlalchemy import func, or_, text
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy.orm import Session
 
-from .database import Base, engine, get_db
+from .database import Base, engine, get_db, safe_commit
 from .data_scripts import (
     preview_order_quote_options,
     run_balance_payment_script,
@@ -41,7 +47,7 @@ from .data_scripts import (
     run_shopping_cart_script,
     run_warehouse_delivery_script,
 )
-from .executors import ensure_report_dirs, execute_api_case, execute_ui_case, parse_json_value, to_json_text
+from .executors import ensure_report_dirs, execute_api_case, execute_ui_case, execute_ui_cases_batch, parse_json_value, to_json_text
 from .functional_testing import (
     FunctionalScanError,
     analyze_functional_screenshot,
@@ -63,6 +69,9 @@ from .models import (
     ActionTemplate,
     Env,
     FunctionalCase,
+    FunctionalDataCheckResult,
+    FunctionalDataCheckRule,
+    FunctionalImpactItem,
     FunctionalRequirementNote,
     FunctionalRun,
     FunctionalScreenshot,
@@ -95,11 +104,17 @@ from .schemas import (
     DataScriptExecuteRequest,
     EnvCreate,
     EnvUpdate,
+    FunctionalCaseBatchAutomationUpdate,
+    FunctionalCaseBatchIds,
     FunctionalCaseBatchStatusUpdate,
     FunctionalCaseStats,
     FunctionalCaseStatusUpdate,
     FunctionalCaseUpdate,
+    FunctionalDataCheckRuleCreate,
+    FunctionalDataCheckRuleUpdate,
     FunctionalExecuteRequest,
+    FunctionalImpactItemCreate,
+    FunctionalImpactItemUpdate,
     FunctionalRequirementNoteCreate,
     FunctionalRequirementNoteUpdate,
     FunctionalScanRequest,
@@ -119,7 +134,7 @@ from .schemas import (
     UserCreate,
     UserUpdate,
 )
-from .security import SECRET_KEY, create_access_token, get_current_user, hash_password, require_admin, verify_password
+from .security import SECRET_KEY, create_access_token, get_current_user, hash_password, is_password_hash, require_admin, verify_password
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -146,11 +161,30 @@ TABLE_FIELDS = {
     UiCase: ["id", "project_id", "case_name", "page_url", "steps", "timeout", "status", "create_time"],
     TestRecord: ["id", "case_type", "case_id", "project_id", "result", "log", "screenshot", "report_path", "execute_time"],
     FunctionalTask: ["id", "project_id", "iteration_name", "requirement_text", "axure_path", "target_url", "context", "status", "create_time"],
-    FunctionalCase: ["id", "task_id", "title", "precondition", "steps", "expected", "priority", "automation_status", "test_result", "ui_case_id", "create_time"],
+    FunctionalCase: [
+        "id",
+        "task_id",
+        "title",
+        "precondition",
+        "steps",
+        "expected",
+        "category",
+        "priority",
+        "automation_status",
+        "test_result",
+        "ui_case_id",
+        "quality_status",
+        "quality_report",
+        "failure_count",
+        "create_time",
+    ],
     PageSnapshot: ["id", "task_id", "page_url", "dom_summary", "screenshot_path", "scan_time"],
     FunctionalScreenshot: ["id", "task_id", "image_path", "analysis_result", "create_time"],
     FunctionalRequirementNote: ["id", "task_id", "note_text", "create_time", "update_time"],
     FunctionalRun: ["id", "task_id", "result", "log", "passed_count", "failed_count", "execute_time"],
+    FunctionalImpactItem: ["id", "task_id", "item_type", "ref_id", "title", "target", "risk_level", "test_result", "source", "reason", "remark", "create_time", "update_time"],
+    FunctionalDataCheckRule: ["id", "task_id", "rule_name", "check_type", "page_value", "api_method", "api_url", "api_headers", "api_body", "api_value_path", "compare_rule", "expected_value", "status", "create_time", "update_time"],
+    FunctionalDataCheckResult: ["id", "task_id", "rule_id", "result", "page_value", "api_value", "message", "detail", "execute_time"],
     CaseGenerationTask: [
         "id",
         "project_id",
@@ -195,7 +229,7 @@ TABLE_FIELDS = {
         "create_time",
         "update_time",
     ],
-    AiConfig: ["id", "provider", "base_url", "model", "api_key", "create_time"],
+    AiConfig: ["id", "provider", "base_url", "model", "create_time"],  # api_key 不从此泄露
     TestAccountProfile: [
         "id", "project_id", "profile_name", "variables",
         "sensitive_variables", "login_url", "username_locator", "password_locator",
@@ -215,6 +249,9 @@ JSON_FIELD_DEFAULTS = {
     "params": {},
     "assert_rule": {},
     "steps": [],
+    "api_headers": {},
+    "api_body": {},
+    "compare_rule": {},
 }
 
 ACCOUNT_CONFIG_FIELDS = (
@@ -227,6 +264,13 @@ ACCOUNT_CONFIG_FIELDS = (
 )
 
 CASE_NAME_PREFIXES = ("\u6570\u636e\u811a\u672c-", "test-")
+API_ALLOWED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+ACTION_TEMPLATE_JSON_DEFAULTS = {
+    "trigger_keywords": [],
+    "steps": [],
+    "variables": {},
+    "locator_fallbacks": {},
+}
 
 
 def strip_case_name_prefix(value: Any) -> str:
@@ -250,6 +294,18 @@ def normalize_api_case_names(db: Session) -> None:
             changed = True
     if changed:
         db.commit()
+
+
+def migrate_legacy_plaintext_passwords(db: Session) -> None:
+    changed = 0
+    for user in db.query(User).all():
+        stored = str(user.password or "")
+        if stored and not is_password_hash(stored):
+            user.password = hash_password(stored)
+            changed += 1
+    if changed:
+        db.commit()
+        print(f"Migrated {changed} legacy plaintext user password(s) to bcrypt.", flush=True)
 
 
 DATA_SCRIPT_PROJECT_NAME = "日本站测试"
@@ -280,7 +336,8 @@ def find_data_script_api_case(db: Session, item: Dict[str, Any], project_id: int
 
 LOGIN_CASE_NAME = "\u767b\u5f55"
 CART_CASE_NAME = "\u52a0\u5165\u8d2d\u7269\u8f66"
-FRONTEND_UNIVERSAL_ACCOUNT_PASSWORD = "raku@123456``"
+# 前端客户登录的通用密码，可通过环境变量 FRONTEND_ACCOUNT_PASSWORD 覆盖
+FRONTEND_UNIVERSAL_ACCOUNT_PASSWORD = os.getenv("FRONTEND_ACCOUNT_PASSWORD", "raku@123456``")
 
 DATA_SCRIPT_API_CASES = [
     {
@@ -675,6 +732,10 @@ def init_app() -> None:
         migrations = {
             "functional_case": {
                 "test_result": "ALTER TABLE functional_case ADD COLUMN test_result VARCHAR(20) DEFAULT 'untested'",
+                "category": "ALTER TABLE functional_case ADD COLUMN category VARCHAR(40)",
+                "quality_status": "ALTER TABLE functional_case ADD COLUMN quality_status VARCHAR(32) DEFAULT 'unchecked'",
+                "quality_report": "ALTER TABLE functional_case ADD COLUMN quality_report TEXT",
+                "failure_count": "ALTER TABLE functional_case ADD COLUMN failure_count INTEGER DEFAULT 0",
             },
             "test_record": {
                 "project_id": "ALTER TABLE test_record ADD COLUMN project_id INTEGER",
@@ -708,6 +769,7 @@ def init_app() -> None:
     ensure_report_dirs()
     db = next(get_db())
     try:
+        migrate_legacy_plaintext_passwords(db)
         admin = db.query(User).filter(User.username == "admin").first()
         if not admin:
             admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD") or secrets.token_urlsafe(12)
@@ -780,6 +842,12 @@ def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/health")
+def health() -> Dict[str, Any]:
+    """健康检查端点。"""
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}
+
+
 def schema_data(payload: Any, exclude_unset: bool = False) -> Dict[str, Any]:
     if hasattr(payload, "model_dump"):
         return payload.model_dump(exclude_unset=exclude_unset)
@@ -820,6 +888,47 @@ def normalize_json_fields(data: Dict[str, Any]) -> Dict[str, Any]:
     if "method" in data and data["method"]:
         data["method"] = str(data["method"]).upper()
     return data
+
+
+def require_non_blank_text(data: Dict[str, Any], field: str, label: str) -> None:
+    value = str(data.get(field) or "").strip()
+    if not value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{label}不能为空")
+    data[field] = value
+
+
+def normalize_project_payload(data: Dict[str, Any], require_name: bool = False) -> Dict[str, Any]:
+    if require_name or "name" in data:
+        require_non_blank_text(data, "name", "项目名称")
+    if "desc" in data and data["desc"] is None:
+        data["desc"] = ""
+    return data
+
+
+def normalize_env_payload(data: Dict[str, Any], require_required_fields: bool = False) -> Dict[str, Any]:
+    if require_required_fields or "env_name" in data:
+        require_non_blank_text(data, "env_name", "环境名称")
+    if require_required_fields or "base_url" in data:
+        require_non_blank_text(data, "base_url", "环境地址")
+    if "timeout" in data and data["timeout"] is not None and int(data["timeout"]) <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="超时时间必须大于0")
+    return data
+
+
+def normalize_api_case_payload(data: Dict[str, Any], require_required_fields: bool = False) -> Dict[str, Any]:
+    if require_required_fields or "method" in data:
+        method = str(data.get("method") or "").upper().strip()
+        if method not in API_ALLOWED_METHODS:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不支持的请求方法")
+        data["method"] = method
+    if require_required_fields or "url" in data:
+        require_non_blank_text(data, "url", "请求地址")
+    return data
+
+
+def ensure_env_belongs_to_project(env: Env, project_id: int) -> None:
+    if env.project_id != project_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="环境不属于该用例项目")
 
 
 def ensure_project_exists(db: Session, project_id: int) -> None:
@@ -869,6 +978,118 @@ def serialize_ai_config(config: AiConfig | None) -> Dict[str, Any]:
     return data
 
 
+FUNCTIONAL_TEST_RESULTS = {"untested", "passed", "failed", "blocked", "skipped"}
+
+
+def normalize_functional_result(value: Any) -> str:
+    text_value = str(value or "untested").strip().lower()
+    return text_value if text_value in FUNCTIONAL_TEST_RESULTS else "untested"
+
+
+def functional_result_counts(items: Iterable[Any], attr_name: str = "test_result") -> Dict[str, int]:
+    counts = {key: 0 for key in FUNCTIONAL_TEST_RESULTS}
+    total = 0
+    for item in items:
+        total += 1
+        counts[normalize_functional_result(getattr(item, attr_name, None))] += 1
+    counts["total"] = total
+    return counts
+
+
+def latest_data_check_results_by_rule(db: Session, task_id: int) -> Dict[int, FunctionalDataCheckResult]:
+    latest: Dict[int, FunctionalDataCheckResult] = {}
+    rows = (
+        db.query(FunctionalDataCheckResult)
+        .filter(FunctionalDataCheckResult.task_id == task_id)
+        .order_by(FunctionalDataCheckResult.id.desc())
+        .all()
+    )
+    for row in rows:
+        if row.rule_id not in latest:
+            latest[row.rule_id] = row
+    return latest
+
+
+def functional_task_conclusion_summary(db: Session, task: FunctionalTask) -> Dict[str, Any]:
+    cases = db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id).all()
+    impact_items = db.query(FunctionalImpactItem).filter(FunctionalImpactItem.task_id == task.id).all()
+    rules = (
+        db.query(FunctionalDataCheckRule)
+        .filter(FunctionalDataCheckRule.task_id == task.id, FunctionalDataCheckRule.status != "inactive")
+        .all()
+    )
+    latest_results = latest_data_check_results_by_rule(db, task.id)
+
+    p0_blockers = []
+    p1_failures = []
+    for case in cases:
+        priority = str(case.priority or "P1").upper()
+        result = normalize_functional_result(case.test_result)
+        if priority == "P0" and result in {"untested", "failed", "blocked"}:
+            p0_blockers.append(case.title)
+        elif priority == "P1" and result in {"failed", "blocked"}:
+            p1_failures.append(case.title)
+
+    impact_failures = [
+        item.title
+        for item in impact_items
+        if normalize_functional_result(item.test_result) in {"failed", "blocked"}
+    ]
+    data_failures = []
+    data_pending = []
+    for rule in rules:
+        latest = latest_results.get(rule.id)
+        if not latest:
+            data_pending.append(rule.rule_name)
+        elif latest.result != "passed":
+            data_failures.append(rule.rule_name)
+
+    reasons = []
+    if p0_blockers:
+        reasons.append(f"P0 新功能用例未通过或未测试 {len(p0_blockers)} 条")
+    if data_failures:
+        reasons.append(f"数据核对失败 {len(data_failures)} 条")
+    if p1_failures:
+        reasons.append(f"P1 新功能用例失败/阻塞 {len(p1_failures)} 条")
+    if impact_failures:
+        reasons.append(f"关联影响回归失败/阻塞 {len(impact_failures)} 条")
+    if data_pending:
+        reasons.append(f"还有 {len(data_pending)} 条数据核对未执行")
+
+    if p0_blockers or data_failures:
+        decision = "not_recommended"
+        decision_text = "不建议上线"
+    elif p1_failures or impact_failures:
+        decision = "risky"
+        decision_text = "有风险上线"
+    else:
+        decision = "ready"
+        decision_text = "可上线"
+
+    return {
+        "decision": decision,
+        "decision_text": decision_text,
+        "summary": "；".join(reasons) if reasons else "新功能、关联影响和数据核对暂无阻断风险",
+        "new_feature": {
+            "counts": functional_result_counts(cases),
+            "p0_blockers": p0_blockers[:10],
+            "p1_failures": p1_failures[:10],
+        },
+        "impact": {
+            "counts": functional_result_counts(impact_items),
+            "failures": impact_failures[:10],
+        },
+        "data": {
+            "total": len(rules),
+            "passed": sum(1 for rule in rules if latest_results.get(rule.id) and latest_results[rule.id].result == "passed"),
+            "failed": len(data_failures),
+            "pending": len(data_pending),
+            "failures": data_failures[:10],
+            "pending_rules": data_pending[:10],
+        },
+    }
+
+
 def functional_task_detail(db: Session, task: FunctionalTask) -> Dict[str, Any]:
     data = serialize(task)
     project = db.get(Project, task.project_id)
@@ -891,7 +1112,790 @@ def functional_task_detail(db: Session, task: FunctionalTask) -> Dict[str, Any]:
         .all()
     )
     data["runs"] = serialize_many(db.query(FunctionalRun).filter(FunctionalRun.task_id == task.id).order_by(FunctionalRun.id.desc()).limit(20).all())
+    data["impact_items"] = serialize_many(
+        db.query(FunctionalImpactItem)
+        .filter(FunctionalImpactItem.task_id == task.id)
+        .order_by(FunctionalImpactItem.id.asc())
+        .all()
+    )
+    rules = (
+        db.query(FunctionalDataCheckRule)
+        .filter(FunctionalDataCheckRule.task_id == task.id)
+        .order_by(FunctionalDataCheckRule.id.asc())
+        .all()
+    )
+    data_rules = []
+    for rule in rules:
+        item = serialize(rule)
+        latest = (
+            db.query(FunctionalDataCheckResult)
+            .filter(FunctionalDataCheckResult.rule_id == rule.id)
+            .order_by(FunctionalDataCheckResult.id.desc())
+            .first()
+        )
+        item["latest_result"] = serialize(latest) if latest else None
+        data_rules.append(item)
+    data["data_check_rules"] = data_rules
+    data["data_check_results"] = serialize_many(
+        db.query(FunctionalDataCheckResult)
+        .filter(FunctionalDataCheckResult.task_id == task.id)
+        .order_by(FunctionalDataCheckResult.id.desc())
+        .limit(20)
+        .all()
+    )
+    data["conclusion"] = functional_task_conclusion_summary(db, task)
+    data["preflight_summary"] = functional_package_preflight_summary(cases)
     return data
+
+
+QUALITY_EXECUTABLE = "executable"
+QUALITY_UNCHECKED = "unchecked"
+QUALITY_AUTH_RISK = "auth_risk"
+QUALITY_MISSING_VARIABLES = "missing_variables"
+QUALITY_LOCATOR_RISK = "locator_risk"
+QUALITY_NEEDS_REVIEW = "needs_review"
+QUALITY_NOT_RECOMMENDED = "not_recommended"
+
+ASSERTION_ACTIONS = {"assert_url", "assert_visible", "assert_value", "text_assert"}
+LOCATOR_REQUIRED_ACTIONS = {"input", "click", "wait_for_selector", "text_assert", "select", "check", "uncheck", "assert_visible", "assert_value"}
+BUILTIN_RUNTIME_VARS = {
+    "timestamp",
+    "datetime",
+    "date",
+    "uuid",
+    "random_int",
+    "random_str",
+    "random_phone",
+    "random_email",
+}
+ACCOUNT_RUNTIME_VARS = {
+    "username",
+    "account",
+    "email",
+    "mobile",
+    "phone",
+    "password",
+    "code",
+    "captcha",
+    "captcha_code",
+    "verify_code",
+    "verification_code",
+}
+SEARCH_SEED_KEYS = {
+    "customer_id": ["customer_id", "customerId", "client_id", "clientId"],
+    "customer_name": ["customer_name", "customerName", "client_name", "clientName"],
+    "orderNumber": ["orderNumber", "order_no", "orderNo", "order_sn", "orderSn"],
+    "box_no": ["box_no", "boxNo", "box_number", "boxNumber"],
+    "location_code": ["location_code", "locationCode", "warehouse_location", "storage_location"],
+    "startDate": ["startDate", "start_date"],
+    "endDate": ["endDate", "end_date"],
+}
+SEARCH_KEYWORDS = {
+    "customer_id": ["客户ID", "客户id", "客户编号", "客户号", "customer id", "customer_id"],
+    "customer_name": ["客户名称", "客户名", "客户姓名", "customer name", "customer_name"],
+    "orderNumber": ["订单号", "订单编号", "订单SN", "order number", "order_no", "order_sn"],
+    "box_no": ["箱号", "箱子编号", "box no", "box_no", "box number"],
+    "location_code": ["库位", "仓位", "location", "location_code"],
+    "startDate": ["开始日期", "开始时间", "start date", "startDate"],
+    "endDate": ["结束日期", "结束时间", "end date", "endDate"],
+}
+
+
+def normalize_variable_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
+
+
+def quality_report_payload(status_value: str, reason: str, issues: list[str] | None = None, **extra: Any) -> Dict[str, Any]:
+    payload = {
+        "status": status_value,
+        "reason": reason,
+        "issues": issues or [],
+        "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    payload.update(extra)
+    return payload
+
+
+def parse_case_steps(raw: Any) -> list[Dict[str, Any]]:
+    parsed = parse_json_value(raw or "", [])
+    if isinstance(parsed, dict):
+        parsed = parsed.get("steps") or parsed.get("actions") or []
+    if not isinstance(parsed, list):
+        return []
+    return [item for item in parsed if isinstance(item, dict)]
+
+
+def functional_case_ui_payload(db: Session, case: FunctionalCase) -> tuple[UiCase | None, list[Dict[str, Any]]]:
+    ui_case = db.get(UiCase, case.ui_case_id) if case.ui_case_id else None
+    if not ui_case:
+        return None, []
+    return ui_case, parse_case_steps(ui_case.steps)
+
+
+def case_has_business_assertion(case: FunctionalCase, steps: list[Dict[str, Any]]) -> bool:
+    for step in steps:
+        action = str(step.get("action") or "").strip().lower()
+        if action in ASSERTION_ACTIONS:
+            locator = str(step.get("locator") or "").strip().lower()
+            value = str(step.get("value") or "").strip()
+            if action == "text_assert" and locator in {"", "body", "html"} and len(value) < 2:
+                continue
+            return True
+        condition = step.get("success_condition") or step.get("expected") or step.get("assert")
+        if isinstance(condition, (dict, list)) and condition:
+            return True
+        if isinstance(condition, str) and condition.strip():
+            return True
+    expected = str(case.expected or "").strip()
+    return bool(expected and expected not in {"页面正常显示", "操作成功", "成功"})
+
+
+def case_locator_issues(steps: list[Dict[str, Any]]) -> list[str]:
+    issues: list[str] = []
+    for index, step in enumerate(steps, start=1):
+        action = str(step.get("action") or "").strip().lower()
+        locator = str(step.get("locator") or "").strip()
+        if action in LOCATOR_REQUIRED_ACTIONS and not locator:
+            issues.append(f"第{index}步 {action} 缺少 locator")
+    return issues
+
+
+def placeholder_names(text: str) -> list[str]:
+    names = re.findall(r"\{\{\s*([A-Za-z_][A-Za-z0-9_$]*)\s*\}\}", text or "")
+    result: list[str] = []
+    seen: set[str] = set()
+    for name in names:
+        clean = name.replace("$", "")
+        norm = normalize_variable_name(clean)
+        if not norm or norm in seen or clean in BUILTIN_RUNTIME_VARS or clean in ACCOUNT_RUNTIME_VARS:
+            continue
+        seen.add(norm)
+        result.append(clean)
+    return result
+
+
+def seed_has_key(seed_variables: Dict[str, Any], name: str) -> bool:
+    target = normalize_variable_name(name)
+    if not target:
+        return True
+    for key, value in (seed_variables or {}).items():
+        if value in ("", None):
+            continue
+        if normalize_variable_name(key) == target:
+            return True
+    for canonical, aliases in SEARCH_SEED_KEYS.items():
+        alias_norms = {normalize_variable_name(item) for item in [canonical, *aliases]}
+        if target in alias_norms:
+            return any(seed_variables.get(alias) not in ("", None) for alias in [canonical, *aliases])
+    return False
+
+
+def case_required_seed_keys(case: FunctionalCase, steps: list[Dict[str, Any]]) -> list[str]:
+    raw_text = " ".join(
+        [
+            case.title or "",
+            case.precondition or "",
+            case.steps or "",
+            case.expected or "",
+            json.dumps(steps, ensure_ascii=False, default=str),
+        ]
+    )
+    lower_text = raw_text.lower()
+    needed: list[str] = placeholder_names(raw_text)
+    if any(keyword in raw_text for keyword in ["搜索", "查询", "筛选"]) or "search" in lower_text:
+        for seed_key, keywords in SEARCH_KEYWORDS.items():
+            if any(keyword.lower() in lower_text for keyword in keywords):
+                needed.append(seed_key)
+    if re.search(r"\b(CUST|ORDER|BOX)[-_]?\d{3,}\b", raw_text, flags=re.IGNORECASE):
+        if "customer_id" not in needed and re.search(r"\bCUST[-_]?\d{3,}\b", raw_text, flags=re.IGNORECASE):
+            needed.append("customer_id")
+        if "orderNumber" not in needed and re.search(r"\bORDER[-_]?\d{3,}\b", raw_text, flags=re.IGNORECASE):
+            needed.append("orderNumber")
+        if "box_no" not in needed and re.search(r"\bBOX[-_]?\d{3,}\b", raw_text, flags=re.IGNORECASE):
+            needed.append("box_no")
+    unique: list[str] = []
+    seen: set[str] = set()
+    for item in needed:
+        norm = normalize_variable_name(item)
+        if norm and norm not in seen:
+            seen.add(norm)
+            unique.append(item)
+    return unique
+
+
+def first_pattern_value(text: str, patterns: list[str]) -> str:
+    for pattern in patterns:
+        match = re.search(pattern, text or "", flags=re.IGNORECASE)
+        if match:
+            value = match.group(1) if match.groups() else match.group(0)
+            value = str(value or "").strip(" ：:，,。;；\n\r\t")
+            if value:
+                return value[:80]
+    return ""
+
+
+def clean_seed_value(value: str, value_type: str) -> str:
+    text = str(value or "").strip(" ：:，,。;；\n\r\t")
+    if not text:
+        return ""
+    lower = text.lower()
+    fake_values = {
+        "cust123456",
+        "customer123456",
+        "order123456",
+        "ord123456",
+        "box123456",
+        "test123456",
+        "boxkeyword",
+        "orderstatusmap",
+    }
+    if lower in fake_values or lower.endswith(("keyword", "map", "placeholder")):
+        return ""
+    if "{{" in text or "}}" in text:
+        return ""
+    if value_type in {"customer_id", "order_no", "box_no", "location_code"} and not re.search(r"\d", text):
+        return ""
+    if value_type == "customer_name" and any(keyword in text for keyword in ["搜索", "筛选", "查询", "页面", "功能", "测试"]):
+        return ""
+    return text[:80]
+
+
+def build_functional_seed_text(db: Session, task: FunctionalTask) -> tuple[str, list[str]]:
+    chunks: list[str] = []
+    sources: list[str] = []
+    snapshot = (
+        db.query(PageSnapshot)
+        .filter(PageSnapshot.task_id == task.id)
+        .order_by(PageSnapshot.id.desc())
+        .first()
+    )
+    if snapshot and snapshot.dom_summary:
+        chunks.append(snapshot.dom_summary)
+        sources.append("page_snapshot")
+    ui_ids = [
+        row[0]
+        for row in db.query(FunctionalCase.ui_case_id)
+        .filter(FunctionalCase.task_id == task.id, FunctionalCase.ui_case_id.isnot(None))
+        .all()
+        if row[0]
+    ]
+    if ui_ids:
+        records = (
+            db.query(TestRecord)
+            .filter(TestRecord.case_type == "ui", TestRecord.case_id.in_(ui_ids))
+            .order_by(TestRecord.id.desc())
+            .limit(20)
+            .all()
+        )
+        for record in records:
+            if record.log:
+                chunks.append(record.log)
+        if records:
+            sources.append("recent_ui_records")
+    return "\n".join(chunks), sources
+
+
+def seed_functional_package_data(db: Session, task: FunctionalTask) -> Dict[str, Any]:
+    text, sources = build_functional_seed_text(db, task)
+    variables: Dict[str, Any] = {}
+    customer_id = first_pattern_value(
+        text,
+        [
+            r"(?:客户ID|客户Id|客户id|客户编号|客户号)\s*[:：]?\s*([A-Za-z0-9_-]{3,32})",
+            r"\b(CUST[-_]?[A-Za-z0-9]{3,24})\b",
+        ],
+    )
+    if customer_id:
+        customer_id = clean_seed_value(customer_id, "customer_id")
+    if customer_id:
+        variables.update({"customer_id": customer_id, "customerId": customer_id})
+    customer_name = first_pattern_value(
+        text,
+        [
+            r"(?:客户名称|客户名|客户姓名)\s*[:：]?\s*([\u4e00-\u9fffA-Za-z0-9_\- ]{2,40})",
+        ],
+    )
+    if customer_name:
+        customer_name = clean_seed_value(customer_name, "customer_name")
+    if customer_name:
+        variables.update({"customer_name": customer_name, "customerName": customer_name})
+    order_no = first_pattern_value(
+        text,
+        [
+            r"(?:订单号|订单编号|订单SN|order[_ -]?(?:no|number|sn))\s*[:：]?\s*([A-Z0-9][A-Z0-9_-]{5,40})",
+            r"\b(ORDER[-_]?[A-Z0-9]{5,36})\b",
+        ],
+    )
+    if order_no:
+        order_no = clean_seed_value(order_no, "order_no")
+    if order_no:
+        variables.update({"orderNumber": order_no, "order_no": order_no, "orderNo": order_no, "order_sn": order_no})
+    box_no = first_pattern_value(
+        text,
+        [
+            r"(?:箱号|箱子编号|box[_ -]?(?:no|number))\s*[:：]?\s*([A-Z0-9][A-Z0-9_-]{4,40})",
+            r"\b(BOX[-_]?[A-Z0-9]{4,36})\b",
+        ],
+    )
+    if box_no:
+        box_no = clean_seed_value(box_no, "box_no")
+    if box_no:
+        variables.update({"box_no": box_no, "boxNo": box_no, "box_number": box_no})
+    location_code = first_pattern_value(
+        text,
+        [
+            r"(?:库位|仓位|location(?:_code)?)\s*[:：]?\s*([A-Z0-9][A-Z0-9_-]{2,32})",
+        ],
+    )
+    if location_code:
+        location_code = clean_seed_value(location_code, "location_code")
+    if location_code:
+        variables.update({"location_code": location_code, "locationCode": location_code, "warehouse_location": location_code})
+    dates = re.findall(r"(20\d{2}[-/]\d{1,2}[-/]\d{1,2})", text or "")
+    if dates:
+        variables.update({"startDate": dates[0], "start_date": dates[0]})
+        variables.update({"endDate": dates[-1], "end_date": dates[-1]})
+    return {"variables": variables, "sources": sources, "source_text_available": bool(text)}
+
+
+def account_preflight_status(
+    db: Session,
+    task: FunctionalTask,
+    payload: FunctionalExecuteRequest | None,
+) -> Dict[str, Any]:
+    account_mode = (payload.account_mode if payload else "default") or "default"
+    if account_mode == "none":
+        return {"status": "skipped", "message": "本次选择不使用测试账号"}
+    try:
+        variables, execution_context = resolve_execution_account(
+            db,
+            payload,
+            "functional_task",
+            task.id,
+            task.project_id,
+            task.target_url,
+        )
+    except Exception as exc:
+        return {"status": "blocked", "message": f"账号解析失败：{exc}"}
+    if not execution_context.get("login_required"):
+        return {"status": "warning", "message": "未绑定测试账号，预检按公开页面处理"}
+    login_config = execution_context.get("login_config") or {}
+    login_url = str(login_config.get("login_url") or "").strip() or guess_functional_login_url(task.target_url)
+    has_username = any(str(variables.get(key) or "").strip() for key in ["username", "account", "email", "mobile", "phone"])
+    has_password = any(str(variables.get(key) or "").strip() for key in ["password", "pwd"])
+    missing = []
+    if not login_url:
+        missing.append("登录页URL")
+    if not has_username:
+        missing.append("登录账号")
+    if not has_password:
+        missing.append("登录密码")
+    if missing:
+        return {
+            "status": "blocked",
+            "message": "登录前置缺失：" + "、".join(missing),
+            "account_profile_id": execution_context.get("account_profile_id"),
+            "login_url": login_url,
+        }
+    return {
+        "status": "ready",
+        "message": "测试账号信息完整，正式执行时会先登录并复用登录态",
+        "account_profile_id": execution_context.get("account_profile_id"),
+        "login_url": login_url,
+    }
+
+
+def guess_functional_login_url(target_url: str | None) -> str:
+    raw = str(target_url or "").strip()
+    try:
+        parsed = urlparse(raw)
+        if not parsed.scheme or not parsed.netloc:
+            return ""
+        if parsed.fragment and "/" in parsed.fragment:
+            hash_prefix = "#!/" if parsed.fragment.startswith("!/") else "#/"
+            return f"{parsed.scheme}://{parsed.netloc}{parsed.path or '/'}{hash_prefix}login"
+        return f"{parsed.scheme}://{parsed.netloc}/login"
+    except Exception:
+        return ""
+
+
+def evaluate_functional_case_quality(
+    db: Session,
+    task: FunctionalTask,
+    case: FunctionalCase,
+    seed_variables: Dict[str, Any],
+    account_status: Dict[str, Any],
+) -> Dict[str, Any]:
+    if case.automation_status != "approved":
+        return quality_report_payload(QUALITY_NOT_RECOMMENDED, "用例未确认，不进入自动执行")
+    if not case.ui_case_id:
+        return quality_report_payload(QUALITY_NOT_RECOMMENDED, "尚未生成 UI 步骤")
+    ui_case, steps = functional_case_ui_payload(db, case)
+    if not ui_case:
+        return quality_report_payload(QUALITY_NOT_RECOMMENDED, "关联 UI 用例不存在")
+    if account_status.get("status") == "blocked":
+        return quality_report_payload(QUALITY_AUTH_RISK, account_status.get("message") or "登录前置未通过")
+    if not steps:
+        return quality_report_payload(QUALITY_NOT_RECOMMENDED, "UI 步骤为空，无法自动执行")
+    locator_issues = case_locator_issues(steps)
+    if locator_issues:
+        return quality_report_payload(QUALITY_LOCATOR_RISK, "存在缺失 locator 的步骤", locator_issues)
+    required_seed_keys = case_required_seed_keys(case, steps)
+    missing_seed = [item for item in required_seed_keys if not seed_has_key(seed_variables, item)]
+    if missing_seed:
+        return quality_report_payload(
+            QUALITY_MISSING_VARIABLES,
+            "搜索/筛选类用例缺少真实业务数据样本",
+            [f"缺少真实数据：{item}" for item in missing_seed],
+            required_seed_keys=required_seed_keys,
+        )
+    if not case_has_business_assertion(case, steps):
+        return quality_report_payload(
+            QUALITY_NEEDS_REVIEW,
+            "缺少明确业务断言，不能自动标记为可信通过",
+            ["请补充 assert_url/assert_visible/assert_value/text_assert 或成功条件"],
+        )
+    return quality_report_payload(
+        QUALITY_EXECUTABLE,
+        "账号、步骤、测试数据和业务断言预检通过",
+        required_seed_keys=required_seed_keys,
+    )
+
+
+def functional_package_preflight_summary(cases: list[Dict[str, Any]]) -> Dict[str, Any]:
+    counts = Counter((item.get("quality_status") or QUALITY_UNCHECKED) for item in cases)
+    total = len(cases)
+    manual_statuses = {QUALITY_NEEDS_REVIEW, QUALITY_MISSING_VARIABLES, QUALITY_LOCATOR_RISK, QUALITY_AUTH_RISK, QUALITY_NOT_RECOMMENDED}
+    return {
+        "total": total,
+        "executable": counts.get(QUALITY_EXECUTABLE, 0),
+        "manual_check": sum(counts.get(item, 0) for item in manual_statuses),
+        "unchecked": counts.get(QUALITY_UNCHECKED, 0),
+        "auth_blocked": counts.get(QUALITY_AUTH_RISK, 0),
+        "data_missing": counts.get(QUALITY_MISSING_VARIABLES, 0),
+        "locator_risk": counts.get(QUALITY_LOCATOR_RISK, 0),
+        "missing_assertion": counts.get(QUALITY_NEEDS_REVIEW, 0),
+        "not_automatable": counts.get(QUALITY_NOT_RECOMMENDED, 0),
+    }
+
+
+def preflight_functional_package(
+    db: Session,
+    task: FunctionalTask,
+    payload: FunctionalExecuteRequest | None = None,
+    selected_case_ids: list[int] | None = None,
+    persist: bool = True,
+) -> Dict[str, Any]:
+    requested_ids = set(selected_case_ids or [])
+    seed_result = seed_functional_package_data(db, task)
+    seed_variables = dict(seed_result.get("variables") or {})
+    if payload and payload.variables:
+        seed_variables.update({key: value for key, value in payload.variables.items() if value not in ("", None)})
+    account_status = account_preflight_status(db, task, payload)
+    query = db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id)
+    if requested_ids:
+        query = query.filter(FunctionalCase.id.in_(requested_ids))
+    cases = query.order_by(FunctionalCase.id.asc()).all()
+    case_items: list[Dict[str, Any]] = []
+    for case in cases:
+        report = evaluate_functional_case_quality(db, task, case, seed_variables, account_status)
+        status_value = str(report.get("status") or QUALITY_UNCHECKED)
+        if persist:
+            case.quality_status = status_value
+            case.quality_report = json.dumps(report, ensure_ascii=False, default=str)
+        case_items.append(
+            {
+                "case_id": case.id,
+                "title": case.title,
+                "priority": case.priority,
+                "automation_status": case.automation_status,
+                "quality_status": status_value,
+                "reason": report.get("reason") or "",
+                "issues": report.get("issues") or [],
+            }
+        )
+    summary = functional_package_preflight_summary(case_items)
+    executable_case_ids = [item["case_id"] for item in case_items if item["quality_status"] == QUALITY_EXECUTABLE]
+    manual_items = [item for item in case_items if item["quality_status"] != QUALITY_EXECUTABLE]
+    page_status = "ready" if db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).first() else "unchecked"
+    result = {
+        "task_id": task.id,
+        "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "login": account_status,
+        "page": {
+            "status": page_status,
+            "target_url": task.target_url,
+            "message": "已有页面快照" if page_status == "ready" else "暂无页面快照，建议先扫描目标页面",
+        },
+        "seed": seed_result,
+        "counts": summary,
+        "total": len(case_items),
+        "executable_count": len(executable_case_ids),
+        "executable_case_ids": executable_case_ids,
+        "manual_check_items": manual_items[:80],
+    }
+    if persist:
+        db.commit()
+    return result
+
+
+def functional_task_keywords(task: FunctionalTask) -> list[str]:
+    raw = " ".join([task.iteration_name or "", task.requirement_text or "", task.context or "", task.target_url or ""])
+    try:
+        parsed = urlparse(task.target_url or "")
+        raw += " " + parsed.path.replace("/", " ")
+    except Exception:
+        pass
+    tokens = re.findall(r"[A-Za-z0-9_]{2,}|[\u4e00-\u9fff]{2,}", raw)
+    seen: set[str] = set()
+    result = []
+    for token in tokens:
+        text = token.strip().lower()
+        if text and text not in seen:
+            seen.add(text)
+            result.append(text)
+    return result[:30]
+
+
+def keyword_score(text: str, keywords: Iterable[str]) -> int:
+    source = (text or "").lower()
+    return sum(1 for keyword in keywords if keyword and keyword in source)
+
+
+def impact_item_key(item_type: str, ref_id: int | None, title: str, target: str | None = "") -> str:
+    return f"{item_type}:{ref_id or ''}:{(title or '').strip().lower()}:{(target or '').strip().lower()}"
+
+
+def suggest_functional_impact_items(db: Session, task: FunctionalTask) -> list[Dict[str, Any]]:
+    keywords = functional_task_keywords(task)
+    candidates: list[Dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add_candidate(item: Dict[str, Any]) -> None:
+        key = impact_item_key(item.get("item_type") or "", item.get("ref_id"), item.get("title") or "", item.get("target") or "")
+        if key in seen:
+            return
+        seen.add(key)
+        candidates.append(item)
+
+    existing_task_ids = [
+        row[0]
+        for row in db.query(FunctionalTask.id)
+        .filter(FunctionalTask.project_id == task.project_id, FunctionalTask.id != task.id)
+        .all()
+    ]
+    if existing_task_ids:
+        case_rows = (
+            db.query(FunctionalCase, FunctionalTask)
+            .join(FunctionalTask, FunctionalCase.task_id == FunctionalTask.id)
+            .filter(FunctionalCase.task_id.in_(existing_task_ids))
+            .all()
+        )
+        for case, source_task in case_rows:
+            text = " ".join([case.title or "", case.precondition or "", case.steps or "", case.expected or "", source_task.iteration_name or ""])
+            score = keyword_score(text, keywords)
+            is_history_risk = normalize_functional_result(case.test_result) in {"failed", "blocked"}
+            if score <= 0 and not is_history_risk:
+                continue
+            add_candidate(
+                {
+                    "item_type": "functional_case",
+                    "ref_id": case.id,
+                    "title": case.title,
+                    "target": f"{source_task.iteration_name} / 用例#{case.id}",
+                    "risk_level": "P0" if is_history_risk else (case.priority or "P1"),
+                    "source": "history_failed" if is_history_risk else "keyword",
+                    "reason": "历史失败/阻塞用例" if is_history_risk else f"命中需求关键词 {score} 个",
+                }
+            )
+
+    try:
+        target_path = urlparse(task.target_url or "").path.strip("/").lower()
+    except Exception:
+        target_path = ""
+    for ui_case in db.query(UiCase).filter(UiCase.project_id == task.project_id).all():
+        text = f"{ui_case.case_name or ''} {ui_case.page_url or ''}"
+        score = keyword_score(text, keywords)
+        same_path = bool(target_path and target_path in (ui_case.page_url or "").lower())
+        if score <= 0 and not same_path:
+            continue
+        add_candidate(
+            {
+                "item_type": "ui_case",
+                "ref_id": ui_case.id,
+                "title": ui_case.case_name,
+                "target": ui_case.page_url,
+                "risk_level": "P1" if same_path else "P2",
+                "source": "same_url" if same_path else "keyword",
+                "reason": "同页面或同路径相关" if same_path else f"命中需求关键词 {score} 个",
+            }
+        )
+
+    for api_case in db.query(ApiCase).filter(ApiCase.project_id == task.project_id).all():
+        text = f"{api_case.case_name or ''} {api_case.url or ''}"
+        score = keyword_score(text, keywords)
+        if score <= 0:
+            continue
+        add_candidate(
+            {
+                "item_type": "api_case",
+                "ref_id": api_case.id,
+                "title": api_case.case_name,
+                "target": f"{api_case.method} {api_case.url}",
+                "risk_level": "P1",
+                "source": "keyword",
+                "reason": f"接口名称/路径命中需求关键词 {score} 个",
+            }
+        )
+
+    return candidates[:30]
+
+
+def normalize_data_check_payload(data: Dict[str, Any], require_name: bool = False) -> Dict[str, Any]:
+    if require_name or "rule_name" in data:
+        require_non_blank_text(data, "rule_name", "核对规则名称")
+    if "check_type" in data and data["check_type"]:
+        data["check_type"] = str(data["check_type"]).strip()
+    data = normalize_json_fields(data)
+    if "api_method" in data and data["api_method"]:
+        data["api_method"] = str(data["api_method"]).upper()
+    return data
+
+
+def full_data_check_url(task: FunctionalTask, api_url: str) -> str:
+    raw = (api_url or "").strip()
+    if not raw:
+        return ""
+    parsed = urlparse(raw)
+    if parsed.scheme and parsed.netloc:
+        return raw
+    base = urlparse(task.target_url or "")
+    origin = f"{base.scheme}://{base.netloc}" if base.scheme and base.netloc else ""
+    return urljoin(origin.rstrip("/") + "/", raw.lstrip("/")) if origin else raw
+
+
+def lookup_nested_value(payload: Any, path: str) -> Any:
+    if not path or path in {"json", "$"}:
+        return payload
+    current = payload
+    parts = [part for part in path.replace("[", ".").replace("]", "").split(".") if part and part != "json"]
+    for part in parts:
+        if isinstance(current, dict):
+            current = current.get(part)
+        elif isinstance(current, list) and part.isdigit():
+            index = int(part)
+            current = current[index] if 0 <= index < len(current) else None
+        else:
+            return None
+    return current
+
+
+def extract_response_value(response: requests.Response, value_path: str | None) -> Any:
+    path = (value_path or "json").strip()
+    if path == "status_code":
+        return response.status_code
+    if path.lower().startswith("header."):
+        return response.headers.get(path.split(".", 1)[1], "")
+    if path == "text":
+        return response.text
+    try:
+        payload = response.json()
+    except Exception:
+        payload = response.text
+    return lookup_nested_value(payload, path)
+
+
+def normalize_compare_text(value: Any) -> str:
+    return re.sub(r"\s+", "", str(value if value is not None else "")).strip()
+
+
+def normalize_decimal_value(value: Any) -> Decimal | None:
+    text_value = str(value if value is not None else "").strip()
+    text_value = re.sub(r"[^\d.\-]", "", text_value.replace(",", ""))
+    if not text_value:
+        return None
+    try:
+        return Decimal(text_value).quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def compare_data_check_values(rule: FunctionalDataCheckRule, page_value: Any, api_value: Any) -> tuple[bool, str]:
+    compare_rule = parse_json_value(rule.compare_rule, {})
+    expected_value = rule.expected_value if rule.expected_value not in (None, "") else None
+    check_type = rule.check_type or "page_api_consistency"
+
+    left = page_value
+    right = api_value
+    if check_type == "amount_quantity":
+        left_amount = normalize_decimal_value(left)
+        right_amount = normalize_decimal_value(right)
+        expected_amount = normalize_decimal_value(expected_value) if expected_value is not None else None
+        if left_amount is None or right_amount is None:
+            return False, "金额/数量无法转换为数字"
+        if expected_amount is not None:
+            passed = left_amount == expected_amount and right_amount == expected_amount
+            return passed, f"页面={left_amount}，接口={right_amount}，预期={expected_amount}"
+        return left_amount == right_amount, f"页面={left_amount}，接口={right_amount}"
+
+    if check_type == "status_flow":
+        mapping = {}
+        if isinstance(compare_rule, dict):
+            mapping = compare_rule.get("status_mapping") or compare_rule.get("mapping") or {}
+        if isinstance(mapping, dict):
+            left = mapping.get(str(left), left)
+            right = mapping.get(str(right), right)
+
+    left_text = normalize_compare_text(left)
+    right_text = normalize_compare_text(right)
+    if expected_value is not None:
+        expected_text = normalize_compare_text(expected_value)
+        passed = left_text == expected_text and right_text == expected_text
+        return passed, f"页面={left_text}，接口={right_text}，预期={expected_text}"
+    return left_text == right_text, f"页面={left_text}，接口={right_text}"
+
+
+def execute_functional_data_check_rule(db: Session, task: FunctionalTask, rule: FunctionalDataCheckRule) -> FunctionalDataCheckResult:
+    page_value = rule.page_value or ""
+    api_value: Any = ""
+    result = "blocked"
+    message = ""
+    detail: Dict[str, Any] = {}
+    try:
+        url = full_data_check_url(task, rule.api_url or "")
+        if not url:
+            raise RuntimeError("接口 URL 不能为空")
+        headers = parse_json_value(rule.api_headers, {})
+        body_value = parse_json_value(rule.api_body, {})
+        body_text = "" if (rule.api_method or "GET").upper() == "GET" else json.dumps(body_value, ensure_ascii=False)
+        response = guarded_proxy_request(rule.api_method or "GET", url, headers if isinstance(headers, dict) else {}, body_text, 20)
+        api_value = extract_response_value(response, rule.api_value_path)
+        passed, message = compare_data_check_values(rule, page_value, api_value)
+        result = "passed" if passed else "failed"
+        detail = {
+            "status_code": response.status_code,
+            "api_url": url,
+            "api_value_path": rule.api_value_path,
+            "compare_type": rule.check_type,
+        }
+    except Exception as exc:
+        message = str(exc)
+        detail = {"error": str(exc)}
+
+    record = FunctionalDataCheckResult(
+        task_id=task.id,
+        rule_id=rule.id,
+        result=result,
+        page_value=str(page_value),
+        api_value=json.dumps(api_value, ensure_ascii=False, default=str) if isinstance(api_value, (dict, list)) else str(api_value),
+        message=message,
+        detail=json.dumps(detail, ensure_ascii=False, default=str),
+        execute_time=datetime.now(),
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
 
 
 CASE_GENERATION_TEST_RESULTS = {"untested", "passed", "failed", "blocked", "skipped"}
@@ -1652,7 +2656,8 @@ def save_ui_record(db: Session, case: UiCase, passed: bool, log_text: str, repor
 
 
 @app.post("/api/auth/login")
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    _check_login_rate_limit(request.client.host if request.client else "unknown", payload.username)
     user = db.query(User).filter(User.username == payload.username).first()
     if not user or not verify_password(payload.password, user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
@@ -1680,6 +2685,7 @@ def dashboard(
         api_ids = [item.id for item in db.query(ApiCase.id).filter(ApiCase.project_id == project_id).all()]
         ui_ids = [item.id for item in db.query(UiCase.id).filter(UiCase.project_id == project_id).all()]
         record_filter = or_(
+            TestRecord.project_id == project_id,
             (TestRecord.case_type == "api") & TestRecord.case_id.in_(api_ids or [-1]),
             (TestRecord.case_type == "ui") & TestRecord.case_id.in_(ui_ids or [-1]),
         )
@@ -1773,7 +2779,7 @@ def create_project(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
-    data = schema_data(payload)
+    data = normalize_project_payload(schema_data(payload), require_name=True)
     project = Project(name=data["name"], desc=data.get("desc") or "", create_time=datetime.now())
     db.add(project)
     db.commit()
@@ -1789,7 +2795,7 @@ def update_project(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     project = get_or_404(db, Project, project_id)
-    data = schema_data(payload, exclude_unset=True)
+    data = normalize_project_payload(schema_data(payload, exclude_unset=True))
     for field in ["name", "desc"]:
         if field in data:
             setattr(project, field, data[field])
@@ -1844,6 +2850,9 @@ def delete_project(
         db.query(FunctionalScreenshot).filter(FunctionalScreenshot.task_id.in_(task_ids)).delete(synchronize_session=False)
         db.query(FunctionalRequirementNote).filter(FunctionalRequirementNote.task_id.in_(task_ids)).delete(synchronize_session=False)
         db.query(FunctionalRun).filter(FunctionalRun.task_id.in_(task_ids)).delete(synchronize_session=False)
+        db.query(FunctionalImpactItem).filter(FunctionalImpactItem.task_id.in_(task_ids)).delete(synchronize_session=False)
+        db.query(FunctionalDataCheckResult).filter(FunctionalDataCheckResult.task_id.in_(task_ids)).delete(synchronize_session=False)
+        db.query(FunctionalDataCheckRule).filter(FunctionalDataCheckRule.task_id.in_(task_ids)).delete(synchronize_session=False)
         db.query(FunctionalCase).filter(FunctionalCase.task_id.in_(task_ids)).delete(synchronize_session=False)
         db.query(FunctionalTask).filter(FunctionalTask.id.in_(task_ids)).delete(synchronize_session=False)
     if ui_ids:
@@ -2033,7 +3042,17 @@ def default_account_profile_for_target(
         if direct_profile:
             return direct_profile
     if project_id is not None:
-        return account_binding_profile(db, "project", project_id)
+        project_profile = account_binding_profile(db, "project", project_id)
+        if project_profile:
+            return project_profile
+        project_profiles = (
+            db.query(TestAccountProfile)
+            .filter(TestAccountProfile.project_id == project_id, TestAccountProfile.status == "active")
+            .order_by(TestAccountProfile.id.asc())
+            .all()
+        )
+        if len(project_profiles) == 1:
+            return project_profiles[0]
     return None
 
 
@@ -2221,14 +3240,16 @@ def create_action_template(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     data = schema_data(payload)
+    ensure_project_exists(db, data["project_id"])
+    require_non_blank_text(data, "name", "模板名称")
     template = ActionTemplate(
         project_id=data["project_id"],
         name=data["name"],
         description=data.get("description", ""),
-        trigger_keywords=to_json_text(data.get("trigger_keywords", [])),
-        steps=to_json_text(data.get("steps", [])),
-        variables=to_json_text(data.get("variables", {})),
-        locator_fallbacks=to_json_text(data.get("locator_fallbacks", {})),
+        trigger_keywords=to_json_text(data.get("trigger_keywords", []), []),
+        steps=to_json_text(data.get("steps", []), []),
+        variables=to_json_text(data.get("variables", {}), {}),
+        locator_fallbacks=to_json_text(data.get("locator_fallbacks", {}), {}),
         create_time=datetime.now(),
     )
     db.add(template)
@@ -2246,12 +3267,14 @@ def update_action_template(
 ) -> Dict[str, Any]:
     template = get_or_404(db, ActionTemplate, template_id)
     data = schema_data(payload, exclude_unset=True)
+    if "name" in data:
+        require_non_blank_text(data, "name", "模板名称")
     for field in ["name", "description"]:
         if field in data:
             setattr(template, field, data[field])
     for json_field in ["trigger_keywords", "steps", "variables", "locator_fallbacks"]:
         if json_field in data:
-            setattr(template, json_field, to_json_text(data[json_field]))
+            setattr(template, json_field, to_json_text(data[json_field], ACTION_TEMPLATE_JSON_DEFAULTS[json_field]))
     db.commit()
     db.refresh(template)
     return _serialize_template(template)
@@ -2286,7 +3309,7 @@ def test_run_template(
             project_id=template.project_id,
             case_name=f"[模板测试] {template.name}",
             page_url="",
-            steps=to_json_text(steps),
+            steps=to_json_text(steps, []),
             timeout=30,
             status="active",
             create_time=datetime.now(),
@@ -2360,6 +3383,40 @@ def preflight_check_case(
         return PreflightResult(passed=False, errors=[str(exc)])
 
 
+@app.post("/api/functional-tasks/{task_id}/seed-test-data")
+def seed_functional_task_test_data(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    result = seed_functional_package_data(db, task)
+    return {
+        "task_id": task.id,
+        "variables": result.get("variables") or {},
+        "sources": result.get("sources") or [],
+        "source_text_available": bool(result.get("source_text_available")),
+        "message": "已抽取真实测试数据样本" if result.get("variables") else "未从页面快照或历史记录中抽到可用业务数据",
+    }
+
+
+@app.post("/api/functional-tasks/{task_id}/preflight-package")
+def preflight_functional_task_package(
+    task_id: int,
+    payload: FunctionalExecuteRequest | None = Body(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    selected_case_ids: list[int] = []
+    if payload:
+        if payload.case_id:
+            selected_case_ids = [payload.case_id]
+        elif payload.case_ids:
+            selected_case_ids = list(dict.fromkeys(int(item) for item in payload.case_ids if int(item) > 0))
+    return preflight_functional_package(db, task, payload, selected_case_ids or None, persist=True)
+
+
 @app.get("/api/envs")
 def list_envs(
     project_id: int | None = Query(default=None),
@@ -2374,7 +3431,7 @@ def list_envs(
 
 @app.post("/api/envs")
 def create_env(payload: EnvCreate, db: Session = Depends(get_db), current_user: User = Depends(require_admin)) -> Dict[str, Any]:
-    data = normalize_json_fields(schema_data(payload))
+    data = normalize_env_payload(normalize_json_fields(schema_data(payload)), require_required_fields=True)
     ensure_project_exists(db, data["project_id"])
     env = Env(**data)
     db.add(env)
@@ -2391,7 +3448,7 @@ def update_env(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     env = get_or_404(db, Env, env_id)
-    data = normalize_json_fields(schema_data(payload, exclude_unset=True))
+    data = normalize_env_payload(normalize_json_fields(schema_data(payload, exclude_unset=True)))
     if "project_id" in data:
         ensure_project_exists(db, data["project_id"])
     for field, value in data.items():
@@ -2404,6 +3461,12 @@ def update_env(
 @app.delete("/api/envs/{env_id}")
 def delete_env(env_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_admin)) -> Dict[str, str]:
     env = get_or_404(db, Env, env_id)
+    linked_api_count = db.query(ApiCase).filter(ApiCase.env_id == env.id).count()
+    if linked_api_count:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"环境已被 {linked_api_count} 个接口用例引用，不能删除",
+        )
     db.delete(env)
     db.commit()
     return {"message": "deleted"}
@@ -2430,12 +3493,13 @@ def create_api_case(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
-    data = normalize_json_fields(schema_data(payload))
+    data = normalize_api_case_payload(normalize_json_fields(schema_data(payload)), require_required_fields=True)
     data["case_name"] = strip_case_name_prefix(data["case_name"])
     if not data["case_name"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u7528\u4f8b\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a")
     ensure_project_exists(db, data["project_id"])
-    ensure_env_exists(db, data["env_id"])
+    env = ensure_env_exists(db, data["env_id"])
+    ensure_env_belongs_to_project(env, data["project_id"])
     case = ApiCase(**data, create_time=datetime.now())
     db.add(case)
     db.commit()
@@ -2451,15 +3515,17 @@ def update_api_case(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     case = get_or_404(db, ApiCase, case_id)
-    data = normalize_json_fields(schema_data(payload, exclude_unset=True))
+    data = normalize_api_case_payload(normalize_json_fields(schema_data(payload, exclude_unset=True)))
     if "case_name" in data:
         data["case_name"] = strip_case_name_prefix(data["case_name"])
         if not data["case_name"]:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="\u7528\u4f8b\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a")
     if "project_id" in data:
         ensure_project_exists(db, data["project_id"])
-    if "env_id" in data:
-        ensure_env_exists(db, data["env_id"])
+    final_project_id = data.get("project_id", case.project_id)
+    final_env_id = data.get("env_id", case.env_id)
+    env = ensure_env_exists(db, final_env_id)
+    ensure_env_belongs_to_project(env, final_project_id)
     for field, value in data.items():
         setattr(case, field, value)
     db.commit()
@@ -2620,8 +3686,44 @@ def resolve_data_script_context(db: Session, payload: DataScriptExecuteRequest) 
 def data_script_variables(db: Session, variables: Dict[str, Any] | None, project_id: int | None = None) -> Dict[str, Any]:
     merged = dict(variables or {})
     configured_paths = {}
+
+    # 批量查询：一次性查出所有相关 ApiCase，避免 ~40 次循环 x 4 种匹配的 N+1 查询
+    all_search_names = set()
+    all_urls = set()
     for item in DATA_SCRIPT_API_CASES:
-        case = find_data_script_api_case(db, item, project_id)
+        all_search_names.add(item["case_name"])
+        all_search_names.add(strip_case_name_prefix(item["case_name"]))
+        all_urls.add(item["url"])
+    batch_query = db.query(ApiCase).filter(
+        or_(ApiCase.case_name.in_(all_search_names), ApiCase.url.in_(all_urls))
+    )
+    if project_id is not None:
+        batch_query = batch_query.filter(ApiCase.project_id == project_id)
+    all_cases = batch_query.order_by(ApiCase.id.asc()).all()
+
+    # 构建内存索引，沿用原有 4 级匹配优先级
+    case_by_name: Dict[str, ApiCase] = {}
+    case_by_name_url: Dict[tuple[str, str], ApiCase] = {}
+    case_by_url_first: Dict[str, ApiCase] = {}
+    for c in all_cases:
+        if c.case_name not in case_by_name:
+            case_by_name[c.case_name] = c
+        key_nu = (c.case_name, c.url)
+        if key_nu not in case_by_name_url:
+            case_by_name_url[key_nu] = c
+        if c.url not in case_by_url_first:
+            case_by_url_first[c.url] = c
+
+    for item in DATA_SCRIPT_API_CASES:
+        legacy_name = item["case_name"]
+        case_name = strip_case_name_prefix(legacy_name)
+        url = item["url"]
+        case = (
+            case_by_name.get(legacy_name)
+            or case_by_name_url.get((case_name, url))
+            or case_by_url_first.get(url)
+            or case_by_name.get(case_name)
+        )
         configured_paths[item["key"]] = case.url if case else item["url"]
     custom_paths = merged.get("api_paths") if isinstance(merged.get("api_paths"), dict) else {}
     merged["api_paths"] = {**configured_paths, **custom_paths}
@@ -3071,9 +4173,229 @@ def delete_functional_task(
     db.query(FunctionalScreenshot).filter(FunctionalScreenshot.task_id == task.id).delete(synchronize_session=False)
     db.query(FunctionalRequirementNote).filter(FunctionalRequirementNote.task_id == task.id).delete(synchronize_session=False)
     db.query(FunctionalRun).filter(FunctionalRun.task_id == task.id).delete(synchronize_session=False)
+    db.query(FunctionalImpactItem).filter(FunctionalImpactItem.task_id == task.id).delete(synchronize_session=False)
+    db.query(FunctionalDataCheckResult).filter(FunctionalDataCheckResult.task_id == task.id).delete(synchronize_session=False)
+    db.query(FunctionalDataCheckRule).filter(FunctionalDataCheckRule.task_id == task.id).delete(synchronize_session=False)
     db.delete(task)
     db.commit()
     return {"message": "deleted"}
+
+
+@app.post("/api/functional-tasks/{task_id}/impact-items/analyze")
+def analyze_functional_impact_items(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    existing_keys = {
+        impact_item_key(item.item_type, item.ref_id, item.title, item.target)
+        for item in db.query(FunctionalImpactItem).filter(FunctionalImpactItem.task_id == task.id).all()
+    }
+    created = []
+    for item in suggest_functional_impact_items(db, task):
+        key = impact_item_key(item.get("item_type") or "", item.get("ref_id"), item.get("title") or "", item.get("target") or "")
+        if key in existing_keys:
+            continue
+        impact = FunctionalImpactItem(
+            task_id=task.id,
+            item_type=item.get("item_type") or "manual",
+            ref_id=item.get("ref_id"),
+            title=(item.get("title") or "关联影响项")[:200],
+            target=item.get("target") or "",
+            risk_level=item.get("risk_level") or "P1",
+            test_result="untested",
+            source=item.get("source") or "rule",
+            reason=item.get("reason") or "",
+            remark="",
+            create_time=datetime.now(),
+            update_time=None,
+        )
+        db.add(impact)
+        db.flush()
+        created.append(impact)
+        existing_keys.add(key)
+    db.commit()
+    return {"created": len(created), "items": serialize_many(created), "task": functional_task_detail(db, task)}
+
+
+@app.post("/api/functional-tasks/{task_id}/impact-items")
+def create_functional_impact_item(
+    task_id: int,
+    payload: FunctionalImpactItemCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    data = schema_data(payload)
+    require_non_blank_text(data, "title", "影响项标题")
+    item = FunctionalImpactItem(
+        task_id=task.id,
+        item_type=data.get("item_type") or "manual",
+        ref_id=data.get("ref_id"),
+        title=data["title"][:200],
+        target=data.get("target") or "",
+        risk_level=data.get("risk_level") or "P1",
+        test_result=normalize_functional_result(data.get("test_result")),
+        source=data.get("source") or "manual",
+        reason=data.get("reason") or "",
+        remark=data.get("remark") or "",
+        create_time=datetime.now(),
+        update_time=None,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return {"item": serialize(item), "task": functional_task_detail(db, task)}
+
+
+@app.put("/api/functional-impact-items/{item_id}")
+def update_functional_impact_item(
+    item_id: int,
+    payload: FunctionalImpactItemUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    item = get_or_404(db, FunctionalImpactItem, item_id)
+    data = schema_data(payload, exclude_unset=True)
+    if "title" in data and data["title"] is not None:
+        require_non_blank_text(data, "title", "影响项标题")
+    if "test_result" in data and data["test_result"] is not None:
+        data["test_result"] = normalize_functional_result(data["test_result"])
+    for field in ["item_type", "ref_id", "title", "target", "risk_level", "test_result", "source", "reason", "remark"]:
+        if field in data and data[field] is not None:
+            setattr(item, field, data[field])
+    item.update_time = datetime.now()
+    db.commit()
+    db.refresh(item)
+    return {"item": serialize(item), "task": functional_task_detail(db, get_or_404(db, FunctionalTask, item.task_id))}
+
+
+@app.delete("/api/functional-impact-items/{item_id}")
+def delete_functional_impact_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    item = get_or_404(db, FunctionalImpactItem, item_id)
+    task = get_or_404(db, FunctionalTask, item.task_id)
+    db.delete(item)
+    db.commit()
+    return {"message": "deleted", "task": functional_task_detail(db, task)}
+
+
+@app.post("/api/functional-tasks/{task_id}/data-check-rules")
+def create_functional_data_check_rule(
+    task_id: int,
+    payload: FunctionalDataCheckRuleCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    data = normalize_data_check_payload(schema_data(payload), require_name=True)
+    rule = FunctionalDataCheckRule(
+        task_id=task.id,
+        rule_name=data["rule_name"],
+        check_type=data.get("check_type") or "page_api_consistency",
+        page_value=data.get("page_value") or "",
+        api_method=data.get("api_method") or "GET",
+        api_url=data.get("api_url") or "",
+        api_headers=data.get("api_headers") or "{}",
+        api_body=data.get("api_body") or "{}",
+        api_value_path=data.get("api_value_path") or "json",
+        compare_rule=data.get("compare_rule") or "{}",
+        expected_value=data.get("expected_value") or "",
+        status=data.get("status") or "active",
+        create_time=datetime.now(),
+        update_time=None,
+    )
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return {"rule": serialize(rule), "task": functional_task_detail(db, task)}
+
+
+@app.put("/api/functional-data-check-rules/{rule_id}")
+def update_functional_data_check_rule(
+    rule_id: int,
+    payload: FunctionalDataCheckRuleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    rule = get_or_404(db, FunctionalDataCheckRule, rule_id)
+    data = normalize_data_check_payload(schema_data(payload, exclude_unset=True))
+    for field in [
+        "rule_name",
+        "check_type",
+        "page_value",
+        "api_method",
+        "api_url",
+        "api_headers",
+        "api_body",
+        "api_value_path",
+        "compare_rule",
+        "expected_value",
+        "status",
+    ]:
+        if field in data and data[field] is not None:
+            setattr(rule, field, data[field])
+    rule.update_time = datetime.now()
+    db.commit()
+    db.refresh(rule)
+    return {"rule": serialize(rule), "task": functional_task_detail(db, get_or_404(db, FunctionalTask, rule.task_id))}
+
+
+@app.delete("/api/functional-data-check-rules/{rule_id}")
+def delete_functional_data_check_rule(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    rule = get_or_404(db, FunctionalDataCheckRule, rule_id)
+    task = get_or_404(db, FunctionalTask, rule.task_id)
+    db.query(FunctionalDataCheckResult).filter(FunctionalDataCheckResult.rule_id == rule.id).delete(synchronize_session=False)
+    db.delete(rule)
+    db.commit()
+    return {"message": "deleted", "task": functional_task_detail(db, task)}
+
+
+@app.post("/api/functional-data-check-rules/{rule_id}/execute")
+def execute_functional_data_check(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    rule = get_or_404(db, FunctionalDataCheckRule, rule_id)
+    task = get_or_404(db, FunctionalTask, rule.task_id)
+    record = execute_functional_data_check_rule(db, task, rule)
+    return {"result": serialize(record), "task": functional_task_detail(db, task)}
+
+
+@app.post("/api/functional-tasks/{task_id}/data-check-runs")
+def execute_functional_data_checks(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    rules = (
+        db.query(FunctionalDataCheckRule)
+        .filter(FunctionalDataCheckRule.task_id == task.id, FunctionalDataCheckRule.status != "inactive")
+        .order_by(FunctionalDataCheckRule.id.asc())
+        .all()
+    )
+    results = [execute_functional_data_check_rule(db, task, rule) for rule in rules]
+    return {"results": serialize_many(results), "task": functional_task_detail(db, task)}
+
+
+@app.get("/api/functional-tasks/{task_id}/conclusion")
+def get_functional_task_conclusion(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    return {"task_id": task.id, "conclusion": functional_task_conclusion_summary(db, task)}
 
 
 
@@ -3293,6 +4615,28 @@ def scan_functional_page(
     return data
 
 
+# ─── 简单内存限速器 ────────────────────────────────
+_LOGIN_RATE_LIMIT: dict[str, list[float]] = {}  # "ip:user" → [timestamp, ...]
+_LOGIN_RATE_WINDOW = 60  # 秒
+_LOGIN_RATE_MAX_ATTEMPTS = int(os.getenv("LOGIN_RATE_LIMIT", "200"))  # 每窗口最多尝试次数，可通过环境变量覆盖
+
+
+def _check_login_rate_limit(client_ip: str, username: str = "") -> None:
+    """检查登录频率，超过阈值则拒绝。key = IP:username 避免不同用户相互干扰。"""
+    now = time.time()
+    key = f"{client_ip}:{username}"
+    records = _LOGIN_RATE_LIMIT.get(key, [])
+    # 清理过期记录
+    records = [t for t in records if now - t < _LOGIN_RATE_WINDOW]
+    if len(records) >= _LOGIN_RATE_MAX_ATTEMPTS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"登录尝试过于频繁，请稍后再试（{_LOGIN_RATE_WINDOW}秒内最多{_LOGIN_RATE_MAX_ATTEMPTS}次）",
+        )
+    records.append(now)
+    _LOGIN_RATE_LIMIT[key] = records
+
+
 def ui_steps_have_strong_assertion(steps: Any) -> bool:
     parsed = parse_json_value(steps, steps)
     if isinstance(parsed, str):
@@ -3357,7 +4701,7 @@ def quick_start_functional_task(
                     db.flush()
                     steps_status["scan"] = {"ok": True, "snapshot_id": snapshot.id}
                     task.status = "scanned"
-                    db.commit()
+                    safe_commit(db)
     except Exception as exc:
         db.rollback()
         steps_status["scan"] = {"ok": False, "error": str(exc)[:300]}
@@ -3384,6 +4728,7 @@ def quick_start_functional_task(
                 precondition=item.get("precondition", ""),
                 steps=item.get("steps", ""),
                 expected=item.get("expected", ""),
+                category=item.get("category", "主流程"),
                 priority=item.get("priority", "P1"),
                 automation_status="draft",
                 ui_case_id=None,
@@ -3495,6 +4840,7 @@ def generate_functional_task_cases(
                 precondition=item.get("precondition", ""),
                 steps=item.get("steps", ""),
                 expected=item.get("expected", ""),
+                category=item.get("category", "主流程"),
                 priority=item.get("priority", "P1"),
                 automation_status=item.get("automation_status", "draft"),
                 ui_case_id=None,
@@ -3516,7 +4862,7 @@ def update_functional_case(
 ) -> Dict[str, Any]:
     case = get_or_404(db, FunctionalCase, case_id)
     data = schema_data(payload, exclude_unset=True)
-    for field in ["title", "precondition", "steps", "expected", "priority", "automation_status"]:
+    for field in ["title", "precondition", "steps", "expected", "category", "priority", "automation_status"]:
         if field in data and data[field] is not None:
             setattr(case, field, data[field])
     db.commit()
@@ -3587,15 +4933,12 @@ def get_functional_case_stats(
     )
 
 
-@app.post("/api/functional-cases/{case_id}/generate-ui-steps")
-def generate_functional_case_ui_steps(
-    case_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
+def save_generated_functional_ui_steps(
+    db: Session,
+    task: FunctionalTask,
+    case: FunctionalCase,
+    snapshot: PageSnapshot | None = None,
 ) -> Dict[str, Any]:
-    case = get_or_404(db, FunctionalCase, case_id)
-    task = get_or_404(db, FunctionalTask, case.task_id)
-    snapshot = db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).first()
     generated = generate_ui_steps(case, task, snapshot, latest_ai_config(db))
     steps_text = to_json_text(generated.items, [])
     if case.ui_case_id:
@@ -3622,9 +4965,84 @@ def generate_functional_case_ui_steps(
         case.ui_case_id = ui_case.id
     case.automation_status = "draft"
     task.status = "ui_steps_generated"
+    return {"source": generated.source, "warning": generated.warning, "case": serialize(case), "steps": generated.items}
+
+
+@app.post("/api/functional-cases/{case_id}/generate-ui-steps")
+def generate_functional_case_ui_steps(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    case = get_or_404(db, FunctionalCase, case_id)
+    task = get_or_404(db, FunctionalTask, case.task_id)
+    snapshot = db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).first()
+    result = save_generated_functional_ui_steps(db, task, case, snapshot)
     db.commit()
     db.refresh(case)
-    return {"source": generated.source, "warning": generated.warning, "case": serialize(case), "steps": generated.items}
+    result["case"] = serialize(case)
+    return result
+
+
+@app.post("/api/functional-tasks/{task_id}/cases/batch-generate-ui-steps")
+def batch_generate_functional_case_ui_steps(
+    task_id: int,
+    payload: FunctionalCaseBatchIds,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    task = get_or_404(db, FunctionalTask, task_id)
+    query = db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id)
+    requested_ids = list(dict.fromkeys(int(item) for item in (payload.case_ids or []) if int(item) > 0))
+    if requested_ids:
+        query = query.filter(FunctionalCase.id.in_(requested_ids))
+    cases = query.order_by(FunctionalCase.id.asc()).all()
+    if not cases:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="没有可生成步骤的用例")
+    snapshot = db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).first()
+    results: list[Dict[str, Any]] = []
+    success_count = 0
+    failed_count = 0
+    for case in cases:
+        try:
+            result = save_generated_functional_ui_steps(db, task, case, snapshot)
+            results.append(
+                {
+                    "case_id": case.id,
+                    "title": case.title,
+                    "status": "success",
+                    "source": result.get("source"),
+                    "warning": result.get("warning"),
+                }
+            )
+            success_count += 1
+        except Exception as exc:
+            results.append({"case_id": case.id, "title": case.title, "status": "failed", "error": str(exc)})
+            failed_count += 1
+    db.commit()
+    return {"total": len(cases), "success_count": success_count, "failed_count": failed_count, "results": results}
+
+
+@app.post("/api/functional-tasks/{task_id}/cases/batch-automation-status")
+def batch_update_functional_case_automation_status(
+    task_id: int,
+    payload: FunctionalCaseBatchAutomationUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    get_or_404(db, FunctionalTask, task_id)
+    valid_statuses = {"draft", "ui_steps_generated", "approved", "needs_review"}
+    if payload.automation_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"无效的自动化状态，可选: {', '.join(sorted(valid_statuses))}")
+    requested_ids = list(dict.fromkeys(int(item) for item in (payload.case_ids or []) if int(item) > 0))
+    query = db.query(FunctionalCase).filter(FunctionalCase.task_id == task_id)
+    if requested_ids:
+        query = query.filter(FunctionalCase.id.in_(requested_ids))
+    if payload.automation_status == "approved":
+        query = query.filter(FunctionalCase.ui_case_id.isnot(None))
+    updated = query.update({"automation_status": payload.automation_status}, synchronize_session="fetch")
+    db.commit()
+    return {"updated": updated, "automation_status": payload.automation_status}
 
 
 def execute_functional_case_for_run(
@@ -3754,17 +5172,32 @@ def execute_functional_task_async(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     task = get_or_404(db, FunctionalTask, task_id)
-    variables = payload.variables if payload else {}
+    force_execute = bool(payload.force) if payload else False
+    selected_case_ids: list[int] = []
+    if payload:
+        if payload.case_id:
+            selected_case_ids = [payload.case_id]
+        elif payload.case_ids:
+            selected_case_ids = list(dict.fromkeys(int(item) for item in payload.case_ids if int(item) > 0))
+    preflight_result = preflight_functional_package(db, task, payload, selected_case_ids or None, persist=True)
+    seed_variables = dict((preflight_result.get("seed") or {}).get("variables") or {})
+    variables = {**seed_variables, **(payload.variables if payload else {})}
     cases_query = db.query(FunctionalCase).filter(
         FunctionalCase.task_id == task.id,
         FunctionalCase.automation_status == "approved",
         FunctionalCase.ui_case_id.isnot(None),
     )
-    if payload and payload.case_id:
-        cases_query = cases_query.filter(FunctionalCase.id == payload.case_id)
+    if selected_case_ids:
+        cases_query = cases_query.filter(FunctionalCase.id.in_(selected_case_ids))
+    if not force_execute:
+        cases_query = cases_query.filter(FunctionalCase.quality_status == QUALITY_EXECUTABLE)
     cases = cases_query.order_by(FunctionalCase.id.asc()).all()
     if not cases:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="没有已确认且可执行的UI步骤")
+        manual_count = (preflight_result.get("counts") or {}).get("manual_check", 0)
+        detail = "预检后没有高可信可自动执行用例"
+        if manual_count:
+            detail += f"，有 {manual_count} 条已转为人工核对/需补数据/需修定位"
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
     # 1) 先创建 run 记录，标记为 running
     initial_log = {
@@ -3775,6 +5208,7 @@ def execute_functional_task_async(
         "passed_count": 0,
         "failed_count": 0,
         "total": len(cases),
+        "preflight": preflight_result,
         "completed": 0,
         "current_case_title": "初始化执行器...",
     }
@@ -3792,15 +5226,23 @@ def execute_functional_task_async(
 
     # 2) 后台线程执行
     run_id = run.id
-    payload_data = schema_data(payload) if payload else None
+    payload_data = schema_data(payload) if payload else {}
+    payload_data["variables"] = variables
+    payload_data["force"] = force_execute
     payload_case_id = payload_data.get("case_id") if payload_data else None
+    payload_case_ids = payload_data.get("case_ids") if payload_data else []
+    selected_bg_case_ids: list[int] = []
+    if payload_case_id:
+        selected_bg_case_ids = [int(payload_case_id)]
+    elif payload_case_ids:
+        selected_bg_case_ids = list(dict.fromkeys(int(item) for item in payload_case_ids if int(item) > 0))
 
     def _background_execute():
-        import concurrent.futures
         from .database import SessionLocal
 
-        bg_db = SessionLocal()
+        bg_db = None
         try:
+            bg_db = SessionLocal()
             bg_task = bg_db.query(FunctionalTask).filter(FunctionalTask.id == task_id).first()
             bg_run = bg_db.query(FunctionalRun).filter(FunctionalRun.id == run_id).first()
             if not bg_task or not bg_run:
@@ -3811,101 +5253,168 @@ def execute_functional_task_async(
                 FunctionalCase.automation_status == "approved",
                 FunctionalCase.ui_case_id.isnot(None),
             )
-            if payload_case_id:
-                bg_cases_query = bg_cases_query.filter(FunctionalCase.id == payload_case_id)
+            if selected_bg_case_ids:
+                bg_cases_query = bg_cases_query.filter(FunctionalCase.id.in_(selected_bg_case_ids))
+            if not payload_data.get("force"):
+                bg_cases_query = bg_cases_query.filter(FunctionalCase.quality_status == QUALITY_EXECUTABLE)
             bg_cases = bg_cases_query.order_by(FunctionalCase.id.asc()).all()
 
             gathered_records: list[Dict[str, Any]] = []
             total_passed = 0
             total_failed = 0
+            total_blocked = 0
             _cached_vars = dict(variables)
+            processed_case_ids: set[int] = set()
+            batch_items: list[Dict[str, Any]] = []
+            payload_obj = FunctionalExecuteRequest(**payload_data) if payload_data else None
 
-            for idx, fc in enumerate(bg_cases):
-                # 更新进度：正在执行（先写入状态，让前端能看到）
-                bg_run.log = json.dumps({
-                    **json.loads(bg_run.log or "{}"),
-                    "current_case_title": fc.title,
-                    "completed": idx,
-                }, ensure_ascii=False, default=str)
-                bg_db.commit()
-
-                exec_start = datetime.now()
-                record: Dict[str, Any] = {}
-                case_passed = 0
-                case_failed = 1
-
-                # 每个 case 带超时（默认 60s，防止无限卡死）
-                case_timeout = max((fc.steps or "").count('"action"') * 10 if fc.steps else 30, 60)
-
-                # 每个 case 使用独立 DB session，避免跨线程复用 SQLAlchemy Session。
-                pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                fut = pool.submit(execute_functional_case_for_run_isolated, fc.id, _cached_vars, payload_data)
-                try:
-                    result_tuple = fut.result(timeout=case_timeout)
-                    if result_tuple:
-                        record, case_passed, case_failed = result_tuple
-                    pool.shutdown(wait=True, cancel_futures=True)
-                except concurrent.futures.TimeoutError:
-                    fut.cancel()
-                    pool.shutdown(wait=False, cancel_futures=True)
-                    elapsed_ms = int((datetime.now() - exec_start).total_seconds() * 1000)
-                    record = {
-                        "case_id": fc.id, "title": fc.title,
-                        "result": "failed", "status": "timeout",
-                        "error": f"执行超时 ({case_timeout}s)",
-                        "duration_ms": elapsed_ms,
+            for fc in bg_cases:
+                ui_case = bg_db.get(UiCase, fc.ui_case_id) if fc.ui_case_id else None
+                if not ui_case:
+                    continue
+                case_variables, execution_context = resolve_execution_account(
+                    bg_db,
+                    payload_obj,
+                    "functional_case",
+                    fc.id,
+                    ui_case.project_id,
+                    ui_case.page_url,
+                )
+                case_variables = {**_cached_vars, **case_variables}
+                if execution_context.get("login_required"):
+                    profile_key = execution_context.get("account_profile_id") or "default"
+                    execution_context["session_key"] = f"functional-task:{task_id}:profile:{profile_key}"
+                    execution_context["target_url"] = execution_context.get("target_url") or bg_task.target_url or ui_case.page_url
+                batch_items.append(
+                    {
+                        "case": ui_case,
+                        "functional_case": fc,
+                        "functional_case_id": fc.id,
+                        "variables": case_variables,
+                        "execution_context": execution_context,
                     }
-                except Exception as exc:
-                    pool.shutdown(wait=False, cancel_futures=True)
-                    record = {
-                        "case_id": fc.id, "title": fc.title,
-                        "result": "failed", "status": "error",
-                        "error": str(exc), "duration_ms": 0,
-                    }
+                )
 
-                gathered_records.append(record)
-                total_passed += case_passed
-                total_failed += case_failed
-
-                # 更新进度：执行完成
+            def _write_run_progress(current_title: str, completed: int) -> None:
                 bg_run.log = json.dumps({
                     **json.loads(bg_run.log or "{}"),
                     "records": gathered_records,
                     "passed_count": total_passed,
                     "failed_count": total_failed,
-                    "completed": idx + 1,
-                    "current_case_title": fc.title if case_failed == 0 else fc.title + " ❌",
+                    "blocked_count": total_blocked,
+                    "completed": completed,
+                    "current_case_title": current_title,
                 }, ensure_ascii=False, default=str)
                 bg_run.passed_count = total_passed
                 bg_run.failed_count = total_failed
                 bg_db.commit()
 
-            final_result = "passed" if total_failed == 0 else "failed"
+            def _on_case_start(item: Dict[str, Any]) -> None:
+                fc = item.get("functional_case")
+                title = getattr(fc, "title", "正在执行用例")
+                _write_run_progress(title, len(processed_case_ids))
+
+            def _on_case_finish(item: Dict[str, Any], result_tuple: tuple[bool, str, str, str]) -> None:
+                nonlocal total_passed, total_failed, total_blocked
+                fc = bg_db.get(FunctionalCase, int(item.get("functional_case_id")))
+                ui_case = item.get("case")
+                passed, log_text, screenshot_path, report_path = result_tuple
+                record = save_ui_record(bg_db, ui_case, passed, log_text, report_path, screenshot_path)
+                record_payload: Dict[str, Any] = {
+                    "functional_case_id": fc.id if fc else item.get("functional_case_id"),
+                    "ui_case_id": getattr(ui_case, "id", None),
+                    "record_id": record.id,
+                    "title": fc.title if fc else getattr(ui_case, "case_name", "未知用例"),
+                    "result": record.result,
+                    "quality_status": getattr(fc, "quality_status", QUALITY_UNCHECKED) if fc else QUALITY_UNCHECKED,
+                    "screenshot": screenshot_path,
+                    "log": log_text,
+                }
+                record_text = json.dumps(record_payload, ensure_ascii=False, default=str)
+                auth_blocked = (not passed) and ("登录前置失败" in record_text or ("login_required" in record_text and "#/login" in record_text))
+                if fc:
+                    if passed:
+                        fc.test_result = "passed"
+                        total_passed += 1
+                    elif auth_blocked:
+                        fc.test_result = "blocked"
+                        fc.quality_status = QUALITY_AUTH_RISK
+                        fc.quality_report = json.dumps(
+                            quality_report_payload(QUALITY_AUTH_RISK, "登录前置失败，未继续判定业务功能"),
+                            ensure_ascii=False,
+                            default=str,
+                        )
+                        record_payload["result"] = "blocked"
+                        record_payload["status"] = "auth_blocked"
+                        total_blocked += 1
+                    else:
+                        fc.test_result = "failed"
+                        fc.failure_count = (fc.failure_count or 0) + 1
+                        total_failed += 1
+                    processed_case_ids.add(fc.id)
+                gathered_records.append(record_payload)
+                _write_run_progress(
+                    "登录前置失败，后续用例已阻断" if auth_blocked else record_payload["title"],
+                    len(processed_case_ids),
+                )
+
+            try:
+                execute_ui_cases_batch(batch_items, on_case_start=_on_case_start, on_case_finish=_on_case_finish)
+            except Exception as exc:
+                if "登录前置失败" not in str(exc):
+                    raise
+                for blocked_case in bg_cases:
+                    if blocked_case.id in processed_case_ids:
+                        continue
+                    blocked_case.test_result = "blocked"
+                    blocked_case.quality_status = QUALITY_AUTH_RISK
+                    blocked_case.quality_report = json.dumps(
+                        quality_report_payload(QUALITY_AUTH_RISK, str(exc)[:500]),
+                        ensure_ascii=False,
+                        default=str,
+                    )
+                    gathered_records.append(
+                        {
+                            "functional_case_id": blocked_case.id,
+                            "title": blocked_case.title,
+                            "result": "blocked",
+                            "status": "auth_blocked",
+                            "error": str(exc),
+                        }
+                    )
+                    processed_case_ids.add(blocked_case.id)
+                    total_blocked += 1
+                _write_run_progress("登录前置失败，已停止后续用例", len(processed_case_ids))
+
+            final_result = "failed" if total_failed else ("blocked" if total_blocked else "passed")
             bg_run.result = final_result
             bg_run.log = json.dumps({
                 **json.loads(bg_run.log or "{}"),
                 "current_case_title": "执行完毕",
                 "status": final_result,
+                "blocked_count": total_blocked,
             }, ensure_ascii=False, default=str)
             bg_task.status = final_result
             bg_db.commit()
         except Exception:
             import traceback
-            try:
-                error_run = bg_db.query(FunctionalRun).filter(FunctionalRun.id == run_id).first()
-                if error_run:
-                    error_run.result = "error"
-                    error_run.log = json.dumps({
-                        **json.loads(error_run.log or "{}"),
-                        "current_case_title": "执行异常",
-                        "status": "error",
-                        "error": traceback.format_exc(),
-                    }, ensure_ascii=False, default=str)
-                    bg_db.commit()
-            except Exception:
-                pass
+            if bg_db is not None:
+                try:
+                    error_run = bg_db.query(FunctionalRun).filter(FunctionalRun.id == run_id).first()
+                    if error_run:
+                        error_run.result = "error"
+                        error_run.log = json.dumps({
+                            **json.loads(error_run.log or "{}"),
+                            "current_case_title": "执行异常",
+                            "status": "error",
+                            "error": traceback.format_exc(),
+                        }, ensure_ascii=False, default=str)
+                        bg_db.commit()
+                except Exception:
+                    pass
         finally:
-            bg_db.close()
+            if bg_db is not None:
+                bg_db.close()
 
     thread = threading.Thread(target=_background_execute, daemon=True)
     thread.start()
@@ -3938,6 +5447,8 @@ def get_functional_execution(
         "completed": log_data.get("completed", 0),
         "passed_count": run.passed_count,
         "failed_count": run.failed_count,
+        "blocked_count": log_data.get("blocked_count", 0),
+        "preflight": log_data.get("preflight", None),
         "current_case_title": log_data.get("current_case_title", ""),
         "records": log_data.get("records", []),
         "task_name": log_data.get("task", ""),
@@ -4034,6 +5545,24 @@ def proxy_ip_is_blocked(ip_value: str) -> bool:
     )
 
 
+def _resolve_and_check_hostname(hostname: str, port: int) -> None:
+    """解析 hostname 并检查所有解析到的 IP 是否为内网地址。"""
+    try:
+        resolved = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        return
+    for item in resolved:
+        address = item[4][0]
+        try:
+            if proxy_ip_is_blocked(address):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"代理请求禁止访问本机或内网地址 (解析到 {address})",
+                )
+        except ValueError:
+            continue
+
+
 def validate_proxy_target(method: str, url: str) -> None:
     if method not in PROXY_ALLOWED_METHODS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不支持的请求方法")
@@ -4049,6 +5578,9 @@ def validate_proxy_target(method: str, url: str) -> None:
     if hostname in {"localhost", "localhost.localdomain"} or hostname.endswith(".localhost") or hostname.endswith(".local"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="代理请求禁止访问本机或内网地址")
 
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+    # 如果 hostname 本身就是 IP，直接检查
     try:
         if proxy_ip_is_blocked(hostname):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="代理请求禁止访问本机或内网地址")
@@ -4056,29 +5588,34 @@ def validate_proxy_target(method: str, url: str) -> None:
     except ValueError:
         pass
 
-    try:
-        resolved = socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == "https" else 80), type=socket.SOCK_STREAM)
-    except socket.gaierror:
-        return
-    for item in resolved:
-        address = item[4][0]
-        try:
-            if proxy_ip_is_blocked(address):
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="代理请求禁止访问本机或内网地址")
-        except ValueError:
-            continue
+    # 解析 DNS 并检查所有解析到的 IP
+    _resolve_and_check_hostname(hostname, port)
+
+
+def _origin(url: str) -> str:
+    """提取 URL 的 origin（scheme + host），用于跨域判断。"""
+    parsed = urlparse(url)
+    return f"{parsed.scheme}://{parsed.hostname.lower()}:{parsed.port or (443 if parsed.scheme == 'https' else 80)}"
 
 
 def guarded_proxy_request(method: str, url: str, headers: Dict[str, Any], body: str, timeout: int) -> requests.Response:
     current_method = method
     current_url = url
     current_body = body
+    original_origin = _origin(current_url)
+    request_headers = dict(headers or {})
     for _ in range(PROXY_MAX_REDIRECTS + 1):
         validate_proxy_target(current_method, current_url)
+        # 跨域重定向时剥离 Authorization 头（防泄露给第三方）
+        redirect_headers = dict(request_headers)
+        if _origin(current_url) != original_origin:
+            for sensitive_header in {"authorization", "proxy-authorization", "cookie", "x-api-key"}:
+                redirect_headers.pop(sensitive_header, None)
+                redirect_headers.pop(sensitive_header.title(), None)
         response = requests.request(
             current_method,
             current_url,
-            headers=headers,
+            headers=redirect_headers,
             data=current_body,
             timeout=timeout,
             allow_redirects=False,
@@ -4098,6 +5635,7 @@ def guarded_proxy_request(method: str, url: str, headers: Dict[str, Any], body: 
 @app.post("/api/proxy/request")
 def proxy_http_request(
     payload: QuickRunRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
@@ -4107,6 +5645,8 @@ def proxy_http_request(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="URL不能为空")
     headers = dict(payload.headers or {})
     body = payload.body or ""
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info("代理请求 [%s] %s %s (来源: %s)", method, url, current_user.username, client_ip)
     start = time.time()
     try:
         resp = guarded_proxy_request(method, url, headers, body, timeout=30)
@@ -4135,9 +5675,11 @@ def proxy_http_request(
 def list_records(
     case_type: str | None = Query(default=None),
     project_id: int | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[Dict[str, Any]]:
+) -> Dict[str, Any]:
     query = db.query(TestRecord)
     if case_type is not None:
         query = query.filter(TestRecord.case_type == case_type)
@@ -4151,7 +5693,9 @@ def list_records(
                 (TestRecord.case_type == "ui") & TestRecord.case_id.in_(ui_ids or [-1]),
             )
         )
-    return serialize_many(query.order_by(TestRecord.id.desc()).all())
+    total = query.count()
+    items = serialize_many(query.order_by(TestRecord.id.desc()).offset((page - 1) * page_size).limit(page_size).all())
+    return {"total": total, "page": page, "page_size": page_size, "items": items}
 
 
 @app.get("/api/test-records/{record_id}")

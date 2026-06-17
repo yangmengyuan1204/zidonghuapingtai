@@ -357,24 +357,56 @@
 
     const zone = document.querySelector("#cgUploadZone");
     const input = document.querySelector("#cgUploadInput");
-    const close = () => {
-      modalEl.removeEventListener("paste", pasteHandler);
-      modalEl.close();
+    const close = () => modalEl.close();
+    // 从 DataTransfer items 中提取图片文件（截图工具/拖拽的图像数据存于 items 而非 files）
+    const extractImageFromItems = (items) => {
+      if (!items) return [];
+      const files = [];
+      Array.from(items).forEach((item) => {
+        if (item.kind === "file" && item.type?.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      });
+      return files;
     };
-    const pasteHandler = (event) => addFiles(Array.from(event.clipboardData?.files || []));
+    const pasteHandler = (event) => {
+      if (!modalEl.open) return;
+      const files = Array.from(event.clipboardData?.files || []);
+      if (files.length) {
+        addFiles(files);
+      } else {
+        // clipboardData.files 为空 → 从 items 提取（截图工具复制的图像数据）
+        const imageFiles = extractImageFromItems(event.clipboardData?.items);
+        if (imageFiles.length) addFiles(imageFiles);
+      }
+    };
     document.querySelector("#closeModal").addEventListener("click", close);
-    modalEl.addEventListener("paste", pasteHandler);
+    // 监听 document 级别 paste，确保无论焦点在哪都能捕获
+    document.addEventListener("paste", pasteHandler);
+    // 弹窗关闭（含 Escape 键）时自动清理 paste 监听
+    modalEl.addEventListener("close", () => {
+      document.removeEventListener("paste", pasteHandler);
+    });
     zone.addEventListener("click", () => input.click());
     input.addEventListener("change", (event) => addFiles(event.target.files));
     zone.addEventListener("dragover", (event) => {
       event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
       zone.classList.add("drag-over");
     });
     zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
     zone.addEventListener("drop", (event) => {
       event.preventDefault();
       zone.classList.remove("drag-over");
-      addFiles(event.dataTransfer.files);
+      const files = Array.from(event.dataTransfer?.files || []);
+      if (files.length) {
+        addFiles(files);
+      } else {
+        // dataTransfer.files 为空 → 从 items 提取（拖拽的图片数据）
+        const imageFiles = extractImageFromItems(event.dataTransfer?.items);
+        if (imageFiles.length) addFiles(imageFiles);
+      }
     });
     document.querySelector("#cgUploadForm").addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -395,7 +427,6 @@
           throw new Error(err.detail || "上传失败");
         }
         showToast("截图已上传");
-        modalEl.removeEventListener("paste", pasteHandler);
         modalEl.close();
         await renderCaseGeneration();
       } catch (error) {

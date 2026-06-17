@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 import json
 import os
@@ -10,6 +11,9 @@ import time
 from typing import Any, Dict, Iterable, Tuple
 from urllib.parse import urljoin, urlparse, urlunparse
 from uuid import uuid4
+
+
+logger = logging.getLogger(__name__)
 
 import requests
 
@@ -164,6 +168,7 @@ def launch_chromium_browser(playwright: Any, headless: bool = True, proxy: str |
         "--disable-gpu",
         "--disable-dev-shm-usage",
         "--disable-setuid-sandbox",
+        "--ignore-certificate-errors",
     ]
     launch_kwargs = {"headless": headless, "args": args}
     proxy = proxy or _get_proxy_from_env()
@@ -208,6 +213,8 @@ def parse_json_value(value: Any, fallback: Any) -> Any:
     try:
         return json.loads(value)
     except (TypeError, json.JSONDecodeError):
+        if isinstance(value, str) and len(value) > 0:
+            logger.debug("parse_json_value 解析失败，使用 fallback: %s...", value[:200])
         return fallback
 
 
@@ -439,7 +446,7 @@ def execute_api_case(case: ApiCase, env: Env, runtime_vars: Dict[str, Any] | Non
                 "response": {
                     "status_code": response.status_code,
                     "headers": dict(response.headers),
-                    "body": response_text[:10000],
+                    "body": response_text[:50000],
                 },
                 "assertions": checks,
                 "extracted_vars": extracted_vars,
@@ -531,6 +538,16 @@ def _split_locator_values(value: Any) -> list[str]:
         text_value = str(item or "").strip()
         if text_value and text_value not in result:
             result.append(text_value)
+    return result
+
+
+def _merge_locator_values(*groups: Iterable[str]) -> list[str]:
+    result: list[str] = []
+    for group in groups:
+        for item in group:
+            text_value = str(item or "").strip()
+            if text_value and text_value not in result:
+                result.append(text_value)
     return result
 
 
@@ -654,6 +671,9 @@ def _guess_login_url(target_url: str | None) -> str:
     parsed = urlparse(raw)
     if not parsed.scheme or not parsed.netloc:
         return ""
+    if parsed.fragment and "/" in parsed.fragment:
+        hash_prefix = "!/" if parsed.fragment.startswith("!/") else "/"
+        return urlunparse((parsed.scheme, parsed.netloc, parsed.path or "/", "", "", f"{hash_prefix}login"))
     return urlunparse((parsed.scheme, parsed.netloc, "/login", "", "", ""))
 
 
@@ -724,6 +744,35 @@ def _visible_login_error(page: Any) -> str:
     return ""
 
 
+def _login_loading_visible(page: Any) -> bool:
+    for locator in [
+        "text=正在加载",
+        "text=请稍等",
+        ".el-loading-mask",
+        ".ant-spin",
+        ".loading",
+        "[class*='loading']",
+    ]:
+        try:
+            target = page.locator(locator).first
+            if target.is_visible(timeout=200):
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _wait_login_submit_settled(page: Any, timeout_ms: int) -> bool:
+    deadline = time.time() + max(timeout_ms, 3000) / 1000
+    saw_loading = False
+    while time.time() < deadline:
+        if not _login_loading_visible(page):
+            return True
+        saw_loading = True
+        page.wait_for_timeout(500)
+    return not saw_loading
+
+
 def _is_login_related_step(step: Dict[str, Any]) -> bool:
     action = str(step.get("action") or "").strip().lower()
     text = _step_text(step)
@@ -770,7 +819,7 @@ def _prepare_authenticated_page(page: Any, execution_context: Dict[str, Any], va
     if not login_url or not username or not password:
         raise UiAuthPreparationError("登录前置失败：缺少登录页 URL、登录账号或登录密码。", trace)
 
-    username_candidates = _split_locator_values(auth.get("username_locator")) or [
+    username_defaults = [
         'input[placeholder="邮箱/手机号"]',
         'input[name="username"]',
         'input[name="account"]',
@@ -778,17 +827,33 @@ def _prepare_authenticated_page(page: Any, execution_context: Dict[str, Any], va
         'input[name="email"]',
         'input[type="text"]',
     ]
-    password_candidates = _split_locator_values(auth.get("password_locator")) or [
+    password_defaults = [
         'input[placeholder="请输入密码"]',
         'input[type="password"]',
         'input[name="password"]',
     ]
-    submit_candidates = _split_locator_values(auth.get("submit_locator")) or [
+    submit_defaults = [
+        'button:has-text("立即登录")',
+        '[role="button"]:has-text("立即登录")',
+        '.el-button:has-text("立即登录")',
+        '[class*="button"]:has-text("立即登录")',
+        '[class*="btn"]:has-text("立即登录")',
+        '[class*="login"]:has-text("立即登录")',
+        'input[type="submit"][value*="立即登录"]',
+        "text=立即登录",
         'button[type="submit"]',
         'button:has-text("登录")',
         '[role="button"]:has-text("登录")',
+        '.el-button:has-text("登录")',
+        '[class*="button"]:has-text("登录")',
+        '[class*="btn"]:has-text("登录")',
+        '[class*="login"]:has-text("登录")',
+        'input[type="submit"][value*="登录"]',
         "text=登录",
     ]
+    username_candidates = _merge_locator_values(_split_locator_values(auth.get("username_locator")), username_defaults)
+    password_candidates = _merge_locator_values(_split_locator_values(auth.get("password_locator")), password_defaults)
+    submit_candidates = _merge_locator_values(submit_defaults, _split_locator_values(auth.get("submit_locator")))
     code_candidates = [
         'input[placeholder*="验证码"]',
         'input[name="code"]',
@@ -834,6 +899,9 @@ def _prepare_authenticated_page(page: Any, execution_context: Dict[str, Any], va
             page.wait_for_load_state("networkidle", timeout=6000)
         except Exception:
             page.wait_for_timeout(1500)
+        settled = _wait_login_submit_settled(page, max(timeout_seconds, 15) * 1000)
+        if not settled:
+            trace.append(f"{label}后登录页仍处于加载中")
         trace.append(f"{label}后当前页面：{page.url}")
 
     wait_after_submit("首次提交")
@@ -861,6 +929,8 @@ def _prepare_authenticated_page(page: Any, execution_context: Dict[str, Any], va
         if _looks_like_login_page(page, expected_url=login_url):
             error_text = _visible_login_error(page)
             detail = f"登录前置失败：提交后仍停留在登录页，当前页面 {page.url}"
+            if _login_loading_visible(page):
+                detail += "；登录请求一直处于加载中，可能是账号/密码不正确、验证码/二次认证未处理，或登录接口响应异常"
             if error_text:
                 detail += f"；页面提示：{error_text}"
                 trace.append(f"页面错误提示：{error_text}")
@@ -1308,7 +1378,9 @@ def execute_ui_cases_batch(
                 results.append(result)
                 if on_case_finish:
                     on_case_finish(item, result)
-    except Exception:
+    except Exception as exc:
+        if isinstance(exc, UiAuthPreparationError) or "登录前置失败" in str(exc):
+            raise
         if results:
             raise
         processed_count = len(results)

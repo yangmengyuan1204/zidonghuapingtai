@@ -1,4 +1,4 @@
-import copy
+﻿import copy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import OrderedDict
 from datetime import datetime, timedelta
@@ -118,6 +118,13 @@ class DataScriptRuntime:
     def __init__(self) -> None:
         self._client_cache: Dict[tuple[Any, ...], tuple[Any, str]] = {}
         self._admin_token_cache: Dict[tuple[Any, ...], tuple[Dict[str, Any], str]] = {}
+        self._admin_session: requests.Session | None = None
+
+    def admin_session(self) -> requests.Session:
+        """返回可复用的 admin requests.Session，在链式调用中保持 TCP 连接复用"""
+        if self._admin_session is None:
+            self._admin_session = requests.Session()
+        return self._admin_session
 
     def client(
         self,
@@ -182,6 +189,14 @@ class DataScriptRuntime:
 def _runtime_from_variables(variables: Dict[str, Any]) -> DataScriptRuntime | None:
     runtime = variables.get("_runtime")
     return runtime if isinstance(runtime, DataScriptRuntime) else None
+
+
+def _admin_session_from(variables: Dict[str, Any]) -> requests.Session:
+    """从 runtime 获取共享 session（如可用），否则新建一个"""
+    runtime = _runtime_from_variables(variables)
+    if runtime is not None:
+        return runtime.admin_session()
+    return requests.Session()
 
 
 def _client_login_inputs(variables: Dict[str, Any]) -> tuple[str, str, str]:
@@ -498,7 +513,7 @@ def _legacy_run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None 
         "shops": [],
     }
 
-    session = requests.Session()
+    session = _admin_session_from(variables)
     headers: Dict[str, str] = {}
 
     try:
@@ -1657,7 +1672,9 @@ def _call_with_retry(label: str, operation: Any, attempts: int = 3, delay: float
         except Exception as exc:
             last_error = exc
             if attempt < attempts - 1:
-                time.sleep(delay * (attempt + 1))
+                # 抖动指数退避：delay * 2^attempt + 随机 0~0.1s，避免惊群效应
+                sleep_sec = delay * (2 ** attempt) + random.uniform(0, 0.1)
+                time.sleep(sleep_sec)
     raise RuntimeError(f"{label} failed after {attempts} attempts: {last_error}")
 
 
@@ -1888,7 +1905,7 @@ def _run_backend_order_flow(
 ) -> tuple[bool, Dict[str, Any]]:
     backend_log: Dict[str, Any] = {"order_sn": order_sn, "steps": []}
     log["backend"] = backend_log
-    session = requests.Session()
+    session = _admin_session_from(variables)
 
     login_payload, token = _admin_login(session, base_url, variables, timeout)
     backend_log["login"] = {
@@ -2897,7 +2914,7 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
     }
 
     try:
-        session = requests.Session()
+        session = _admin_session_from(variables)
         login_payload, token = _admin_login(session, base_url, variables, timeout)
         log["login"] = {
             **_payload_brief(login_payload),
@@ -4173,7 +4190,7 @@ def _run_backend_porder_flow(
 ) -> tuple[bool, Dict[str, Any]]:
     backend_log: Dict[str, Any] = {"porder_sn": porder_sn, "steps": []}
     log["backend_porder"] = backend_log
-    session = requests.Session()
+    session = _admin_session_from(variables)
 
     login_payload, token = _admin_login(session, base_url, variables, timeout)
     session.headers.update(
@@ -4976,7 +4993,7 @@ def run_bank_payment_script(env: Env, variables: Dict[str, Any] | None = None) -
                 finance_ok = False
                 log["finance"] = {"reason": "\u94f6\u884c\u652f\u4ed8\u672a\u8fd4\u56de\u6d41\u6c34\u53f7"}
             else:
-                session = requests.Session()
+                session = _admin_session_from(variables)
                 login_payload, token = _admin_login(session, base_url, variables, timeout)
                 log["finance"]["login"] = {
                     **_payload_brief(login_payload),
@@ -5726,7 +5743,7 @@ def run_porder_bank_payment_script(env: Env, variables: Dict[str, Any] | None = 
                 finance_ok = False
                 log["finance"] = {"reason": "银行支付未返回流水号"}
             else:
-                session = requests.Session()
+                session = _admin_session_from(variables)
                 login_payload, token = _admin_login(session, base_url, variables, timeout)
                 log["finance"]["login"] = {
                     **_payload_brief(login_payload),
@@ -6090,7 +6107,7 @@ def run_direct_box_to_shelf_script(env: Env, variables: Dict[str, Any] | None = 
         if not purchase_no:
             return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"reason": "\u672a\u83b7\u53d6\u5230\u4ea4\u6613\u53f7\uff0c\u65e0\u6cd5\u76f4\u63a5\u88c5\u7bb1"})
 
-        session = requests.Session()
+        session = _admin_session_from(variables)
         login_payload, token = _admin_login(session, base_url, variables, timeout)
         log["login"] = {
             **_payload_brief(login_payload),

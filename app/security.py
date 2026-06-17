@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-import hashlib
 import os
 from pathlib import Path
 import secrets
@@ -31,8 +30,14 @@ def load_secret_key() -> str:
                 return value
         value = secrets.token_urlsafe(48)
         secret_file.write_text(value + "\n", encoding="utf-8")
+        # 尝试设置文件为仅所有者可读写（Unix: 0o600）
+        try:
+            secret_file.chmod(0o600)
+        except Exception:
+            pass
         warnings.warn(
-            "SECRET_KEY is not set. Generated local .secret_key; set SECRET_KEY in production.",
+            "SECRET_KEY is not set. Generated local .secret_key (权限: 仅所有者可读写); "
+            "生产环境建议设置 SECRET_KEY 环境变量。",
             RuntimeWarning,
             stacklevel=2,
         )
@@ -58,24 +63,22 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
+def is_password_hash(value: str) -> bool:
+    try:
+        return pwd_context.identify(str(value or "")) is not None
+    except Exception:
+        return False
+
+
 def verify_password(password: str, hashed_password: str) -> bool:
+    """验证密码。所有密码均以 bcrypt 存储，不支持明文/MD5/SHA1/SHA256 回退。"""
     stored = str(hashed_password or "")
+    if not stored:
+        return False
     try:
         return pwd_context.verify(password, stored)
     except Exception:
-        pass
-    if not stored:
         return False
-    if stored == password:
-        return True
-    normalized = stored.lower()
-    raw = str(password or "").encode("utf-8")
-    legacy_hashes = {
-        hashlib.md5(raw).hexdigest(),
-        hashlib.sha1(raw).hexdigest(),
-        hashlib.sha256(raw).hexdigest(),
-    }
-    return normalized in legacy_hashes
 
 
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:

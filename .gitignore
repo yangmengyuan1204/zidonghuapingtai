@@ -15,3 +15,15 @@ logs/
 .secret_key
 .codex_test_deps/
 ms-playwright/
+.reasonix/
+.codegraph/
+.venv_py39_backup_*
+auto_test_platform.db-shm
+auto_test_platform.db-wal
+*.exe
+*.png
+*.bak
+$null
+fix_*.js
+git_original.js
+
