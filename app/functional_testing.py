@@ -52,6 +52,7 @@ class GeneratedResult:
     source: str
     warning: str
     items: list[Dict[str, Any]]
+    questions_for_product: list[str] | None = None
 
 
 def ensure_functional_dirs() -> None:
@@ -176,7 +177,8 @@ def read_axure_text(axure_path: str | None) -> str:
             return _interesting_lines("\n".join(texts))
         return _interesting_lines(_plain_text(_decode_bytes(path.read_bytes())))
     except Exception as exc:
-        return f"Axure解析失败：{exc}"
+        logger.warning("Axure解析失败: %s", exc)
+        return None
 
 
 def _safe_page_id(index: int, name: str) -> str:
@@ -505,7 +507,12 @@ def call_local_model_json(config: AiConfig | None, prompt: str, timeout: int = 9
         _raise_for_model_response(response)
         return _json_from_text(response.json().get("response", ""))
 
-    endpoint = base_url if base_url.endswith("/chat/completions") else f"{base_url}/v1/chat/completions"
+    endpoint = base_url
+    if not endpoint.endswith("/chat/completions"):
+        endpoint = endpoint.rstrip("/")
+        if not endpoint.endswith("/v1"):
+            endpoint += "/v1"
+        endpoint += "/chat/completions"
     response = requests.post(
         endpoint,
         headers=headers,
@@ -972,10 +979,24 @@ OCR/图像材料：
     return json.dumps(normalized, ensure_ascii=False, indent=2)
 
 
-def _normalize_generated_cases(payload: Any) -> list[Dict[str, Any]]:
-    cases = payload.get("cases") if isinstance(payload, dict) else payload
+def _normalize_generated_cases(
+    payload: Any,
+) -> tuple[list[Dict[str, Any]], list[str]]:
+    """从 AI 响应 payload 中提取 cases 和 questions_for_product。
+
+    Returns:
+        (cases, questions_for_product)
+    """
+    questions: list[str] = []
+    if isinstance(payload, dict):
+        cases = payload.get("cases")
+        q_raw = payload.get("questions_for_product") or payload.get("questions") or []
+        if isinstance(q_raw, list):
+            questions = [str(q).strip() for q in q_raw if q and str(q).strip()]
+    else:
+        cases = payload
     if not isinstance(cases, list):
-        return []
+        return [], questions
     result = []
     for index, item in enumerate(cases, start=1):
         if not isinstance(item, dict):
@@ -994,7 +1015,7 @@ def _normalize_generated_cases(payload: Any) -> list[Dict[str, Any]]:
                 "automation_status": "draft",
             }
         )
-    return result[:100]
+    return result[:100], questions
 
 
 def normalize_case_category(value: Any, fallback_text: str = "") -> str:
@@ -1083,13 +1104,22 @@ def generate_functional_cases(
 {requirement_context}
 """
     warning = ""
+    questions: list[str] = []
     try:
-        generated = _normalize_generated_cases(call_local_model_json(config, prompt))
+        raw_payload = call_local_model_json(config, prompt)
+        generated, questions = _normalize_generated_cases(raw_payload)
+        if len(generated) < 20:
+            warning = f"AI 仅生成了 {len(generated)} 条测试点，期望至少 20 条，建议补充需求描述后重试"
     except Exception as exc:
         generated = []
         warning = f"本地模型调用失败，已使用规则生成：{exc}"
     if generated:
-        return GeneratedResult(source="ai", warning=warning, items=generated)
+        return GeneratedResult(
+            source="ai",
+            warning=warning,
+            items=generated,
+            questions_for_product=questions or None,
+        )
     fallback = rule_generate_cases(task, axure_text, requirement_context)
     if not warning:
         warning = "未配置本地模型或模型未返回合法 JSON，已使用规则生成草稿。"
@@ -1804,97 +1834,7 @@ def _scan_locator_quality(elements: list[dict]) -> dict:
     return quality
 
 
-def scan_page_dom(page_url: str, timeout: int = 30, auth: Dict[str, Any] | None = None, proxy: str | None = None) -> Dict[str, str]:
-    """
-    分段式页面扫描。
-    
-    将扫描过程拆解为独立子步骤：启动浏览器 → 导航 → (登录) → DOM提取 → 截图。
-    每步有独立超时和错误处理，失败时返回已完成的部分数据 + 错误步骤定位。
-    """
-    ensure_functional_dirs()
-    started = time.time()
-    trace: list[str] = []
-    partial: dict = {"title": "", "url": "", "headings": [], "elements": [], "error_step": None, "error": None}
 
-    try:
-        from playwright.sync_api import sync_playwright
-    except Exception as exc:
-        raise _scan_error(f"Playwright 不可用：{exc}", trace) from exc
-
-    browser = None
-    page = None
-    screenshot_path = SCREENSHOT_DIR / f"functional-{uuid4()}.png"
-
-    if proxy is None:
-        proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy")
-
-    try:
-        with sync_playwright() as p:
-            # 步骤 1：启动浏览器
-            _scan_trace(trace, "启动浏览器..." + (f" (代理: {proxy})" if proxy else ""))
-            browser = _scan_launch(p, headless=True, proxy=proxy)
-            page = browser.new_page()
-
-            # 步骤 2：导航
-            with _step_timeout(page, min(timeout, 20), "导航到目标页面", trace):
-                _scan_navigate(page, page_url, timeout, trace)
-
-            # 步骤 3：登录（如果启用）
-            auth_config = auth or {}
-            if auth_config.get("enabled"):
-                with _step_timeout(page, min(timeout, 25), "登录流程", trace):
-                    _login_before_scan(page, page_url, auth_config, timeout, trace)
-
-            # 步骤 4：提取 DOM
-            with _step_timeout(page, 10, "DOM 提取", trace):
-                partial = _scan_extract_dom(page, trace)
-
-            # 步骤 5：截图
-            with _step_timeout(page, 5, "截图", trace):
-                screenshot_path = _scan_screenshot(page, trace)
-
-    except FunctionalScanError:
-        raise
-    except Exception as exc:
-        error_msg = str(exc)[:300]
-        _scan_trace(trace, f"扫描过程中断：{error_msg}")
-        partial["error_step"] = "unknown"
-        partial["error"] = error_msg
-        # 如果浏览器还在，尝试截图
-        if page:
-            try:
-                screenshot_path = _scan_screenshot(page, trace)
-            except Exception:
-                pass
-    finally:
-        if browser:
-            try:
-                browser.close()
-            except Exception:
-                pass
-
-    # 定位器质量报告
-    elements = partial.get("elements") or []
-    locator_quality = _scan_locator_quality(elements)
-
-    scan_result = {
-        "scan_seconds": round(time.time() - started, 2),
-        "scan_trace": trace,
-        "title": partial.get("title", ""),
-        "url": partial.get("url", ""),
-        "headings": partial.get("headings", []),
-        "elements": elements,
-        "locator_quality": locator_quality,
-    }
-    if partial.get("error_step"):
-        scan_result["error_step"] = partial["error_step"]
-        scan_result["error"] = partial["error"]
-
-    return {
-        "dom_summary": json.dumps(scan_result, ensure_ascii=False, indent=2),
-        "screenshot_path": str(screenshot_path),
-        "scan_trace": trace,
-    }
 
 
 def _scan_page_state(partial: dict, console_errors: list[str], network_errors: list[str]) -> dict[str, Any]:
@@ -2331,8 +2271,8 @@ def rule_diagnose_failure(run: FunctionalRun) -> Dict[str, Any]:
     run_log = _load_json_object(run.log)
     records = run_log.get("records") if isinstance(run_log.get("records"), list) else []
     failed_records = [item for item in records if isinstance(item, dict) and item.get("result") != "passed"]
-    passed_count = run_log.get("passed_count", run.passed_count or 0)
-    failed_count = run_log.get("failed_count", run.failed_count or len(failed_records))
+    passed_count = run_log.get("passed_count") or run.passed_count or 0
+    failed_count = run_log.get("failed_count") or run.failed_count or len(failed_records)
     failed_cases = []
     for record in failed_records:
         ui_log = _load_json_object(record.get("log"))

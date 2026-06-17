@@ -1,4 +1,4 @@
-﻿import os
+import os
 import time
 
 from sqlalchemy import create_engine, event

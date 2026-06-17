@@ -323,6 +323,7 @@ def generate_cases_for_task(db, task: CaseGenerationTask) -> dict[str, Any]:
         "cases": cases_output,
         "task_id": task.id,
         "task_name": task.task_name,
+        "questions_for_product": generated.questions_for_product or [],
     }
 
 
@@ -375,7 +376,7 @@ def main() -> None:
         output["rp_file"] = str(rp_path)
         output["pages_found"] = len(pages)
 
-        # 输出 JSON
+        # stdout 只输出 JSON；日志全部走 stderr
         print(json.dumps(output, ensure_ascii=False, indent=2))
 
     except Exception as exc:

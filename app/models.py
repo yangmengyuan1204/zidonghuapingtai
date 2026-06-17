@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, DateTime, Float, Index, Integer, String, Text
+from sqlalchemy import Column, DateTime, Float, Index, Integer, String, Text
 
 from .database import Base
 

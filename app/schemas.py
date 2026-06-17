@@ -1,4 +1,4 @@
-﻿from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -248,6 +248,7 @@ class FunctionalScanAuth(BaseModel):
 
 class FunctionalScanRequest(BaseModel):
     auth: Optional[FunctionalScanAuth] = None
+    demo_mode: bool = False
 
 
 class FunctionalScreenshotOrderUpdate(BaseModel):

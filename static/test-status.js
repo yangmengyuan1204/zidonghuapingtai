@@ -185,7 +185,10 @@
     const rows = table.querySelectorAll('tbody tr');
     rows.forEach(row => {
       const caseId = extractCaseId(row);
-      if (!caseId) return;
+      if (!caseId) {
+        console.warn('无法提取用例ID，该行已跳过批量操作:', row.innerHTML.slice(0, 100));
+        return;
+      }
 
       // checkbox
       const tdCb = document.createElement('td');

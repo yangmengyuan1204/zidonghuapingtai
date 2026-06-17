@@ -1,4 +1,4 @@
-﻿import copy
+import copy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import OrderedDict
 from datetime import datetime, timedelta
