@@ -24,6 +24,7 @@ from fastapi.testclient import TestClient
 import app.executors as executors
 import app.data_scripts as data_scripts
 import app.main as main
+import app.routers.data_scripts as data_script_router
 from app.database import SessionLocal
 from app.main import app
 
@@ -1574,12 +1575,150 @@ def test_full_flow_porder_balance_insufficient_uses_porder_bank_payment(monkeypa
     assert summary["current_node"] == "full_complete"
 
 
+def test_resume_order_flow_resumes_by_order_status(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    state = {"status": 20}
+    calls = []
+
+    def detect(env, variables, order_sn, log):
+        status = state["status"]
+        detected = {
+            20: "order_translated",
+            21: "order_confirmed",
+            22: "order_offered",
+            30: "order_offered",
+        }[status]
+        return True, {
+            "order_sn": order_sn,
+            "order_status": status,
+            "detected_start_node": detected,
+            "order_data": {"status": status, "order_sn": order_sn, "order_detail": [{"id": "DETAIL-1", "num": 1}]},
+        }
+
+    def backend(base_url, timeout, variables, order_sn, item_quantity, log, order_data):
+        calls.append(f"backend:{state['status']}")
+        assert state["status"] in (20, 21, 22)
+        assert order_data["status"] == state["status"]
+        return True, {"order_sn": order_sn, "current_node": detect(None, variables, order_sn, log)[1]["detected_start_node"], "backend_passed": True}
+
+    def pay(env, variables, porder=False):
+        calls.append("pay")
+        assert porder is False
+        assert variables["order_sn"] == "ORDER-RESUME"
+        return True, "", "pay-report", {"payment_type": "balance", "order_sn": "ORDER-RESUME"}
+
+    def shelf(env, variables):
+        calls.append("shelf")
+        assert variables["order_sn"] == "ORDER-RESUME"
+        assert variables["link_quote_balance_before_shelf"] is False
+        assert variables["auto_quote_and_pay"] is False
+        return True, "", "shelf-report", {"order_sn": "ORDER-RESUME", "purchase_no": "PNO-RESUME", "order_detail_id": "DETAIL-1"}
+
+    def delivery(env, variables):
+        calls.append("delivery")
+        assert variables["order_detail_id"] == "DETAIL-1"
+        return True, "", "delivery-report", {"order_sn": "ORDER-RESUME", "porder_sn": "PORDER-RESUME", "current_node": "porder_offered"}
+
+    monkeypatch.setattr(data_scripts, "_detect_resume_order_state", detect)
+    monkeypatch.setattr(data_scripts, "_run_backend_order_flow_resume", backend)
+    monkeypatch.setattr(data_scripts, "_payment_with_bank_fallback", pay)
+    monkeypatch.setattr(data_scripts, "run_purchase_to_shelf_script", shelf)
+    monkeypatch.setattr(data_scripts, "run_warehouse_delivery_script", delivery)
+
+    for status in (20, 21, 22, 30):
+        state["status"] = status
+        calls.clear()
+        passed, _, _, summary = data_scripts.run_resume_order_flow_script(full_flow_env(), {"order_sn": "ORDER-RESUME"})
+
+        assert passed is True
+        assert summary["current_node"] == "porder_offered"
+        assert summary["detected_start_node"] == ("order_offered" if status in (22, 30) else {20: "order_translated", 21: "order_confirmed"}[status])
+        assert summary["order_sn"] == "ORDER-RESUME"
+        assert summary["porder_sn"] == "PORDER-RESUME"
+        if status == 30:
+            assert calls == ["pay", "shelf", "delivery"]
+            assert any(item["node"] == "order_offered" for item in summary["skipped_nodes"])
+        else:
+            assert calls == [f"backend:{status}", "pay", "shelf", "delivery"]
+
+
+def test_resume_order_flow_pending_purchase_skips_order_quote_and_payment(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    calls = []
+
+    def detect(env, variables, order_sn, log):
+        return True, {
+            "order_sn": order_sn,
+            "order_status": 40,
+            "detected_start_node": "pending_purchase",
+            "purchase_items": [{"id": "PUR-1", "statusName": "待拍下"}],
+            "purchase_selected_count": 1,
+        }
+
+    def shelf(env, variables):
+        calls.append("shelf")
+        assert variables["order_sn"] == "ORDER-PENDING"
+        return True, "", "shelf-report", {"order_sn": "ORDER-PENDING", "purchase_no": "PNO-PENDING", "order_detail_id": "DETAIL-PENDING"}
+
+    def delivery(env, variables):
+        calls.append("delivery")
+        assert variables["order_detail_id"] == "DETAIL-PENDING"
+        return True, "", "delivery-report", data_scripts._paused_summary("porder_offered", {"porder_sn": "PORDER-PENDING", "order_sn": "ORDER-PENDING"})
+
+    monkeypatch.setattr(data_scripts, "_detect_resume_order_state", detect)
+    monkeypatch.setattr(data_scripts, "_run_backend_order_flow_resume", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("backend quote should be skipped")))
+    monkeypatch.setattr(data_scripts, "_payment_with_bank_fallback", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("order payment should be skipped")))
+    monkeypatch.setattr(data_scripts, "run_purchase_to_shelf_script", shelf)
+    monkeypatch.setattr(data_scripts, "run_warehouse_delivery_script", delivery)
+
+    passed, _, _, summary = data_scripts.run_resume_order_flow_script(full_flow_env(), {"order_sn": "ORDER-PENDING"})
+
+    assert passed is True
+    assert calls == ["shelf", "delivery"]
+    assert summary["paused"] is True
+    assert summary["current_node"] == "porder_offered"
+    assert summary["detected_start_node"] == "pending_purchase"
+    assert summary["order_sn"] == "ORDER-PENDING"
+    assert summary["porder_sn"] == "PORDER-PENDING"
+    assert any(item["node"] == "order_paid" for item in summary["skipped_nodes"])
+
+
+def test_resume_order_flow_endpoint_returns_summary(monkeypatch):
+    def fake_resume(env, variables):
+        assert variables["order_sn"] == "ORDER-ENDPOINT"
+        return True, "resume-log", "resume-report", {
+            "current_node": "porder_offered",
+            "detected_start_node": "order_offered",
+            "order_sn": "ORDER-ENDPOINT",
+            "porder_sn": "PORDER-ENDPOINT",
+        }
+
+    monkeypatch.setattr(data_script_router, "run_resume_order_flow_script", fake_resume)
+
+    with TestClient(app) as client:
+        admin_token = login(client, "admin", "admin123")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        _, env = create_project_env(client, headers, name="resume-order-flow-endpoint-project")
+        response = client.post(
+            "/api/data-scripts/resume-order-flow",
+            headers=headers,
+            json={"env_id": env["id"], "variables": {"order_sn": "ORDER-ENDPOINT"}},
+        )
+
+    assert response.status_code == 200
+    summary = response.json()["summary"]
+    assert summary["current_node"] == "porder_offered"
+    assert summary["detected_start_node"] == "order_offered"
+    assert summary["order_sn"] == "ORDER-ENDPOINT"
+    assert summary["porder_sn"] == "PORDER-ENDPOINT"
+
+
 def test_full_flow_endpoint_returns_summary(monkeypatch):
     def fake_full_flow(env, variables):
         assert variables["stop_after_node"] == "pending_purchase"
         return True, "full-log", "full-report", {"current_node": "pending_purchase", "paused": True, "order_sn": "ORDER-ENDPOINT"}
 
-    monkeypatch.setattr(main, "run_full_flow_script", fake_full_flow)
+    monkeypatch.setattr(data_script_router, "run_full_flow_script", fake_full_flow)
 
     with TestClient(app) as client:
         admin_token = login(client, "admin", "admin123")

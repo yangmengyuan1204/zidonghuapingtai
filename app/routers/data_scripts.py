@@ -27,6 +27,7 @@ from ..data_scripts import (
     run_porder_bank_payment_script,
     run_purchase_to_shelf_chain,
     run_purchase_to_shelf_script,
+    run_resume_order_flow_script,
     run_shopping_cart_script,
     run_warehouse_delivery_script,
 )
@@ -223,6 +224,21 @@ def run_full_flow_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = run_full_flow_script(env, variables)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+@router.post("/data-scripts/resume-order-flow")
+def run_resume_order_flow_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
+    passed, log_text, report_path, summary = run_resume_order_flow_script(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary

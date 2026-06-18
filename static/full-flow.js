@@ -5,6 +5,8 @@ if (!window.__fullFlowDataScriptLoaded) {
   if (!BUILTIN_DATA_SCRIPT_TYPES.includes("full_flow")) BUILTIN_DATA_SCRIPT_TYPES.push("full_flow");
   BUILTIN_FLOW_DEFINITIONS.direct_box_to_shelf = { id: "direct_box_to_shelf_builtin", name: "直接装箱上架" };
   if (!BUILTIN_DATA_SCRIPT_TYPES.includes("direct_box_to_shelf")) BUILTIN_DATA_SCRIPT_TYPES.push("direct_box_to_shelf");
+  BUILTIN_FLOW_DEFINITIONS.resume_order_flow = { id: "resume_order_flow_builtin", name: "输入订单号继续执行操作" };
+  if (!BUILTIN_DATA_SCRIPT_TYPES.includes("resume_order_flow")) BUILTIN_DATA_SCRIPT_TYPES.push("resume_order_flow");
 
   const FULL_FLOW_STOP_NODE_OPTIONS = [
     { value: "full_complete", label: "不暂停（全流程结束）" },
@@ -28,6 +30,9 @@ if (!window.__fullFlowDataScriptLoaded) {
     { value: "porder_offered", label: "配送单报价完成" },
     { value: "porder_paid", label: "配送单支付完成" },
   ];
+  const RESUME_ORDER_STOP_NODE_OPTIONS = FULL_FLOW_STOP_NODE_OPTIONS.filter(
+    (option) => !["full_complete", "shopping_cart", "order_created", "porder_paid"].includes(option.value),
+  );
 
   SCRIPT_PARAM_SCHEMAS.full_flow = [
     CUSTOMER_ID_FIELD,
@@ -54,6 +59,16 @@ if (!window.__fullFlowDataScriptLoaded) {
     { name: "order_per_shop", label: "订单每店商品数", type: "number", default: 2 },
     { name: "order_item_num", label: "订单商品数量", type: "number", default: 10 },
     { name: "box_count", label: "箱子数", type: "number", default: 1 },
+  ];
+
+  SCRIPT_PARAM_SCHEMAS.resume_order_flow = [
+    CUSTOMER_ID_FIELD,
+    { name: "order_sn", label: "订单号", required: true },
+    { name: "purchase_no", label: "交易号（可选）" },
+    { name: "order_item_num", label: "订单商品数量", type: "number", default: 10 },
+    { name: "warehouse_sku_count", label: "仓库提出番数", type: "number", default: 1 },
+    { name: "send_num", label: "每番配送数量", type: "number", default: 1 },
+    { name: "stop_after_node", label: "暂停节点", type: "select", options: RESUME_ORDER_STOP_NODE_OPTIONS, default: "porder_offered" },
   ];
 
   const originalSanitizeScriptVariablesForFullFlow = sanitizeScriptVariables;
@@ -83,6 +98,36 @@ if (!window.__fullFlowDataScriptLoaded) {
       next.predict_logistics_price_is_pay = "0";
       next.include_balance_pay_amount = false;
       next.boxes = normalizeDirectBoxes(next.boxes, next.box_count);
+      return next;
+    }
+    if (scriptType === "resume_order_flow") {
+      const next = { ...(variables || {}) };
+      next.order_sn = String(next.order_sn || next.last_order_sn || "").trim();
+      next.purchase_no = String(next.purchase_no || "").trim();
+      next.order_item_num = normalizePositiveInt(next.order_item_num, 10);
+      next.warehouse_sku_count = normalizePositiveInt(next.warehouse_sku_count || next.porder_sku_count || next.sku_count, 1);
+      next.send_num = normalizePositiveInt(next.send_num || next.porder_send_num, 1);
+      next.stop_after_node = String(next.stop_after_node || "porder_offered").trim() || "porder_offered";
+      next.run_backend_flow = true;
+      next.run_backend_delivery_flow = true;
+      next.run_backend_porder_flow = false;
+      next.link_quote_balance_before_shelf = false;
+      next.auto_quote_and_pay = false;
+      next.logistics_id = next.logistics_id || "1";
+      next.porder_logistics_id = next.porder_logistics_id || "14";
+      next.delivery_quote_logistics_id = next.delivery_quote_logistics_id || "25";
+      next.logistics_price_artificial = next.logistics_price_artificial || "775";
+      next.purchase_unit_price = next.purchase_unit_price || "10";
+      next.purchase_freight = next.purchase_freight || "0";
+      next.warehouse_index = next.warehouse_index || "2";
+      next.finance_confirm = true;
+      next.discounts_id = "";
+      next.predict_logistics_price_is_pay = "0";
+      next.include_balance_pay_amount = false;
+      delete next.order_sns;
+      delete next.porder_sn;
+      delete next.porder_sns;
+      delete next.shop_count;
       return next;
     }
     if (scriptType !== "full_flow") return originalSanitizeScriptVariablesForFullFlow(scriptType, variables, flow);
@@ -322,9 +367,85 @@ if (!window.__fullFlowDataScriptLoaded) {
     return next;
   }
 
+  function ensureResumeOrderFlowScript(flows, projects, envs, cases) {
+    if (isBuiltinDeleted("resume_order_flow_builtin")) return flows;
+    const scriptName = "输入订单号继续执行操作";
+    const login = findCaseByName(cases, "登录");
+    const env = dataScriptDefaultEnv(projects, envs);
+    const projectId = env?.project_id || dataScriptDefaultProject(projects)?.id || projects[0]?.id || "";
+    if (!env) return flows;
+    const loginBody = parseJsonText(login?.body || "{}", {});
+    const existingIndex =
+      flows.findIndex((flow) => flow.id === "resume_order_flow_builtin") >= 0
+        ? flows.findIndex((flow) => flow.id === "resume_order_flow_builtin")
+        : flows.findIndex((flow) => flow.name === scriptName);
+    const existingFlow = existingIndex >= 0 ? flows[existingIndex] : {};
+    let existingVariables = {};
+    try {
+      existingVariables = parseJsonText(existingFlow.variables || "{}", {});
+    } catch {
+      existingVariables = {};
+    }
+    const defaultVariables = {
+      order_sn: "",
+      purchase_no: "",
+      order_item_num: 10,
+      logistics_id: "1",
+      run_backend_flow: true,
+      run_backend_delivery_flow: true,
+      run_backend_porder_flow: false,
+      stop_after_node: "porder_offered",
+      warehouse_sku_count: 1,
+      send_num: 1,
+      porder_logistics_id: "14",
+      client_warehouse_list: "/client/wms.stockAutoList",
+      porder_suffix: "300001",
+      purchase_unit_price: "10",
+      purchase_freight: "0",
+      warehouse_index: "2",
+      delivery_quote_logistics_id: "25",
+      logistics_price_artificial: "775",
+      account: loginBody.account || "12345678990",
+      password: loginBody.password || "123456",
+      client_tool: "1",
+      backend_account: "Y001",
+      backend_password: "raku@123456``",
+      backend_system: "1",
+      backend_code: "wnm666",
+    };
+    const mergedVariables = sanitizeScriptVariables("resume_order_flow", { ...defaultVariables, ...existingVariables }, existingFlow);
+    const caseIds = [login].filter(Boolean).map((item) => item.id);
+    const nextFlow = {
+      ...existingFlow,
+      id: "resume_order_flow_builtin",
+      name: existingFlow.name || scriptName,
+      scriptType: "resume_order_flow",
+      projectId: String(projectId),
+      envId: String(env.id),
+      caseIds,
+      variables: JSON.stringify(mergedVariables, null, 2),
+    };
+    const next =
+      existingIndex >= 0
+        ? flows.map((flow, index) => (index === existingIndex ? nextFlow : flow)).filter((flow, index) => index === existingIndex || flow.id !== "resume_order_flow_builtin")
+        : [...flows, nextFlow];
+    writeFlows(next);
+    return next;
+  }
+
   const originalEnsureWarehouseDeliveryScriptForFullFlow = ensureWarehouseDeliveryScript;
   ensureWarehouseDeliveryScript = function (flows, projects, envs, cases) {
-    return ensureDirectBoxToShelfScript(ensureFullFlowScript(originalEnsureWarehouseDeliveryScriptForFullFlow(flows, projects, envs, cases), projects, envs, cases), projects, envs, cases);
+    return ensureResumeOrderFlowScript(
+      ensureDirectBoxToShelfScript(
+        ensureFullFlowScript(originalEnsureWarehouseDeliveryScriptForFullFlow(flows, projects, envs, cases), projects, envs, cases),
+        projects,
+        envs,
+        cases,
+      ),
+      projects,
+      envs,
+      cases,
+    );
   };
 
   function directBoxRowsHtml(boxes) {
@@ -533,6 +654,56 @@ if (!window.__fullFlowDataScriptLoaded) {
     refreshOptions();
   }
 
+  function openResumeOrderRunForm(flow, fields) {
+    let variables = {};
+    try {
+      variables = parseJsonText(flow.variables || "{}", {});
+    } catch {
+      showToast("脚本变量不是合法 JSON");
+      return;
+    }
+    variables = withCustomerLoginInputs(mergeStoredCustomerIds(sanitizeScriptVariables("resume_order_flow", variables, flow)));
+    const values = {
+      ...paramFormValues(fields, variables),
+      __save_defaults: false,
+    };
+    const body = [...fields, { name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false }]
+      .map((field) => renderFormField(field, values?.[field.name] ?? field.default ?? ""))
+      .join("");
+    modalEl.innerHTML = `
+      <form id="resumeOrderRunForm">
+        <div class="modal-head">
+          <h3>${escapeHtml(`执行 ${flow.name || "输入订单号继续执行操作"}`)}</h3>
+          <button class="btn secondary" value="cancel" formmethod="dialog" type="button" id="closeModal">关闭</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">${body}</div>
+        </div>
+        <div class="modal-foot"><span></span><button class="btn" type="submit">执行</button></div>
+      </form>
+    `;
+    modalEl.showModal();
+    const form = document.querySelector("#resumeOrderRunForm");
+    document.querySelector("#closeModal").addEventListener("click", async () => {
+      modalEl.close();
+      if (state.view === "dataScripts" && !state.factory.editing) {
+        await renderDataScripts();
+      }
+    });
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        const data = readForm(form);
+        const next = withCustomerLoginInputs(mergeStoredCustomerIds(sanitizeScriptVariables("resume_order_flow", mergeParamValues(variables, fields, data), flow)));
+        if (!String(next.order_sn || "").trim()) throw new Error("请输入订单号");
+        if (data.__save_defaults) saveFlowVariables(flow, next);
+        await runSavedFlow(flow, next);
+      } catch (error) {
+        showToast(error.message);
+      }
+    });
+  }
+
   const originalOpenRunScriptFormForFullFlow = openRunScriptForm;
   openRunScriptForm = function (flow) {
     if (flow?.scriptType === "direct_box_to_shelf") {
@@ -543,12 +714,16 @@ if (!window.__fullFlowDataScriptLoaded) {
       openFullFlowRunForm(flow, scriptParamFields("full_flow", flow));
       return;
     }
+    if (flow?.scriptType === "resume_order_flow") {
+      openResumeOrderRunForm(flow, scriptParamFields("resume_order_flow", flow));
+      return;
+    }
     return originalOpenRunScriptFormForFullFlow(flow);
   };
 
   const originalRunSavedFlowForFullFlow = runSavedFlow;
   runSavedFlow = async function (flow, runtimeVariables = null, options = {}) {
-    if (flow?.scriptType !== "full_flow" && flow?.scriptType !== "direct_box_to_shelf") {
+    if (flow?.scriptType !== "full_flow" && flow?.scriptType !== "direct_box_to_shelf" && flow?.scriptType !== "resume_order_flow") {
       return originalRunSavedFlowForFullFlow(flow, runtimeVariables, options);
     }
     let variables = {};
@@ -600,6 +775,65 @@ if (!window.__fullFlowDataScriptLoaded) {
         flow.lastPurchaseNo = purchaseNo || flow.lastPurchaseNo || "";
         flow.lastRecordId = result.id;
         progress.success("直接装箱上架脚本执行完成，正在展示结果...");
+        return presentScriptResult(
+          {
+            records: [{ id: result.id, case_name: flow.name, result: result.result }],
+            variables: summary,
+          },
+          options,
+        );
+      } catch (error) {
+        progress.fail(`执行失败：${error.message}`);
+        showToast(error.message);
+        if (options.collectOnly) throw error;
+      }
+      return;
+    }
+    if (flow?.scriptType === "resume_order_flow") {
+      variables = withCustomerLoginInputs(mergeStoredCustomerIds(sanitizeScriptVariables("resume_order_flow", variables, flow)));
+      const customerIds = customerIdsFromVariables(variables);
+      if (customerIds.length > 1 && !options.singleCustomerRun) {
+        await runMultiCustomerFlow(flow, variables, customerIds);
+        return;
+      }
+      if (customerIds.length === 1) variables = variablesForCustomerId(variables, customerIds[0]);
+      if (!String(variables.order_sn || "").trim()) {
+        showToast("请输入订单号");
+        return;
+      }
+      const progress = options.progress || openScriptProgress("输入订单号继续执行操作进度", "正在判断订单状态并继续执行到配送单报价完成...");
+      try {
+        showToast("继续执行订单流程中，请稍等");
+        progress.update(10, "正在识别订单所在节点...");
+        const result = await api("/api/data-scripts/resume-order-flow", {
+          method: "POST",
+          body: {
+            project_id: flow.projectId ? Number(flow.projectId) : null,
+            env_id: flow.envId ? Number(flow.envId) : null,
+            variables,
+          },
+        });
+        const summary = result.summary || {};
+        const orderSn = summary.order_sn || variables.order_sn || "";
+        const purchaseNo = summary.purchase_no || "";
+        const porderSn = summary.porder_sn || "";
+        const flows = readFlows().map((item) =>
+          item.id === flow.id
+            ? {
+                ...item,
+                lastOrderSn: orderSn || item.lastOrderSn || "",
+                lastPurchaseNo: purchaseNo || item.lastPurchaseNo || "",
+                lastPorderSn: porderSn || item.lastPorderSn || "",
+                lastRecordId: result.id,
+              }
+            : item,
+        );
+        writeFlows(flows);
+        flow.lastOrderSn = orderSn || flow.lastOrderSn || "";
+        flow.lastPurchaseNo = purchaseNo || flow.lastPurchaseNo || "";
+        flow.lastPorderSn = porderSn || flow.lastPorderSn || "";
+        flow.lastRecordId = result.id;
+        progress.success(summary.paused ? `已按暂停节点停止：${summary.node_label || summary.current_node || ""}` : "订单继续执行完成，正在展示结果...");
         return presentScriptResult(
           {
             records: [{ id: result.id, case_name: flow.name, result: result.result }],

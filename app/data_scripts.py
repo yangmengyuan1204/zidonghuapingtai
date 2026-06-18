@@ -27,6 +27,7 @@ POORDER_BALANCE_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u4f59\u989d\u4ed8\u6b3
 POORDER_BANK_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u94f6\u884c\u4ed8\u6b3e"
 FULL_FLOW_SCRIPT_NAME = "\u5168\u6d41\u7a0b\u5b8c\u5168\u4f53"
 DIRECT_BOX_TO_SHELF_SCRIPT_NAME = "\u76f4\u63a5\u88c5\u7bb1\u4e0a\u67b6"
+RESUME_ORDER_FLOW_SCRIPT_NAME = "\u8f93\u5165\u8ba2\u5355\u53f7\u7ee7\u7eed\u6267\u884c\u64cd\u4f5c"
 FULL_FLOW_COMPLETE_NODE = "full_complete"
 FULL_FLOW_NODE_LABELS = {
     "shopping_cart": "\u5546\u54c1\u52a0\u8d2d\u5b8c\u6210",
@@ -2013,6 +2014,254 @@ def _run_backend_order_flow(
         "backend_steps": ["login", "detail", "translate", "confirm", "offer"],
         "quote_unit_price": _decimal_text(variables.get("quote_unit_price") or "10"),
         "backend_status": after_offer.get("status") if after_offer else None,
+    }
+
+
+def _order_status_code(order_data: Dict[str, Any]) -> int | None:
+    for key in ["status", "order_status", "orderStatus"]:
+        value = order_data.get(key)
+        if value in (None, ""):
+            continue
+        try:
+            return int(Decimal(str(value)))
+        except (InvalidOperation, TypeError, ValueError):
+            continue
+    return None
+
+
+def _resume_node_for_order_status(status: int | None) -> str:
+    if status == 20:
+        return "order_translated"
+    if status == 21:
+        return "order_confirmed"
+    if status == 22:
+        return "order_offered"
+    if status == 30:
+        return "order_offered"
+    return ""
+
+
+def _purchase_is_pending_start(item: Dict[str, Any]) -> bool:
+    return "\u5f85\u62cd\u4e0b" in _purchase_status_name(item)
+
+
+def _detect_resume_order_state(
+    env: Env,
+    variables: Dict[str, Any],
+    order_sn: str,
+    log: Dict[str, Any],
+) -> tuple[bool, Dict[str, Any]]:
+    base_url = (variables.get("backend_base_url") or env.base_url or bulk_cart.BASE_URL).rstrip("/")
+    timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+    detect_log: Dict[str, Any] = {"order_sn": order_sn, "base_url": base_url}
+    log["resume_detect"] = detect_log
+
+    session = _admin_session_from(variables)
+    login_payload, token = _admin_login(session, base_url, variables, timeout)
+    detect_log["login"] = {
+        **_payload_brief(login_payload),
+        "account": str(variables.get("backend_account") or variables.get("backend_username") or "Y001"),
+        "token_extracted": bool(token),
+    }
+    if not _api_success(login_payload) or not token:
+        return False, {"order_sn": order_sn, "detected_start_node": "", "reason": "\u540e\u53f0\u767b\u5f55\u5931\u8d25"}
+
+    detail_payload, order_data = _order_detail_data(session, base_url, variables, order_sn, timeout)
+    detect_log["detail"] = {**_payload_brief(detail_payload), **_admin_detail_brief(order_data)}
+    if not _api_success(detail_payload) or not order_data.get("order_detail"):
+        return False, {"order_sn": order_sn, "detected_start_node": "", "reason": "\u672a\u67e5\u5230\u540e\u53f0\u8ba2\u5355\u8be6\u60c5"}
+
+    purchase_items: list[Dict[str, Any]] = []
+    pending_purchase_items: list[Dict[str, Any]] = []
+    purchase_fields = _purchase_list_fields(variables, order_sn)
+    purchase_payload = _post_admin_form(
+        session,
+        base_url,
+        _api_path(variables, "admin_purchase_list", "/purchase.purchaseList"),
+        purchase_fields,
+        timeout,
+    )
+    purchase_rows = _admin_rows_from_payload(purchase_payload)
+    if _api_success(purchase_payload):
+        purchase_items = _select_purchase_items(_flatten_purchase_items(purchase_rows), order_sn, variables)
+        pending_purchase_items = [item for item in purchase_items if _purchase_is_pending_start(item)]
+    detect_log["purchase_list"] = {
+        **_payload_brief(purchase_payload),
+        "request": dict(purchase_fields),
+        "row_count": len(purchase_rows),
+        "selected_count": len(purchase_items),
+        "pending_start_count": len(pending_purchase_items),
+        "selected_items": [_purchase_item_brief(item) for item in purchase_items[:20]],
+    }
+
+    order_status = _order_status_code(order_data)
+    detected_start_node = "pending_purchase" if pending_purchase_items else _resume_node_for_order_status(order_status)
+    summary: Dict[str, Any] = {
+        "order_sn": order_sn,
+        "order_status": order_status,
+        "detected_start_node": detected_start_node,
+        "purchase_selected_count": len(purchase_items),
+        "purchase_pending_start_count": len(pending_purchase_items),
+        "purchase_items": [_purchase_item_brief(item) for item in (pending_purchase_items or purchase_items)[:20]],
+        "order_detail": _admin_detail_brief(order_data),
+        "order_data": order_data,
+    }
+    if pending_purchase_items:
+        summary["purchase_items"] = [_purchase_item_brief(item) for item in pending_purchase_items[:20]]
+        return True, summary
+    if purchase_items:
+        summary["reason"] = "\u8ba2\u5355\u5df2\u8fdb\u5165\u91c7\u8d2d\u4e2d\u95f4\u72b6\u6001\uff0c\u672c\u811a\u672c\u672c\u8f6e\u4ec5\u652f\u6301\u5f85\u62cd\u4e0b\u4f5c\u4e3a\u91c7\u8d2d\u8d77\u70b9"
+        return False, summary
+    if not detected_start_node:
+        summary["reason"] = f"\u8ba2\u5355\u72b6\u6001 {order_status} \u4e0d\u5728\u672c\u811a\u672c\u6062\u590d\u8303\u56f4"
+        return False, summary
+    return True, summary
+
+
+def _run_backend_order_flow_resume(
+    base_url: str,
+    timeout: int,
+    variables: Dict[str, Any],
+    order_sn: str,
+    item_quantity: int,
+    log: Dict[str, Any],
+    order_data: Dict[str, Any],
+) -> tuple[bool, Dict[str, Any]]:
+    backend_log: Dict[str, Any] = {"order_sn": order_sn, "mode": "resume_order_flow", "steps": []}
+    log["backend"] = backend_log
+    session = _admin_session_from(variables)
+
+    login_payload, token = _admin_login(session, base_url, variables, timeout)
+    backend_log["login"] = {
+        **_payload_brief(login_payload),
+        "account": str(variables.get("backend_account") or variables.get("backend_username") or "Y001"),
+        "token_extracted": bool(token),
+    }
+    if not _api_success(login_payload) or not token:
+        return False, {"backend_passed": False, "reason": "\u540e\u53f0\u767b\u5f55\u5931\u8d25"}
+
+    current_data = order_data if isinstance(order_data, dict) else {}
+    if not current_data.get("order_detail"):
+        detail_payload, current_data = _order_detail_data(session, base_url, variables, order_sn, timeout)
+        backend_log["detail_before"] = {**_payload_brief(detail_payload), **_admin_detail_brief(current_data)}
+        if not _api_success(detail_payload) or not current_data.get("order_detail"):
+            return False, {"backend_passed": False, "reason": "\u672a\u83b7\u53d6\u5230\u540e\u53f0\u8ba2\u5355\u8be6\u60c5"}
+    else:
+        backend_log["detail_before"] = _admin_detail_brief(current_data)
+
+    status = _order_status_code(current_data)
+    if status is None:
+        return False, {"backend_passed": False, "reason": "\u672a\u8bc6\u522b\u8ba2\u5355\u72b6\u6001"}
+    if status == 30:
+        return True, {
+            "order_sn": order_sn,
+            "backend_passed": True,
+            "backend_steps": ["login", "detail", "skip_completed_order_backend"],
+            "backend_status": status,
+            "already_order_offered": True,
+        }
+    if status not in (20, 21, 22):
+        return False, {"backend_passed": False, "backend_status": status, "reason": f"\u8ba2\u5355\u72b6\u6001 {status} \u4e0d\u652f\u6301\u4ece\u8ba2\u5355\u9636\u6bb5\u6062\u590d"}
+
+    backend_steps = ["login", "detail"]
+    if status <= 20:
+        translate_data = _prepare_translate_data(current_data, variables)
+        translate_payload = _post_admin_form(
+            session,
+            base_url,
+            _api_path(variables, "admin_order_translate", "/order.submitTranslate"),
+            {"data": bulk_cart.json_text(translate_data), "is_temp": str(variables.get("translate_is_temp") or "0")},
+            timeout,
+        )
+        backend_log["translate"] = _payload_brief(translate_payload)
+        if not _api_success(translate_payload):
+            return False, {"backend_passed": False, "reason": "\u8ba2\u5355\u7ffb\u8bd1\u63d0\u4ea4\u5931\u8d25", "translate": _payload_brief(translate_payload)}
+        backend_steps.append("translate")
+        _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
+        backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
+        current_data = after_translate or translate_data
+        if _checkpoint_requested(variables, "order_translated"):
+            return True, _paused_summary(
+                "order_translated",
+                {
+                    "order_sn": order_sn,
+                    "backend_passed": True,
+                    "backend_steps": backend_steps,
+                    "backend_status": current_data.get("status") if current_data else None,
+                },
+            )
+
+    if status <= 21:
+        confirm_data = _build_confirm_data(current_data, variables, item_quantity)
+        confirm_payload = _post_admin_form(
+            session,
+            base_url,
+            _api_path(variables, "admin_order_confirm", "/order.submitConfirm"),
+            {
+                "order_sn": order_sn,
+                "data": bulk_cart.json_text(confirm_data),
+                "is_temp": str(variables.get("confirm_is_temp") or "0"),
+            },
+            timeout,
+        )
+        backend_log["confirm"] = {
+            **_payload_brief(confirm_payload),
+            "detail_count": len(confirm_data.get("order_detail") or []),
+        }
+        if not _api_success(confirm_payload):
+            return False, {"backend_passed": False, "reason": "\u8ba2\u5355\u91c7\u8d2d\u8c03\u67e5\u63d0\u4ea4\u5931\u8d25", "confirm": _payload_brief(confirm_payload)}
+        backend_steps.append("confirm")
+        _, after_confirm = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
+        backend_log["detail_after_confirm"] = _admin_detail_brief(after_confirm)
+        current_data = after_confirm or current_data
+        if _checkpoint_requested(variables, "order_confirmed"):
+            return True, _paused_summary(
+                "order_confirmed",
+                {
+                    "order_sn": order_sn,
+                    "backend_passed": True,
+                    "backend_steps": backend_steps,
+                    "backend_status": current_data.get("status") if current_data else None,
+                },
+            )
+
+    if status <= 22:
+        offer_data = _prepare_offer_data(current_data, variables, item_quantity)
+        offer_payload = _post_admin_form(
+            session,
+            base_url,
+            _api_path(variables, "admin_order_offer", "/order.submitOffer"),
+            {"data": bulk_cart.json_text(offer_data), "is_temp": str(variables.get("offer_is_temp") or "0")},
+            timeout,
+        )
+        backend_log["offer"] = {
+            **_payload_brief(offer_payload),
+            "detail_count": len(offer_data.get("order_detail") or []),
+        }
+        if not _api_success(offer_payload):
+            return False, {"backend_passed": False, "reason": "\u4e1a\u52a1\u62a5\u4ef7\u63d0\u4ea4\u5931\u8d25", "offer": _payload_brief(offer_payload)}
+        backend_steps.append("offer")
+        _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=1)
+        backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
+        current_data = after_offer or current_data
+        if _checkpoint_requested(variables, "order_offered"):
+            return True, _paused_summary(
+                "order_offered",
+                {
+                    "order_sn": order_sn,
+                    "backend_passed": True,
+                    "backend_steps": backend_steps,
+                    "quote_unit_price": _decimal_text(variables.get("quote_unit_price") or "10"),
+                    "backend_status": current_data.get("status") if current_data else None,
+                },
+            )
+
+    return True, {
+        "order_sn": order_sn,
+        "backend_passed": True,
+        "backend_steps": backend_steps,
+        "quote_unit_price": _decimal_text(variables.get("quote_unit_price") or "10"),
+        "backend_status": current_data.get("status") if current_data else None,
     }
 
 
@@ -5460,6 +5709,11 @@ SCRIPT_REGISTRY: Dict[str, Any] = {
         "func": None,
         "chain": True,
     },
+    "resume_order_flow": {
+        "name": RESUME_ORDER_FLOW_SCRIPT_NAME,
+        "func": None,
+        "chain": True,
+    },
 }
 
 
@@ -6458,6 +6712,60 @@ def _full_flow_finish(
     return _finish_named(FULL_FLOW_SCRIPT_NAME, log, passed, summary)
 
 
+def _resume_record_skipped(log: Dict[str, Any], nodes: list[str], reason: str) -> None:
+    skipped = log.setdefault("skipped_nodes", [])
+    for node in nodes:
+        skipped.append({"node": node, "node_label": FULL_FLOW_NODE_LABELS.get(node, node), "reason": reason})
+
+
+def _resume_flow_finish(
+    log: Dict[str, Any],
+    passed: bool,
+    current_node: str,
+    *,
+    reason: str = "",
+    paused: bool = False,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
+    summary: Dict[str, Any] = {
+        "passed": passed,
+        "paused": paused,
+        "current_node": current_node,
+        "node_label": FULL_FLOW_NODE_LABELS.get(current_node, current_node),
+        "stop_after_node": log.get("stop_after_node") or "porder_offered",
+        "detected_start_node": log.get("detected_start_node") or "",
+        "total_steps": len(log.get("steps", [])),
+        "success_steps": sum(1 for item in log.get("steps", []) if item.get("passed")),
+        "node_results": _full_flow_node_results(current_node, passed, paused),
+        "steps": [
+            {
+                "node": item.get("node"),
+                "node_label": item.get("node_label"),
+                "script": item.get("script"),
+                "passed": item.get("passed"),
+                "paused": item.get("paused"),
+                "duration_ms": item.get("duration_ms"),
+            }
+            for item in log.get("steps", [])
+        ],
+        "step_timings": [
+            {
+                "node": item.get("node"),
+                "script": item.get("script"),
+                "duration_ms": item.get("duration_ms"),
+            }
+            for item in log.get("steps", [])
+            if item.get("duration_ms") is not None
+        ],
+        "skipped_nodes": log.get("skipped_nodes", []),
+    }
+    summary.update(log.get("shared_data") or {})
+    if paused:
+        summary["stopped_after_node"] = current_node
+    if reason:
+        summary["reason"] = reason
+    return _finish_named(RESUME_ORDER_FLOW_SCRIPT_NAME, log, passed, summary)
+
+
 def _full_flow_stop_reached(variables: Dict[str, Any], node: str) -> bool:
     return _checkpoint_requested(variables, node)
 
@@ -6613,6 +6921,163 @@ def run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> T
         return _full_flow_finish(log, False, str(log["steps"][-1]["node"] if log["steps"] else "full_flow"), reason=str(exc))
 
 
+def run_resume_order_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    variables["_runtime"] = variables.get("_runtime") if isinstance(variables.get("_runtime"), DataScriptRuntime) else DataScriptRuntime()
+    variables.setdefault("sleep", 0)
+    variables.setdefault("purchase_transition_delay", 0)
+    variables.setdefault("inspection_transition_delay", 0)
+    variables.setdefault("after_box_submit_delay", 0.2)
+    variables.setdefault("after_complete_box_delay", 0.2)
+    input_adjustments = _full_flow_prepare_warehouse_counts(variables)
+    stop_after = _stop_after_node(variables) or "porder_offered"
+    variables["stop_after_node"] = stop_after
+    order_sn = str(variables.get("order_sn") or variables.get("last_order_sn") or "").strip()
+    log: Dict[str, Any] = {
+        "script": RESUME_ORDER_FLOW_SCRIPT_NAME,
+        "mode": "resume_order_flow",
+        "started_at": datetime.now(),
+        "order_sn": order_sn,
+        "stop_after_node": stop_after,
+        "input_adjustments": input_adjustments,
+        "steps": [],
+        "shared_data": {},
+        "skipped_nodes": [],
+    }
+    if order_sn:
+        log["shared_data"]["order_sn"] = order_sn
+
+    try:
+        if not order_sn:
+            return _resume_flow_finish(log, False, "order_created", reason="\u8bf7\u8f93\u5165\u8ba2\u5355\u53f7")
+
+        detected, detect_summary = _detect_resume_order_state(env, variables, order_sn, log)
+        detect_summary = dict(detect_summary or {})
+        _full_flow_update_shared(log["shared_data"], detect_summary)
+        log["detected_start_node"] = str(detect_summary.get("detected_start_node") or "")
+        if not detected:
+            return _resume_flow_finish(
+                log,
+                False,
+                str(log.get("detected_start_node") or "order_created"),
+                reason=str(detect_summary.get("reason") or "\u672a\u8bc6\u522b\u8ba2\u5355\u53ef\u6062\u590d\u8d77\u70b9"),
+            )
+
+        detected_start_node = str(detect_summary.get("detected_start_node") or "")
+        order_status = detect_summary.get("order_status")
+        if detected_start_node == "pending_purchase":
+            _resume_record_skipped(
+                log,
+                ["order_translated", "order_confirmed", "order_offered", "order_paid"],
+                "\u8ba2\u5355\u5df2\u5728\u5f85\u62cd\u4e0b\uff0c\u8df3\u8fc7\u8ba2\u5355\u540e\u53f0\u62a5\u4ef7\u548c\u8ba2\u5355\u652f\u4ed8",
+            )
+        else:
+            if order_status == 30:
+                _resume_record_skipped(
+                    log,
+                    ["order_translated", "order_confirmed", "order_offered"],
+                    "\u8ba2\u5355\u5df2\u5b8c\u6210\u62a5\u4ef7\uff0c\u8df3\u8fc7\u8ba2\u5355\u540e\u53f0\u9636\u6bb5",
+                )
+            else:
+                base_url = (variables.get("backend_base_url") or env.base_url or bulk_cart.BASE_URL).rstrip("/")
+                timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+                item_quantity = _as_int(variables.get("order_item_num") or variables.get("item_quantity"), 10)
+                backend_passed, backend_summary = _run_backend_order_flow_resume(
+                    base_url,
+                    timeout,
+                    variables,
+                    order_sn,
+                    item_quantity,
+                    log,
+                    detect_summary.get("order_data") if isinstance(detect_summary.get("order_data"), dict) else {},
+                )
+                backend_summary = dict(backend_summary or {})
+                _full_flow_record_step(
+                    log,
+                    str(backend_summary.get("current_node") or backend_summary.get("stopped_after_node") or detected_start_node or "order_offered"),
+                    ORDER_SCRIPT_NAME,
+                    backend_passed,
+                    backend_summary,
+                )
+                if not backend_passed:
+                    return _resume_flow_finish(
+                        log,
+                        False,
+                        str(backend_summary.get("current_node") or detected_start_node or "order_offered"),
+                        reason=str(backend_summary.get("reason") or backend_summary.get("error") or "\u8ba2\u5355\u540e\u53f0\u63a5\u7eed\u5931\u8d25"),
+                    )
+                if _is_paused(backend_summary):
+                    return _resume_flow_finish(log, True, str(backend_summary.get("current_node") or "order_offered"), paused=True)
+
+            pay_vars = dict(variables)
+            pay_vars["order_sn"] = order_sn
+            pay_passed, pay_log, pay_report, pay_summary = _payment_with_bank_fallback(env, pay_vars, porder=False)
+            pay_summary = dict(pay_summary or {})
+            _full_flow_record_step(
+                log,
+                "order_paid",
+                pay_summary.get("payment_type") == "bank" and BANK_PAYMENT_SCRIPT_NAME or BALANCE_PAYMENT_SCRIPT_NAME,
+                pay_passed,
+                pay_summary,
+                pay_report,
+            )
+            if not pay_passed:
+                return _resume_flow_finish(
+                    log,
+                    False,
+                    "order_paid",
+                    reason=str(pay_summary.get("reason") or pay_summary.get("error") or "\u8ba2\u5355\u652f\u4ed8\u5931\u8d25"),
+                )
+            if _full_flow_stop_reached(variables, "order_paid"):
+                return _resume_flow_finish(log, True, "order_paid", paused=True)
+
+        shelf_vars = dict(variables)
+        shelf_vars["order_sn"] = order_sn
+        shelf_vars["purchase_no"] = str(variables.get("purchase_no") or _purchase_timestamp_no())
+        shelf_vars["link_quote_balance_before_shelf"] = False
+        shelf_vars["auto_quote_and_pay"] = False
+        shelf_passed, shelf_log, shelf_report, shelf_summary = run_purchase_to_shelf_script(env, shelf_vars)
+        shelf_summary = dict(shelf_summary or {})
+        _full_flow_record_step(log, str(shelf_summary.get("current_node") or "shelf_stored"), PURCHASE_TO_SHELF_SCRIPT_NAME, shelf_passed, shelf_summary, shelf_report)
+        if not shelf_passed:
+            return _resume_flow_finish(
+                log,
+                False,
+                str(shelf_summary.get("current_node") or "shelf_stored"),
+                reason=str(shelf_summary.get("reason") or shelf_summary.get("error") or "\u5f85\u62cd\u4e0b\u5230\u4e0a\u67b6\u5931\u8d25"),
+            )
+        if _is_paused(shelf_summary):
+            return _resume_flow_finish(log, True, str(shelf_summary.get("current_node") or "shelf_stored"), paused=True)
+
+        delivery_vars = dict(variables)
+        delivery_vars.update(log["shared_data"])
+        delivery_vars["run_backend_delivery_flow"] = True
+        delivery_vars.setdefault("warehouse_fill_scope", "current_order_then_history")
+        delivery_vars.setdefault("require_warehouse_sku_count", True)
+        delivery_vars.setdefault("warehouse_fill_retries", 3)
+        delivery_vars.setdefault("warehouse_fill_retry_delay", 1)
+        delivery_vars.pop("porder_sn", None)
+        delivery_passed, delivery_log, delivery_report, delivery_summary = run_warehouse_delivery_script(env, delivery_vars)
+        delivery_summary = dict(delivery_summary or {})
+        _full_flow_record_step(log, str(delivery_summary.get("current_node") or "porder_offered"), WAREHOUSE_DELIVERY_SCRIPT_NAME, delivery_passed, delivery_summary, delivery_report)
+        if not delivery_passed:
+            return _resume_flow_finish(
+                log,
+                False,
+                str(delivery_summary.get("current_node") or "porder_offered"),
+                reason=str(delivery_summary.get("reason") or delivery_summary.get("error") or "\u914d\u9001\u5355\u6d41\u8f6c\u5931\u8d25"),
+            )
+        if _is_paused(delivery_summary):
+            return _resume_flow_finish(log, True, str(delivery_summary.get("current_node") or "porder_offered"), paused=True)
+
+        return _resume_flow_finish(log, True, "porder_offered")
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _resume_flow_finish(log, False, str(log["steps"][-1]["node"] if log["steps"] else "order_created"), reason=str(exc))
+
+
 SCRIPT_REGISTRY["porder_balance_payment"]["func"] = run_porder_balance_payment_script
 SCRIPT_REGISTRY["porder_bank_payment"]["func"] = run_porder_bank_payment_script
 SCRIPT_REGISTRY["full_flow"]["func"] = run_full_flow_script
+SCRIPT_REGISTRY["resume_order_flow"]["func"] = run_resume_order_flow_script
