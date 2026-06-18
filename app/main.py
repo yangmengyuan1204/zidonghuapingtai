@@ -1038,6 +1038,7 @@ def create_test_account(
     db.add(profile)
     db.commit()
     db.refresh(profile)
+    invalidate("projects")
     return serialize_account_profile(profile)
 
 
@@ -1055,6 +1056,7 @@ def update_test_account(
     profile.update_time = datetime.now()
     db.commit()
     db.refresh(profile)
+    invalidate("projects")
     return serialize_account_profile(profile)
 
 
@@ -1068,6 +1070,7 @@ def delete_test_account(
     db.query(TestAccountBinding).filter(TestAccountBinding.account_profile_id == profile.id).delete(synchronize_session=False)
     db.delete(profile)
     db.commit()
+    invalidate("projects")
     return {"message": "deleted"}
 
 
@@ -1086,6 +1089,7 @@ def update_test_account_binding(
         account_profile_variables(db, int(profile_id), project_id)
     save_test_account_binding(db, target_type, target_id, profile_id)
     db.commit()
+    invalidate("projects")
     profile = db.get(TestAccountProfile, profile_id) if profile_id else None
     return {"profile": serialize_account_profile(profile) if profile else None}
 
