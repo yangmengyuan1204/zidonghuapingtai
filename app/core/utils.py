@@ -1313,6 +1313,11 @@ def clean_seed_value(value: str, value_type: str) -> str:
         return ""
     if value_type in {"customer_id", "order_no", "box_no", "location_code"} and not re.search(r"\d", text):
         return ""
+    if value_type == "customer_name":
+        generic_terms = {"搜索", "筛选", "查询", "页面", "功能", "测试", "search", "filter", "query", "page", "feature", "test"}
+        if lower in generic_terms or any(text.startswith(item) for item in ["搜索", "筛选", "查询", "页面", "功能"]):
+            return ""
+        return text[:80]
     if value_type == "customer_name" and any(keyword in text for keyword in ["搜索", "筛选", "查询", "页面", "功能", "测试"]):
         return ""
     return text[:80]
@@ -1359,6 +1364,8 @@ def seed_functional_package_data(db: Session, task: FunctionalTask) -> Dict[str,
     customer_id = first_pattern_value(
         text,
         [
+            r"\bID\s*[:\uFF1A]\s*([A-Za-z0-9_-]{3,32})",
+            r'"customer(?:_?id|Id)"\s*:\s*"([A-Za-z0-9_-]{3,32})"',
             r"(?:客户ID|客户Id|客户id|客户编号|客户号)\s*[:：]?\s*([A-Za-z0-9_-]{3,32})",
             r"\b(CUST[-_]?[A-Za-z0-9]{3,24})\b",
         ],
@@ -1366,10 +1373,12 @@ def seed_functional_package_data(db: Session, task: FunctionalTask) -> Dict[str,
     if customer_id:
         customer_id = clean_seed_value(customer_id, "customer_id")
     if customer_id:
-        variables.update({"customer_id": customer_id, "customerId": customer_id})
+        variables.update({"customer_id": customer_id, "customerId": customer_id, "customerID": customer_id})
     customer_name = first_pattern_value(
         text,
         [
+            r"\bID\s*[:\uFF1A]\s*[A-Za-z0-9_-]{3,32}\s+([^\s\d][^\r\n]{1,40}?)\s+(?:20\d{8,}|[A-Z]{2,}[-_]?\d|\u3010)",
+            r'"customer(?:_?name|Name)"\s*:\s*"([^"]{2,40})"',
             r"(?:客户名称|客户名|客户姓名)\s*[:：]?\s*([\u4e00-\u9fffA-Za-z0-9_\- ]{2,40})",
         ],
     )
@@ -1391,6 +1400,8 @@ def seed_functional_package_data(db: Session, task: FunctionalTask) -> Dict[str,
     box_no = first_pattern_value(
         text,
         [
+            r"\b(20\d{10,}-[A-Za-z0-9_-]{3,}-\d+)\b",
+            r'"box(?:_?no|No|_?number|Number|Code|_?code)"\s*:\s*"([A-Za-z0-9_-]{5,40})"',
             r"(?:箱号|箱子编号|box[_ -]?(?:no|number))\s*[:：]?\s*([A-Z0-9][A-Z0-9_-]{4,40})",
             r"\b(BOX[-_]?[A-Z0-9]{4,36})\b",
         ],
@@ -1398,10 +1409,12 @@ def seed_functional_package_data(db: Session, task: FunctionalTask) -> Dict[str,
     if box_no:
         box_no = clean_seed_value(box_no, "box_no")
     if box_no:
-        variables.update({"box_no": box_no, "boxNo": box_no, "box_number": box_no})
+        variables.update({"box_no": box_no, "boxNo": box_no, "boxCode": box_no, "box_number": box_no})
     location_code = first_pattern_value(
         text,
         [
+            r"\u3010([^\u3011]{2,80})\u3011",
+            r'"(?:location(?:_?code|Code)?|warehouse_location|storage_location)"\s*:\s*"([^"]{2,80})"',
             r"(?:库位|仓位|location(?:_code)?)\s*[:：]?\s*([A-Z0-9][A-Z0-9_-]{2,32})",
         ],
     )
@@ -1409,6 +1422,10 @@ def seed_functional_package_data(db: Session, task: FunctionalTask) -> Dict[str,
         location_code = clean_seed_value(location_code, "location_code")
     if location_code:
         variables.update({"location_code": location_code, "locationCode": location_code, "warehouse_location": location_code})
+    if "keyword" not in variables:
+        keyword = location_code or customer_id or customer_name or box_no
+        if keyword:
+            variables["keyword"] = keyword
     dates = re.findall(r"(20\d{2}[-/]\d{1,2}[-/]\d{1,2})", text or "")
     if dates:
         variables.update({"startDate": dates[0], "start_date": dates[0]})
