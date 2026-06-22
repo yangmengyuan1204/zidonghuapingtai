@@ -1107,3 +1107,23 @@ if (!window.__fullFlowDataScriptLoaded) {
     }
   };
 }
+
+// 确保配送单继续执行脚本存在于 localStorage
+(function ensureResumePorderFlowOnLoad() {
+  try {
+    const flows = readFlows();
+    if (flows.some(function (f) { return f.id === "resume_porder_flow_builtin" || f.name === "输入配送单号继续执行操作"; })) return;
+    flows.push({
+      id: "resume_porder_flow_builtin",
+      name: "输入配送单号继续执行操作",
+      scriptType: "resume_porder_flow",
+      projectId: "",
+      envId: "",
+      caseIds: [],
+      variables: JSON.stringify({ porder_sn: "", stop_after_node: "porder_offered" }),
+    });
+    writeFlows(flows);
+  } catch (e) {
+    console.warn("ensureResumePorderFlowOnLoad error:", e);
+  }
+})();
