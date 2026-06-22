@@ -2,6 +2,7 @@ from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 
 import json
+import sys
 import threading
 from datetime import datetime
 from typing import Any, Dict, Iterable, Type
@@ -12,6 +13,9 @@ from sqlalchemy.orm import Session
 from ..core.utils import (
     QUALITY_AUTH_RISK,
     QUALITY_EXECUTABLE,
+    QUALITY_LOCATOR_RISK,
+    QUALITY_MISSING_VARIABLES,
+    QUALITY_NEEDS_REVIEW,
     QUALITY_NOT_RECOMMENDED,
     QUALITY_UNCHECKED,
     compare_data_check_values,
@@ -97,11 +101,19 @@ from ..services.requirement_workflow import build_workflow_status
 
 router = APIRouter(prefix="/api", tags=["functional-tasks"])
 
+
+def _runtime_func(name: str, fallback: Any) -> Any:
+    fallback_module = getattr(fallback, "__module__", "")
+    if fallback_module and not fallback_module.startswith("app."):
+        return fallback
+    main_module = sys.modules.get("app.main")
+    return getattr(main_module, name, fallback) if main_module else fallback
+
 # 功能测试任务状态流转顺序：禁止向更早的阶段回退
 _FORWARD_STATUS = [
     "draft", "uploaded", "screenshot_uploaded", "screenshot_analyzed",
     "requirements_updated", "scanned", "cases_generated", "ui_steps_generated",
-    "approved", "failed", "passed", "error",
+    "approved", "failed", "blocked", "needs_review", "passed", "error",
 ]
 
 
@@ -585,7 +597,7 @@ def scan_functional_page(
     scanned: Dict[str, Any] = {}
     try:
         auth_config = schema_data(payload.auth, exclude_unset=True) if payload and payload.auth else None
-        scanned = scan_page_dom(task.target_url, auth=auth_config)
+        scanned = _runtime_func("scan_page_dom", scan_page_dom)(task.target_url, auth=auth_config)
     except FunctionalScanError as exc:
         trace = getattr(exc, "trace", None) or scanned.get("scan_trace", [])
         detail = str(exc)
@@ -679,7 +691,7 @@ def _prepare_requirement_package(
         else:
             scanned_holder = {}
             def do_scan():
-                scanned_holder["result"] = scan_page_dom(task.target_url, timeout=15, auth=auth_config)
+                scanned_holder["result"] = _runtime_func("scan_page_dom", scan_page_dom)(task.target_url, timeout=15, auth=auth_config)
             t = threading.Thread(target=do_scan, daemon=True)
             t.start()
             t.join(timeout=25)
@@ -951,7 +963,7 @@ def update_functional_case_status(
 ) -> Dict[str, Any]:
     """更新单个用例的测试执行状态"""
     case = get_or_404(db, FunctionalCase, case_id)
-    valid_statuses = {"untested", "passed", "failed", "blocked", "skipped"}
+    valid_statuses = {"untested", "passed", "failed", "blocked", "skipped", "needs_review"}
     if payload.test_result not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"无效的状态值，可选: {', '.join(sorted(valid_statuses))}")
     case.test_result = payload.test_result
@@ -988,7 +1000,7 @@ def batch_update_functional_case_status(
 ) -> Dict[str, Any]:
     """批量更新用例的测试执行状态"""
     get_or_404(db, FunctionalTask, task_id)
-    valid_statuses = {"untested", "passed", "failed", "blocked", "skipped"}
+    valid_statuses = {"untested", "passed", "failed", "blocked", "skipped", "needs_review"}
     if payload.test_result not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"无效的状态值，可选: {', '.join(sorted(valid_statuses))}")
     updated = (
@@ -1297,18 +1309,28 @@ def execute_functional_case_for_run(
             default=str,
         )
     record = save_ui_record(db, ui_case, passed, log_text, report_path, screenshot_path)
+    result_status, result_reason = _classify_functional_execution_result(passed, log_text, functional_case.quality_status)
+    if functional_case:
+        functional_case.test_result = result_status
+        if result_status == "needs_review":
+            functional_case.quality_status = QUALITY_NEEDS_REVIEW
+        elif result_status == "blocked" and functional_case.quality_status in (None, QUALITY_UNCHECKED):
+            functional_case.quality_status = QUALITY_MISSING_VARIABLES
+        db.commit()
     return (
         {
             "functional_case_id": functional_case.id,
             "ui_case_id": ui_case.id,
             "record_id": record.id,
             "title": functional_case.title,
-            "result": record.result,
+            "result": result_status,
+            "record_result": record.result,
+            "result_reason": result_reason,
             "screenshot": screenshot_path,
             "log": log_text,
         },
-        1 if passed else 0,
-        0 if passed else 1,
+        1 if result_status == "passed" else 0,
+        1 if result_status == "failed" else 0,
     )
 
 
@@ -1374,6 +1396,53 @@ def save_functional_run(
 # ─── Execution-related routes ──────────────────────────────────────────
 
 
+BLOCKED_QUALITY_STATUSES = {QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES, QUALITY_NOT_RECOMMENDED}
+REVIEW_QUALITY_STATUSES = {QUALITY_NEEDS_REVIEW}
+
+
+def _classify_functional_execution_result(passed: bool, log_text: str, quality_status: str | None) -> tuple[str, str]:
+    if passed:
+        return "passed", ""
+    quality = quality_status or QUALITY_UNCHECKED
+    if quality in BLOCKED_QUALITY_STATUSES:
+        return "blocked", f"preflight:{quality}"
+    if quality in REVIEW_QUALITY_STATUSES:
+        return "needs_review", f"preflight:{quality}"
+
+    log_data = parse_json_value(log_text, {})
+    if isinstance(log_data, dict) and log_data:
+        text = json.dumps(log_data, ensure_ascii=False, default=str).lower()
+    else:
+        text = str(log_text or "").lower()
+    verification_status = log_data.get("verification_status") if isinstance(log_data, dict) else ""
+    business = log_data.get("business_verification") if isinstance(log_data, dict) else {}
+    if isinstance(business, dict) and int(business.get("business_assertion_count") or 0) == 0:
+        return "needs_review", "missing_business_assertion"
+    if verification_status == "failed_verification" and "业务断言" in text:
+        return "needs_review", "missing_business_assertion"
+
+    blocked_markers = [
+        "login_required",
+        "#/login",
+        "/login",
+        "登录前置",
+        "登录态",
+        "缺少真实数据",
+        "missing_variables",
+        "缺少变量",
+        "库存不足",
+        "可用库存不足",
+        "option_not_found",
+        "数据不足",
+        "前置不足",
+        "not found order",
+        "order_not_found",
+    ]
+    if any(marker.lower() in text for marker in blocked_markers):
+        return "blocked", "blocked_prerequisite"
+    return "failed", "assertion_or_page_failure"
+
+
 def _background_execute_functional(
     task_id: int,
     run_id: int,
@@ -1406,6 +1475,7 @@ def _background_execute_functional(
         total_passed = 0
         total_failed = 0
         total_blocked = 0
+        total_review = 0
         _cached_vars = dict(variables)
         processed_case_ids: set[int] = set()
         batch_items: list[Dict[str, Any]] = []
@@ -1445,6 +1515,7 @@ def _background_execute_functional(
                 "passed_count": total_passed,
                 "failed_count": total_failed,
                 "blocked_count": total_blocked,
+                "review_count": total_review,
                 "completed": completed,
                 "current_case_title": current_title,
             }, ensure_ascii=False, default=str)
@@ -1458,38 +1529,51 @@ def _background_execute_functional(
             _write_run_progress(title, len(processed_case_ids))
 
         def _on_case_finish(item: Dict[str, Any], result_tuple: tuple[bool, str, str, str]) -> None:
-            nonlocal total_passed, total_failed, total_blocked
+            nonlocal total_passed, total_failed, total_blocked, total_review
             fc = bg_db.get(FunctionalCase, int(item.get("functional_case_id")))
             ui_case = item.get("case")
             passed, log_text, screenshot_path, report_path = result_tuple
             record = save_ui_record(bg_db, ui_case, passed, log_text, report_path, screenshot_path)
+            quality_status = getattr(fc, "quality_status", QUALITY_UNCHECKED) if fc else QUALITY_UNCHECKED
+            result_status, result_reason = _classify_functional_execution_result(passed, log_text, quality_status)
             record_payload: Dict[str, Any] = {
                 "functional_case_id": fc.id if fc else item.get("functional_case_id"),
                 "ui_case_id": getattr(ui_case, "id", None),
                 "record_id": record.id,
                 "title": fc.title if fc else getattr(ui_case, "case_name", "未知用例"),
-                "result": record.result,
-                "quality_status": getattr(fc, "quality_status", QUALITY_UNCHECKED) if fc else QUALITY_UNCHECKED,
+                "result": result_status,
+                "record_result": record.result,
+                "quality_status": quality_status,
+                "result_reason": result_reason,
                 "screenshot": screenshot_path,
                 "log": log_text,
             }
             record_text = json.dumps(record_payload, ensure_ascii=False, default=str)
-            auth_blocked = (not passed) and ("登录前置失败" in record_text or ("login_required" in record_text and "#/login" in record_text))
+            auth_blocked = result_status == "blocked" and ("登录前置失败" in record_text or ("login_required" in record_text and "#/login" in record_text))
             if fc:
-                if passed:
+                if result_status == "passed":
                     fc.test_result = "passed"
                     total_passed += 1
-                elif auth_blocked:
+                elif result_status == "blocked":
                     fc.test_result = "blocked"
-                    fc.quality_status = QUALITY_AUTH_RISK
+                    if auth_blocked:
+                        fc.quality_status = QUALITY_AUTH_RISK
+                        fc.quality_report = json.dumps(
+                            quality_report_payload(QUALITY_AUTH_RISK, "登录前置失败，未继续判定业务功能"),
+                            ensure_ascii=False,
+                            default=str,
+                        )
+                        record_payload["status"] = "auth_blocked"
+                    total_blocked += 1
+                elif result_status == "needs_review":
+                    fc.test_result = "needs_review"
+                    fc.quality_status = QUALITY_NEEDS_REVIEW
                     fc.quality_report = json.dumps(
-                        quality_report_payload(QUALITY_AUTH_RISK, "登录前置失败，未继续判定业务功能"),
+                        quality_report_payload(QUALITY_NEEDS_REVIEW, "执行完成但结果可信度不足，需要人工确认", [result_reason]),
                         ensure_ascii=False,
                         default=str,
                     )
-                    record_payload["result"] = "blocked"
-                    record_payload["status"] = "auth_blocked"
-                    total_blocked += 1
+                    total_review += 1
                 else:
                     fc.test_result = "failed"
                     fc.failure_count = (fc.failure_count or 0) + 1
@@ -1529,13 +1613,14 @@ def _background_execute_functional(
                 total_blocked += 1
             _write_run_progress("登录前置失败，已停止后续用例", len(processed_case_ids))
 
-        final_result = "failed" if total_failed else ("blocked" if total_blocked else "passed")
+        final_result = "failed" if total_failed else ("blocked" if total_blocked else ("needs_review" if total_review else "passed"))
         bg_run.result = final_result
         bg_run.log = json.dumps({
             **json.loads(bg_run.log or "{}"),
             "current_case_title": "执行完毕",
             "status": final_result,
             "blocked_count": total_blocked,
+            "review_count": total_review,
         }, ensure_ascii=False, default=str)
         bg_task.status = final_result
         bg_db.commit()
@@ -1590,10 +1675,14 @@ def execute_functional_task_async(
         cases_query = cases_query.filter(FunctionalCase.quality_status == QUALITY_EXECUTABLE)
     cases = cases_query.order_by(FunctionalCase.id.asc()).all()
     if not cases:
-        manual_count = (preflight_result.get("counts") or {}).get("manual_check", 0)
-        detail = "预检后没有高可信可自动执行用例"
+        counts = preflight_result.get("counts") or {}
+        manual_count = counts.get("manual_check", 0)
+        trial_count = preflight_result.get("trial_count", counts.get("trial_runnable", 0))
+        detail = f"预检后没有高可信自动执行用例；可信可执行 {preflight_result.get('executable_count', 0)} 条，可试跑 {trial_count} 条"
         if manual_count:
-            detail += f"，有 {manual_count} 条已转为人工核对/需补数据/需修定位"
+            detail += f"，有 {manual_count} 条需要补数据、修定位或人工确认"
+        if not force_execute and trial_count:
+            detail += "；可切换到试跑风险用例模式继续执行"
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
     # 1) 先创建 run 记录，标记为 running
@@ -1604,6 +1693,8 @@ def execute_functional_task_async(
         "records": [],
         "passed_count": 0,
         "failed_count": 0,
+        "blocked_count": 0,
+        "review_count": 0,
         "total": len(cases),
         "preflight": preflight_result,
         "completed": 0,
@@ -1648,6 +1739,8 @@ def execute_functional_task_async(
         "completed": 0,
         "passed_count": 0,
         "failed_count": 0,
+        "blocked_count": 0,
+        "review_count": 0,
         "current_case_title": "启动中...",
         "records": [],
         "task_name": task.iteration_name,
@@ -1670,6 +1763,7 @@ def get_functional_execution(
         "passed_count": run.passed_count,
         "failed_count": run.failed_count,
         "blocked_count": log_data.get("blocked_count", 0),
+        "review_count": log_data.get("review_count", 0),
         "preflight": log_data.get("preflight", None),
         "current_case_title": log_data.get("current_case_title", ""),
         "records": log_data.get("records", []),
@@ -1717,7 +1811,7 @@ def heal_functional_run_steps(
                 new_loc = step.get("suggested_locator")
                 if old_loc and new_loc and old_loc != new_loc:
                     heal_map[old_loc] = new_loc
-        case_id = record.get("functional_case_id") or record.get("ui_case_id") or ui_log.get("case_id")
+        case_id = record.get("ui_case_id") or ui_log.get("ui_case_id") or ui_log.get("case_id")
         if case_id and heal_map:
             try:
                 case = db.get(UiCase, case_id)
@@ -1854,13 +1948,17 @@ def get_functional_run_timeline(
 
     passed = run_log.get("passed_count", run.passed_count or 0)
     failed = run_log.get("failed_count", run.failed_count or 0)
-    summary = f"本次执行共通过 {passed} 条，失败 {failed} 条。"
+    blocked = run_log.get("blocked_count", 0)
+    review = run_log.get("review_count", 0)
+    summary = f"本次执行通过 {passed} 条，失败 {failed} 条，阻断 {blocked} 条，需确认 {review} 条。"
 
     return {
         "run_id": run.id,
         "status": run.result,
         "passed_count": passed,
         "failed_count": failed,
+        "blocked_count": blocked,
+        "review_count": review,
         "summary": summary,
         "diagnosis": diagnosis,
         "cases": cases_timeline,

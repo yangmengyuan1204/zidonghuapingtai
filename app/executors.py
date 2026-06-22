@@ -829,6 +829,152 @@ def _strip_leading_login_steps(steps: list[Dict[str, Any]]) -> tuple[list[Dict[s
     return kept or [{"name": "等待页面加载", "action": "wait_for_selector", "locator": "body"}], removed
 
 
+BUSINESS_VAR_ALIASES = {
+    "customer_id": ("customer_id", "customerId", "customerID"),
+    "customer_name": ("customer_name", "customerName"),
+    "box_no": ("box_no", "boxNo", "boxCode", "box_number"),
+    "location_code": ("location_code", "locationCode", "warehouse_location"),
+    "order_no": ("orderNumber", "order_no", "orderNo", "order_sn"),
+}
+
+
+def _first_business_match(text: str, patterns: list[str]) -> str:
+    for pattern in patterns:
+        match = re.search(pattern, text or "", flags=re.I)
+        if not match:
+            continue
+        value = (match.group(1) if match.groups() else match.group(0)).strip(" \t\r\n:" + "\uFF1A,\uFF0C\u3002")
+        if value:
+            return value[:80]
+    return ""
+
+
+def _business_variables_from_text(text: str) -> Dict[str, Any]:
+    variables: Dict[str, Any] = {}
+    customer_id = _first_business_match(text, [
+        "\\bID\\s*[:\\uFF1A]\\s*([A-Za-z0-9_-]{3,32})",
+        "\\b(CUST[-_]?[A-Za-z0-9]{3,24})\\b",
+    ])
+    if customer_id:
+        variables["customer_id"] = customer_id
+    customer_name = _first_business_match(text, [
+        "\\bID\\s*[:\\uFF1A]\\s*[A-Za-z0-9_-]{3,32}\\s+([^\\s\\d][^\\r\\n]{1,40}?)\\s+(?:20\\d{8,}|[A-Z]{2,}[-_]?\\d|\\u3010)",
+    ])
+    if customer_name:
+        variables["customer_name"] = customer_name
+    box_no = _first_business_match(text, [
+        "\\b(20\\d{10,}-[A-Za-z0-9_-]{3,}-\\d+)\\b",
+        "\\b(BOX[-_]?[A-Z0-9]{4,36})\\b",
+    ])
+    if box_no:
+        variables["box_no"] = box_no
+    location_code = _first_business_match(text, [
+        "\\u3010([^\\u3011]{2,80})\\u3011",
+    ])
+    if location_code:
+        variables["location_code"] = location_code
+    return variables
+
+
+def _is_generated_sample_value(value: Any) -> bool:
+    raw = str(value or "").strip()
+    if not raw or raw.upper().startswith("NONEXISTENT"):
+        return False
+    lower = raw.lower()
+    if raw in {"\u5ba2\u6237A", "\u5ba2\u6237B", "\u5ba2\u6237a", "\u5ba2\u6237b"}:
+        return True
+    return bool(
+        re.fullmatch(r"CUST[-_]?\d{3,}", raw, flags=re.I)
+        or re.fullmatch(r"CUSTOMER[-_]?\d{3,}", raw, flags=re.I)
+        or re.fullmatch(r"ORDER[-_]?\d{3,}", raw, flags=re.I)
+        or re.fullmatch(r"BOX[-_]?\d{3,}", raw, flags=re.I)
+        or re.fullmatch(r"BX[-_]?\d{4}[-_]\d+", raw, flags=re.I)
+        or lower in {"cust123456", "customer123456", "order123456", "box123456", "bx-2023-001"}
+    )
+
+
+def _sample_replacement_for_step(step: Dict[str, Any], variables: Dict[str, Any]) -> str:
+    hint_lower = _step_text(step).lower()
+    customer_id = str(variables.get("customerId") or variables.get("customer_id") or "").strip()
+    customer_name = str(variables.get("customerName") or variables.get("customer_name") or "").strip()
+    box_no = str(variables.get("boxNo") or variables.get("box_no") or variables.get("boxCode") or "").strip()
+    location_code = str(variables.get("locationCode") or variables.get("location_code") or variables.get("warehouse_location") or "").strip()
+    order_no = str(variables.get("orderNumber") or variables.get("orderNo") or variables.get("order_no") or "").strip()
+    if any(item in hint_lower for item in ("customer", "client", "\u5ba2\u6237")):
+        if "id" in hint_lower or "\u7f16\u53f7" in hint_lower:
+            return customer_id or customer_name
+        return customer_name or customer_id
+    if any(item in hint_lower for item in ("box", "\u7bb1\u53f7", "\u7bb1\u5b50")) and box_no:
+        return box_no
+    if any(item in hint_lower for item in ("order", "\u8ba2\u5355")) and order_no:
+        return order_no
+    if any(item in hint_lower for item in ("location", "\u5e93\u4f4d", "\u4ed3\u4f4d")) and location_code:
+        return location_code
+    return ""
+
+
+def _replace_sample_tokens(value: Any, replacement: str) -> Any:
+    if not isinstance(value, str) or not replacement:
+        return value
+    result = value
+    for token in ("\u5ba2\u6237A", "\u5ba2\u6237B", "CUST123456", "CUSTOMER123456", "ORDER123456", "BOX123456", "BX-2023-001"):
+        result = result.replace(token, replacement)
+    result = re.sub(r"\bCUST[-_]?\d{3,}\b", replacement, result, flags=re.I)
+    result = re.sub(r"\bCUSTOMER[-_]?\d{3,}\b", replacement, result, flags=re.I)
+    result = re.sub(r"\bORDER[-_]?\d{3,}\b", replacement, result, flags=re.I)
+    result = re.sub(r"\bBOX[-_]?\d{3,}\b", replacement, result, flags=re.I)
+    result = re.sub(r"\bBX[-_]?\d{4}[-_]\d+\b", replacement, result, flags=re.I)
+    return result
+
+
+def _merge_inferred_business_variables(variables: Dict[str, Any], inferred: Dict[str, Any]) -> Dict[str, Any]:
+    applied: Dict[str, Any] = {}
+    for canonical, aliases in BUSINESS_VAR_ALIASES.items():
+        value = str(inferred.get(canonical) or "").strip()
+        if not value:
+            continue
+        for alias in aliases:
+            current = variables.get(alias)
+            if current in (None, "") or _is_generated_sample_value(current):
+                variables[alias] = value
+                applied[alias] = value
+    if "keyword" not in variables or variables.get("keyword") in (None, ""):
+        keyword = inferred.get("location_code") or inferred.get("customer_id") or inferred.get("customer_name") or inferred.get("box_no")
+        if keyword:
+            variables["keyword"] = keyword
+            applied["keyword"] = keyword
+    return applied
+
+
+def _stabilize_runtime_steps(steps: list[Dict[str, Any]], variables: Dict[str, Any]) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
+    normalized: list[Dict[str, Any]] = []
+    replacements: list[Dict[str, Any]] = []
+    for index, step in enumerate(steps, start=1):
+        if not isinstance(step, dict):
+            normalized.append(step)
+            continue
+        next_step = dict(step)
+        replacement = _sample_replacement_for_step(next_step, variables)
+        if replacement and _is_generated_sample_value(next_step.get("value")):
+            old_value = next_step.get("value")
+            next_step["value"] = replacement
+            replacements.append({"step": index, "field": "value", "from": old_value, "to": replacement})
+        if replacement:
+            old_locator = next_step.get("locator")
+            new_locator = _replace_sample_tokens(old_locator, replacement)
+            if new_locator != old_locator:
+                next_step["locator"] = new_locator
+                replacements.append({"step": index, "field": "locator", "from": old_locator, "to": new_locator})
+            fallbacks = next_step.get("fallback_locators")
+            if isinstance(fallbacks, list):
+                new_fallbacks = [_replace_sample_tokens(item, replacement) for item in fallbacks]
+                if new_fallbacks != fallbacks:
+                    next_step["fallback_locators"] = new_fallbacks
+                    replacements.append({"step": index, "field": "fallback_locators", "from": fallbacks, "to": new_fallbacks})
+        normalized.append(next_step)
+    return normalized, replacements
+
+
 def _prepare_authenticated_page(page: Any, execution_context: Dict[str, Any], variables: Dict[str, Any], timeout_seconds: int) -> Dict[str, Any]:
     auth = dict(execution_context.get("login_config") or {})
     target_url = str(execution_context.get("target_url") or "").strip()
@@ -1181,21 +1327,20 @@ def execute_ui_case_in_page(
         variables = builtin_variables()
         if runtime_vars:
             variables.update(runtime_vars)
-    steps = render_template(parse_json_value(case.steps, []), variables)
+    raw_steps = parse_json_value(case.steps, [])
+    page_url = render_template(case.page_url, variables)
+    steps: list[Dict[str, Any]] = []
+    validation_issues: list[Dict[str, Any]] = []
     execution_context = dict(execution_context or {})
     removed_login_steps: list[Dict[str, Any]] = []
     login_trace: list[str] = list(execution_context.get("login_trace") or [])
-    if execution_context.get("login_required"):
-        steps, removed_login_steps = _strip_leading_login_steps(steps)
-    steps, validation_issues = _validate_ui_steps_for_execution(steps)
-
     # 读取重试配置
     retry_count = execution_context.get("retry_count", 2)
     retry_interval_ms = execution_context.get("retry_interval_ms", 1000)
 
     log_parts: Dict[str, Any] = {
         "case_name": case.case_name,
-        "page_url": render_template(case.page_url, variables),
+        "page_url": page_url,
         "steps": steps,
         "timeout": timeout,
         "variables": _mask_variables(variables),
@@ -1212,18 +1357,6 @@ def execute_ui_case_in_page(
     }
     if login_trace:
         log_parts["auth_context"]["login_trace"] = login_trace
-    if any(item.get("severity") == "error" for item in validation_issues):
-        log_parts.update(
-            {
-                "error": "UI steps validation failed: " + "; ".join(item.get("message", "") for item in validation_issues),
-                "error_category": "step_validation_failed",
-                "finished_at": datetime.now(),
-            }
-        )
-        log_text = _json_dump_log(log_parts)
-        report_path = write_allure_result(case.case_name, "ui", False, log_text)
-        return False, log_text, "", report_path
-
     screenshots: list[str] = []
     current_step_index = 0
     current_step: Dict[str, Any] | None = None
@@ -1242,8 +1375,36 @@ def execute_ui_case_in_page(
             log_parts["auth_context"]["login_trace"] = login_trace
             execution_context["preauthenticated"] = True
         if case.page_url:
-            page.goto(render_template(case.page_url, variables), wait_until="domcontentloaded")
+            page.goto(page_url, wait_until="domcontentloaded")
             _wait_page_stable(page)
+        inferred_variables = _business_variables_from_text(_page_text_excerpt(page, limit=12000))
+        applied_variables = _merge_inferred_business_variables(variables, inferred_variables)
+        steps = render_template(raw_steps, variables)
+        if execution_context.get("login_required"):
+            steps, removed_login_steps = _strip_leading_login_steps(steps)
+        steps, runtime_replacements = _stabilize_runtime_steps(steps, variables)
+        steps, validation_issues = _validate_ui_steps_for_execution(steps)
+        log_parts.update(
+            {
+                "steps": steps,
+                "variables": _mask_variables(variables),
+                "validation_issues": validation_issues,
+                "runtime_seed_variables": applied_variables,
+                "runtime_step_replacements": runtime_replacements,
+            }
+        )
+        log_parts["auth_context"]["removed_login_step_count"] = len(removed_login_steps)
+        if any(item.get("severity") == "error" for item in validation_issues):
+            log_parts.update(
+                {
+                    "error": "UI steps validation failed: " + "; ".join(item.get("message", "") for item in validation_issues),
+                    "error_category": "step_validation_failed",
+                    "finished_at": datetime.now(),
+                }
+            )
+            log_text = _json_dump_log(log_parts)
+            report_path = write_allure_result(case.case_name, "ui", False, log_text)
+            return False, log_text, "", report_path
         for index, step in enumerate(steps, start=1):
             current_step_index = index
             current_step = step if isinstance(step, dict) else {"raw": step}
@@ -1410,6 +1571,9 @@ def execute_ui_cases_batch(
                         execution_context["login_trace"] = auth_result.get("trace") or []
                         execution_context["preauthenticated"] = True
                 elif execution_context.get("login_required"):
+                    if _looks_like_login_page(page, expected_url=(execution_context.get("login_config") or {}).get("login_url") or ""):
+                        auth_result = _prepare_authenticated_page(page, execution_context, item.get("variables") or {}, case.timeout or 30)
+                        execution_context["login_trace"] = auth_result.get("trace") or []
                     execution_context["preauthenticated"] = True
                 item["execution_context"] = execution_context
                 result = execute_ui_case_in_page(case, page, item.get("variables"), execution_context)
