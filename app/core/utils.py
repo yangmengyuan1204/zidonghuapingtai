@@ -7,6 +7,7 @@ import queue
 import re
 import secrets
 import socket
+import sys
 import threading
 import time
 from collections import Counter
@@ -139,6 +140,11 @@ from ..security import SECRET_KEY, create_access_token, get_current_user, hash_p
 
 
 # __file__ is app/core/utils.py → project root is parent.parent.parent
+def runtime_main_attr(name: str, fallback: Any) -> Any:
+    main_module = sys.modules.get("app.main")
+    return getattr(main_module, name, fallback) if main_module else fallback
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 STATIC_DIR = BASE_DIR / "static"
 
@@ -936,7 +942,7 @@ def serialize_ai_config(config: AiConfig | None) -> Dict[str, Any]:
     return data
 
 
-FUNCTIONAL_TEST_RESULTS = {"untested", "passed", "failed", "blocked", "skipped"}
+FUNCTIONAL_TEST_RESULTS = {"untested", "passed", "failed", "blocked", "skipped", "needs_review"}
 
 
 def normalize_functional_result(value: Any) -> str:
@@ -1206,6 +1212,37 @@ def case_has_business_assertion(case: FunctionalCase, steps: list[Dict[str, Any]
             return True
     expected = str(case.expected or "").strip()
     return bool(expected and expected not in {"页面正常显示", "操作成功", "成功"})
+
+
+GENERIC_EXPECTED_TEXTS = {"", "页面正常显示", "操作成功", "成功", "椤甸潰姝ｅ父鏄剧ず", "鎿嶄綔鎴愬姛", "鎴愬姛"}
+
+
+def meaningful_expected_text(case: FunctionalCase) -> str:
+    expected = re.sub(r"\s+", " ", str(case.expected or "")).strip()
+    if expected in GENERIC_EXPECTED_TEXTS:
+        return ""
+    return expected[:160]
+
+
+def ensure_weak_business_assertion(db: Session, case: FunctionalCase, ui_case: UiCase, steps: list[Dict[str, Any]]) -> tuple[list[Dict[str, Any]], bool]:
+    expected = meaningful_expected_text(case)
+    if not expected or case_has_business_assertion(case, steps):
+        return steps, False
+    if any(isinstance(step, dict) and step.get("generated_assertion") == "expected_text" for step in steps):
+        return steps, False
+    next_steps = [dict(step) if isinstance(step, dict) else step for step in steps]
+    next_steps.append(
+        {
+            "name": "自动弱断言",
+            "action": "text_assert",
+            "locator": "body",
+            "value": expected,
+            "generated_assertion": "expected_text",
+        }
+    )
+    ui_case.steps = to_json_text(next_steps, [])
+    db.flush()
+    return next_steps, True
 
 
 def case_locator_issues(steps: list[Dict[str, Any]]) -> list[str]:
@@ -1512,6 +1549,7 @@ def evaluate_functional_case_quality(
         return quality_report_payload(QUALITY_AUTH_RISK, account_status.get("message") or "登录前置未通过")
     if not steps:
         return quality_report_payload(QUALITY_NOT_RECOMMENDED, "UI 步骤为空，无法自动执行")
+    steps, generated_weak_assertion = ensure_weak_business_assertion(db, case, ui_case, steps)
     locator_issues = case_locator_issues(steps)
     if locator_issues:
         return quality_report_payload(QUALITY_LOCATOR_RISK, "存在缺失 locator 的步骤", locator_issues)
@@ -1530,6 +1568,13 @@ def evaluate_functional_case_quality(
             "缺少明确业务断言，不能自动标记为可信通过",
             ["请补充 assert_url/assert_visible/assert_value/text_assert 或成功条件"],
         )
+    if generated_weak_assertion:
+        return quality_report_payload(
+            QUALITY_NEEDS_REVIEW,
+            "已根据预期结果自动补充弱断言，建议人工确认后再作为可信通过",
+            ["自动追加 body 文本弱断言"],
+            generated_assertion=True,
+        )
     return quality_report_payload(
         QUALITY_EXECUTABLE,
         "账号、步骤、测试数据和业务断言预检通过",
@@ -1541,9 +1586,11 @@ def functional_package_preflight_summary(cases: list[Dict[str, Any]]) -> Dict[st
     counts = Counter((item.get("quality_status") or QUALITY_UNCHECKED) for item in cases)
     total = len(cases)
     manual_statuses = {QUALITY_NEEDS_REVIEW, QUALITY_MISSING_VARIABLES, QUALITY_LOCATOR_RISK, QUALITY_AUTH_RISK, QUALITY_NOT_RECOMMENDED}
+    trial_statuses = {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_MISSING_VARIABLES, QUALITY_LOCATOR_RISK}
     return {
         "total": total,
         "executable": counts.get(QUALITY_EXECUTABLE, 0),
+        "trial_runnable": sum(counts.get(item, 0) for item in trial_statuses),
         "manual_check": sum(counts.get(item, 0) for item in manual_statuses),
         "unchecked": counts.get(QUALITY_UNCHECKED, 0),
         "auth_blocked": counts.get(QUALITY_AUTH_RISK, 0),
@@ -1591,6 +1638,11 @@ def preflight_functional_package(
         )
     summary = functional_package_preflight_summary(case_items)
     executable_case_ids = [item["case_id"] for item in case_items if item["quality_status"] == QUALITY_EXECUTABLE]
+    trial_case_ids = [
+        item["case_id"]
+        for item in case_items
+        if item["quality_status"] in {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_MISSING_VARIABLES, QUALITY_LOCATOR_RISK}
+    ]
     manual_items = [item for item in case_items if item["quality_status"] != QUALITY_EXECUTABLE]
     page_status = "ready" if db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).first() else "unchecked"
     result = {
@@ -1607,6 +1659,8 @@ def preflight_functional_package(
         "total": len(case_items),
         "executable_count": len(executable_case_ids),
         "executable_case_ids": executable_case_ids,
+        "trial_count": len(trial_case_ids),
+        "trial_case_ids": trial_case_ids,
         "manual_check_items": manual_items[:80],
     }
     if persist:
@@ -1843,7 +1897,8 @@ def execute_functional_data_check_rule(db: Session, task: FunctionalTask, rule: 
         headers = parse_json_value(rule.api_headers, {})
         body_value = parse_json_value(rule.api_body, {})
         body_text = "" if (rule.api_method or "GET").upper() == "GET" else json.dumps(body_value, ensure_ascii=False)
-        response = guarded_proxy_request(rule.api_method or "GET", url, headers if isinstance(headers, dict) else {}, body_text, 20)
+        proxy_request = runtime_main_attr("guarded_proxy_request", guarded_proxy_request)
+        response = proxy_request(rule.api_method or "GET", url, headers if isinstance(headers, dict) else {}, body_text, 20)
         api_value = extract_response_value(response, rule.api_value_path)
         passed, message = compare_data_check_values(rule, page_value, api_value)
         result = "passed" if passed else "failed"

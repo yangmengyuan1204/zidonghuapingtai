@@ -1,4 +1,5 @@
 import json
+import sys
 from datetime import datetime
 from typing import Any, Dict
 
@@ -28,6 +29,7 @@ from ..data_scripts import (
     run_purchase_to_shelf_chain,
     run_purchase_to_shelf_script,
     run_resume_order_flow_script,
+    run_resume_porder_flow_script,
     run_shopping_cart_script,
     run_warehouse_delivery_script,
 )
@@ -39,6 +41,14 @@ from ..security import get_current_user, require_admin
 router = APIRouter(prefix="/api", tags=["data-scripts"])
 
 
+def _runtime_func(name: str, fallback: Any) -> Any:
+    fallback_module = getattr(fallback, "__module__", "")
+    if fallback_module and not fallback_module.startswith("app."):
+        return fallback
+    main_module = sys.modules.get("app.main")
+    return getattr(main_module, name, fallback) if main_module else fallback
+
+
 @router.post("/data-scripts/shopping-cart")
 def run_shopping_cart_data_script(
     payload: DataScriptExecuteRequest,
@@ -47,7 +57,7 @@ def run_shopping_cart_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    passed, log_text, report_path, summary = run_shopping_cart_script(env, variables)
+    passed, log_text, report_path, summary = _runtime_func("run_shopping_cart_script", run_shopping_cart_script)(env, variables)
     cart_case = db.query(ApiCase).filter(ApiCase.case_name == CART_CASE_NAME, ApiCase.project_id == project_id).order_by(ApiCase.id.asc()).first()
     record = save_record(db, "api", cart_case.id if cart_case else 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
@@ -63,7 +73,7 @@ def run_order_quote_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    passed, log_text, report_path, summary = run_order_quote_script(env, variables)
+    passed, log_text, report_path, summary = _runtime_func("run_order_quote_script", run_order_quote_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
@@ -78,7 +88,7 @@ def preview_order_quote_options_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    return preview_order_quote_options(env, variables)
+    return _runtime_func("preview_order_quote_options", preview_order_quote_options)(env, variables)
 
 
 @router.post("/data-scripts/balance-payment")
@@ -89,7 +99,7 @@ def run_balance_payment_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    passed, log_text, report_path, summary = run_balance_payment_script(env, variables)
+    passed, log_text, report_path, summary = _runtime_func("run_balance_payment_script", run_balance_payment_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
@@ -104,7 +114,7 @@ def run_bank_payment_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    passed, log_text, report_path, summary = run_bank_payment_script(env, variables)
+    passed, log_text, report_path, summary = _runtime_func("run_bank_payment_script", run_bank_payment_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
@@ -131,9 +141,9 @@ def run_purchase_to_shelf_data_script(
         or variables.get("purchase_ids")
     )
     if not has_target_order and enabled(variables.get("link_quote_balance_before_shelf"), False) and enabled(variables.get("auto_quote_and_pay"), False):
-        passed, log_text, report_path, summary = run_purchase_to_shelf_chain(env, variables)
+        passed, log_text, report_path, summary = _runtime_func("run_purchase_to_shelf_chain", run_purchase_to_shelf_chain)(env, variables)
     else:
-        passed, log_text, report_path, summary = run_purchase_to_shelf_script(env, variables)
+        passed, log_text, report_path, summary = _runtime_func("run_purchase_to_shelf_script", run_purchase_to_shelf_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
@@ -148,7 +158,7 @@ def run_purchase_to_shelf_chain_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    passed, log_text, report_path, summary = run_purchase_to_shelf_chain(env, variables)
+    passed, log_text, report_path, summary = _runtime_func("run_purchase_to_shelf_chain", run_purchase_to_shelf_chain)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
@@ -163,7 +173,7 @@ def run_direct_box_to_shelf_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    passed, log_text, report_path, summary = run_direct_box_to_shelf_script(env, variables)
+    passed, log_text, report_path, summary = _runtime_func("run_direct_box_to_shelf_script", run_direct_box_to_shelf_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
@@ -178,7 +188,7 @@ def run_warehouse_delivery_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    passed, log_text, report_path, summary = run_warehouse_delivery_script(env, variables)
+    passed, log_text, report_path, summary = _runtime_func("run_warehouse_delivery_script", run_warehouse_delivery_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
@@ -193,7 +203,7 @@ def run_porder_balance_payment_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    passed, log_text, report_path, summary = run_porder_balance_payment_script(env, variables)
+    passed, log_text, report_path, summary = _runtime_func("run_porder_balance_payment_script", run_porder_balance_payment_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
@@ -208,7 +218,7 @@ def run_porder_bank_payment_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    passed, log_text, report_path, summary = run_porder_bank_payment_script(env, variables)
+    passed, log_text, report_path, summary = _runtime_func("run_porder_bank_payment_script", run_porder_bank_payment_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
@@ -223,7 +233,7 @@ def run_full_flow_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    passed, log_text, report_path, summary = run_full_flow_script(env, variables)
+    passed, log_text, report_path, summary = _runtime_func("run_full_flow_script", run_full_flow_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary
@@ -238,7 +248,22 @@ def run_resume_order_flow_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    passed, log_text, report_path, summary = run_resume_order_flow_script(env, variables)
+    passed, log_text, report_path, summary = _runtime_func("run_resume_order_flow_script", run_resume_order_flow_script)(env, variables)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+@router.post("/data-scripts/resume-porder-flow")
+def run_resume_porder_flow_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
+    passed, log_text, report_path, summary = _runtime_func("run_resume_porder_flow_script", run_resume_porder_flow_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary

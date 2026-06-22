@@ -1,0 +1,37 @@
+{
+  "script": "商品购物车",
+  "mode": "vendored_piliangtianjiagouwuche",
+  "source": "app/vendor/piliangtianjiagouwuche.py",
+  "base_url": "https://example.test",
+  "keyword": "袜子",
+  "shop_type": "1688",
+  "target_shops": 4,
+  "per_shop": 5,
+  "page_size": 50,
+  "max_pages": 10,
+  "batch_size": 30,
+  "detail_workers": 4,
+  "quantities": [
+    2,
+    3,
+    5
+  ],
+  "allow_fallback_sku": true,
+  "verify_cart_after_add": true,
+  "cart_verify_mode": "final",
+  "started_at": "2026-06-22 11:59:48.136445",
+  "shops": [],
+  "batches": [],
+  "error": "requests failed: HTTPSConnectionPool(host='example.test', port=443): Max retries exceeded with url: /client/userLogin (Caused by NameResolutionError(\"HTTPSConnection(host='example.test', port=443): Failed to resolve 'example.test' ([Errno 11001] getaddrinfo failed)\")); curl fallback failed: curl request failed: Command '['curl.exe', '--config', 'D:\\\\A_zidonghuapingtai\\\\.rakumart_curl_config_35460_1782100793084_84776.txt']' returned non-zero exit status 6.",
+  "duration_ms": 5120,
+  "summary": {
+    "keyword": "袜子",
+    "shop_type": "1688",
+    "target_shops": 4,
+    "per_shop": 5,
+    "added_total": 0,
+    "error": "requests failed: HTTPSConnectionPool(host='example.test', port=443): Max retries exceeded with url: /client/userLogin (Caused by NameResolutionError(\"HTTPSConnection(host='example.test', port=443): Failed to resolve 'example.test' ([Errno 11001] getaddrinfo failed)\")); curl fallback failed: curl request failed: Command '['curl.exe', '--config', 'D:\\\\A_zidonghuapingtai\\\\.rakumart_curl_config_35460_1782100793084_84776.txt']' returned non-zero exit status 6.",
+    "duration_ms": 5120
+  },
+  "finished_at": "2026-06-22 11:59:53.257428"
+}

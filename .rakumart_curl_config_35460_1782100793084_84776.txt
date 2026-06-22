@@ -1,0 +1,11 @@
+url = "https://example.test/client/userLogin"
+request = "POST"
+silent
+show-error
+location
+output = "D:\\A_zidonghuapingtai\\.rakumart_curl_output_35460_1782100793084_84776.json"
+header = "User-Agent: RakumartBulkCart/1.0"
+header = "Accept: application/json, text/plain, */*"
+form-string = "account="
+form-string = "password="
+form-string = "client_tool=1"

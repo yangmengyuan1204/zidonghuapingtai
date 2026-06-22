@@ -1,0 +1,22 @@
+{
+  "uuid": "43e54237-05ca-4b06-a0ef-5a98c099ce7c",
+  "name": "直接装箱上架",
+  "fullName": "data_script.直接装箱上架",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781767130896,
+  "stop": 1781767131263,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "43e54237-05ca-4b06-a0ef-5a98c099ce7c-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

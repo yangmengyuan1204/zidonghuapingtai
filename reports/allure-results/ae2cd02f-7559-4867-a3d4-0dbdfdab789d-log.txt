@@ -1,0 +1,183 @@
+{
+  "script": "输入订单号继续执行操作",
+  "mode": "resume_order_flow",
+  "started_at": "2026-06-22 11:59:42.541221",
+  "order_sn": "ORDER-ENDPOINT",
+  "stop_after_node": "porder_offered",
+  "input_adjustments": {
+    "target_shops": {
+      "before": null,
+      "after": 4
+    },
+    "per_shop": {
+      "before": null,
+      "after": 5
+    },
+    "order_shop_count": {
+      "before": null,
+      "after": 1
+    },
+    "order_per_shop": {
+      "before": null,
+      "after": 2
+    },
+    "order_item_count": {
+      "before": null,
+      "after": 2
+    },
+    "warehouse_sku_count": {
+      "before": null,
+      "after": 1
+    }
+  },
+  "steps": [],
+  "shared_data": {
+    "order_sn": "ORDER-ENDPOINT"
+  },
+  "skipped_nodes": [],
+  "resume_detect": {
+    "order_sn": "ORDER-ENDPOINT",
+    "base_url": "https://example.test"
+  },
+  "error": "admin request /admin.login failed after retries: HTTPSConnectionPool(host='example.test', port=443): Max retries exceeded with url: /admin.login (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1006)')))",
+  "duration_ms": 3918,
+  "summary": {
+    "passed": false,
+    "paused": false,
+    "current_node": "order_created",
+    "node_label": "前台提交订单完成",
+    "stop_after_node": "porder_offered",
+    "detected_start_node": "",
+    "total_steps": 0,
+    "success_steps": 0,
+    "node_results": [
+      {
+        "node": "shopping_cart",
+        "node_label": "商品加购完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_created",
+        "node_label": "前台提交订单完成",
+        "status": "failed",
+        "passed": false
+      },
+      {
+        "node": "order_translated",
+        "node_label": "后台订单翻译完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "order_confirmed",
+        "node_label": "后台订单确认完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "order_offered",
+        "node_label": "后台订单报价完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "order_paid",
+        "node_label": "订单支付完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "pending_purchase",
+        "node_label": "订单进入待拍下",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "purchase_no_saved",
+        "node_label": "保存交易号完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "purchase_wait_modify_price",
+        "node_label": "标记待改价完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "purchase_wait_pay",
+        "node_label": "提交待财务付款完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "purchase_paid",
+        "node_label": "交易号付款完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "checking_started",
+        "node_label": "开始核查完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "shelf_stored",
+        "node_label": "核查上架入库完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "warehouse_delivery_created",
+        "node_label": "仓库提出配送单完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_translated",
+        "node_label": "配送单待翻译完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_confirmed",
+        "node_label": "配送单确认流转完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_wait_offer",
+        "node_label": "配送单进入待报价完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_offered",
+        "node_label": "配送单报价完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_paid",
+        "node_label": "配送单支付完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "full_complete",
+        "node_label": "全流程结束",
+        "status": "pending",
+        "passed": null
+      }
+    ],
+    "steps": [],
+    "step_timings": [],
+    "skipped_nodes": [],
+    "order_sn": "ORDER-ENDPOINT",
+    "reason": "admin request /admin.login failed after retries: HTTPSConnectionPool(host='example.test', port=443): Max retries exceeded with url: /admin.login (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1006)')))",
+    "duration_ms": 3918
+  },
+  "finished_at": "2026-06-22 11:59:46.460155"
+}

@@ -1,0 +1,22 @@
+{
+  "uuid": "ddf4963f-41a6-4032-b564-219eb4231488",
+  "name": "输入订单号继续执行操作",
+  "fullName": "data_script.输入订单号继续执行操作",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1781773954883,
+  "stop": 1781773981876,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "ddf4963f-41a6-4032-b564-219eb4231488-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

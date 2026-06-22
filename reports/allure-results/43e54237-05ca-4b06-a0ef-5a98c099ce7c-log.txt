@@ -1,0 +1,28 @@
+{
+  "script": "直接装箱上架",
+  "mode": "direct_box_to_shelf",
+  "base_url": "https://jpapi.rakumart.cn",
+  "started_at": "2026-06-18 15:18:50.896288",
+  "steps": [
+    {
+      "name": "pre_purchase_to_checking",
+      "passed": false,
+      "summary": {
+        "order_sn": "2026061815105140-300001",
+        "purchase_no": "20260618151850",
+        "selected_count": 0,
+        "reason": "未查询到可操作的待拍下商品",
+        "duration_ms": 364
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\0ba3653f-37e4-445f-bc63-e5c5f74ee37d-result.json"
+    }
+  ],
+  "duration_ms": 367,
+  "summary": {
+    "reason": "未查询到可操作的待拍下商品",
+    "order_sn": "2026061815105140-300001",
+    "purchase_no": "20260618151850",
+    "duration_ms": 367
+  },
+  "finished_at": "2026-06-18 15:18:51.263991"
+}

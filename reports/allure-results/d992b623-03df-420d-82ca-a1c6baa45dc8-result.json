@@ -1,0 +1,22 @@
+{
+  "uuid": "d992b623-03df-420d-82ca-a1c6baa45dc8",
+  "name": "查询用户",
+  "fullName": "api.查询用户",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1782100774007,
+  "stop": 1782100774007,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "api"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "d992b623-03df-420d-82ca-a1c6baa45dc8-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

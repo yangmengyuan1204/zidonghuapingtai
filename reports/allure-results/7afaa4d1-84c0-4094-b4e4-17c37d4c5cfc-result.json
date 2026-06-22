@@ -1,0 +1,27 @@
+{
+  "uuid": "7afaa4d1-84c0-4094-b4e4-17c37d4c5cfc",
+  "name": "搜索功能-按客户名称模糊搜索",
+  "fullName": "ui.搜索功能-按客户名称模糊搜索",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1781770883371,
+  "stop": 1781770883371,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "ui"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "7afaa4d1-84c0-4094-b4e4-17c37d4c5cfc-log.txt",
+      "type": "text/plain"
+    },
+    {
+      "name": "screenshot",
+      "source": "7afaa4d1-84c0-4094-b4e4-17c37d4c5cfc-screenshot.png",
+      "type": "image/png"
+    }
+  ]
+}

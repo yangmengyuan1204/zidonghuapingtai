@@ -1,0 +1,257 @@
+{
+  "script": "订单报价",
+  "mode": "cart_to_order_and_backend_quote",
+  "base_url": "https://example.test",
+  "item_count": 1,
+  "order_shop_count": null,
+  "order_per_shop": null,
+  "use_shop_grouping": false,
+  "item_quantity": 2,
+  "price_cut": "0",
+  "submit_order": true,
+  "run_backend_flow": true,
+  "order_option_counts": {
+    "999": 1
+  },
+  "started_at": "2026-06-22 11:19:53.549268",
+  "selected_items": [
+    {
+      "cart_id": "cart-1",
+      "goods_id": "goods-1",
+      "goods_title": "测试商品",
+      "num": null,
+      "price": "10",
+      "sku_id": null,
+      "spec_id": null,
+      "shop_id": null,
+      "shop_name": null,
+      "from_platform": "1688"
+    }
+  ],
+  "edits": [
+    {
+      "cart_id": "cart-1",
+      "goods_id": "goods-1",
+      "num": 2,
+      "success": true,
+      "code": 0
+    }
+  ],
+  "create": {},
+  "login": {
+    "success": true,
+    "account": "alice",
+    "client_tool": "1",
+    "token_extracted": true
+  },
+  "cart_list": {
+    "success": true,
+    "code": 0,
+    "goods_count": 1,
+    "selected_count": 1,
+    "selection": {
+      "expected_total": 1,
+      "selected_count": 1,
+      "shortage_count": 0
+    }
+  },
+  "order_option_list": {
+    "source_path": "/client/order.optionList",
+    "success": true,
+    "code": 0,
+    "data_count": 16,
+    "option_count": 16
+  },
+  "order_options": {
+    "available_options": [
+      {
+        "key": "78",
+        "id": 78,
+        "name": "详细检品",
+        "label": "详细检品",
+        "name_translate": "詳細検品",
+        "price": 4,
+        "price_type": 1,
+        "unit": "%"
+      },
+      {
+        "key": "79",
+        "id": 79,
+        "name": "针检",
+        "label": "针检",
+        "name_translate": "通常検針サービス",
+        "price": "0.80",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "80",
+        "id": 80,
+        "name": "X线针检",
+        "label": "X线针检",
+        "name_translate": "X線検針サービス",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "81",
+        "id": 81,
+        "name": "X线针检往返运费",
+        "label": "X线针检往返运费",
+        "name_translate": "X線検針会社までの国内往復送料",
+        "price": "0.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "82",
+        "id": 82,
+        "name": "做布标",
+        "label": "做布标",
+        "name_translate": "織りネーム作成",
+        "price": "0.40",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "83",
+        "id": 83,
+        "name": "取布标",
+        "label": "取布标",
+        "name_translate": "織りネーム外し",
+        "price": 0.8,
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "84",
+        "id": 84,
+        "name": "缝布标",
+        "label": "缝布标",
+        "name_translate": "織りネーム縫い付け",
+        "price": 1,
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "85",
+        "id": 85,
+        "name": "做水洗标",
+        "label": "做水洗标",
+        "name_translate": "洗濯タグ作成",
+        "price": "0.16",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "86",
+        "id": 86,
+        "name": "取水洗标",
+        "label": "取水洗标",
+        "name_translate": "洗濯タグ外し",
+        "price": "0.80",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "87",
+        "id": 87,
+        "name": "缝水洗标",
+        "label": "缝水洗标",
+        "name_translate": "洗濯タグ縫付け",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "88",
+        "id": 88,
+        "name": "做吊牌",
+        "label": "做吊牌",
+        "name_translate": "下げ札作成",
+        "price": "0.12",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "89",
+        "id": 89,
+        "name": "挂吊牌",
+        "label": "挂吊牌",
+        "name_translate": "下げ札取り付け",
+        "price": 0.5,
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "90",
+        "id": 90,
+        "name": "做贴纸",
+        "label": "做贴纸",
+        "name_translate": "LOGOシール作成",
+        "price": "0.27",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "91",
+        "id": 91,
+        "name": "贴贴纸",
+        "label": "贴贴纸",
+        "name_translate": "LOGOシール貼り付け",
+        "price": "0.50",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "92",
+        "id": 92,
+        "name": "压缩包装操作费",
+        "label": "压缩包装操作费",
+        "name_translate": "圧縮包装*圧縮袋別途費用",
+        "price": "1.00",
+        "price_type": 0,
+        "unit": "元"
+      },
+      {
+        "key": "93",
+        "id": 93,
+        "name": "压缩袋费用",
+        "label": "压缩袋费用",
+        "name_translate": "圧縮袋",
+        "price": "0.00",
+        "price_type": 0,
+        "unit": "元"
+      }
+    ],
+    "selected_options": [],
+    "counts": {
+      "999": 1
+    },
+    "applied_detail_count": 0,
+    "missing": [
+      {
+        "key": "999",
+        "num": 1,
+        "reason": "option_not_found"
+      }
+    ]
+  },
+  "duration_ms": 0,
+  "summary": {
+    "order_sn": "",
+    "selected_count": 1,
+    "item_quantity": 2,
+    "missing_order_options": [
+      {
+        "key": "999",
+        "num": 1,
+        "reason": "option_not_found"
+      }
+    ],
+    "reason": "已选择的订单 option 在接口返回中不存在，已停止创建订单",
+    "duration_ms": 0
+  },
+  "finished_at": "2026-06-22 11:19:53.549268"
+}
