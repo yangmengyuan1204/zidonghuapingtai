@@ -1713,6 +1713,77 @@ def test_resume_order_flow_endpoint_returns_summary(monkeypatch):
     assert summary["porder_sn"] == "PORDER-ENDPOINT"
 
 
+def test_resume_porder_flow_porder_paid_runs_payment(monkeypatch):
+    captured = {}
+    calls = []
+
+    def fake_report(name, *args, **kwargs):
+        captured["report_name"] = name
+        return "mock-report.json"
+
+    def detect(env, variables, porder_sn, log):
+        return True, {"porder_sn": porder_sn, "detected_start_node": "porder_wait_offer"}
+
+    def backend(base_url, timeout, variables, porder_sn, log, detected_start_node):
+        calls.append("backend")
+        assert detected_start_node == "porder_wait_offer"
+        return True, {"backend_passed": True, "current_node": "porder_offered", "porder_sn": porder_sn}
+
+    def pay(env, variables, porder=False):
+        calls.append("pay")
+        assert porder is True
+        assert variables["porder_sn"] == "PORDER-PAID"
+        assert variables["run_backend_porder_flow"] is False
+        return True, "", "pay-report", {"payment_type": "balance", "porder_sn": "PORDER-PAID", "pay_amount": "1"}
+
+    monkeypatch.setattr(data_scripts, "write_allure_result", fake_report)
+    monkeypatch.setattr(data_scripts, "_detect_resume_porder_state", detect)
+    monkeypatch.setattr(data_scripts, "_run_backend_porder_flow_resume", backend)
+    monkeypatch.setattr(data_scripts, "_payment_with_bank_fallback", pay)
+
+    passed, _, _, summary = data_scripts.run_resume_porder_flow_script(
+        full_flow_env(),
+        {"porder_sn": "PORDER-PAID", "stop_after_node": "porder_paid"},
+    )
+
+    assert passed is True
+    assert calls == ["backend", "pay"]
+    assert captured["report_name"] == data_scripts.RESUME_PORDER_FLOW_SCRIPT_NAME
+    assert summary["paused"] is False
+    assert summary["current_node"] == "porder_paid"
+    assert summary["porder_sn"] == "PORDER-PAID"
+    assert [item["node"] for item in summary["steps"]] == ["porder_offered", "porder_paid"]
+
+
+def test_detect_resume_porder_state_uses_detail_status_text(monkeypatch):
+    monkeypatch.setattr(data_scripts, "_admin_session_from", lambda variables: SimpleNamespace(headers={}))
+    monkeypatch.setattr(data_scripts, "_admin_login", lambda session, base_url, variables, timeout: ({"success": True, "code": 0}, "TOKEN"))
+    monkeypatch.setattr(
+        data_scripts,
+        "_porder_detail_payload",
+        lambda session, base_url, variables, porder_sn, timeout, retries=4: (
+            {"success": True, "code": 0},
+            [{"id": "DETAIL-1", "statusName": "待报价"}],
+        ),
+    )
+    monkeypatch.setattr(
+        data_scripts,
+        "_post_admin_urlencoded",
+        lambda session, base_url, path, fields, timeout: {"success": True, "code": 0, "data": []},
+    )
+
+    detected, summary = data_scripts._detect_resume_porder_state(
+        full_flow_env(),
+        {},
+        "PORDER-STATUS",
+        {},
+    )
+
+    assert detected is True
+    assert summary["status_detected_node"] == "porder_wait_offer"
+    assert summary["detected_start_node"] == "porder_wait_offer"
+
+
 def test_full_flow_endpoint_returns_summary(monkeypatch):
     def fake_full_flow(env, variables):
         assert variables["stop_after_node"] == "pending_purchase"

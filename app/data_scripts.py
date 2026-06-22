@@ -5271,6 +5271,43 @@ def _run_backend_porder_flow_resume(
     }
 
 
+def _porder_detail_status_texts(rows: list[Dict[str, Any]]) -> list[str]:
+    texts: list[str] = []
+    keys = [
+        "status",
+        "statusName",
+        "status_name",
+        "statusText",
+        "status_text",
+        "porder_status",
+        "porderStatus",
+        "porder_status_name",
+        "porderStatusName",
+    ]
+    for row in rows:
+        for key in keys:
+            value = row.get(key)
+            if value not in (None, "", [], {}):
+                texts.append(str(value).strip())
+    return _unique_list([text for text in texts if text])
+
+
+def _porder_node_from_status_texts(texts: list[str]) -> str:
+    status_text = " ".join(texts).lower()
+    if not status_text:
+        return ""
+    node_keywords = [
+        ("porder_offered", ["已报价", "报价完成", "待付款", "等待付款", "wait_pay", "wait pay", "offered", "quoted"]),
+        ("porder_wait_offer", ["待报价", "等待报价", "wait_offer", "wait offer"]),
+        ("porder_confirmed", ["已装箱", "装箱完成", "待提交业务", "提交业务", "confirmed"]),
+        ("porder_translated", ["已配货", "配货完成", "待装箱", "已翻译", "翻译完成", "translated"]),
+    ]
+    for node, keywords in node_keywords:
+        if any(keyword in status_text for keyword in keywords):
+            return node
+    return ""
+
+
 def _detect_resume_porder_state(
     env: Env,
     variables: Dict[str, Any],
@@ -5325,6 +5362,8 @@ def _detect_resume_porder_state(
             detail_statuses.add(status)
         if row.get("freight_id"):
             detail_has_freight_id = True
+    detail_status_texts = _porder_detail_status_texts(detail_rows)
+    status_detected_node = _porder_node_from_status_texts(detail_status_texts)
 
     detected_start_node = ""
     order_status = detail_statuses
@@ -5333,9 +5372,13 @@ def _detect_resume_porder_state(
     # 若无箱子 → warehouse_delivery_created 或 porder_translated
     # 有箱子但未完成装箱 → porder_confirmed
     # 箱子已完成 → porder_wait_offer 或 porder_offered
-    if not has_boxes:
+    if status_detected_node == "porder_offered":
+        detected_start_node = "porder_offered"
+    elif not has_boxes:
         # 检查是否已提交翻译：detail 行的 status 如果有 translate 相关标记
-        if not detail_has_freight_id:
+        if status_detected_node in {"porder_translated", "porder_confirmed", "porder_wait_offer"}:
+            detected_start_node = status_detected_node
+        elif not detail_has_freight_id:
             detected_start_node = "warehouse_delivery_created"
         else:
             detected_start_node = "porder_translated"
@@ -5354,14 +5397,18 @@ def _detect_resume_porder_state(
         offered = bool(amount_data and (
             _positive_decimal(str(amount_data.get("pay_amount") or amount_data.get("amount") or "0"))
         ))
-        if offered:
+        if offered or status_detected_node == "porder_offered":
             detected_start_node = "porder_offered"
+        elif status_detected_node in {"porder_confirmed", "porder_wait_offer"}:
+            detected_start_node = status_detected_node
         else:
             detected_start_node = "porder_wait_offer"
 
     summary: Dict[str, Any] = {
         "porder_sn": porder_sn,
         "detail_statuses": list(detail_statuses),
+        "detail_status_texts": detail_status_texts,
+        "status_detected_node": status_detected_node,
         "has_boxes": has_boxes,
         "boxes_completed": boxes_completed,
         "detected_start_node": detected_start_node,
@@ -7261,7 +7308,8 @@ def _resume_flow_finish(
         summary["stopped_after_node"] = current_node
     if reason:
         summary["reason"] = reason
-    return _finish_named(RESUME_ORDER_FLOW_SCRIPT_NAME, log, passed, summary)
+    script_name = str(log.get("script") or RESUME_ORDER_FLOW_SCRIPT_NAME)
+    return _finish_named(script_name, log, passed, summary)
 
 
 def _full_flow_stop_reached(variables: Dict[str, Any], node: str) -> bool:
@@ -7595,6 +7643,8 @@ def run_resume_porder_flow_script(env: Env, variables: Dict[str, Any] | None = N
         "shared_data": {},
         "skipped_nodes": [],
     }
+    if porder_sn:
+        log["shared_data"]["porder_sn"] = porder_sn
 
     try:
         if not porder_sn:
@@ -7646,9 +7696,6 @@ def run_resume_porder_flow_script(env: Env, variables: Dict[str, Any] | None = N
                 return _resume_flow_finish(log, True, str(backend_summary.get("current_node") or "porder_offered"), paused=True)
 
         # 支付：余额优先，余额不足自动降级银行支付
-        if _full_flow_stop_reached(variables, "porder_paid"):
-            return _resume_flow_finish(log, True, "porder_paid", paused=True)
-
         porder_pay_vars = dict(variables)
         porder_pay_vars["porder_sn"] = porder_sn
         porder_pay_vars["run_backend_porder_flow"] = False
@@ -7669,9 +7716,6 @@ def run_resume_porder_flow_script(env: Env, variables: Dict[str, Any] | None = N
                 "porder_paid",
                 reason=str(pay_summary.get("reason") or pay_summary.get("error") or "配送单支付失败"),
             )
-        if _full_flow_stop_reached(variables, "porder_paid"):
-            return _resume_flow_finish(log, True, "porder_paid", paused=True)
-
         return _resume_flow_finish(log, True, "porder_paid")
     except Exception as exc:
         log["error"] = str(exc)
