@@ -1,0 +1,597 @@
+{
+  "script": "输入订单号继续执行操作",
+  "mode": "resume_order_flow",
+  "started_at": "2026-06-22 14:26:17.898790",
+  "order_sn": "2026062214221053-300001",
+  "stop_after_node": "shelf_stored",
+  "input_adjustments": {
+    "target_shops": {
+      "before": null,
+      "after": 4
+    },
+    "per_shop": {
+      "before": null,
+      "after": 5
+    },
+    "order_shop_count": {
+      "before": null,
+      "after": 1
+    },
+    "order_per_shop": {
+      "before": null,
+      "after": 2
+    },
+    "order_item_count": {
+      "before": null,
+      "after": 2
+    }
+  },
+  "steps": [
+    {
+      "node": "order_translated",
+      "node_label": "后台订单翻译完成",
+      "script": "订单报价",
+      "passed": true,
+      "paused": false,
+      "duration_ms": null,
+      "summary": {
+        "order_sn": "2026062214221053-300001",
+        "backend_passed": true,
+        "backend_steps": [
+          "login",
+          "detail",
+          "translate",
+          "confirm",
+          "offer"
+        ],
+        "quote_unit_price": "10",
+        "backend_status": 30
+      },
+      "report_path": ""
+    },
+    {
+      "node": "order_paid",
+      "node_label": "订单支付完成",
+      "script": "余额支付",
+      "passed": true,
+      "paused": false,
+      "duration_ms": 3299,
+      "summary": {
+        "payment_type": "balance",
+        "order_sn": "2026062214221053-300001",
+        "pay_amount": "635427",
+        "payment_passed": true,
+        "serial_number": "178210958803100300001658",
+        "duration_ms": 3299,
+        "attempted_payment_types": [
+          "balance"
+        ]
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\bcd5a68c-230b-41d1-84a7-1aa11bce6bcf-result.json"
+    },
+    {
+      "node": "shelf_stored",
+      "node_label": "核查上架入库完成",
+      "script": "待拍下到商品上架",
+      "passed": true,
+      "paused": true,
+      "duration_ms": 11002,
+      "summary": {
+        "order_sn": "2026062214221053-300001",
+        "purchase_no": "20260622142633",
+        "selected_count": 3,
+        "purchase_ids": [
+          15327657,
+          15327658,
+          15327659
+        ],
+        "order_detail_ids": [
+          "14051507",
+          "14051508",
+          "14051509"
+        ],
+        "order_detail_id": "14051507",
+        "grid_id": 12444,
+        "grid_number": "【三部-FBA.1.1-FBA-003】-1-6-9",
+        "storage_count": 3,
+        "storage_passed": true,
+        "paused": true,
+        "stopped_after_node": "shelf_stored",
+        "current_node": "shelf_stored",
+        "node_label": "核查上架入库完成",
+        "duration_ms": 11002
+      },
+      "report_path": "D:\\A_zidonghuapingtai\\reports\\allure-results\\e6dec76a-3dcb-4334-96ea-fbc72bec7f58-result.json"
+    }
+  ],
+  "shared_data": {
+    "order_sn": "2026062214221053-300001",
+    "serial_number": "178210958803100300001658",
+    "payment_type": "balance",
+    "pay_amount": "635427",
+    "purchase_no": "20260622142633",
+    "purchase_ids": [
+      15327657,
+      15327658,
+      15327659
+    ],
+    "grid_id": 12444,
+    "grid_number": "【三部-FBA.1.1-FBA-003】-1-6-9",
+    "order_detail_id": "14051507",
+    "order_detail_ids": [
+      "14051507",
+      "14051508",
+      "14051509"
+    ]
+  },
+  "skipped_nodes": [],
+  "resume_detect": {
+    "order_sn": "2026062214221053-300001",
+    "base_url": "https://jpapi.rakumart.cn",
+    "login": {
+      "success": true,
+      "code": 0,
+      "msg": "登录成功",
+      "account": "Y001",
+      "token_extracted": true
+    },
+    "detail": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "data.order_sn": "2026062214221053-300001",
+      "order_id": 813968,
+      "order_sn": "2026062214221053-300001",
+      "status": 20,
+      "statusName": null,
+      "detail_count": 3,
+      "details": [
+        {
+          "id": 14051507,
+          "goods_id": "595885125115",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051508,
+          "goods_id": "662597669065",
+          "num": 1000,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051509,
+          "goods_id": "1012705887117",
+          "num": 2000,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    },
+    "purchase_list": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "request": {
+        "page": 1,
+        "pageSize": 20,
+        "status": "全部",
+        "dateStart": "",
+        "dateEnd": "",
+        "user_id": "",
+        "order_sn": "2026062214221053-300001",
+        "g_id": "",
+        "is_urgent": "",
+        "overdue": ""
+      },
+      "row_count": 0,
+      "selected_count": 0,
+      "pending_start_count": 0,
+      "selected_items": []
+    }
+  },
+  "detected_start_node": "order_translated",
+  "backend": {
+    "order_sn": "2026062214221053-300001",
+    "mode": "resume_order_flow",
+    "steps": [],
+    "login": {
+      "success": true,
+      "code": 0,
+      "msg": "登录成功",
+      "account": "Y001",
+      "token_extracted": true
+    },
+    "detail_before": {
+      "order_id": 813968,
+      "order_sn": "2026062214221053-300001",
+      "status": 20,
+      "statusName": null,
+      "detail_count": 3,
+      "details": [
+        {
+          "id": 14051507,
+          "goods_id": "595885125115",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051508,
+          "goods_id": "662597669065",
+          "num": 1000,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051509,
+          "goods_id": "1012705887117",
+          "num": 2000,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    },
+    "translate": {
+      "success": true,
+      "code": 0,
+      "msg": "翻译成功"
+    },
+    "detail_after_translate": {
+      "order_id": 813968,
+      "order_sn": "2026062214221053-300001",
+      "status": 21,
+      "statusName": null,
+      "detail_count": 3,
+      "details": [
+        {
+          "id": 14051507,
+          "goods_id": "595885125115",
+          "num": 10,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051508,
+          "goods_id": "662597669065",
+          "num": 1000,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051509,
+          "goods_id": "1012705887117",
+          "num": 2000,
+          "confirm_num": 0,
+          "confirm_price": "0.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    },
+    "confirm": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 3
+    },
+    "detail_after_confirm": {
+      "order_id": 813968,
+      "order_sn": "2026062214221053-300001",
+      "status": 22,
+      "statusName": null,
+      "detail_count": 3,
+      "details": [
+        {
+          "id": 14051507,
+          "goods_id": "595885125115",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051508,
+          "goods_id": "662597669065",
+          "num": 1000,
+          "confirm_num": 1000,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051509,
+          "goods_id": "1012705887117",
+          "num": 2000,
+          "confirm_num": 2000,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    },
+    "offer": {
+      "success": true,
+      "code": 0,
+      "msg": "操作成功",
+      "detail_count": 3
+    },
+    "detail_after_offer": {
+      "order_id": 813968,
+      "order_sn": "2026062214221053-300001",
+      "status": 30,
+      "statusName": null,
+      "detail_count": 3,
+      "details": [
+        {
+          "id": 14051507,
+          "goods_id": "595885125115",
+          "num": 10,
+          "confirm_num": 10,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051508,
+          "goods_id": "662597669065",
+          "num": 1000,
+          "confirm_num": 1000,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        },
+        {
+          "id": 14051509,
+          "goods_id": "1012705887117",
+          "num": 2000,
+          "confirm_num": 2000,
+          "confirm_price": "10.00",
+          "offer_num": null,
+          "offer_price": null,
+          "status": 0,
+          "statusName": "待采购"
+        }
+      ]
+    }
+  },
+  "duration_ms": 27092,
+  "summary": {
+    "passed": true,
+    "paused": true,
+    "current_node": "shelf_stored",
+    "node_label": "核查上架入库完成",
+    "stop_after_node": "shelf_stored",
+    "detected_start_node": "order_translated",
+    "total_steps": 3,
+    "success_steps": 3,
+    "node_results": [
+      {
+        "node": "shopping_cart",
+        "node_label": "商品加购完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_created",
+        "node_label": "前台提交订单完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_translated",
+        "node_label": "后台订单翻译完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_confirmed",
+        "node_label": "后台订单确认完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_offered",
+        "node_label": "后台订单报价完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "order_paid",
+        "node_label": "订单支付完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "pending_purchase",
+        "node_label": "订单进入待拍下",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_no_saved",
+        "node_label": "保存交易号完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_wait_modify_price",
+        "node_label": "标记待改价完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_wait_pay",
+        "node_label": "提交待财务付款完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "purchase_paid",
+        "node_label": "交易号付款完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "checking_started",
+        "node_label": "开始核查完成",
+        "status": "completed",
+        "passed": true
+      },
+      {
+        "node": "shelf_stored",
+        "node_label": "核查上架入库完成",
+        "status": "paused",
+        "passed": true
+      },
+      {
+        "node": "warehouse_delivery_created",
+        "node_label": "仓库提出配送单完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_translated",
+        "node_label": "配送单待翻译完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_confirmed",
+        "node_label": "配送单确认流转完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_wait_offer",
+        "node_label": "配送单进入待报价完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_offered",
+        "node_label": "配送单报价完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "porder_paid",
+        "node_label": "配送单支付完成",
+        "status": "pending",
+        "passed": null
+      },
+      {
+        "node": "full_complete",
+        "node_label": "全流程结束",
+        "status": "pending",
+        "passed": null
+      }
+    ],
+    "steps": [
+      {
+        "node": "order_translated",
+        "node_label": "后台订单翻译完成",
+        "script": "订单报价",
+        "passed": true,
+        "paused": false,
+        "duration_ms": null
+      },
+      {
+        "node": "order_paid",
+        "node_label": "订单支付完成",
+        "script": "余额支付",
+        "passed": true,
+        "paused": false,
+        "duration_ms": 3299
+      },
+      {
+        "node": "shelf_stored",
+        "node_label": "核查上架入库完成",
+        "script": "待拍下到商品上架",
+        "passed": true,
+        "paused": true,
+        "duration_ms": 11002
+      }
+    ],
+    "step_timings": [
+      {
+        "node": "order_paid",
+        "script": "余额支付",
+        "duration_ms": 3299
+      },
+      {
+        "node": "shelf_stored",
+        "script": "待拍下到商品上架",
+        "duration_ms": 11002
+      }
+    ],
+    "skipped_nodes": [],
+    "order_sn": "2026062214221053-300001",
+    "serial_number": "178210958803100300001658",
+    "payment_type": "balance",
+    "pay_amount": "635427",
+    "purchase_no": "20260622142633",
+    "purchase_ids": [
+      15327657,
+      15327658,
+      15327659
+    ],
+    "grid_id": 12444,
+    "grid_number": "【三部-FBA.1.1-FBA-003】-1-6-9",
+    "order_detail_id": "14051507",
+    "order_detail_ids": [
+      "14051507",
+      "14051508",
+      "14051509"
+    ],
+    "stopped_after_node": "shelf_stored",
+    "duration_ms": 27092
+  },
+  "finished_at": "2026-06-22 14:26:44.991508"
+}
