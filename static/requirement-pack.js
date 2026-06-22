@@ -4,6 +4,7 @@
     { value: "passed", label: "通过" },
     { value: "failed", label: "失败" },
     { value: "blocked", label: "阻塞" },
+    { value: "needs_review", label: "需确认" },
     { value: "skipped", label: "跳过" },
   ];
 
@@ -21,6 +22,69 @@
       .map((item) => `<option value="${item.value}" ${item.value === selected ? "selected" : ""}>${item.label}</option>`)
       .join("");
   }
+
+  const FUNCTIONAL_TERMINAL_STATUSES = new Set(["passed", "failed", "error", "blocked", "needs_review"]);
+
+  function isTerminalFunctionalJob(job) {
+    return FUNCTIONAL_TERMINAL_STATUSES.has(String(job?.status || ""));
+  }
+
+  function functionalExecutionToast(job) {
+    return `执行完成：成功 ${job?.passed_count || 0} 条，失败 ${job?.failed_count || 0} 条，阻断 ${job?.blocked_count || 0} 条，需确认 ${job?.review_count || 0} 条`;
+  }
+
+  function augmentFunctionalExecutionSummary(job) {
+    const summaryEl = document.querySelector(".functional-execution-summary");
+    if (!summaryEl) return;
+    if (!summaryEl.querySelector("[data-functional-blocked-count]")) {
+      summaryEl.insertAdjacentHTML(
+        "beforeend",
+        '<div><span>阻断</span><strong class="danger-text" data-functional-blocked-count>0</strong></div>' +
+          '<div><span>需确认</span><strong data-functional-review-count>0</strong></div>',
+      );
+    }
+    const blockedEl = summaryEl.querySelector("[data-functional-blocked-count]");
+    const reviewEl = summaryEl.querySelector("[data-functional-review-count]");
+    if (blockedEl) blockedEl.textContent = String(job?.blocked_count || 0);
+    if (reviewEl) reviewEl.textContent = String(job?.review_count || 0);
+  }
+
+  function patchFunctionalExecutionProgress() {
+    if (typeof window === "undefined" || window.__requirementExecutionProgressPatched) return;
+    window.__requirementExecutionProgressPatched = true;
+    const originalDone = typeof window.isFunctionalExecutionDone === "function" ? window.isFunctionalExecutionDone : null;
+    if (originalDone) {
+      window.isFunctionalExecutionDone = (job) => isTerminalFunctionalJob(job) || originalDone(job);
+    }
+    const originalRender = typeof window.renderFunctionalExecutionProgress === "function" ? window.renderFunctionalExecutionProgress : null;
+    if (originalRender) {
+      window.renderFunctionalExecutionProgress = (job) => {
+        originalRender(job);
+        augmentFunctionalExecutionSummary(job);
+      };
+    }
+    if (typeof window.watchFunctionalExecutionProgress === "function") {
+      window.watchFunctionalExecutionProgress = async (initialJob) => {
+        let job = initialJob;
+        let closed = false;
+        const onClose = () => {
+          closed = true;
+        };
+        modalEl.addEventListener("close", onClose, { once: true });
+        while (true) {
+          window.renderFunctionalExecutionProgress(job);
+          if (isTerminalFunctionalJob(job)) break;
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          if (closed) return;
+          job = await api(`/api/functional-executions/${job.job_id}`);
+        }
+        showToast(functionalExecutionToast(job));
+        await renderFunctionalTests();
+      };
+    }
+  }
+
+  patchFunctionalExecutionProgress();
 
   function conclusionClass(decision) {
     if (decision === "ready") return "ok";
@@ -234,6 +298,7 @@
 
   function renderRequirementPreflightOverview(summary = {}, cases = []) {
     const unchecked = summary.unchecked ?? cases.filter((item) => !item.quality_status || item.quality_status === "unchecked").length;
+    const trialRunnable = summary.trial_runnable ?? 0;
     const sampleReasons = cases
       .filter((item) => item.quality_status && item.quality_status !== "executable")
       .slice(0, 5)
@@ -245,6 +310,7 @@
     return `
       <div class="requirement-preflight-overview">
         <div><span>可自动执行</span><strong>${escapeHtml(summary.executable ?? 0)}</strong></div>
+        <div><span>可试跑</span><strong>${escapeHtml(trialRunnable)}</strong></div>
         <div><span>需人工核对</span><strong>${escapeHtml(summary.manual_check ?? 0)}</strong></div>
         <div><span>登录阻断</span><strong>${escapeHtml(summary.auth_blocked ?? 0)}</strong></div>
         <div><span>缺真实数据</span><strong>${escapeHtml(summary.data_missing ?? 0)}</strong></div>
@@ -792,6 +858,52 @@
     });
   }
 
+  function requirementExecutionModeCounts(task, caseIds) {
+    const selected = new Set(caseIds || []);
+    const trialStatuses = new Set(["executable", "unchecked", "needs_review", "missing_variables", "locator_risk"]);
+    const rows = (task.cases || []).filter((item) => {
+      return selected.has(item.id) && item.automation_status === "approved" && item.ui_case_id;
+    });
+    const trusted = rows.filter((item) => item.quality_status === "executable").length;
+    const trial = rows.filter((item) => trialStatuses.has(item.quality_status || "unchecked")).length;
+    return { trusted, trial };
+  }
+
+  function renderRequirementExecutionMode(task, caseIds) {
+    const counts = requirementExecutionModeCounts(task, caseIds);
+    const trialChecked = counts.trusted <= 0 && counts.trial > 0;
+    return `
+      <details class="functional-requirement" id="requirementExecutionMode" open>
+        <summary>执行模式</summary>
+        <div class="form-grid">
+          <label class="check-field">
+            <input type="radio" name="__execution_mode" value="trusted" ${trialChecked ? "" : "checked"} />
+            可信执行（${escapeHtml(counts.trusted)}）
+          </label>
+          <label class="check-field">
+            <input type="radio" name="__execution_mode" value="trial" ${trialChecked ? "checked" : ""} ${counts.trial ? "" : "disabled"} />
+            试跑风险用例（${escapeHtml(counts.trial)}）
+          </label>
+        </div>
+        ${
+          counts.trusted <= 0 && counts.trial > 0
+            ? `<p class="muted-text">当前没有高可信用例，已默认切换为试跑模式。</p>`
+            : `<p class="muted-text">试跑模式会执行定位风险、缺数据和需确认用例，结果仍按真实通过、失败、阻断或需确认分类。</p>`
+        }
+      </details>
+    `;
+  }
+
+  function injectRequirementExecutionMode(task, caseIds) {
+    const bodyEl = document.querySelector("#functionalExecuteForm .modal-body");
+    if (!bodyEl || bodyEl.querySelector("#requirementExecutionMode")) return;
+    bodyEl.insertAdjacentHTML("afterbegin", renderRequirementExecutionMode(task, caseIds));
+  }
+
+  function readRequirementExecutionForce() {
+    return document.querySelector('#functionalExecuteForm input[name="__execution_mode"]:checked')?.value === "trial";
+  }
+
   function openRequirementBatchExecuteForm(task, caseIds, accounts = [], projects = []) {
     const filteredTask = { ...task, cases: (task.cases || []).filter((item) => caseIds.includes(item.id)) };
     openFunctionalExecutionModal({
@@ -802,6 +914,7 @@
       submitLabel: "预检并执行",
       onSubmit: async (payload) => {
         payload.case_ids = caseIds;
+        payload.force = readRequirementExecutionForce();
         const job = await api(`/api/functional-tasks/${task.id}/execute-async`, {
           method: "POST",
           body: payload,
@@ -809,6 +922,7 @@
         await watchFunctionalExecutionProgress(job);
       },
     });
+    injectRequirementExecutionMode(task, caseIds);
   }
 
   function isNotFoundError(error) {
@@ -867,6 +981,7 @@
           <strong>测试包预检完成</strong>
           <div>
             <span>可自动执行：${escapeHtml(result?.executable_count ?? 0)}</span>
+            <span>可试跑：${escapeHtml(result?.trial_count ?? counts.trial_runnable ?? 0)}</span>
             <span>需人工核对：${escapeHtml(counts.manual_check ?? 0)}</span>
             <span>登录阻断：${escapeHtml(counts.auth_blocked ?? 0)}</span>
             <span>缺真实数据：${escapeHtml(counts.data_missing ?? 0)}</span>
@@ -1217,6 +1332,8 @@
         '<strong>' + statusIcon + ' 执行 #' + data.run_id + '</strong>' +
         '<span>通过：' + (data.passed_count || 0) + '</span>' +
         '<span>失败：' + (data.failed_count || 0) + '</span>' +
+        '<span>阻断：' + (data.blocked_count || 0) + '</span>' +
+        '<span>需确认：' + (data.review_count || 0) + '</span>' +
         '<span>' + escapeHtml(data.summary || "") + '</span>' +
       '</div>' +
       casesHtml +

@@ -1410,7 +1410,10 @@ def _classify_functional_execution_result(passed: bool, log_text: str, quality_s
         return "needs_review", f"preflight:{quality}"
 
     log_data = parse_json_value(log_text, {})
-    text = json.dumps(log_data if isinstance(log_data, dict) else {"log": log_text}, ensure_ascii=False, default=str).lower()
+    if isinstance(log_data, dict) and log_data:
+        text = json.dumps(log_data, ensure_ascii=False, default=str).lower()
+    else:
+        text = str(log_text or "").lower()
     verification_status = log_data.get("verification_status") if isinstance(log_data, dict) else ""
     business = log_data.get("business_verification") if isinstance(log_data, dict) else {}
     if isinstance(business, dict) and int(business.get("business_assertion_count") or 0) == 0:

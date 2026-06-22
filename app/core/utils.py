@@ -1210,8 +1210,7 @@ def case_has_business_assertion(case: FunctionalCase, steps: list[Dict[str, Any]
             return True
         if isinstance(condition, str) and condition.strip():
             return True
-    expected = str(case.expected or "").strip()
-    return bool(expected and expected not in {"页面正常显示", "操作成功", "成功"})
+    return False
 
 
 GENERIC_EXPECTED_TEXTS = {"", "页面正常显示", "操作成功", "成功", "椤甸潰姝ｅ父鏄剧ず", "鎿嶄綔鎴愬姛", "鎴愬姛"}

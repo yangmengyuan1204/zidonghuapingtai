@@ -1,5 +1,6 @@
 import atexit
 import base64
+import json
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -21,8 +22,10 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key")
 from fastapi.testclient import TestClient
 
 import app.executors as executors
+import app.core.utils as core_utils
 import app.functional_testing as functional_testing
 import app.main as main
+import app.routers.functional_tasks as functional_task_router
 from app.main import app
 
 
@@ -134,6 +137,60 @@ def test_steps_without_business_assertion_are_not_trusted_success():
     assert ok is False
     assert evidence["business_assertion_count"] == 0
     assert any("缺少业务断言" in item for item in verification_issues)
+
+
+def test_expected_text_generates_weak_business_assertion():
+    class FakeDb:
+        flushed = False
+
+        def flush(self):
+            self.flushed = True
+
+    db = FakeDb()
+    case = SimpleNamespace(expected="保存成功")
+    ui_case = SimpleNamespace(steps="")
+    steps = [{"action": "click", "locator": "button:has-text('保存')"}]
+
+    next_steps, generated = core_utils.ensure_weak_business_assertion(db, case, ui_case, steps)
+
+    assert generated is True
+    assert db.flushed is True
+    assert next_steps[-1]["action"] == "text_assert"
+    assert next_steps[-1]["locator"] == "body"
+    assert next_steps[-1]["value"] == "保存成功"
+    assert "保存成功" in ui_case.steps
+
+
+def test_functional_execution_result_classifies_blocked_and_review():
+    missing_assertion_log = json.dumps(
+        {"verification_status": "failed_verification", "business_verification": {"business_assertion_count": 0}},
+        ensure_ascii=False,
+    )
+
+    assert functional_task_router._classify_functional_execution_result(False, "login_required #/login", "executable")[0] == "blocked"
+    assert functional_task_router._classify_functional_execution_result(False, "option_not_found", "executable")[0] == "blocked"
+    assert functional_task_router._classify_functional_execution_result(False, missing_assertion_log, "executable")[0] == "needs_review"
+    assert functional_task_router._classify_functional_execution_result(False, "preflight", core_utils.QUALITY_MISSING_VARIABLES)[0] == "blocked"
+    assert functional_task_router._classify_functional_execution_result(False, "preflight", core_utils.QUALITY_NEEDS_REVIEW)[0] == "needs_review"
+
+
+def test_preflight_summary_counts_trial_runnable():
+    summary = core_utils.functional_package_preflight_summary(
+        [
+            {"quality_status": core_utils.QUALITY_EXECUTABLE},
+            {"quality_status": core_utils.QUALITY_UNCHECKED},
+            {"quality_status": core_utils.QUALITY_MISSING_VARIABLES},
+            {"quality_status": core_utils.QUALITY_LOCATOR_RISK},
+            {"quality_status": core_utils.QUALITY_NEEDS_REVIEW},
+            {"quality_status": core_utils.QUALITY_AUTH_RISK},
+            {"quality_status": core_utils.QUALITY_NOT_RECOMMENDED},
+        ]
+    )
+
+    assert summary["executable"] == 1
+    assert summary["trial_runnable"] == 5
+    assert summary["manual_check"] == 5
+    assert summary["auth_blocked"] == 1
 
 
 def test_scan_endpoint_returns_trace_without_unbound_scanned(monkeypatch):
