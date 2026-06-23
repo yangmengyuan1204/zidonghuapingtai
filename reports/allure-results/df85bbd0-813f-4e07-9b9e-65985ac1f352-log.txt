@@ -1,0 +1,193 @@
+{
+  "case_name": "搜索功能-按客户名称模糊搜索",
+  "page_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+  "steps": [
+    {
+      "action": "goto",
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse"
+    },
+    {
+      "name": "在客户ID/名称输入框输入客户名称关键字",
+      "action": "input",
+      "locator": "input[placeholder*=\"客户\"]",
+      "fallback_locators": [
+        "input[placeholder*=\"名称\"]",
+        "input[placeholder*=\"ID\"]"
+      ],
+      "value": "小杨专属仓库.1.1-0003",
+      "timeout": 10000,
+      "optional": false
+    },
+    {
+      "name": "点击搜索按钮",
+      "action": "click",
+      "locator": "text=搜索",
+      "fallback_locators": [
+        "button:has-text(\"搜索\")",
+        "input[type=\"submit\"][value=\"搜索\"]"
+      ],
+      "timeout": 10000,
+      "optional": false
+    },
+    {
+      "name": "验证表格显示包含关键字的箱子数据",
+      "action": "wait_for_selector",
+      "locator": "table",
+      "fallback_locators": [
+        "div[class*=\"table\"]",
+        "div[class*=\"list\"]"
+      ],
+      "timeout": 15000,
+      "optional": false
+    }
+  ],
+  "timeout": 30,
+  "variables": {
+    "timestamp": 1782122107,
+    "datetime": "2026-06-22 17:55:07",
+    "date": "2026-06-22",
+    "uuid": "df1e3fe0-6196-44f0-b0cb-a7cc9e0f7e8d",
+    "random_int": 100569,
+    "random_str": "ppu80isl",
+    "random_phone": "13992571848",
+    "random_email": "test_100569@example.com",
+    "$timestamp": 1782122107,
+    "$datetime": "2026-06-22 17:55:07",
+    "$date": "2026-06-22",
+    "$uuid": "df1e3fe0-6196-44f0-b0cb-a7cc9e0f7e8d",
+    "$random_int": 100569,
+    "$random_str": "ppu80isl",
+    "$random_phone": "13992571848",
+    "$random_email": "test_100569@example.com",
+    "customer_id": "300001",
+    "customerId": "300001",
+    "customerID": "300001",
+    "customer_name": "小杨测试",
+    "customerName": "小杨测试",
+    "box_no": "2026061517095887-300001-8",
+    "boxNo": "2026061517095887-300001-8",
+    "boxCode": "2026061517095887-300001-8",
+    "box_number": "2026061517095887-300001-8",
+    "location_code": "小杨专属仓库.1.1-0003",
+    "locationCode": "小杨专属仓库.1.1-0003",
+    "warehouse_location": "小杨专属仓库.1.1-0003",
+    "keyword": "小杨专属仓库.1.1-0003",
+    "startDate": "2026-06-18",
+    "start_date": "2026-06-18",
+    "endDate": "2026-06-16",
+    "end_date": "2026-06-16"
+  },
+  "validation_issues": [
+    {
+      "severity": "warning",
+      "message": "用例缺少业务断言，执行器会跑完整步骤，但不会把结果判定为可信成功"
+    }
+  ],
+  "step_logs": [
+    {
+      "name": "打开页面",
+      "action": "goto",
+      "locator": "",
+      "fallback_locators": [],
+      "value": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "started_at": "2026-06-22 17:55:07.688894",
+      "status": "passed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-ac6bda41-c55a-432e-a81d-6188c88a4218.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/longTermStorageWarehouse",
+      "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "after_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-after-b8595359-db2d-4dab-8026-7472434566ba.png",
+      "duration_ms": 133,
+      "finished_at": "2026-06-22 17:55:07.822649",
+      "index": 1
+    },
+    {
+      "name": "在客户ID/名称输入框输入客户名称关键字",
+      "action": "input",
+      "locator": "input[placeholder*=\"客户\"]",
+      "fallback_locators": [
+        "input[placeholder*=\"名称\"]",
+        "input[placeholder*=\"ID\"]"
+      ],
+      "value": "小杨专属仓库.1.1-0003",
+      "started_at": "2026-06-22 17:55:08.139660",
+      "status": "failed",
+      "current_url_before": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-78f4dae8-3605-4fb6-9246-327c0009f6bc.png",
+      "current_url": "https://jpmanage.rakumart.cn/#/login",
+      "current_url_after": "https://jpmanage.rakumart.cn/#/login",
+      "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+      "duration_ms": 46259,
+      "finished_at": "2026-06-22 17:55:54.399330",
+      "error": "未找到可用定位器：input[placeholder*=\"客户\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"客户\\\"]\").first to be visible\n；input[placeholder*=\"名称\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"名称\\\"]\").first to be visible\n；input[placeholder*=\"ID\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"ID\\\"]\").first to be visible\n",
+      "category": "定位器找不到",
+      "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+      "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+      "failure_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-failed-b5e41cdb-7688-471f-9a47-15b2400c6ddb.png",
+      "index": 2
+    }
+  ],
+  "started_at": "2026-06-22 17:55:07.359391",
+  "retry_config": {
+    "retry_count": 2,
+    "retry_interval_ms": 1000
+  },
+  "auth_context": {
+    "login_required": false,
+    "account_profile_id": null,
+    "login_url": "",
+    "removed_login_step_count": 0,
+    "login_trace": []
+  },
+  "runtime_seed_variables": {},
+  "runtime_step_replacements": [],
+  "error": "在客户ID/名称输入框输入客户名称关键字失败：定位器找不到。规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "error_category": "定位器找不到",
+  "failure_reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+  "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+  "failed_step_index": 2,
+  "failed_step": {
+    "name": "在客户ID/名称输入框输入客户名称关键字",
+    "action": "input",
+    "locator": "input[placeholder*=\"客户\"]",
+    "fallback_locators": [
+      "input[placeholder*=\"名称\"]",
+      "input[placeholder*=\"ID\"]"
+    ],
+    "value": "小杨专属仓库.1.1-0003",
+    "timeout": 10000,
+    "optional": false
+  },
+  "failed_step_detail": {
+    "name": "在客户ID/名称输入框输入客户名称关键字",
+    "action": "input",
+    "locator": "input[placeholder*=\"客户\"]",
+    "fallback_locators": [
+      "input[placeholder*=\"名称\"]",
+      "input[placeholder*=\"ID\"]"
+    ],
+    "value": "小杨专属仓库.1.1-0003",
+    "started_at": "2026-06-22 17:55:08.139660",
+    "status": "failed",
+    "current_url_before": "https://jpmanage.rakumart.cn/#/login",
+    "visible_text_before": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+    "before_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-before-78f4dae8-3605-4fb6-9246-327c0009f6bc.png",
+    "current_url": "https://jpmanage.rakumart.cn/#/login",
+    "current_url_after": "https://jpmanage.rakumart.cn/#/login",
+    "visible_text_after": "RAKUMART 美好的一天从你开始... 登录 记住密码 立即登录 企业微信扫描登录",
+    "duration_ms": 46259,
+    "finished_at": "2026-06-22 17:55:54.399330",
+    "error": "未找到可用定位器：input[placeholder*=\"客户\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"客户\\\"]\").first to be visible\n；input[placeholder*=\"名称\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"名称\\\"]\").first to be visible\n；input[placeholder*=\"ID\"]: Locator.wait_for: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"input[placeholder*=\\\"ID\\\"]\").first to be visible\n",
+    "category": "定位器找不到",
+    "reason": "规定时间内没有找到目标元素，可能是页面未进入预期状态、加载慢或定位器失效。",
+    "suggestion": "先看失败截图确认页面停留位置，再检查前一步操作和 locator。",
+    "failure_screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\step-failed-b5e41cdb-7688-471f-9a47-15b2400c6ddb.png",
+    "index": 2
+  },
+  "current_url": "https://jpmanage.rakumart.cn/#/login",
+  "screenshot": "D:\\A_zidonghuapingtai\\reports\\screenshots\\1514d79f-6f98-464d-a7c5-088bdcced747.png",
+  "finished_at": "2026-06-22 17:57:29.864742"
+}
