@@ -2,6 +2,7 @@ import atexit
 import base64
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -26,7 +27,9 @@ import app.core.utils as core_utils
 import app.functional_testing as functional_testing
 import app.main as main
 import app.routers.functional_tasks as functional_task_router
+from app.database import SessionLocal
 from app.main import app
+from app.models import FunctionalCase
 
 
 PNG_1X1 = base64.b64decode(
@@ -166,14 +169,30 @@ def test_functional_execution_result_classifies_blocked_and_review():
         {"verification_status": "failed_verification", "business_verification": {"business_assertion_count": 0}},
         ensure_ascii=False,
     )
+    assertion_failed_log = json.dumps(
+        {
+            "current_url": "https://example.test",
+            "auth_context": {"login_required": False, "auth_blocked": False},
+            "failed_step": {"action": "text_assert", "locator": "body", "value": "__missing__"},
+            "error_category": "文案断言失败",
+            "error": "text_assert failed: expected text not found",
+        },
+        ensure_ascii=False,
+    )
     login_redirect_log = json.dumps(
         {"current_url": "https://example.test/#/login", "failed_step": {"action": "click"}, "error_category": "定位器找不到"},
         ensure_ascii=False,
     )
+    auth_blocked_log = json.dumps(
+        {"current_url": "https://example.test", "auth_context": {"auth_blocked": True}, "error_category": "auth_blocked"},
+        ensure_ascii=False,
+    )
 
-    assert functional_task_router._classify_functional_execution_result(False, "login_required #/login", "executable")[0] == "blocked"
+    assert functional_task_router._classify_functional_execution_result(False, "login_required #/login", "executable")[0] == "failed"
     assert functional_task_router._classify_functional_execution_result(False, "option_not_found", "executable")[0] == "blocked"
+    assert functional_task_router._classify_functional_execution_result(False, assertion_failed_log, "executable") == ("failed", "assertion_or_page_failure")
     assert functional_task_router._classify_functional_execution_result(False, login_redirect_log, "executable") == ("blocked", "auth_redirected_to_login")
+    assert functional_task_router._classify_functional_execution_result(False, auth_blocked_log, "executable") == ("blocked", "auth_blocked")
     assert functional_task_router._classify_functional_execution_result(False, missing_assertion_log, "executable")[0] == "needs_review"
     assert functional_task_router._classify_functional_execution_result(False, "preflight", core_utils.QUALITY_MISSING_VARIABLES)[0] == "blocked"
     assert functional_task_router._classify_functional_execution_result(False, "preflight", core_utils.QUALITY_NEEDS_REVIEW)[0] == "needs_review"
@@ -193,7 +212,7 @@ def test_preflight_summary_counts_trial_runnable():
     )
 
     assert summary["executable"] == 1
-    assert summary["trial_runnable"] == 5
+    assert summary["trial_runnable"] == 4
     assert summary["manual_check"] == 5
     assert summary["auth_blocked"] == 1
 
@@ -234,6 +253,18 @@ def protected_probe(url):
         "login_url": "https://example.test/#/login",
         "probe_error": "",
         "evidence": {"looks_like_login": True},
+    }
+
+
+def public_probe(url):
+    return {
+        "target_url": url,
+        "auth_required": False,
+        "protected_page_detected": False,
+        "current_url": url,
+        "login_url": "",
+        "probe_error": "",
+        "evidence": {"looks_like_login": False},
     }
 
 
@@ -323,6 +354,92 @@ def test_force_execute_cannot_bypass_missing_password(monkeypatch):
 
     assert response.status_code == 400
     assert "登录前置缺失" in response.json()["detail"]
+
+
+def test_force_execute_missing_variables_records_blocked_without_browser(monkeypatch):
+    monkeypatch.setattr(core_utils, "probe_target_auth_state", public_probe)
+    batch_calls = []
+
+    def fake_batch(items, on_case_start=None, on_case_finish=None):
+        batch_calls.append(list(items))
+        return []
+
+    monkeypatch.setattr(functional_task_router, "execute_ui_cases_batch", fake_batch)
+    with TestClient(app) as client:
+        token = login(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        project = client.post("/api/projects", headers=headers, json={"name": "missing-data-force-project", "desc": ""}).json()
+        task = client.post(
+            "/api/functional-tasks",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "iteration_name": "missing data force",
+                "target_url": "https://example.test",
+                "requirement_text": "",
+            },
+        ).json()
+        ui_case = client.post(
+            "/api/ui-cases",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "case_name": "搜索客户缺变量",
+                "page_url": "https://example.test/search?q={{customerId}}",
+                "steps": [
+                    {"action": "goto", "value": "https://example.test/search?q={{customerId}}"},
+                    {"action": "text_assert", "locator": "body", "value": "Example"},
+                ],
+                "timeout": 5,
+                "status": "active",
+            },
+        ).json()
+        db = SessionLocal()
+        try:
+            case = FunctionalCase(
+                task_id=task["id"],
+                title="搜索客户缺少真实数据",
+                precondition="",
+                steps="搜索客户 {{customerId}}",
+                expected="Example",
+                category="acceptance",
+                priority="P1",
+                automation_status="approved",
+                test_result="untested",
+                ui_case_id=ui_case["id"],
+                quality_status="unchecked",
+                quality_report="",
+                failure_count=0,
+                create_time=datetime.now(),
+            )
+            db.add(case)
+            db.commit()
+        finally:
+            db.close()
+
+        preflight = client.post(f"/api/functional-tasks/{task['id']}/preflight-package", headers=headers, json={})
+        assert preflight.status_code == 200
+        assert preflight.json()["counts"]["data_missing"] == 1
+        assert preflight.json()["trial_count"] == 0
+
+        response = client.post(f"/api/functional-tasks/{task['id']}/execute-async", headers=headers, json={"force": True})
+        assert response.status_code == 200
+        job_id = response.json()["job_id"]
+        final = {}
+        for _ in range(30):
+            final = client.get(f"/api/functional-executions/{job_id}", headers=headers).json()
+            if final.get("status") != "running":
+                break
+
+    assert batch_calls == []
+    assert final["status"] == "blocked"
+    assert final["blocked_count"] == 1
+    assert final["failed_count"] == 0
+    record = final["records"][0]
+    assert record["result"] == "blocked"
+    assert record["result_reason"] == "data_missing"
+    assert record["blocked_type"] == "data"
+    assert "customerId" in record["missing_variables"]
 
 
 def test_executor_blocks_business_steps_when_target_redirects_to_login():

@@ -1706,10 +1706,11 @@ def preflight_functional_package(
         )
     summary = functional_package_preflight_summary(case_items)
     executable_case_ids = [item["case_id"] for item in case_items if item["quality_status"] == QUALITY_EXECUTABLE]
+    trial_statuses = {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_LOCATOR_RISK}
     trial_case_ids = [
         item["case_id"]
         for item in case_items
-        if item["quality_status"] in {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_MISSING_VARIABLES, QUALITY_LOCATOR_RISK}
+        if item["quality_status"] in trial_statuses
     ]
     manual_items = [item for item in case_items if item["quality_status"] != QUALITY_EXECUTABLE]
     page_status = "ready" if db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).first() else "unchecked"

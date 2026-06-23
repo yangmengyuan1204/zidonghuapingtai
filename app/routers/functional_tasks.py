@@ -1425,7 +1425,7 @@ def _classify_functional_execution_result(passed: bool, log_text: str, quality_s
         if isinstance(log_data, dict) and log_data
         else str(log_text or "").lower()
     )
-    if isinstance(log_data, dict):
+    if isinstance(log_data, dict) and log_data:
         auth_context = log_data.get("auth_context") if isinstance(log_data.get("auth_context"), dict) else {}
         current_url = str(log_data.get("current_url") or "").lower()
         if log_data.get("error_category") == "auth_blocked" or auth_context.get("auth_blocked"):
