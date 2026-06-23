@@ -1414,6 +1414,15 @@ def _classify_functional_execution_result(passed: bool, log_text: str, quality_s
         text = json.dumps(log_data, ensure_ascii=False, default=str).lower()
     else:
         text = str(log_text or "").lower()
+    if isinstance(log_data, dict):
+        auth_context = log_data.get("auth_context") if isinstance(log_data.get("auth_context"), dict) else {}
+        current_url = str(log_data.get("current_url") or "").lower()
+        if log_data.get("error_category") == "auth_blocked" or auth_context.get("auth_blocked"):
+            return "blocked", "auth_blocked"
+        if ("#/login" in current_url or "/login" in current_url) and (
+            log_data.get("failed_step") or log_data.get("error_category")
+        ):
+            return "blocked", "auth_redirected_to_login"
     verification_status = log_data.get("verification_status") if isinstance(log_data, dict) else ""
     business = log_data.get("business_verification") if isinstance(log_data, dict) else {}
     if isinstance(business, dict) and int(business.get("business_assertion_count") or 0) == 0:
@@ -1476,6 +1485,7 @@ def _background_execute_functional(
         total_failed = 0
         total_blocked = 0
         total_review = 0
+        total_auth_blocked = 0
         _cached_vars = dict(variables)
         processed_case_ids: set[int] = set()
         batch_items: list[Dict[str, Any]] = []
@@ -1516,6 +1526,7 @@ def _background_execute_functional(
                 "failed_count": total_failed,
                 "blocked_count": total_blocked,
                 "review_count": total_review,
+                "auth_blocked_count": total_auth_blocked,
                 "completed": completed,
                 "current_case_title": current_title,
             }, ensure_ascii=False, default=str)
@@ -1529,7 +1540,7 @@ def _background_execute_functional(
             _write_run_progress(title, len(processed_case_ids))
 
         def _on_case_finish(item: Dict[str, Any], result_tuple: tuple[bool, str, str, str]) -> None:
-            nonlocal total_passed, total_failed, total_blocked, total_review
+            nonlocal total_passed, total_failed, total_blocked, total_review, total_auth_blocked
             fc = bg_db.get(FunctionalCase, int(item.get("functional_case_id")))
             ui_case = item.get("case")
             passed, log_text, screenshot_path, report_path = result_tuple
@@ -1557,6 +1568,7 @@ def _background_execute_functional(
                 elif result_status == "blocked":
                     fc.test_result = "blocked"
                     if auth_blocked:
+                        total_auth_blocked += 1
                         fc.quality_status = QUALITY_AUTH_RISK
                         fc.quality_report = json.dumps(
                             quality_report_payload(QUALITY_AUTH_RISK, "登录前置失败，未继续判定业务功能"),
@@ -1611,6 +1623,7 @@ def _background_execute_functional(
                 )
                 processed_case_ids.add(blocked_case.id)
                 total_blocked += 1
+                total_auth_blocked += 1
             _write_run_progress("登录前置失败，已停止后续用例", len(processed_case_ids))
 
         final_result = "failed" if total_failed else ("blocked" if total_blocked else ("needs_review" if total_review else "passed"))
@@ -1621,6 +1634,7 @@ def _background_execute_functional(
             "status": final_result,
             "blocked_count": total_blocked,
             "review_count": total_review,
+            "auth_blocked_count": total_auth_blocked,
         }, ensure_ascii=False, default=str)
         bg_task.status = final_result
         bg_db.commit()
@@ -1662,6 +1676,20 @@ def execute_functional_task_async(
         elif payload.case_ids:
             selected_case_ids = list(dict.fromkeys(int(item) for item in payload.case_ids if int(item) > 0))
     preflight_result = preflight_functional_package(db, task, payload, selected_case_ids or None, persist=True)
+    login_status = preflight_result.get("login") or {}
+    if login_status.get("status") == "blocked" and (
+        login_status.get("auth_required")
+        or login_status.get("protected_page_detected")
+        or login_status.get("blocking_reason") in {"auth_required_without_account", "account_missing", "account_ambiguous", "missing_credentials"}
+    ):
+        detail = login_status.get("message") or "登录前置未通过，已阻止执行用例"
+        candidates = login_status.get("candidate_profiles") or []
+        missing = login_status.get("missing_credentials") or []
+        if candidates:
+            detail += f"；可绑定账号：{', '.join(str(item.get('profile_name') or item.get('id')) for item in candidates[:5])}"
+        if missing:
+            detail += "；缺失：" + "、".join(str(item) for item in missing)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
     seed_variables = dict((preflight_result.get("seed") or {}).get("variables") or {})
     variables = {**seed_variables, **(payload.variables if payload else {})}
     cases_query = db.query(FunctionalCase).filter(
@@ -1695,6 +1723,7 @@ def execute_functional_task_async(
         "failed_count": 0,
         "blocked_count": 0,
         "review_count": 0,
+        "auth_blocked_count": 0,
         "total": len(cases),
         "preflight": preflight_result,
         "completed": 0,
@@ -1741,6 +1770,7 @@ def execute_functional_task_async(
         "failed_count": 0,
         "blocked_count": 0,
         "review_count": 0,
+        "auth_blocked_count": 0,
         "current_case_title": "启动中...",
         "records": [],
         "task_name": task.iteration_name,
@@ -1764,6 +1794,7 @@ def get_functional_execution(
         "failed_count": run.failed_count,
         "blocked_count": log_data.get("blocked_count", 0),
         "review_count": log_data.get("review_count", 0),
+        "auth_blocked_count": log_data.get("auth_blocked_count", 0),
         "preflight": log_data.get("preflight", None),
         "current_case_title": log_data.get("current_case_title", ""),
         "records": log_data.get("records", []),
