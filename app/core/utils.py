@@ -48,7 +48,7 @@ from ..data_scripts import (
     run_shopping_cart_script,
     run_warehouse_delivery_script,
 )
-from ..executors import ensure_report_dirs, execute_api_case, execute_ui_case, execute_ui_cases_batch, parse_json_value, to_json_text
+from ..executors import ensure_report_dirs, execute_api_case, execute_ui_case, execute_ui_cases_batch, parse_json_value, probe_target_auth_state, to_json_text
 from ..functional_testing import (
     FunctionalScanError,
     analyze_functional_screenshot,
@@ -1469,14 +1469,59 @@ def seed_functional_package_data(db: Session, task: FunctionalTask) -> Dict[str,
     return {"variables": variables, "sources": sources, "source_text_available": bool(text)}
 
 
+def active_account_profile_candidates(db: Session, project_id: int | None) -> list[Dict[str, Any]]:
+    query = db.query(TestAccountProfile).filter(TestAccountProfile.status == "active")
+    if project_id is not None:
+        query = query.filter(or_(TestAccountProfile.project_id == project_id, TestAccountProfile.project_id.is_(None)))
+    profiles = query.order_by(TestAccountProfile.project_id.desc(), TestAccountProfile.id.asc()).all()
+    return [{"id": item.id, "profile_name": item.profile_name, "project_id": item.project_id} for item in profiles]
+
+
+def _account_remediation_actions(task: FunctionalTask, *, missing_credentials: list[str] | None = None) -> list[Dict[str, Any]]:
+    actions = [
+        {
+            "type": "bind_account",
+            "label": "绑定当前功能任务的测试账号",
+            "target_type": "functional_task",
+            "target_id": task.id,
+        }
+    ]
+    if missing_credentials:
+        actions.append({"type": "edit_account", "label": "补充账号档案的登录信息", "missing_credentials": missing_credentials})
+    actions.append({"type": "verify_login", "label": "验证账号能否进入目标页面", "target_url": task.target_url})
+    return actions
+
+
 def account_preflight_status(
     db: Session,
     task: FunctionalTask,
     payload: FunctionalExecuteRequest | None,
 ) -> Dict[str, Any]:
     account_mode = (payload.account_mode if payload else "default") or "default"
+    probe = probe_target_auth_state(task.target_url)
+    auth_required = bool(probe.get("auth_required") or probe.get("protected_page_detected"))
+    base: Dict[str, Any] = {
+        "auth_required": auth_required,
+        "protected_page_detected": bool(probe.get("protected_page_detected")),
+        "current_url": probe.get("current_url") or "",
+        "target_url": task.target_url,
+        "probe_error": probe.get("probe_error") or "",
+        "probe": probe,
+        "missing_credentials": [],
+        "candidate_profiles": active_account_profile_candidates(db, task.project_id),
+        "remediation_actions": _account_remediation_actions(task),
+        "can_execute": False,
+        "blocking_reason": "",
+    }
     if account_mode == "none":
-        return {"status": "skipped", "message": "本次选择不使用测试账号"}
+        if auth_required:
+            return {
+                **base,
+                "status": "blocked",
+                "message": "目标页面已识别为受保护页面，本次不能选择不使用测试账号",
+                "blocking_reason": "auth_required_without_account",
+            }
+        return {**base, "status": "skipped", "message": "本次选择不使用测试账号", "can_execute": True}
     try:
         variables, execution_context = resolve_execution_account(
             db,
@@ -1487,9 +1532,25 @@ def account_preflight_status(
             task.target_url,
         )
     except Exception as exc:
-        return {"status": "blocked", "message": f"账号解析失败：{exc}"}
+        return {**base, "status": "blocked", "message": f"账号解析失败：{exc}", "blocking_reason": "account_resolve_failed"}
     if not execution_context.get("login_required"):
-        return {"status": "warning", "message": "未绑定测试账号，预检按公开页面处理"}
+        candidate_count = len(base["candidate_profiles"])
+        if auth_required:
+            reason = "account_ambiguous" if candidate_count > 1 and account_mode == "default" else "account_missing"
+            message = "目标页面需要登录，但当前功能任务未绑定可用测试账号"
+            if candidate_count > 1 and account_mode == "default":
+                message += "，且项目存在多个可用账号，请先选择一个绑定到任务"
+            return {
+                **base,
+                "status": "blocked",
+                "message": message,
+                "blocking_reason": reason,
+                "remediation_actions": _account_remediation_actions(task),
+            }
+        warning = "未绑定测试账号，预检按公开页面处理"
+        if base.get("probe_error"):
+            warning = "未绑定测试账号，且目标页公开性探测失败；若执行时跳转登录页会自动阻断"
+        return {**base, "status": "warning", "message": warning, "can_execute": True}
     login_config = execution_context.get("login_config") or {}
     login_url = str(login_config.get("login_url") or "").strip() or guess_functional_login_url(task.target_url)
     has_username = any(str(variables.get(key) or "").strip() for key in ["username", "account", "email", "mobile", "phone"])
@@ -1503,16 +1564,24 @@ def account_preflight_status(
         missing.append("登录密码")
     if missing:
         return {
+            **base,
             "status": "blocked",
             "message": "登录前置缺失：" + "、".join(missing),
             "account_profile_id": execution_context.get("account_profile_id"),
             "login_url": login_url,
+            "missing_credentials": missing,
+            "blocking_reason": "missing_credentials",
+            "remediation_actions": _account_remediation_actions(task, missing_credentials=missing),
         }
     return {
+        **base,
         "status": "ready",
         "message": "测试账号信息完整，正式执行时会先登录并复用登录态",
         "account_profile_id": execution_context.get("account_profile_id"),
         "login_url": login_url,
+        "can_execute": True,
+        "missing_credentials": [],
+        "remediation_actions": [{"type": "verify_login", "label": "验证账号能否进入目标页面", "target_url": task.target_url}],
     }
 
 
@@ -1648,6 +1717,14 @@ def preflight_functional_package(
         "task_id": task.id,
         "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "login": account_status,
+        "auth_required": bool(account_status.get("auth_required")),
+        "protected_page_detected": bool(account_status.get("protected_page_detected")),
+        "account_status": account_status.get("status"),
+        "account_profile_id": account_status.get("account_profile_id"),
+        "missing_credentials": account_status.get("missing_credentials") or [],
+        "can_execute": bool(account_status.get("can_execute")) and account_status.get("status") != "blocked",
+        "blocking_reason": account_status.get("blocking_reason") or "",
+        "remediation_actions": account_status.get("remediation_actions") or [],
         "page": {
             "status": page_status,
             "target_url": task.target_url,

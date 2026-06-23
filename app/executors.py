@@ -613,7 +613,11 @@ def _locator_candidates(step: Dict[str, Any]) -> list[str]:
 def _classify_ui_error(error: str, step: Dict[str, Any], current_url: str = "") -> Dict[str, Any]:
     error_lower = str(error or "").lower()
     action = step.get("action") or ""
-    if "unknown engine" in error_lower or "unexpected token" in error_lower:
+    if "login" in str(current_url or "").lower() and action != "goto":
+        category = "登录态失效"
+        reason = "执行时页面停留在登录页，后续业务步骤无法继续。"
+        suggestion = "检查运行时账号密码、登录步骤和目标页面是否需要先登录。"
+    elif "unknown engine" in error_lower or "unexpected token" in error_lower:
         category = "定位器写法错误"
         reason = "locator 写法不符合 Playwright 规则。"
         suggestion = "重新扫描页面 DOM 后生成步骤，或改成 id/name/placeholder/text 这类稳定定位。"
@@ -645,10 +649,6 @@ def _classify_ui_error(error: str, step: Dict[str, Any], current_url: str = "") 
         category = "输入值断言失败"
         reason = "输入框实际值和预期不一致，可能是输入未生效、控件自动格式化或定位到了错误输入框。"
         suggestion = "检查输入框 locator 是否唯一，并确认页面是否会自动格式化输入内容。"
-    elif "login" in str(current_url or "").lower() and action != "goto":
-        category = "登录态失效"
-        reason = "执行时页面停留在登录页，后续业务步骤无法继续。"
-        suggestion = "检查运行时账号密码、登录步骤和目标页面是否需要先登录。"
     else:
         category = "未知异常"
         reason = "执行过程中出现未分类异常。"
@@ -717,10 +717,14 @@ def _looks_like_login_url(value: Any) -> bool:
 
 
 def _looks_like_login_page(page: Any, expected_url: str = "") -> bool:
+    return bool(_login_page_evidence(page, expected_url).get("looks_like_login"))
+
+
+def _login_page_evidence(page: Any, expected_url: str = "") -> Dict[str, Any]:
     current_url = str(getattr(page, "url", "") or "").lower()
     expected = str(expected_url or "").lower()
-    if current_url and current_url != expected and any(marker in current_url for marker in LOGIN_URL_MARKERS):
-        return True
+    url_has_login = bool(current_url and any(marker in current_url for marker in LOGIN_URL_MARKERS))
+    strong_url_login = bool("#/login" in current_url or "/login" in current_url or current_url.endswith("login"))
     try:
         password_visible = any(
             page.locator(locator).first.is_visible(timeout=300)
@@ -728,22 +732,127 @@ def _looks_like_login_page(page: Any, expected_url: str = "") -> bool:
         )
     except Exception:
         password_visible = False
+    login_control_visible = False
     if not password_visible:
-        return False
+        for locator in ['input[placeholder*="密码"]', 'input[placeholder*="password" i]']:
+            try:
+                if page.locator(locator).first.is_visible(timeout=200):
+                    password_visible = True
+                    break
+            except Exception:
+                continue
     for locator in [
         'button:has-text("登录")',
         '[role="button"]:has-text("登录")',
         "text=登录",
+        "text=立即登录",
+        'button:has-text("Login")',
         'input[placeholder*="账号"]',
         'input[placeholder*="邮箱"]',
         'input[placeholder*="手机号"]',
     ]:
         try:
             if page.locator(locator).first.is_visible(timeout=200):
-                return True
+                login_control_visible = True
+                break
         except Exception:
             continue
-    return False
+    visible_text = ""
+    try:
+        visible_text = _page_text_excerpt(page, limit=1600).lower()
+    except Exception:
+        visible_text = ""
+    text_has_login = any(marker.lower() in visible_text for marker in LOGIN_TEXT_MARKERS)
+    looks_like_login = bool(
+        strong_url_login
+        or (url_has_login and current_url != expected and (password_visible or login_control_visible or text_has_login))
+        or (password_visible and (login_control_visible or text_has_login))
+    )
+    return {
+        "looks_like_login": looks_like_login,
+        "current_url": getattr(page, "url", "") or "",
+        "expected_url": expected_url or "",
+        "url_has_login": url_has_login,
+        "password_visible": password_visible,
+        "login_control_visible": login_control_visible,
+        "text_has_login": text_has_login,
+        "visible_text": visible_text[:800],
+    }
+
+
+def probe_target_auth_state(target_url: str | None, timeout_ms: int = 7000) -> Dict[str, Any]:
+    url = str(target_url or "").strip()
+    result: Dict[str, Any] = {
+        "target_url": url,
+        "auth_required": False,
+        "protected_page_detected": False,
+        "current_url": "",
+        "login_url": "",
+        "probe_error": "",
+        "evidence": {},
+    }
+    if not url or _looks_like_login_url(url):
+        return result
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception as exc:
+        result["probe_error"] = f"Playwright不可用：{exc}"
+        return result
+
+    browser = None
+    try:
+        with sync_playwright() as p:
+            browser = launch_chromium_browser(p, headless=True)
+            page = browser.new_page()
+            page.set_default_timeout(timeout_ms)
+            page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+            try:
+                page.wait_for_load_state("networkidle", timeout=min(timeout_ms, 3000))
+            except Exception:
+                page.wait_for_timeout(500)
+            evidence = _login_page_evidence(page)
+            protected = bool(evidence.get("looks_like_login"))
+            result.update(
+                {
+                    "auth_required": protected,
+                    "protected_page_detected": protected,
+                    "current_url": evidence.get("current_url") or getattr(page, "url", "") or "",
+                    "login_url": evidence.get("current_url") or _guess_login_url(url),
+                    "evidence": evidence,
+                }
+            )
+    except Exception as exc:
+        result["probe_error"] = str(exc)[:500]
+    finally:
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
+    return result
+
+
+def _assert_business_page_reached(
+    page: Any,
+    destination_url: str | None,
+    execution_context: Dict[str, Any],
+    trace: list[str] | None = None,
+) -> None:
+    destination = str(destination_url or "").strip()
+    if not destination or _looks_like_login_url(destination):
+        return
+    login_config = execution_context.get("login_config") or {}
+    expected_login = str(login_config.get("login_url") or "").strip() or _guess_login_url(
+        execution_context.get("target_url") or destination
+    )
+    evidence = _login_page_evidence(page, expected_login)
+    if not evidence.get("looks_like_login"):
+        return
+    trace_lines = list(trace or [])
+    trace_lines.append(f"进入业务页后仍停留在登录页：{evidence.get('current_url') or getattr(page, 'url', '')}")
+    if execution_context.get("login_required"):
+        raise UiAuthPreparationError("登录前置失败：账号已尝试登录，但进入业务页后仍停留在登录页，可能账号权限不足、登录失效或目标页仍要求二次认证。", trace_lines)
+    raise UiAuthPreparationError("登录前置失败：目标页面需要登录，但本次执行没有可用测试账号，已阻止继续执行业务步骤。", trace_lines)
 
 
 def _visible_login_error(page: Any) -> str:
@@ -980,7 +1089,7 @@ def _prepare_authenticated_page(page: Any, execution_context: Dict[str, Any], va
     target_url = str(execution_context.get("target_url") or "").strip()
     login_url = str(auth.get("login_url") or "").strip() or _guess_login_url(target_url)
     username = _first_runtime_value(variables, ["username", "account", "email", "mobile", "phone"])
-    password = _first_runtime_value(variables, ["password"])
+    password = _first_runtime_value(variables, ["password", "pwd"])
     code = _first_runtime_value(variables, ["code", "captcha", "captcha_code", "verify_code", "verification_code"])
     trace: list[str] = [f"打开登录页：{login_url}"]
     if not login_url or not username or not password:
@@ -1377,6 +1486,7 @@ def execute_ui_case_in_page(
         if case.page_url:
             page.goto(page_url, wait_until="domcontentloaded")
             _wait_page_stable(page)
+            _assert_business_page_reached(page, page_url, execution_context, login_trace)
         inferred_variables = _business_variables_from_text(_page_text_excerpt(page, limit=12000))
         applied_variables = _merge_inferred_business_variables(variables, inferred_variables)
         steps = render_template(raw_steps, variables)
@@ -1419,6 +1529,8 @@ def execute_ui_case_in_page(
                 log_parts["step_logs"].append(step_detail)
                 # 智能等待：操作后等待页面响应
                 _wait_after_action(page, action)
+                if action == "goto":
+                    _assert_business_page_reached(page, current_step.get("value"), execution_context, login_trace)
             except UiStepExecutionError as exc:
                 # 失败自动重试
                 if retry_count > 0 and action not in ("text_assert", "assert_url", "assert_value", "assert_visible"):
@@ -1440,6 +1552,8 @@ def execute_ui_case_in_page(
                             except Exception:
                                 pass
                             retried = True
+                            if action == "goto":
+                                _assert_business_page_reached(page, current_step.get("value"), execution_context, login_trace)
                             break
                         except UiStepExecutionError:
                             continue
@@ -1503,18 +1617,19 @@ def execute_ui_case_in_page(
             screenshot = str(screenshot_path)
         except Exception:
             screenshot = ""
+        auth_failure = isinstance(exc, UiAuthPreparationError)
         log_parts.update(
             {
                 "error": str(exc),
-                "error_category": failed_step_detail.get("category") if failed_step_detail else None,
-                "failure_reason": failed_step_detail.get("reason") if failed_step_detail else None,
-                "suggestion": failed_step_detail.get("suggestion") if failed_step_detail else None,
+                "error_category": "auth_blocked" if auth_failure else (failed_step_detail.get("category") if failed_step_detail else None),
+                "failure_reason": "登录前置失败，未进入业务页面" if auth_failure else (failed_step_detail.get("reason") if failed_step_detail else None),
+                "suggestion": "绑定完整测试账号并验证登录成功后再执行" if auth_failure else (failed_step_detail.get("suggestion") if failed_step_detail else None),
                 "failed_step_index": current_step_index or None,
                 "failed_step": current_step,
                 "failed_step_detail": failed_step_detail,
                 "current_url": getattr(page, "url", "") if page else "",
                 "screenshot": screenshot,
-                "auth_context": {**log_parts.get("auth_context", {}), "login_trace": login_trace},
+                "auth_context": {**log_parts.get("auth_context", {}), "login_trace": login_trace, "auth_blocked": auth_failure},
                 "finished_at": datetime.now(),
             }
         )
