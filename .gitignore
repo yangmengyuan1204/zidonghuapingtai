@@ -23,6 +23,15 @@ fix_route_script.py
 public-access.bat
 reasonix.toml
 
+# Runtime artifacts
+reports/
+logs/*.log
+ms-playwright/
+*.db-shm
+*.db-wal
+tests/test_platform*.db
+tests/test_platform*.db-*
+
 # OS
 Thumbs.db
 .DS_Store
