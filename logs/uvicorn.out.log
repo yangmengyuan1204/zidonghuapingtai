@@ -1853,3 +1853,50 @@ INFO:     127.0.0.1:58992 - "GET /.well-known/appspecific/com.chrome.devtools.js
 INFO:     127.0.0.1:56125 - "GET / HTTP/1.1" 200 OK
 INFO:     127.0.0.1:56125 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
 INFO:     127.0.0.1:62495 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54961 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54961 - "GET /static/styles.css?v=20260617-ui-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56599 - "GET /static/app.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49823 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55244 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58327 - "GET /static/test-status.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52078 - "GET /static/full-flow.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54961 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56599 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56599 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58327 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52078 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55244 - "GET /static/test-status.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54961 - "GET /static/app.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56599 - "GET /static/styles.css?v=20260617-ui-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49823 - "GET /static/full-flow.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52078 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52078 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52078 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56599 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49823 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58327 - "GET /static/full-flow.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55244 - "GET /static/test-status.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54961 - "GET /static/app.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52078 - "GET /static/styles.css?v=20260617-ui-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49823 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49823 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49823 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54961 - "GET /static/app.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58327 - "GET /static/test-status.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55244 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56599 - "GET /static/full-flow.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49823 - "GET /static/styles.css?v=20260617-ui-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52078 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58327 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58327 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58327 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49823 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54961 - "GET /static/app.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56599 - "GET /static/test-status.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55244 - "GET /static/full-flow.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52078 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58327 - "GET /static/styles.css?v=20260617-ui-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56599 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56599 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62614 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64198 - "GET / HTTP/1.1" 200 OK

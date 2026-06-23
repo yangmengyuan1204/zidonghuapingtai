@@ -461,3 +461,11 @@ Traceback (most recent call last):
     db.query(TestRecord).filter(TestRecord.case_type == "ui", TestRecord.case_id == case.ui_case_id).delete(synchronize_session=False)
              ^^^^^^^^^^
 NameError: name 'TestRecord' is not defined
+INFO:     Started server process [14120]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started server process [632]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
