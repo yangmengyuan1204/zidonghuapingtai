@@ -6201,6 +6201,141 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
         )
 
 
+MATERIAL_GENERATION_SCRIPT_NAME = "辅料生成"
+
+
+def run_material_generation_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    """辅料生成脚本 - 通过后端代理调用 jpapi 接口，避免 CORS 问题"""
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    started_at = datetime.now()
+
+    account, password, client_tool = _client_login_inputs(variables)
+    timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+    base_url = (env.base_url or bulk_cart.BASE_URL).rstrip("/")
+
+    base_name = str(variables.get("name") or "").strip()
+    count = max(1, _as_int(variables.get("count"), 1))
+
+    log: Dict[str, Any] = {
+        "script": MATERIAL_GENERATION_SCRIPT_NAME,
+        "base_url": base_url,
+        "name": base_name,
+        "count": count,
+        "started_at": started_at,
+    }
+
+    if not base_name:
+        return _finish_named(
+            MATERIAL_GENERATION_SCRIPT_NAME, log, False,
+            {"reason": "缺少必要参数：辅料名称不能为空"},
+        )
+
+    try:
+        # 登录客户端
+        client = bulk_cart.RakumartClient(base_url, timeout)
+        _configure_client_api_paths(client, variables)
+        token = _call_with_retry("client login", lambda: client.login(account, password, client_tool))
+        log["login"] = {"success": True, "account": account, "token_extracted": bool(token)}
+
+        # 查询已有辅料名称
+        list_params = {
+            "name": base_name, "name_trans": "", "type_id": "",
+            "page": "1", "pageSize": "100",
+        }
+        list_url = base_url + "/client/material/material/list"
+        existing_names: set = set()
+        try:
+            list_resp = client.session.get(list_url, params=list_params, timeout=timeout)
+            if list_resp.ok:
+                list_data = list_resp.json()
+                if list_data.get("success") and isinstance(list_data.get("data"), dict):
+                    items = list_data["data"].get("data") or []
+                    if isinstance(items, list):
+                        for item in items:
+                            if isinstance(item, dict) and item.get("name"):
+                                existing_names.add(item["name"])
+        except Exception as list_err:
+            log["list_error"] = str(list_err)
+
+        log["existing_count"] = len(existing_names)
+
+        # 循环创建辅料
+        created: list = []
+        skipped: list = []
+        idx = 1
+        max_iterations = count + 200
+        consecutive_failures = 0
+        MAX_CONSECUTIVE_FAILURES = 10
+
+        while len(created) < count and idx <= max_iterations and consecutive_failures < MAX_CONSECUTIVE_FAILURES:
+            candidate = f"{base_name}-{idx}"
+            if candidate in existing_names:
+                skipped.append(candidate)
+                idx += 1
+                continue
+
+            body_obj = {
+                "name": candidate,
+                "name_trans": candidate,
+                "type_id": 1,
+                "consume": 1,
+                "main_image": "https://rakumart-ps20.oss-ap-northeast-1.aliyuncs.com/dest/202606/265055113/O1CN01nklPMm2KqWS7HYtvi_!!2248919608.jpg",
+                "notice": "",
+            }
+            try:
+                create_resp = client.session.post(
+                    base_url + "/client/material/material/store",
+                    json=body_obj,
+                    timeout=timeout,
+                )
+                if create_resp.ok:
+                    create_data = create_resp.json()
+                    if create_data.get("success"):
+                        created.append({"name": candidate, "id": create_data.get("data", {}).get("id", "")})
+                        consecutive_failures = 0
+                    else:
+                        skipped.append(f"{candidate}({create_data.get('msg', '创建失败')})")
+                        consecutive_failures += 1
+                else:
+                    skipped.append(f"{candidate}(HTTP {create_resp.status_code})")
+                    consecutive_failures += 1
+            except Exception as fetch_err:
+                skipped.append(f"{candidate}(网络错误: {fetch_err})")
+                consecutive_failures += 1
+
+            existing_names.add(candidate)
+            idx += 1
+
+        passed = len(created) > 0
+        reason = ""
+        if consecutive_failures >= MAX_CONSECUTIVE_FAILURES and len(created) < count:
+            reason = f"连续 {MAX_CONSECUTIVE_FAILURES} 次创建失败，已中止。已创建 {len(created)}/{count}"
+        elif len(created) < count:
+            reason = f"达到最大尝试次数，已创建 {len(created)}/{count}"
+
+        summary: Dict[str, Any] = {
+            "material_generation_name": base_name,
+            "material_generation_count": count,
+            "created_count": len(created),
+            "skipped_count": len(skipped),
+            "created_list": [c["name"] for c in created],
+            "skipped_list": skipped,
+            "completed": passed,
+        }
+        if reason:
+            summary["reason"] = reason
+
+        return _finish_named(MATERIAL_GENERATION_SCRIPT_NAME, log, passed, summary)
+
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _finish_named(
+            MATERIAL_GENERATION_SCRIPT_NAME, log, False,
+            {"reason": str(exc), "error": str(exc)},
+        )
+
+
 SCRIPT_REGISTRY: Dict[str, Any] = {
     "shopping_cart": {
         "name": SCRIPT_NAME,
@@ -6258,6 +6393,10 @@ SCRIPT_REGISTRY: Dict[str, Any] = {
         "name": RESUME_PORDER_FLOW_SCRIPT_NAME,
         "func": None,
         "chain": True,
+    },
+    "material_generation": {
+        "name": MATERIAL_GENERATION_SCRIPT_NAME,
+        "func": run_material_generation_script,
     },
 }
 

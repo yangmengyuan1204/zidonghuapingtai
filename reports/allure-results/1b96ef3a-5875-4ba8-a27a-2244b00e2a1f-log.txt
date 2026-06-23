@@ -1,0 +1,15 @@
+{
+  "script": "辅料生成",
+  "base_url": "https://jpapi.rakumart.cn",
+  "name": "autotest_material",
+  "count": 1,
+  "started_at": "2026-06-23 16:42:58.162674",
+  "error": "client login failed after 3 attempts: Login failed: code=10000 msg=パスワードまたはアカウント名が間違っています。",
+  "duration_ms": 3817,
+  "summary": {
+    "reason": "client login failed after 3 attempts: Login failed: code=10000 msg=パスワードまたはアカウント名が間違っています。",
+    "error": "client login failed after 3 attempts: Login failed: code=10000 msg=パスワードまたはアカウント名が間違っています。",
+    "duration_ms": 3817
+  },
+  "finished_at": "2026-06-23 16:43:01.980496"
+}

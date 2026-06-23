@@ -1983,3 +1983,18 @@ INFO:     127.0.0.1:58749 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:58749 - "GET /api/envs HTTP/1.1" 200 OK
 INFO:     127.0.0.1:53470 - "GET /api/api-cases HTTP/1.1" 200 OK
 INFO:     127.0.0.1:53470 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54743 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54743 - "GET /static/styles.css?v=20260617-ui-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52615 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54657 - "GET /static/app.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60175 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60576 - "GET /static/full-flow.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61665 - "GET /static/test-status.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54743 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54743 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54657 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54657 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54657 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54657 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54743 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54743 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
