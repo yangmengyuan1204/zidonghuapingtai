@@ -1,4 +1,5 @@
 import copy
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import OrderedDict
 from datetime import datetime, timedelta
@@ -6238,13 +6239,15 @@ def run_material_generation_script(env: Env, variables: Dict[str, Any] | None = 
         token = _call_with_retry("client login", lambda: client.login(account, password, client_tool))
         log["login"] = {"success": True, "account": account, "token_extracted": bool(token)}
 
-        # 查询已有辅料名称
+        # 查询已有辅料名称，并解析最大编号
         list_params = {
             "name": base_name, "name_trans": "", "type_id": "",
-            "page": "1", "pageSize": "100",
+            "page": "1", "pageSize": "200",
         }
         list_url = base_url + "/client/material/material/list"
         existing_names: set = set()
+        max_existing_idx = 0
+        _name_pattern = re.compile(r"^" + re.escape(base_name) + r"-(\d+)$")
         try:
             list_resp = client.session.get(list_url, params=list_params, timeout=timeout)
             if list_resp.ok:
@@ -6254,17 +6257,25 @@ def run_material_generation_script(env: Env, variables: Dict[str, Any] | None = 
                     if isinstance(items, list):
                         for item in items:
                             if isinstance(item, dict) and item.get("name"):
-                                existing_names.add(item["name"])
+                                name_text = item["name"]
+                                existing_names.add(name_text)
+                                _m = _name_pattern.match(name_text)
+                                if _m:
+                                    max_existing_idx = max(max_existing_idx, int(_m.group(1)))
         except Exception as list_err:
             log["list_error"] = str(list_err)
 
+        # 从已有最大编号 +1 开始创建
+        start_idx = max_existing_idx + 1
         log["existing_count"] = len(existing_names)
+        log["max_existing_idx"] = max_existing_idx
+        log["start_idx"] = start_idx
 
         # 循环创建辅料
         created: list = []
         skipped: list = []
-        idx = 1
-        max_iterations = count + 200
+        idx = start_idx
+        max_iterations = start_idx + count + 200
         consecutive_failures = 0
         MAX_CONSECUTIVE_FAILURES = 10
 

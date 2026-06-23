@@ -1,0 +1,22 @@
+{
+  "uuid": "5a48700d-9a1f-496a-a15b-c9df0bb896a2",
+  "name": "辅料生成",
+  "fullName": "data_script.辅料生成",
+  "status": "failed",
+  "stage": "finished",
+  "start": 1782205453624,
+  "stop": 1782205453624,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "5a48700d-9a1f-496a-a15b-c9df0bb896a2-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

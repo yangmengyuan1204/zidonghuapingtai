@@ -1,0 +1,36 @@
+{
+  "script": "辅料生成",
+  "base_url": "https://jpapi.rakumart.cn",
+  "name": "小陈的bug真多",
+  "count": 10,
+  "started_at": "2026-06-23 17:05:03.545284",
+  "login": {
+    "success": true,
+    "account": "userID/300001In",
+    "token_extracted": true
+  },
+  "existing_count": 0,
+  "duration_ms": 1793,
+  "summary": {
+    "material_generation_name": "小陈的bug真多",
+    "material_generation_count": 10,
+    "created_count": 10,
+    "skipped_count": 0,
+    "created_list": [
+      "小陈的bug真多-1",
+      "小陈的bug真多-2",
+      "小陈的bug真多-3",
+      "小陈的bug真多-4",
+      "小陈的bug真多-5",
+      "小陈的bug真多-6",
+      "小陈的bug真多-7",
+      "小陈的bug真多-8",
+      "小陈的bug真多-9",
+      "小陈的bug真多-10"
+    ],
+    "skipped_list": [],
+    "completed": true,
+    "duration_ms": 1793
+  },
+  "finished_at": "2026-06-23 17:05:05.338520"
+}
