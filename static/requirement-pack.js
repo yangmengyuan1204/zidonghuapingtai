@@ -901,14 +901,37 @@
     `;
   }
 
+  function renderRequirementExecutionPolicy() {
+    return `
+      <details class="functional-requirement" id="requirementExecutionPolicy" open>
+        <summary>执行策略</summary>
+        <div class="form-grid">
+          <label class="check-field">
+            <input type="radio" name="__execution_policy" value="isolated_per_case" checked />
+            独立执行（每条用例新会话）
+          </label>
+          <label class="check-field">
+            <input type="radio" name="__execution_policy" value="scenario_chain" />
+            场景链执行（按选中顺序共享变量）
+          </label>
+        </div>
+        <p class="muted-text">默认独立执行；注册、开户、转账这类强连续流程再选择场景链。</p>
+      </details>
+    `;
+  }
+
   function injectRequirementExecutionMode(task, caseIds) {
     const bodyEl = document.querySelector("#functionalExecuteForm .modal-body");
     if (!bodyEl || bodyEl.querySelector("#requirementExecutionMode")) return;
-    bodyEl.insertAdjacentHTML("afterbegin", renderRequirementExecutionMode(task, caseIds));
+    bodyEl.insertAdjacentHTML("afterbegin", renderRequirementExecutionMode(task, caseIds) + renderRequirementExecutionPolicy());
   }
 
   function readRequirementExecutionForce() {
     return document.querySelector('#functionalExecuteForm input[name="__execution_mode"]:checked')?.value === "trial";
+  }
+
+  function readRequirementExecutionPolicy() {
+    return document.querySelector('#functionalExecuteForm input[name="__execution_policy"]:checked')?.value || "isolated_per_case";
   }
 
   function openRequirementBatchExecuteForm(task, caseIds, accounts = [], projects = []) {
@@ -922,6 +945,9 @@
       onSubmit: async (payload) => {
         payload.case_ids = caseIds;
         payload.force = readRequirementExecutionForce();
+        payload.execution_policy = readRequirementExecutionPolicy();
+        payload.enable_setup_teardown = true;
+        payload.retry_environment_failures = true;
         const job = await api(`/api/functional-tasks/${task.id}/execute-async`, {
           method: "POST",
           body: payload,
@@ -986,6 +1012,7 @@
     const missingCredentials = login.missing_credentials || result?.missing_credentials || [];
     const candidates = login.candidate_profiles || [];
     const actions = login.remediation_actions || result?.remediation_actions || [];
+    const canProbeLogin = actions.some((item) => item.type === "probe_login_config");
     return `
       <div class="preflight-report">
         <section class="diagnosis-summary">
@@ -1022,6 +1049,11 @@
               ? `<div class="diagnosis-actions"><button class="btn secondary" id="bindTaskAccountFromPreflight" type="button">绑定默认账号</button><span class="muted-text">${escapeHtml(actions.map((item) => item.label).join(" / "))}</span></div>`
               : ""
           }
+          ${
+            canProbeLogin
+              ? `<div class="diagnosis-actions"><button class="btn secondary" id="probeTaskLoginConfig" type="button">自动识别登录配置</button></div>`
+              : ""
+          }
           <p>${escapeHtml(result?.page?.message || "-")}</p>
         </section>
         <section class="diagnosis-card">
@@ -1047,7 +1079,7 @@
     `;
   }
 
-  function showRequirementPreflightResult(result) {
+  function showRequirementPreflightResult(result, task = null) {
     modalEl.innerHTML = `
       <div class="modal-head">
         <h3>测试包预检</h3>
@@ -1059,6 +1091,45 @@
     document.querySelector("#bindTaskAccountFromPreflight")?.addEventListener("click", () => {
       modalEl.close();
       document.querySelector("#bindFunctionalTaskAccount")?.click();
+    });
+    document.querySelector("#probeTaskLoginConfig")?.addEventListener("click", async () => {
+      const login = result?.login || {};
+      const accountProfileId = login.account_profile_id;
+      if (!accountProfileId) {
+        showToast("请先绑定账号，再自动识别登录配置");
+        return;
+      }
+      try {
+        showToast("正在自动识别登录配置");
+        const probe = await api("/api/test-accounts/verify-login", {
+          method: "POST",
+          body: {
+            target_url: login.target_url || task?.target_url || result?.page?.target_url || "",
+            account_profile_id: accountProfileId,
+            project_id: task?.project_id || null,
+            login_url: login.login_url || "",
+          },
+        });
+        modalEl.innerHTML = `
+          <div class="modal-head">
+            <h3>自动识别登录配置</h3>
+            <button class="btn secondary" type="button" id="closeModal">关闭</button>
+          </div>
+          <div class="modal-body">
+            <section class="diagnosis-card">
+              <p>${badge(probe.success ? "success" : "blocked")} ${escapeHtml(probe.failure_reason || (probe.success ? "识别成功" : "识别失败"))}</p>
+              <pre class="mini-log">${escapeHtml(JSON.stringify(probe.recommended_config || {}, null, 2))}</pre>
+              ${probe.screenshot ? `<p><a href="${escapeHtml(probe.screenshot)}" target="_blank">查看验证截图</a></p>` : ""}
+            </section>
+          </div>
+        `;
+        document.querySelector("#closeModal")?.addEventListener("click", async () => {
+          modalEl.close();
+          await renderFunctionalTests();
+        });
+      } catch (error) {
+        showToast(error.message || "自动识别登录配置失败");
+      }
     });
     document.querySelector("#closeModal")?.addEventListener("click", async () => {
       modalEl.close();
@@ -1074,7 +1145,7 @@
         body: { case_ids: caseIds },
       });
       showToast(`预检完成：可自动执行 ${result.executable_count || 0} 条`);
-      showRequirementPreflightResult(result);
+      showRequirementPreflightResult(result, task);
     } catch (error) {
       showToast(error.message || "预检失败");
     }

@@ -1434,6 +1434,12 @@ def _classify_functional_execution_result(passed: bool, log_text: str, quality_s
             log_data.get("failed_step") or log_data.get("error_category")
         ):
             return "blocked", "auth_redirected_to_login"
+        if log_data.get("error_category") == "environment" or log_data.get("environment_reason"):
+            return "blocked", "environment"
+        if log_data.get("error_category") == "setup_failed":
+            return "blocked", "setup_failed"
+        if log_data.get("error_category") == "teardown_failed":
+            return "needs_review", "teardown_failed"
         failed_step = log_data.get("failed_step") if isinstance(log_data.get("failed_step"), dict) else {}
         failed_action = str(failed_step.get("action") or "").strip().lower()
         error_category = str(log_data.get("error_category") or "").lower()
@@ -1516,6 +1522,7 @@ def _background_execute_functional(
         total_blocked = 0
         total_review = 0
         total_auth_blocked = 0
+        total_environment_blocked = 0
         _cached_vars = dict(variables)
         processed_case_ids: set[int] = set()
         batch_items: list[Dict[str, Any]] = []
@@ -1545,6 +1552,16 @@ def _background_execute_functional(
                 ui_case.project_id,
                 ui_case.page_url,
             )
+            execution_context = dict(execution_context or {})
+            execution_context.update(
+                {
+                    "execution_policy": (payload_obj.execution_policy if payload_obj else "isolated_per_case") or "isolated_per_case",
+                    "enable_setup_teardown": bool(payload_obj.enable_setup_teardown) if payload_obj else True,
+                    "retry_environment_failures": bool(payload_obj.retry_environment_failures) if payload_obj else True,
+                    "setup_steps": payload_obj.setup_steps if payload_obj else None,
+                    "teardown_steps": payload_obj.teardown_steps if payload_obj else None,
+                }
+            )
             case_variables = {**_cached_vars, **case_variables}
             if execution_context.get("login_required"):
                 profile_key = execution_context.get("account_profile_id") or "default"
@@ -1569,6 +1586,8 @@ def _background_execute_functional(
                 "blocked_count": total_blocked,
                 "review_count": total_review,
                 "auth_blocked_count": total_auth_blocked,
+                "environment_blocked_count": total_environment_blocked,
+                "execution_policy": (payload_obj.execution_policy if payload_obj else "isolated_per_case") or "isolated_per_case",
                 "completed": completed,
                 "current_case_title": current_title,
             }, ensure_ascii=False, default=str)
@@ -1582,13 +1601,16 @@ def _background_execute_functional(
             _write_run_progress(title, len(processed_case_ids))
 
         def _on_case_finish(item: Dict[str, Any], result_tuple: tuple[bool, str, str, str]) -> None:
-            nonlocal total_passed, total_failed, total_blocked, total_review, total_auth_blocked
+            nonlocal total_passed, total_failed, total_blocked, total_review, total_auth_blocked, total_environment_blocked
             fc = bg_db.get(FunctionalCase, int(item.get("functional_case_id")))
             ui_case = item.get("case")
             passed, log_text, screenshot_path, report_path = result_tuple
             record = save_ui_record(bg_db, ui_case, passed, log_text, report_path, screenshot_path)
             quality_status = getattr(fc, "quality_status", QUALITY_UNCHECKED) if fc else QUALITY_UNCHECKED
             result_status, result_reason = _classify_functional_execution_result(passed, log_text, quality_status)
+            log_data = parse_json_value(log_text, {})
+            if not isinstance(log_data, dict):
+                log_data = {}
             record_payload: Dict[str, Any] = {
                 "functional_case_id": fc.id if fc else item.get("functional_case_id"),
                 "ui_case_id": getattr(ui_case, "id", None),
@@ -1600,6 +1622,14 @@ def _background_execute_functional(
                 "result_reason": result_reason,
                 "screenshot": screenshot_path,
                 "log": log_text,
+                "current_url": log_data.get("current_url") or "",
+                "failed_step": log_data.get("failed_step"),
+                "failed_step_detail": log_data.get("failed_step_detail"),
+                "extracted_variables": log_data.get("extracted_variables") or {},
+                "setup_result": log_data.get("setup_result") or {},
+                "teardown_result": log_data.get("teardown_result") or {},
+                "execution_policy": log_data.get("execution_policy") or (item.get("execution_context") or {}).get("execution_policy") or "isolated_per_case",
+                "environment_reason": log_data.get("environment_reason") or "",
             }
             record_text = json.dumps(record_payload, ensure_ascii=False, default=str)
             auth_blocked = result_status == "blocked" and result_reason in {"auth_blocked", "auth_redirected_to_login"}
@@ -1607,6 +1637,10 @@ def _background_execute_functional(
                 _, blocked_type = _quality_blocked_reason(quality_status)
                 if result_reason in {"auth_blocked", "auth_redirected_to_login"}:
                     blocked_type = "auth"
+                elif result_reason == "environment":
+                    blocked_type = "environment"
+                elif result_reason == "setup_failed":
+                    blocked_type = "setup"
                 record_payload["blocked_type"] = blocked_type
             if fc:
                 if result_status == "passed":
@@ -1614,6 +1648,8 @@ def _background_execute_functional(
                     total_passed += 1
                 elif result_status == "blocked":
                     fc.test_result = "blocked"
+                    if result_reason == "environment":
+                        total_environment_blocked += 1
                     if auth_blocked:
                         total_auth_blocked += 1
                         fc.quality_status = QUALITY_AUTH_RISK
@@ -1747,6 +1783,8 @@ def _background_execute_functional(
             "blocked_count": total_blocked,
             "review_count": total_review,
             "auth_blocked_count": total_auth_blocked,
+            "environment_blocked_count": total_environment_blocked,
+            "execution_policy": (payload_obj.execution_policy if payload_obj else "isolated_per_case") or "isolated_per_case",
         }, ensure_ascii=False, default=str)
         bg_task.status = final_result
         bg_db.commit()
@@ -1836,6 +1874,8 @@ def execute_functional_task_async(
         "blocked_count": 0,
         "review_count": 0,
         "auth_blocked_count": 0,
+        "environment_blocked_count": 0,
+        "execution_policy": (payload.execution_policy if payload else "isolated_per_case") or "isolated_per_case",
         "total": len(cases),
         "preflight": preflight_result,
         "completed": 0,
@@ -1885,6 +1925,8 @@ def execute_functional_task_async(
         "auth_blocked_count": 0,
         "current_case_title": "启动中...",
         "records": [],
+        "environment_blocked_count": 0,
+        "execution_policy": (payload.execution_policy if payload else "isolated_per_case") or "isolated_per_case",
         "task_name": task.iteration_name,
     }
 
@@ -1907,6 +1949,8 @@ def get_functional_execution(
         "blocked_count": log_data.get("blocked_count", 0),
         "review_count": log_data.get("review_count", 0),
         "auth_blocked_count": log_data.get("auth_blocked_count", 0),
+        "environment_blocked_count": log_data.get("environment_blocked_count", 0),
+        "execution_policy": log_data.get("execution_policy", "isolated_per_case"),
         "preflight": log_data.get("preflight", None),
         "current_case_title": log_data.get("current_case_title", ""),
         "records": log_data.get("records", []),

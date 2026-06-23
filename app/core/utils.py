@@ -1487,6 +1487,8 @@ def _account_remediation_actions(task: FunctionalTask, *, missing_credentials: l
         }
     ]
     if missing_credentials:
+        if any(item in missing_credentials for item in ["login_url", "username_locator", "password_locator", "submit_locator"]):
+            actions.append({"type": "probe_login_config", "label": "鑷姩璇嗗埆鐧诲綍閰嶇疆", "target_url": task.target_url, "missing_credentials": missing_credentials})
         actions.append({"type": "edit_account", "label": "补充账号档案的登录信息", "missing_credentials": missing_credentials})
     actions.append({"type": "verify_login", "label": "验证账号能否进入目标页面", "target_url": task.target_url})
     return actions

@@ -499,6 +499,23 @@ UI_ACTION_ALIASES = {"fill": "input"}
 UI_LOCATOR_REQUIRED = {"input", "click", "wait_for_selector", "text_assert", "select", "check", "uncheck", "assert_visible", "assert_value"}
 UI_VALUE_REQUIRED = {"goto", "input", "wait", "text_assert", "select", "assert_url", "assert_value"}
 BUILTIN_VAR_NAMES = {"timestamp", "datetime", "date", "uuid", "random_int", "random_str", "random_phone", "random_email"}
+ENVIRONMENT_ERROR_MARKERS = (
+    "net::err_name_not_resolved",
+    "net::err_cert",
+    "net::err_connection",
+    "net::err_timed_out",
+    "dns",
+    "certificate",
+    "ssl",
+    "http_status=429",
+    "http_status=500",
+    "http_status=502",
+    "http_status=503",
+    "http_status=504",
+    "service unavailable",
+    "gateway timeout",
+    "too many requests",
+)
 LOGIN_URL_MARKERS = ("login", "signin")
 LOGIN_TEXT_MARKERS = ("登录", "登入", "登陆", "login", "sign in", "ログイン")
 REGISTER_TEXT_MARKERS = ("立即注册", "马上注册", "去注册", "register", "sign up", "新規登録")
@@ -627,10 +644,35 @@ def _locator_candidates(step: Dict[str, Any]) -> list[str]:
     return result
 
 
+def _environment_reason_from_error(error: Any) -> str:
+    text = str(error or "").lower()
+    if not text:
+        return ""
+    for marker in ENVIRONMENT_ERROR_MARKERS:
+        if marker in text:
+            if marker.startswith("http_status="):
+                return marker
+            if "cert" in marker or marker in {"certificate", "ssl"}:
+                return "certificate_or_ssl_error"
+            if "dns" in marker or "name_not_resolved" in marker:
+                return "dns_or_name_resolution_error"
+            if "timed_out" in marker or "timeout" in marker:
+                return "network_timeout"
+            if "429" in marker or "too many requests" in marker:
+                return "rate_limited"
+            return "network_or_site_unavailable"
+    return ""
+
+
 def _classify_ui_error(error: str, step: Dict[str, Any], current_url: str = "") -> Dict[str, Any]:
     error_lower = str(error or "").lower()
     action = step.get("action") or ""
-    if "login" in str(current_url or "").lower() and action != "goto":
+    environment_reason = _environment_reason_from_error(error)
+    if environment_reason:
+        category = "environment"
+        reason = f"environment blocked: {environment_reason}"
+        suggestion = "Check network, certificate, target site status, rate limit, or retry after the environment is stable."
+    elif "login" in str(current_url or "").lower() and action != "goto":
         category = "登录态失效"
         reason = "执行时页面停留在登录页，后续业务步骤无法继续。"
         suggestion = "检查运行时账号密码、登录步骤和目标页面是否需要先登录。"
@@ -866,6 +908,175 @@ def probe_target_auth_state(target_url: str | None, timeout_ms: int = 7000) -> D
             )
     except Exception as exc:
         result["probe_error"] = str(exc)[:500]
+    finally:
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
+    return result
+
+
+def _login_probe_candidates() -> tuple[list[str], list[str], list[str]]:
+    username_candidates = [
+        'input[name="username"]',
+        'input[id="username"]',
+        'input[name="user"]',
+        'input[id="user"]',
+        'input[name="account"]',
+        'input[id="account"]',
+        'input[name="email"]',
+        'input[type="email"]',
+        '[data-test="username"]',
+        '[data-testid="username"]',
+        '#user-name',
+        'input[type="text"]',
+        'input:not([type])',
+    ]
+    password_candidates = [
+        'input[name="password"]',
+        'input[id="password"]',
+        'input[type="password"]',
+        '[data-test="password"]',
+        '[data-testid="password"]',
+    ]
+    submit_candidates = [
+        'button[type="submit"]',
+        'input[type="submit"]',
+        '[data-test="login-button"]',
+        '[data-testid="login-button"]',
+        '#login-button',
+        'button:has-text("Log in")',
+        'button:has-text("Login")',
+        'button:has-text("Sign in")',
+        'input[value*="Log In" i]',
+        'input[value*="Login" i]',
+        'text=Log In',
+        'text=Login',
+        'text=Sign in',
+        'button:has-text("登录")',
+        'input[value*="登录"]',
+        'text=登录',
+    ]
+    return username_candidates, password_candidates, submit_candidates
+
+
+def _success_url_hint(final_url: str, target_url: str = "") -> str:
+    parsed = urlparse(str(final_url or ""))
+    if parsed.fragment:
+        return parsed.fragment[:80]
+    if parsed.path and parsed.path != "/":
+        return parsed.path[:80]
+    target = urlparse(str(target_url or ""))
+    if target.netloc and parsed.netloc == target.netloc:
+        return target.netloc
+    return str(final_url or "")[:120]
+
+
+def probe_login_configuration(
+    target_url: str,
+    variables: Dict[str, Any] | None = None,
+    login_url: str | None = "",
+    timeout_seconds: int = 15,
+) -> Dict[str, Any]:
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    target = str(target_url or "").strip()
+    login = str(login_url or "").strip() or target or _guess_login_url(target)
+    username = _first_runtime_value(variables, ["username", "account", "email", "mobile", "phone"])
+    password = _first_runtime_value(variables, ["password", "pwd"])
+    result: Dict[str, Any] = {
+        "success": False,
+        "target_url": target,
+        "login_url": login,
+        "recommended_config": {},
+        "final_url": "",
+        "screenshot": "",
+        "failure_reason": "",
+        "remediation_actions": [],
+        "trace": [],
+    }
+    if not login:
+        result["failure_reason"] = "missing_login_url"
+        result["remediation_actions"].append({"type": "set_login_url", "label": "补充登录页 URL"})
+        return result
+    if not username or not password:
+        result["failure_reason"] = "missing_username_or_password"
+        result["remediation_actions"].append({"type": "set_credentials", "label": "补充账号和密码变量"})
+        return result
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception as exc:
+        result["failure_reason"] = f"playwright_unavailable: {exc}"
+        return result
+
+    browser = None
+    try:
+        username_candidates, password_candidates, submit_candidates = _login_probe_candidates()
+        with sync_playwright() as p:
+            browser = launch_chromium_browser(p, headless=True)
+            page = browser.new_page()
+            page.set_default_timeout(timeout_seconds * 1000)
+            result["trace"].append(f"open_login_url: {login}")
+            response = page.goto(login, wait_until="domcontentloaded", timeout=timeout_seconds * 1000)
+            try:
+                status_code = response.status if response else None
+            except Exception:
+                status_code = None
+            if status_code in {429, 500, 502, 503, 504}:
+                raise RuntimeError(f"environment_error: http_status={status_code}")
+            try:
+                page.wait_for_load_state("networkidle", timeout=5000)
+            except Exception:
+                page.wait_for_timeout(500)
+
+            username_target, username_locator, _ = _resolve_locator(page, username_candidates, 5000)
+            username_target.fill("", timeout=3000)
+            username_target.fill(username, timeout=3000)
+            result["trace"].append(f"username_locator: {username_locator}")
+
+            password_target, password_locator, _ = _resolve_locator(page, password_candidates, 5000)
+            password_target.fill("", timeout=3000)
+            password_target.fill(password, timeout=3000)
+            result["trace"].append(f"password_locator: {password_locator}")
+
+            submit_target, submit_locator, _ = _resolve_locator(page, submit_candidates, 5000)
+            submit_target.click(timeout=5000)
+            result["trace"].append(f"submit_locator: {submit_locator}")
+            try:
+                page.wait_for_load_state("networkidle", timeout=8000)
+            except Exception:
+                page.wait_for_timeout(1200)
+
+            screenshot = SCREENSHOT_DIR / f"login-probe-{uuid4()}.png"
+            try:
+                page.screenshot(path=str(screenshot), full_page=True)
+                result["screenshot"] = str(screenshot)
+            except Exception:
+                pass
+            result["final_url"] = getattr(page, "url", "") or ""
+            recommended = {
+                "login_url": login,
+                "username_locator": username_locator,
+                "password_locator": password_locator,
+                "submit_locator": submit_locator,
+                "success_url_contains": _success_url_hint(result["final_url"], target),
+                "success_selector": "body",
+            }
+            result["recommended_config"] = recommended
+            if _looks_like_login_page(page, expected_url=login):
+                result["failure_reason"] = "login_form_still_visible"
+                result["remediation_actions"].append({"type": "check_credentials", "label": "检查账号密码或验证码/二次认证"})
+            else:
+                result["success"] = True
+                result["remediation_actions"].append({"type": "save_recommended_config", "label": "保存推荐登录配置"})
+    except Exception as exc:
+        result["failure_reason"] = str(exc)[:500]
+        env_reason = _environment_reason_from_error(exc)
+        if env_reason:
+            result["environment_reason"] = env_reason
+            result["remediation_actions"].append({"type": "check_environment", "label": "检查网络、证书或目标站点状态"})
     finally:
         if browser:
             try:
@@ -1300,7 +1511,13 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
         if action == "goto":
             if value in (None, ""):
                 raise ValueError("goto 步骤缺少 value")
-            page.goto(str(value), wait_until="domcontentloaded", timeout=timeout_ms)
+            response = page.goto(str(value), wait_until="domcontentloaded", timeout=timeout_ms)
+            try:
+                status_code = response.status if response else None
+            except Exception:
+                status_code = None
+            if status_code in {429, 500, 502, 503, 504}:
+                raise RuntimeError(f"environment_error: http_status={status_code}")
             try:
                 page.wait_for_load_state("networkidle", timeout=min(timeout_ms, 5000))
             except Exception:
@@ -1420,6 +1637,7 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
     except Exception as exc:
         error_text = str(exc)
         classified = _classify_ui_error(error_text, step, getattr(page, "url", ""))
+        environment_reason = _environment_reason_from_error(error_text)
         detail.update(
             {
                 "status": "skipped" if step.get("optional") else "failed",
@@ -1432,6 +1650,8 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                 **classified,
             }
         )
+        if environment_reason:
+            detail["environment_reason"] = environment_reason
         failure_shot = _capture_evidence_screenshot(page, "step-failed", screenshots)
         if failure_shot:
             detail["failure_screenshot"] = failure_shot
@@ -1441,7 +1661,7 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
         raise UiStepExecutionError(message, detail) from exc
 
 
-def _validate_ui_steps_for_execution(steps: Any) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
+def _validate_ui_steps_for_execution(steps: Any, require_business_assertion: bool = True) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
     issues: list[Dict[str, Any]] = []
     if not isinstance(steps, Iterable) or isinstance(steps, (str, bytes, dict)):
         return [], [{"severity": "error", "message": "UI steps 必须是数组"}]
@@ -1460,12 +1680,117 @@ def _validate_ui_steps_for_execution(steps: Any) -> tuple[list[Dict[str, Any]], 
         if action in UI_VALUE_REQUIRED and step.get("value") in (None, ""):
             issues.append({"severity": "error", "step": index, "message": f"第{index}步缺少 value"})
         normalized.append(step)
-    if normalized and not _case_has_business_assertion(normalized):
+    if require_business_assertion and normalized and not _case_has_business_assertion(normalized):
         issues.append({
             "severity": "warning",
             "message": "用例缺少业务断言，执行器会跑完整步骤，但不会把结果判定为可信成功",
         })
     return normalized, issues
+
+
+def _coerce_ui_step_list(value: Any) -> list[Dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _tag_phase(steps: list[Dict[str, Any]], phase: str) -> list[Dict[str, Any]]:
+    tagged: list[Dict[str, Any]] = []
+    for step in steps:
+        next_step = dict(step)
+        next_step.setdefault("_phase", phase)
+        tagged.append(next_step)
+    return tagged
+
+
+def _split_ui_step_payload(raw_steps: Any, execution_context: Dict[str, Any]) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
+    enable_setup_teardown = execution_context.get("enable_setup_teardown", True) is not False
+    if isinstance(raw_steps, dict):
+        main_steps = _coerce_ui_step_list(raw_steps.get("steps") or raw_steps.get("main_steps") or [])
+        case_setup = _coerce_ui_step_list(raw_steps.get("setup_steps"))
+        case_teardown = _coerce_ui_step_list(raw_steps.get("teardown_steps"))
+    else:
+        main_steps = _coerce_ui_step_list(raw_steps)
+        case_setup = []
+        case_teardown = []
+    setup_steps: list[Dict[str, Any]] = []
+    teardown_steps: list[Dict[str, Any]] = []
+    if enable_setup_teardown:
+        setup_steps = _coerce_ui_step_list(execution_context.get("setup_steps")) + case_setup
+        teardown_steps = case_teardown + _coerce_ui_step_list(execution_context.get("teardown_steps"))
+    combined = _tag_phase(setup_steps, "setup") + _tag_phase(main_steps, "main") + _tag_phase(teardown_steps, "teardown")
+    return combined, _tag_phase(main_steps, "main")
+
+
+def _apply_extract_pattern(value: str, pattern: str | None, group: Any = None) -> str:
+    text = str(value or "").strip()
+    if not pattern:
+        return text
+    match = re.search(str(pattern), text, flags=re.S)
+    if not match:
+        return ""
+    if group not in (None, ""):
+        try:
+            if isinstance(group, str) and not group.isdigit():
+                return str(match.group(group)).strip()
+            return str(match.group(int(group))).strip()
+        except Exception:
+            return ""
+    if match.groups():
+        return str(match.group(1)).strip()
+    return str(match.group(0)).strip()
+
+
+def _extract_step_variables(
+    page: Any,
+    step: Dict[str, Any],
+    step_detail: Dict[str, Any],
+    variables: Dict[str, Any],
+) -> tuple[Dict[str, Any], list[Dict[str, Any]]]:
+    raw_rules = step.get("extract")
+    if not raw_rules:
+        return {}, []
+    rules = raw_rules if isinstance(raw_rules, list) else [raw_rules]
+    extracted: Dict[str, Any] = {}
+    sources: list[Dict[str, Any]] = []
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        name = str(rule.get("name") or rule.get("variable") or "").strip()
+        if not name:
+            continue
+        source = str(rule.get("source") or "text").strip().lower()
+        locator = str(rule.get("locator") or step.get("locator") or "").strip()
+        raw_value = ""
+        try:
+            if source == "url":
+                raw_value = getattr(page, "url", "") or ""
+            elif source in {"value", "input_value"}:
+                target_locator = locator or str(step_detail.get("used_locator") or "").strip()
+                if not target_locator:
+                    continue
+                raw_value = page.locator(target_locator).first.input_value(timeout=1500)
+            elif source in {"step_result", "result"}:
+                raw_value = str(step_detail.get("value") or step_detail.get("current_url") or "")
+            else:
+                target_locator = locator or str(step_detail.get("used_locator") or "").strip() or "body"
+                raw_value = page.locator(target_locator).first.inner_text(timeout=1500)
+        except Exception:
+            continue
+        value = _apply_extract_pattern(raw_value, rule.get("pattern") or rule.get("regex"), rule.get("group"))
+        if value == "":
+            continue
+        variables[name] = value
+        extracted[name] = value
+        sources.append(
+            {
+                "name": name,
+                "source": source,
+                "locator": locator or step_detail.get("used_locator") or "",
+                "pattern": rule.get("pattern") or rule.get("regex") or "",
+            }
+        )
+    return extracted, sources
 
 
 def execute_ui_case_in_page(
@@ -1504,6 +1829,10 @@ def execute_ui_case_in_page(
         "validation_issues": validation_issues,
         "step_logs": [],
         "started_at": datetime.now(),
+        "execution_policy": execution_context.get("execution_policy") or "isolated_per_case",
+        "extracted_variables": {},
+        "setup_result": {"enabled": execution_context.get("enable_setup_teardown", True) is not False, "status": "not_configured", "step_count": 0},
+        "teardown_result": {"enabled": execution_context.get("enable_setup_teardown", True) is not False, "status": "not_configured", "step_count": 0},
         "retry_config": {"retry_count": retry_count, "retry_interval_ms": retry_interval_ms},
         "auth_context": {
             "login_required": bool(execution_context.get("login_required")),
@@ -1519,6 +1848,8 @@ def execute_ui_case_in_page(
     current_step_index = 0
     current_step: Dict[str, Any] | None = None
     failed_step_detail: Dict[str, Any] | None = None
+    extracted_variables: Dict[str, Any] = {}
+    main_steps_for_verification: list[Dict[str, Any]] = []
 
     try:
         page.set_default_timeout(timeout * 1000)
@@ -1538,11 +1869,22 @@ def execute_ui_case_in_page(
             _assert_business_page_reached(page, page_url, execution_context, login_trace)
         inferred_variables = _business_variables_from_text(_page_text_excerpt(page, limit=12000))
         applied_variables = _merge_inferred_business_variables(variables, inferred_variables)
-        steps = render_template(raw_steps, variables)
+        steps, main_steps_for_verification = _split_ui_step_payload(raw_steps, execution_context)
         if execution_context.get("login_required"):
             steps, removed_login_steps = _strip_leading_login_steps(steps)
         steps, runtime_replacements = _stabilize_runtime_steps(steps, variables)
-        steps, validation_issues = _validate_ui_steps_for_execution(steps)
+        main_steps_for_verification = [step for step in steps if isinstance(step, dict) and step.get("_phase") == "main"]
+        steps, validation_issues = _validate_ui_steps_for_execution(steps, require_business_assertion=False)
+        if main_steps_for_verification and not _case_has_business_assertion(main_steps_for_verification):
+            validation_issues.append({
+                "severity": "warning",
+                "message": "鐢ㄤ緥缂哄皯涓氬姟鏂█锛屾墽琛屽櫒浼氳窇瀹屾暣姝ラ锛屼絾涓嶄細鎶婄粨鏋滃垽瀹氫负鍙俊鎴愬姛",
+            })
+        phase_counts = {
+            "setup": sum(1 for step in steps if isinstance(step, dict) and step.get("_phase") == "setup"),
+            "main": sum(1 for step in steps if isinstance(step, dict) and step.get("_phase") == "main"),
+            "teardown": sum(1 for step in steps if isinstance(step, dict) and step.get("_phase") == "teardown"),
+        }
         log_parts.update(
             {
                 "steps": steps,
@@ -1550,6 +1892,8 @@ def execute_ui_case_in_page(
                 "validation_issues": validation_issues,
                 "runtime_seed_variables": applied_variables,
                 "runtime_step_replacements": runtime_replacements,
+                "setup_result": {"enabled": execution_context.get("enable_setup_teardown", True) is not False, "status": "pending" if phase_counts["setup"] else "not_configured", "step_count": phase_counts["setup"]},
+                "teardown_result": {"enabled": execution_context.get("enable_setup_teardown", True) is not False, "status": "pending" if phase_counts["teardown"] else "not_configured", "step_count": phase_counts["teardown"]},
             }
         )
         log_parts["auth_context"]["removed_login_step_count"] = len(removed_login_steps)
@@ -1566,7 +1910,16 @@ def execute_ui_case_in_page(
             return False, log_text, "", report_path
         for index, step in enumerate(steps, start=1):
             current_step_index = index
-            current_step = step if isinstance(step, dict) else {"raw": step}
+            step_template = step if isinstance(step, dict) else {"raw": step}
+            current_step = render_template(step_template, variables)
+            rendered_steps, step_runtime_replacements = _stabilize_runtime_steps([current_step], variables)
+            current_step = rendered_steps[0] if rendered_steps else step_template
+            if step_runtime_replacements:
+                for replacement in step_runtime_replacements:
+                    replacement["step"] = index
+                    replacement["phase"] = current_step.get("_phase", "main") if isinstance(current_step, dict) else "main"
+                runtime_replacements.extend(step_runtime_replacements)
+                log_parts["runtime_step_replacements"] = runtime_replacements
             # 智能等待：操作前等待页面稳定
             action = (current_step or {}).get("action", "")
             if action not in ("goto", "wait", "screenshot"):
@@ -1575,11 +1928,19 @@ def execute_ui_case_in_page(
             try:
                 step_detail = _run_ui_step(page, current_step, screenshots, timeout)
                 step_detail["index"] = index
+                step_detail["phase"] = current_step.get("_phase", "main")
                 log_parts["step_logs"].append(step_detail)
                 # 智能等待：操作后等待页面响应
                 _wait_after_action(page, action)
                 if action == "goto":
                     _assert_business_page_reached(page, current_step.get("value"), execution_context, login_trace)
+                extracted, extract_sources = _extract_step_variables(page, current_step, step_detail, variables)
+                if extracted:
+                    extracted_variables.update(extracted)
+                    step_detail["extracted_variables"] = _mask_variables(extracted)
+                    step_detail["extract_sources"] = extract_sources
+                    log_parts["extracted_variables"] = _mask_variables(extracted_variables)
+                    log_parts["variables"] = _mask_variables(variables)
             except UiStepExecutionError as exc:
                 # 失败自动重试
                 if retry_count > 0 and action not in ("text_assert", "assert_url", "assert_value", "assert_visible"):
@@ -1591,6 +1952,7 @@ def execute_ui_case_in_page(
                             step_detail = _run_ui_step(page, current_step, screenshots, timeout)
                             step_detail["index"] = index
                             step_detail["retry_attempt"] = attempt + 1
+                            step_detail["phase"] = current_step.get("_phase", "main")
                             log_parts["step_logs"].append(step_detail)
                             # 重试成功后截一张确认图，作为"步骤恢复"的证据
                             confirm_shot = SCREENSHOT_DIR / f"retry-confirm-{uuid4()}.png"
@@ -1603,6 +1965,13 @@ def execute_ui_case_in_page(
                             retried = True
                             if action == "goto":
                                 _assert_business_page_reached(page, current_step.get("value"), execution_context, login_trace)
+                            extracted, extract_sources = _extract_step_variables(page, current_step, step_detail, variables)
+                            if extracted:
+                                extracted_variables.update(extracted)
+                                step_detail["extracted_variables"] = _mask_variables(extracted)
+                                step_detail["extract_sources"] = extract_sources
+                                log_parts["extracted_variables"] = _mask_variables(extracted_variables)
+                                log_parts["variables"] = _mask_variables(variables)
                             break
                         except UiStepExecutionError:
                             continue
@@ -1610,9 +1979,18 @@ def execute_ui_case_in_page(
                         continue
                 failed_step_detail = exc.detail
                 failed_step_detail["index"] = index
+                failed_step_detail["phase"] = current_step.get("_phase", "main")
+                if failed_step_detail["phase"] == "setup":
+                    log_parts["setup_result"] = {**log_parts.get("setup_result", {}), "status": "failed", "failed_step_index": index}
+                elif failed_step_detail["phase"] == "teardown":
+                    log_parts["teardown_result"] = {**log_parts.get("teardown_result", {}), "status": "failed", "failed_step_index": index}
                 log_parts["step_logs"].append(failed_step_detail)
                 raise
         # 最终验证：强制截图 + URL + 截图质量检查
+        if log_parts.get("setup_result", {}).get("status") == "pending":
+            log_parts["setup_result"] = {**log_parts.get("setup_result", {}), "status": "passed"}
+        if log_parts.get("teardown_result", {}).get("status") == "pending":
+            log_parts["teardown_result"] = {**log_parts.get("teardown_result", {}), "status": "passed"}
         final_screenshot = SCREENSHOT_DIR / f"{uuid4()}.png"
         try:
             page.screenshot(path=str(final_screenshot), full_page=True)
@@ -1624,7 +2002,8 @@ def execute_ui_case_in_page(
         final_url = getattr(page, "url", "")
         screenshot_check = _quick_screenshot_check(str(final_screenshot)) if final_screenshot else {"ok": False, "reason": "无法获取截图"}
         url_ok = _url_looks_reasonable(final_url, _expected_origin(str(case.page_url or "")))
-        business_ok, business_issues, business_evidence = _final_business_verification(page, steps, timeout)
+        verification_steps = render_template(main_steps_for_verification or steps, variables)
+        business_ok, business_issues, business_evidence = _final_business_verification(page, verification_steps, timeout)
 
         verification_issues = []
         if not url_ok:
@@ -1667,15 +2046,36 @@ def execute_ui_case_in_page(
         except Exception:
             screenshot = ""
         auth_failure = isinstance(exc, UiAuthPreparationError)
+        failed_phase = current_step.get("_phase") if isinstance(current_step, dict) else ""
+        environment_reason = str(failed_step_detail.get("environment_reason") or "") if failed_step_detail else ""
+        environment_reason = environment_reason or _environment_reason_from_error(exc)
+        if auth_failure:
+            error_category = "auth_blocked"
+            result_reason = "auth_blocked"
+        elif failed_phase == "setup":
+            error_category = "setup_failed"
+            result_reason = "setup_failed"
+        elif failed_phase == "teardown":
+            error_category = "teardown_failed"
+            result_reason = "teardown_failed"
+        elif environment_reason:
+            error_category = "environment"
+            result_reason = "environment"
+        else:
+            error_category = failed_step_detail.get("category") if failed_step_detail else None
+            result_reason = None
         log_parts.update(
             {
                 "error": str(exc),
-                "error_category": "auth_blocked" if auth_failure else (failed_step_detail.get("category") if failed_step_detail else None),
+                "error_category": error_category,
+                "result_reason": result_reason,
                 "failure_reason": "登录前置失败，未进入业务页面" if auth_failure else (failed_step_detail.get("reason") if failed_step_detail else None),
                 "suggestion": "绑定完整测试账号并验证登录成功后再执行" if auth_failure else (failed_step_detail.get("suggestion") if failed_step_detail else None),
                 "failed_step_index": current_step_index or None,
                 "failed_step": current_step,
                 "failed_step_detail": failed_step_detail,
+                "environment_reason": environment_reason,
+                "extracted_variables": _mask_variables(extracted_variables),
                 "current_url": getattr(page, "url", "") if page else "",
                 "screenshot": screenshot,
                 "auth_context": {**log_parts.get("auth_context", {}), "login_trace": login_trace, "auth_blocked": auth_failure},
@@ -1712,6 +2112,50 @@ def execute_ui_cases_batch(
     try:
         with sync_playwright() as p:
             browser = launch_chromium_browser(p, headless=True)
+            scenario_chain = any(
+                (item.get("execution_context") or {}).get("execution_policy") == "scenario_chain"
+                for item in batch_items
+            )
+            if scenario_chain:
+                context = browser.new_context()
+                page = context.new_page()
+                shared_variables: Dict[str, Any] = {}
+                shared_login_trace: list[str] = []
+                try:
+                    for item in batch_items:
+                        if on_case_start:
+                            on_case_start(item)
+                        execution_context = dict(item.get("execution_context") or {})
+                        case = item["case"]
+                        execution_context["session_policy"] = "scenario_chain"
+                        execution_context["execution_policy"] = "scenario_chain"
+                        case_variables = {**(item.get("variables") or {}), **shared_variables}
+                        if execution_context.get("login_required"):
+                            execution_context["target_url"] = execution_context.get("target_url") or case.page_url or ""
+                            if not shared_login_trace:
+                                auth_result = _prepare_authenticated_page(page, execution_context, case_variables, case.timeout or 30)
+                                shared_login_trace = auth_result.get("trace") or []
+                            execution_context["login_trace"] = shared_login_trace
+                            execution_context["preauthenticated"] = True
+                        item["variables"] = case_variables
+                        item["execution_context"] = execution_context
+                        result = execute_ui_case_in_page(case, page, case_variables, execution_context)
+                        results.append(result)
+                        log_data = parse_json_value(result[1], {})
+                        if isinstance(log_data, dict) and isinstance(log_data.get("extracted_variables"), dict):
+                            shared_variables.update(log_data.get("extracted_variables") or {})
+                        if on_case_finish:
+                            on_case_finish(item, result)
+                finally:
+                    try:
+                        page.close()
+                    except Exception:
+                        pass
+                    try:
+                        context.close()
+                    except Exception:
+                        pass
+                return results
             for item in batch_items:
                 if on_case_start:
                     on_case_start(item)
@@ -1770,7 +2214,9 @@ def preflight_ui_case(case: UiCase, runtime_vars: Dict[str, Any] | None = None) 
     variables = builtin_variables()
     if runtime_vars:
         variables.update(runtime_vars)
-    steps = render_template(parse_json_value(case.steps, []), variables)
+    raw_steps = parse_json_value(case.steps, [])
+    split_steps, _ = _split_ui_step_payload(raw_steps, {})
+    steps = render_template(split_steps, variables)
     page_url = render_template(case.page_url, variables)
     steps, issues = _validate_ui_steps_for_execution(steps)
     raw_text = json.dumps({"page_url": case.page_url, "steps": parse_json_value(case.steps, [])}, ensure_ascii=False)

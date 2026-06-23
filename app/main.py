@@ -30,7 +30,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy.orm import Session
 
 from .database import Base, engine, get_db, safe_commit
-from .executors import ensure_report_dirs, execute_api_case, execute_ui_case, execute_ui_cases_batch, parse_json_value, to_json_text
+from .executors import ensure_report_dirs, execute_api_case, execute_ui_case, execute_ui_cases_batch, parse_json_value, probe_login_configuration, to_json_text
 from .models import (
     ActionTemplate,
     AiConfig,
@@ -76,6 +76,7 @@ from .schemas import (
     ProjectUpdate,
     QuickRunRequest,
     TestAccountBindingUpdate,
+    TestAccountLoginProbeRequest,
     TestAccountProfileCreate,
     TestAccountProfileUpdate,
     UiCaseCreate,
@@ -1028,6 +1029,31 @@ def list_test_accounts(
     if current_user.role != "admin":
         query = query.filter(TestAccountProfile.status == "active")
     return [serialize_account_profile(item) for item in query.order_by(TestAccountProfile.project_id.asc(), TestAccountProfile.id.desc()).all()]
+
+
+@app.post("/api/test-accounts/verify-login")
+def verify_test_account_login(
+    payload: TestAccountLoginProbeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    variables: Dict[str, Any] = {}
+    login_url = str(payload.login_url or "").strip()
+    project_id = payload.project_id
+    profile_meta: Dict[str, Any] = {}
+    if payload.account_profile_id:
+        variables, profile_meta = account_profile_variables(db, int(payload.account_profile_id), project_id)
+        login_config = profile_meta.get("login_config") or {}
+        login_url = login_url or str(login_config.get("login_url") or "").strip()
+    else:
+        variables.update(payload.variables or {})
+        variables.update(payload.sensitive_variables or {})
+    target_url = str(payload.target_url or "").strip() or login_url
+    result = probe_login_configuration(target_url, variables, login_url=login_url)
+    result["account_profile_id"] = payload.account_profile_id
+    if profile_meta:
+        result["account_profile_name"] = profile_meta.get("profile_name") or ""
+    return result
 
 
 @app.post("/api/test-accounts")

@@ -147,6 +147,15 @@ class TestAccountBindingUpdate(BaseModel):
     account_profile_id: Optional[int] = None
 
 
+class TestAccountLoginProbeRequest(BaseModel):
+    target_url: str = ""
+    account_profile_id: Optional[int] = None
+    project_id: Optional[int] = None
+    variables: Dict[str, Any] = {}
+    sensitive_variables: Dict[str, Any] = {}
+    login_url: Optional[str] = ""
+
+
 class FunctionalTaskCreate(BaseModel):
     project_id: int
     iteration_name: str
@@ -289,6 +298,11 @@ class FunctionalExecuteRequest(BaseModel):
     case_id: Optional[int] = None
     case_ids: list[int] = []
     force: bool = False
+    execution_policy: Optional[str] = "isolated_per_case"
+    enable_setup_teardown: bool = True
+    retry_environment_failures: bool = True
+    setup_steps: Any = None
+    teardown_steps: Any = None
 
 
 class CaseGenerationTaskCreate(BaseModel):
