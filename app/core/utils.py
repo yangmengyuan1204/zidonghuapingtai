@@ -1552,16 +1552,26 @@ def account_preflight_status(
             warning = "未绑定测试账号，且目标页公开性探测失败；若执行时跳转登录页会自动阻断"
         return {**base, "status": "warning", "message": warning, "can_execute": True}
     login_config = execution_context.get("login_config") or {}
-    login_url = str(login_config.get("login_url") or "").strip() or guess_functional_login_url(task.target_url)
+    configured_login_url = str(login_config.get("login_url") or "").strip()
+    login_url = configured_login_url
     has_username = any(str(variables.get(key) or "").strip() for key in ["username", "account", "email", "mobile", "phone"])
     has_password = any(str(variables.get(key) or "").strip() for key in ["password", "pwd"])
+    has_username_locator = bool(str(login_config.get("username_locator") or "").strip())
+    has_password_locator = bool(str(login_config.get("password_locator") or "").strip())
+    has_submit_locator = bool(str(login_config.get("submit_locator") or "").strip())
     missing = []
-    if not login_url:
-        missing.append("登录页URL")
+    if not configured_login_url:
+        missing.append("login_url")
     if not has_username:
-        missing.append("登录账号")
+        missing.append("username")
     if not has_password:
-        missing.append("登录密码")
+        missing.append("password")
+    if not has_username_locator:
+        missing.append("username_locator")
+    if not has_password_locator:
+        missing.append("password_locator")
+    if not has_submit_locator:
+        missing.append("submit_locator")
     if missing:
         return {
             **base,

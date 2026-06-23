@@ -2,6 +2,7 @@ import atexit
 import base64
 import json
 import os
+import pytest
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -256,6 +257,18 @@ def protected_probe(url):
     }
 
 
+def root_login_probe(url):
+    return {
+        "target_url": url,
+        "auth_required": True,
+        "protected_page_detected": True,
+        "current_url": "https://www.saucedemo.com/",
+        "login_url": "https://www.saucedemo.com/",
+        "probe_error": "",
+        "evidence": {"looks_like_login": True, "password_visible": True, "username_visible": True},
+    }
+
+
 def public_probe(url):
     return {
         "target_url": url,
@@ -283,6 +296,41 @@ def create_functional_task_for_auth(client, headers, name="auth gate task"):
     return project, task
 
 
+def test_root_login_page_evidence_detects_protected_page():
+    class FakeLocator:
+        def __init__(self, selector):
+            self.selector = selector
+
+        @property
+        def first(self):
+            return self
+
+        def is_visible(self, timeout=0):
+            selector = self.selector.lower()
+            return (
+                self.selector == "body"
+                or "password" in selector
+                or "user" in selector
+                or "login" in selector
+                or "submit" in selector
+            )
+
+        def inner_text(self, timeout=0):
+            return "Swag Labs Password for all users: secret_sauce"
+
+    class FakeRootLoginPage:
+        url = "https://www.saucedemo.com/"
+
+        def locator(self, selector):
+            return FakeLocator(selector)
+
+    evidence = executors._login_page_evidence(FakeRootLoginPage(), expected_url="https://www.saucedemo.com/inventory.html")
+
+    assert evidence["looks_like_login"] is True
+    assert evidence["password_visible"] is True
+    assert evidence["username_visible"] is True
+
+
 def test_protected_functional_preflight_without_account_is_blocked(monkeypatch):
     monkeypatch.setattr(core_utils, "probe_target_auth_state", protected_probe)
     with TestClient(app) as client:
@@ -298,6 +346,28 @@ def test_protected_functional_preflight_without_account_is_blocked(monkeypatch):
     assert data["can_execute"] is False
     assert data["login"]["status"] == "blocked"
     assert data["login"]["blocking_reason"] == "account_missing"
+
+
+def test_root_login_protected_page_without_account_blocks_execution(monkeypatch):
+    monkeypatch.setattr(core_utils, "probe_target_auth_state", root_login_probe)
+    with TestClient(app) as client:
+        token = login(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        _, task = create_functional_task_for_auth(client, headers, "root-login-no-account")
+
+        preflight = client.post(f"/api/functional-tasks/{task['id']}/preflight-package", headers=headers, json={})
+        response = client.post(
+            f"/api/functional-tasks/{task['id']}/execute-async",
+            headers=headers,
+            json={"force": True},
+        )
+
+    assert preflight.status_code == 200
+    data = preflight.json()
+    assert data["auth_required"] is True
+    assert data["can_execute"] is False
+    assert data["login"]["blocking_reason"] == "account_missing"
+    assert response.status_code == 400
 
 
 def test_protected_functional_preflight_with_multiple_accounts_requires_binding(monkeypatch):
@@ -354,6 +424,34 @@ def test_force_execute_cannot_bypass_missing_password(monkeypatch):
 
     assert response.status_code == 400
     assert "登录前置缺失" in response.json()["detail"]
+
+
+def test_account_preflight_blocks_missing_login_locators(monkeypatch):
+    monkeypatch.setattr(core_utils, "probe_target_auth_state", protected_probe)
+    with TestClient(app) as client:
+        token = login(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        project, task = create_functional_task_for_auth(client, headers, "protected-missing-locators")
+        client.post(
+            "/api/test-accounts",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "profile_name": "missing locators account",
+                "variables": {"username": "standard_user"},
+                "sensitive_variables": {"password": "secret_sauce"},
+                "login_url": "https://www.saucedemo.com/",
+                "status": "active",
+            },
+        )
+
+        response = client.post(f"/api/functional-tasks/{task['id']}/preflight-package", headers=headers, json={})
+
+    assert response.status_code == 200
+    login_status = response.json()["login"]
+    assert login_status["status"] == "blocked"
+    assert login_status["blocking_reason"] == "missing_credentials"
+    assert {"username_locator", "password_locator", "submit_locator"}.issubset(set(login_status["missing_credentials"]))
 
 
 def test_force_execute_missing_variables_records_blocked_without_browser(monkeypatch):
@@ -440,6 +538,69 @@ def test_force_execute_missing_variables_records_blocked_without_browser(monkeyp
     assert record["result_reason"] == "data_missing"
     assert record["blocked_type"] == "data"
     assert "customerId" in record["missing_variables"]
+
+
+def test_fill_action_is_normalized_to_input():
+    steps, issues = executors._validate_ui_steps_for_execution(
+        [
+            {"action": "fill", "locator": "#first-name", "value": "Test"},
+            {"action": "text_assert", "locator": "body", "value": "OK"},
+        ]
+    )
+
+    assert [item for item in issues if item.get("severity") == "error"] == []
+    assert steps[0]["action"] == "input"
+    assert steps[0]["original_action"] == "fill"
+
+
+def test_batch_ui_execution_uses_isolated_contexts(monkeypatch):
+    pytest.importorskip("playwright.sync_api")
+    created_contexts = []
+    seen_pages = []
+
+    class FakePage:
+        def __init__(self, context_id):
+            self.context_id = context_id
+
+        def close(self):
+            pass
+
+    class FakeContext:
+        def __init__(self, context_id):
+            self.context_id = context_id
+
+        def new_page(self):
+            return FakePage(self.context_id)
+
+        def close(self):
+            pass
+
+    class FakeBrowser:
+        def new_context(self):
+            context_id = len(created_contexts) + 1
+            created_contexts.append(context_id)
+            return FakeContext(context_id)
+
+        def close(self):
+            pass
+
+    def fake_execute(case, page, runtime_vars=None, execution_context=None, env=None):
+        seen_pages.append((case.id, page.context_id, (execution_context or {}).get("session_policy")))
+        return True, json.dumps({"session_policy": (execution_context or {}).get("session_policy")}), "", ""
+
+    monkeypatch.setattr(executors, "launch_chromium_browser", lambda playwright, headless=True: FakeBrowser())
+    monkeypatch.setattr(executors, "execute_ui_case_in_page", fake_execute)
+
+    items = [
+        {"case": SimpleNamespace(id=1, case_name="case 1", page_url="https://example.test", steps="[]", timeout=5), "execution_context": {}},
+        {"case": SimpleNamespace(id=2, case_name="case 2", page_url="https://example.test", steps="[]", timeout=5), "execution_context": {}},
+    ]
+
+    results = executors.execute_ui_cases_batch(items)
+
+    assert [item[0] for item in results] == [True, True]
+    assert created_contexts == [1, 2]
+    assert seen_pages == [(1, 1, "isolated_per_case"), (2, 2, "isolated_per_case")]
 
 
 def test_executor_blocks_business_steps_when_target_redirects_to_login():

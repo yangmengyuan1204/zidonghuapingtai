@@ -860,7 +860,7 @@
 
   function requirementExecutionModeCounts(task, caseIds) {
     const selected = new Set(caseIds || []);
-    const trialStatuses = new Set(["executable", "unchecked", "needs_review", "missing_variables", "locator_risk"]);
+    const trialStatuses = new Set(["executable", "unchecked", "needs_review", "locator_risk"]);
     const rows = (task.cases || []).filter((item) => {
       return selected.has(item.id) && item.automation_status === "approved" && item.ui_case_id;
     });
@@ -890,7 +890,7 @@
         ${
           counts.trusted <= 0 && counts.trial > 0
             ? `<p class="muted-text">当前没有高可信用例，已默认切换为试跑模式。</p>`
-            : `<p class="muted-text">试跑模式会执行定位风险、缺数据和需确认用例，结果仍按真实通过、失败、阻断或需确认分类。</p>`
+            : `<p class="muted-text">试跑模式会执行定位风险和需确认用例；缺数据、缺账号或登录定位器缺失会直接阻断，不会绕过前置条件。</p>`
         }
         ${
           authBlocked

@@ -495,6 +495,7 @@ UI_ACTION_LABELS = {
     "screenshot": "截图",
 }
 
+UI_ACTION_ALIASES = {"fill": "input"}
 UI_LOCATOR_REQUIRED = {"input", "click", "wait_for_selector", "text_assert", "select", "check", "uncheck", "assert_visible", "assert_value"}
 UI_VALUE_REQUIRED = {"goto", "input", "wait", "text_assert", "select", "assert_url", "assert_value"}
 BUILTIN_VAR_NAMES = {"timestamp", "datetime", "date", "uuid", "random_int", "random_str", "random_phone", "random_email"}
@@ -525,6 +526,22 @@ def _mask_variables(variables: Dict[str, Any]) -> Dict[str, Any]:
 
 def _normalize_text(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def _normalize_ui_action(action: Any) -> str:
+    raw = str(action or "").strip().lower()
+    return UI_ACTION_ALIASES.get(raw, raw)
+
+
+def _normalize_ui_step(step: Dict[str, Any]) -> Dict[str, Any]:
+    raw_action = str(step.get("action") or "").strip()
+    action = _normalize_ui_action(raw_action)
+    if action == raw_action:
+        return dict(step)
+    normalized = dict(step)
+    normalized["original_action"] = raw_action
+    normalized["action"] = action
+    return normalized
 
 
 def _quote_locator_text(value: str) -> str:
@@ -733,8 +750,9 @@ def _login_page_evidence(page: Any, expected_url: str = "") -> Dict[str, Any]:
     except Exception:
         password_visible = False
     login_control_visible = False
+    username_visible = False
     if not password_visible:
-        for locator in ['input[placeholder*="密码"]', 'input[placeholder*="password" i]']:
+        for locator in ['input[placeholder*="密码"]', 'input[placeholder*="password" i]', '[data-test*="password" i]', '[id*="password" i]', '[name*="password" i]']:
             try:
                 if page.locator(locator).first.is_visible(timeout=200):
                     password_visible = True
@@ -742,14 +760,38 @@ def _login_page_evidence(page: Any, expected_url: str = "") -> Dict[str, Any]:
             except Exception:
                 continue
     for locator in [
+        'input[name*="user" i]',
+        'input[id*="user" i]',
+        'input[placeholder*="user" i]',
+        'input[name*="account" i]',
+        'input[id*="account" i]',
+        'input[placeholder*="账号"]',
+        'input[placeholder*="邮箱"]',
+        'input[placeholder*="手机"]',
+        '[data-test*="user" i]',
+        '[data-testid*="user" i]',
+    ]:
+        try:
+            if page.locator(locator).first.is_visible(timeout=200):
+                username_visible = True
+                break
+        except Exception:
+            continue
+    for locator in [
         'button:has-text("登录")',
         '[role="button"]:has-text("登录")',
         "text=登录",
         "text=立即登录",
         'button:has-text("Login")',
-        'input[placeholder*="账号"]',
-        'input[placeholder*="邮箱"]',
-        'input[placeholder*="手机号"]',
+        'button:has-text("Log in")',
+        'button:has-text("Sign in")',
+        'input[type="submit"][value*="Login" i]',
+        'input[type="button"][value*="Login" i]',
+        '[role="button"]:has-text("Login")',
+        '[data-test*="login" i]',
+        '[data-testid*="login" i]',
+        '[id*="login" i]',
+        '[name*="login" i]',
     ]:
         try:
             if page.locator(locator).first.is_visible(timeout=200):
@@ -766,7 +808,7 @@ def _login_page_evidence(page: Any, expected_url: str = "") -> Dict[str, Any]:
     looks_like_login = bool(
         strong_url_login
         or (url_has_login and current_url != expected and (password_visible or login_control_visible or text_has_login))
-        or (password_visible and (login_control_visible or text_has_login))
+        or (password_visible and (login_control_visible or username_visible or text_has_login))
     )
     return {
         "looks_like_login": looks_like_login,
@@ -774,6 +816,7 @@ def _login_page_evidence(page: Any, expected_url: str = "") -> Dict[str, Any]:
         "expected_url": expected_url or "",
         "url_has_login": url_has_login,
         "password_visible": password_visible,
+        "username_visible": username_visible,
         "login_control_visible": login_control_visible,
         "text_has_login": text_has_login,
         "visible_text": visible_text[:800],
@@ -810,7 +853,7 @@ def probe_target_auth_state(target_url: str | None, timeout_ms: int = 7000) -> D
                 page.wait_for_load_state("networkidle", timeout=min(timeout_ms, 3000))
             except Exception:
                 page.wait_for_timeout(500)
-            evidence = _login_page_evidence(page)
+            evidence = _login_page_evidence(page, expected_url=url)
             protected = bool(evidence.get("looks_like_login"))
             result.update(
                 {
@@ -904,7 +947,7 @@ def _wait_login_submit_settled(page: Any, timeout_ms: int) -> bool:
 
 
 def _is_login_related_step(step: Dict[str, Any]) -> bool:
-    action = str(step.get("action") or "").strip().lower()
+    action = _normalize_ui_action(step.get("action"))
     text = _step_text(step)
     if action == "goto" and _looks_like_login_url(step.get("value")):
         return True
@@ -1229,6 +1272,7 @@ def _prepare_authenticated_page(page: Any, execution_context: Dict[str, Any], va
 
 def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int) -> Dict[str, Any]:
     started = time.time()
+    step = _normalize_ui_step(step)
     action = str(step.get("action") or "").strip()
     locator = str(step.get("locator") or "").strip()
     value = step.get("value")
@@ -1246,6 +1290,8 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
         "current_url_before": getattr(page, "url", ""),
         "visible_text_before": _page_text_excerpt(page, limit=800),
     }
+    if step.get("original_action"):
+        detail["original_action"] = step.get("original_action")
     before_shot = _capture_evidence_screenshot(page, "step-before", screenshots)
     if before_shot:
         detail["before_screenshot"] = before_shot
@@ -1405,6 +1451,7 @@ def _validate_ui_steps_for_execution(steps: Any) -> tuple[list[Dict[str, Any]], 
             issues.append({"severity": "error", "step": index, "message": f"第{index}步不是对象"})
             continue
         step = dict(raw_step)
+        step = _normalize_ui_step(step)
         action = str(step.get("action") or "").strip()
         if action not in UI_ACTION_LABELS:
             issues.append({"severity": "error", "step": index, "message": f"第{index}步 action 不支持：{action or '空'}"})
@@ -1452,6 +1499,7 @@ def execute_ui_case_in_page(
         "page_url": page_url,
         "steps": steps,
         "timeout": timeout,
+        "session_policy": execution_context.get("session_policy") or "single_case",
         "variables": _mask_variables(variables),
         "validation_issues": validation_issues,
         "step_logs": [],
@@ -1461,6 +1509,7 @@ def execute_ui_case_in_page(
             "login_required": bool(execution_context.get("login_required")),
             "account_profile_id": execution_context.get("account_profile_id"),
             "login_url": (execution_context.get("login_config") or {}).get("login_url") or "",
+            "session_policy": execution_context.get("session_policy") or "single_case",
             "removed_login_step_count": len(removed_login_steps),
         },
     }
@@ -1660,8 +1709,6 @@ def execute_ui_cases_batch(
         return results
 
     browser = None
-    pages: Dict[str, Any] = {}
-    contexts: Dict[str, Any] = {}
     try:
         with sync_playwright() as p:
             browser = launch_chromium_browser(p, headless=True)
@@ -1670,28 +1717,30 @@ def execute_ui_cases_batch(
                     on_case_start(item)
                 execution_context = dict(item.get("execution_context") or {})
                 case = item["case"]
-                session_key = "guest"
-                if execution_context.get("login_required"):
-                    functional_case = item.get("functional_case")
-                    session_key = str(execution_context.get("session_key") or f"auth:{getattr(functional_case, 'id', case.id)}")
-                page = pages.get(session_key)
-                if page is None:
+                execution_context["session_policy"] = "isolated_per_case"
+                context = None
+                page = None
+                try:
                     context = browser.new_context()
                     page = context.new_page()
-                    contexts[session_key] = context
-                    pages[session_key] = page
                     if execution_context.get("login_required"):
                         execution_context["target_url"] = execution_context.get("target_url") or case.page_url or ""
                         auth_result = _prepare_authenticated_page(page, execution_context, item.get("variables") or {}, case.timeout or 30)
                         execution_context["login_trace"] = auth_result.get("trace") or []
                         execution_context["preauthenticated"] = True
-                elif execution_context.get("login_required"):
-                    if _looks_like_login_page(page, expected_url=(execution_context.get("login_config") or {}).get("login_url") or ""):
-                        auth_result = _prepare_authenticated_page(page, execution_context, item.get("variables") or {}, case.timeout or 30)
-                        execution_context["login_trace"] = auth_result.get("trace") or []
-                    execution_context["preauthenticated"] = True
-                item["execution_context"] = execution_context
-                result = execute_ui_case_in_page(case, page, item.get("variables"), execution_context)
+                    item["execution_context"] = execution_context
+                    result = execute_ui_case_in_page(case, page, item.get("variables"), execution_context)
+                finally:
+                    if page is not None:
+                        try:
+                            page.close()
+                        except Exception:
+                            pass
+                    if context is not None:
+                        try:
+                            context.close()
+                        except Exception:
+                            pass
                 results.append(result)
                 if on_case_finish:
                     on_case_finish(item, result)
@@ -1708,16 +1757,6 @@ def execute_ui_cases_batch(
             if on_case_finish:
                 on_case_finish(item, result)
     finally:
-        for page in pages.values():
-            try:
-                page.close()
-            except Exception:
-                pass
-        for context in contexts.values():
-            try:
-                context.close()
-            except Exception:
-                pass
         if browser:
             try:
                 browser.close()
