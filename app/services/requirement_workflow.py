@@ -158,6 +158,8 @@ def build_workflow_status(db: Session, task: FunctionalTask) -> Dict[str, Any]:
             "needs_review_cases": needs_review_cases,
             "has_ui_steps": has_ui_steps,
             "missing_ui_steps": missing_ui_steps,
+            "overall_status": task.status,
+            "latest_run_result": runs[0].result if runs else "",
             "quality": {
                 "executable": quality_counts.get(QUALITY_EXECUTABLE, 0),
                 "unchecked": quality_counts.get(QUALITY_UNCHECKED, 0),
@@ -337,6 +339,10 @@ def _suggest_next_actions(
     runs: List[FunctionalRun],
 ) -> List[Dict[str, Any]]:
     actions: List[Dict[str, Any]] = []
+    failed_ids = [c.id for c in cases if c.test_result == "failed"]
+    blocked_auth_ids = [c.id for c in cases if c.test_result == "blocked" and c.quality_status == QUALITY_AUTH_RISK]
+    blocked_data_ids = [c.id for c in cases if c.test_result == "blocked" and c.quality_status == QUALITY_MISSING_VARIABLES]
+    review_result_ids = [c.id for c in cases if c.test_result == "needs_review" or c.quality_status == QUALITY_NEEDS_REVIEW]
 
     # 没有用例 → 生成
     if not cases:
@@ -379,7 +385,44 @@ def _suggest_next_actions(
         })
 
     # 可执行 → 执行
-    executable_ids = [c.id for c in cases if c.quality_status == QUALITY_EXECUTABLE]
+    if failed_ids:
+        actions.append({
+            "key": "check_diagnosis",
+            "label": f"查看 {len(failed_ids)} 条失败步骤/截图",
+            "reason": "已有用例执行失败，优先定位断言、页面或定位问题",
+            "target_case_ids": failed_ids[:100],
+        })
+
+    if blocked_auth_ids:
+        actions.append({
+            "key": "fix_account",
+            "label": f"修复 {len(blocked_auth_ids)} 条账号阻断",
+            "reason": "账号或登录前置未通过，不能继续执行业务步骤",
+            "target_case_ids": blocked_auth_ids[:100],
+        })
+
+    if blocked_data_ids:
+        actions.append({
+            "key": "fix_data",
+            "label": f"补充 {len(blocked_data_ids)} 条缺失测试数据",
+            "reason": "缺真实业务数据的用例不会试跑，也不会标绿",
+            "target_case_ids": blocked_data_ids[:100],
+        })
+
+    if review_result_ids:
+        actions.append({
+            "key": "review_assertions",
+            "label": f"确认 {len(review_result_ids)} 条弱断言/缺断言用例",
+            "reason": "结果可信度不足，需要补断言或人工确认",
+            "target_case_ids": review_result_ids[:100],
+        })
+
+    executable_ids = [
+        c.id
+        for c in cases
+        if c.quality_status == QUALITY_EXECUTABLE
+        and c.test_result not in ("passed", "failed", "blocked", "needs_review")
+    ]
     if executable_ids and quality_counts.get(QUALITY_EXECUTABLE, 0) > 0:
         actions.append({
             "key": "execute",
@@ -390,7 +433,7 @@ def _suggest_next_actions(
 
     # 失败待诊断（仅当有失败执行记录时）
     failed_runs_exist = any(r.result == "failed" for r in runs)
-    if failed_runs_exist:
+    if failed_runs_exist and not failed_ids:
         actions.append({
             "key": "check_diagnosis",
             "label": "查看失败诊断",

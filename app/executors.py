@@ -1171,20 +1171,61 @@ def _is_login_related_step(step: Dict[str, Any]) -> bool:
     return False
 
 
-def _strip_leading_login_steps(steps: list[Dict[str, Any]]) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
+def _configured_login_locators(execution_context: Dict[str, Any] | None) -> dict[str, set[str]]:
+    login_config = (execution_context or {}).get("login_config") or {}
+    return {
+        "username": {item.strip() for item in _split_locator_values(login_config.get("username_locator")) if item.strip()},
+        "password": {item.strip() for item in _split_locator_values(login_config.get("password_locator")) if item.strip()},
+        "submit": {item.strip() for item in _split_locator_values(login_config.get("submit_locator")) if item.strip()},
+    }
+
+
+def _step_locator_values(step: Dict[str, Any]) -> set[str]:
+    values = {str(step.get("locator") or "").strip()}
+    values.update(item.strip() for item in _split_locator_values(step.get("fallback_locators")) if item.strip())
+    return {item for item in values if item}
+
+
+def _is_configured_login_step(step: Dict[str, Any], execution_context: Dict[str, Any] | None) -> bool:
+    action = _normalize_ui_action(step.get("action"))
+    if action == "goto" and _looks_like_login_url(step.get("value")):
+        return True
+    locators = _configured_login_locators(execution_context)
+    step_locators = _step_locator_values(step)
+    if not step_locators:
+        return False
+    if action == "input" and step_locators & (locators["username"] | locators["password"]):
+        return True
+    if action in {"click", "assert_visible", "wait_for_selector"} and step_locators & locators["submit"]:
+        return True
+    return False
+
+
+def _login_step_audit_payload(step: Dict[str, Any], index: int) -> Dict[str, Any]:
+    return {
+        "index": index,
+        "name": step.get("name") or "",
+        "action": _normalize_ui_action(step.get("action")),
+        "original_action": step.get("original_action") or step.get("action") or "",
+        "locator": step.get("locator") or "",
+        "value": "***" if _normalize_ui_action(step.get("action")) == "input" else step.get("value"),
+    }
+
+
+def _strip_leading_login_steps(
+    steps: list[Dict[str, Any]],
+    execution_context: Dict[str, Any] | None = None,
+) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
     kept: list[Dict[str, Any]] = []
     removed: list[Dict[str, Any]] = []
     stripping = True
-    for step in steps:
+    for index, step in enumerate(steps, start=1):
         if not isinstance(step, dict):
             kept.append(step)
             stripping = False
             continue
         action = str(step.get("action") or "").strip().lower()
-        if stripping and (_is_login_related_step(step) or (removed and action == "wait")):
-            removed.append(step)
-            continue
-        if action == "goto" and _looks_like_login_url(step.get("value")):
+        if stripping and (_is_configured_login_step(step, execution_context) or (removed and action == "wait")):
             removed.append(step)
             continue
         kept.append(step)
@@ -1871,7 +1912,7 @@ def execute_ui_case_in_page(
         applied_variables = _merge_inferred_business_variables(variables, inferred_variables)
         steps, main_steps_for_verification = _split_ui_step_payload(raw_steps, execution_context)
         if execution_context.get("login_required"):
-            steps, removed_login_steps = _strip_leading_login_steps(steps)
+            steps, removed_login_steps = _strip_leading_login_steps(steps, execution_context)
         steps, runtime_replacements = _stabilize_runtime_steps(steps, variables)
         main_steps_for_verification = [step for step in steps if isinstance(step, dict) and step.get("_phase") == "main"]
         steps, validation_issues = _validate_ui_steps_for_execution(steps, require_business_assertion=False)
@@ -1897,6 +1938,11 @@ def execute_ui_case_in_page(
             }
         )
         log_parts["auth_context"]["removed_login_step_count"] = len(removed_login_steps)
+        log_parts["auth_context"]["removed_login_steps"] = [
+            _login_step_audit_payload(step, index)
+            for index, step in enumerate(removed_login_steps, start=1)
+            if isinstance(step, dict)
+        ]
         if any(item.get("severity") == "error" for item in validation_issues):
             log_parts.update(
                 {

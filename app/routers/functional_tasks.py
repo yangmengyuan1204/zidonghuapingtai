@@ -1310,6 +1310,10 @@ def execute_functional_case_for_run(
         )
     record = save_ui_record(db, ui_case, passed, log_text, report_path, screenshot_path)
     result_status, result_reason = _classify_functional_execution_result(passed, log_text, functional_case.quality_status)
+    log_data = parse_json_value(log_text, {})
+    if not isinstance(log_data, dict):
+        log_data = {}
+    final_url = _record_current_url_from_log(log_data)
     if functional_case:
         functional_case.test_result = result_status
         if result_status == "needs_review":
@@ -1327,6 +1331,10 @@ def execute_functional_case_for_run(
             "record_result": record.result,
             "result_reason": result_reason,
             "screenshot": screenshot_path,
+            "current_url": final_url,
+            "final_url": final_url,
+            "failed_step": log_data.get("failed_step"),
+            "failed_step_detail": log_data.get("failed_step_detail"),
             "log": log_text,
         },
         1 if result_status == "passed" else 0,
@@ -1386,7 +1394,7 @@ def save_functional_run(
         failed_count=failed_count,
         execute_time=datetime.now(),
     )
-    task.status = result
+    task.status = _functional_task_overall_status(db, task.id, fallback=result)
     db.add(run)
     db.commit()
     db.refresh(run)
@@ -1486,6 +1494,51 @@ def _classify_functional_execution_result(passed: bool, log_text: str, quality_s
     if any(marker.lower() in blocked_text for marker in blocked_markers):
         return "blocked", "blocked_prerequisite"
     return "failed", "assertion_or_page_failure"
+
+
+def _functional_task_overall_status(db: Session, task_id: int, fallback: str = "approved") -> str:
+    results = [
+        str(item[0] or "").strip()
+        for item in db.query(FunctionalCase.test_result).filter(FunctionalCase.task_id == task_id).all()
+    ]
+    if not results:
+        return fallback
+    if any(result == "failed" for result in results):
+        return "failed"
+    if any(result == "blocked" for result in results):
+        return "blocked"
+    if any(result == "needs_review" for result in results):
+        return "needs_review"
+    if results and all(result == "passed" for result in results):
+        return "passed"
+    if any(result == "passed" for result in results):
+        return fallback if fallback not in {"failed", "blocked", "needs_review"} else "approved"
+    return fallback
+
+
+def _record_current_url_from_log(log_data: Dict[str, Any]) -> str:
+    if not isinstance(log_data, dict):
+        return ""
+    direct = str(log_data.get("current_url") or log_data.get("final_url") or "").strip()
+    if direct:
+        return direct
+    business = log_data.get("business_verification") if isinstance(log_data.get("business_verification"), dict) else {}
+    final_url = str(business.get("final_url") or "").strip()
+    if final_url:
+        return final_url
+    for key in ("failed_step_detail",):
+        detail = log_data.get(key) if isinstance(log_data.get(key), dict) else {}
+        url = str(detail.get("current_url_after") or detail.get("current_url") or "").strip()
+        if url:
+            return url
+    step_logs = log_data.get("step_logs") if isinstance(log_data.get("step_logs"), list) else []
+    for step in reversed(step_logs):
+        if not isinstance(step, dict):
+            continue
+        url = str(step.get("current_url_after") or step.get("current_url") or "").strip()
+        if url:
+            return url
+    return ""
 
 
 def _background_execute_functional(
@@ -1611,6 +1664,7 @@ def _background_execute_functional(
             log_data = parse_json_value(log_text, {})
             if not isinstance(log_data, dict):
                 log_data = {}
+            final_url = _record_current_url_from_log(log_data)
             record_payload: Dict[str, Any] = {
                 "functional_case_id": fc.id if fc else item.get("functional_case_id"),
                 "ui_case_id": getattr(ui_case, "id", None),
@@ -1622,7 +1676,8 @@ def _background_execute_functional(
                 "result_reason": result_reason,
                 "screenshot": screenshot_path,
                 "log": log_text,
-                "current_url": log_data.get("current_url") or "",
+                "current_url": final_url,
+                "final_url": final_url,
                 "failed_step": log_data.get("failed_step"),
                 "failed_step_detail": log_data.get("failed_step_detail"),
                 "extracted_variables": log_data.get("extracted_variables") or {},
@@ -1631,7 +1686,6 @@ def _background_execute_functional(
                 "execution_policy": log_data.get("execution_policy") or (item.get("execution_context") or {}).get("execution_policy") or "isolated_per_case",
                 "environment_reason": log_data.get("environment_reason") or "",
             }
-            record_text = json.dumps(record_payload, ensure_ascii=False, default=str)
             auth_blocked = result_status == "blocked" and result_reason in {"auth_blocked", "auth_redirected_to_login"}
             if result_status == "blocked":
                 _, blocked_type = _quality_blocked_reason(quality_status)
@@ -1642,6 +1696,8 @@ def _background_execute_functional(
                 elif result_reason == "setup_failed":
                     blocked_type = "setup"
                 record_payload["blocked_type"] = blocked_type
+                record_payload["suggestion"] = log_data.get("suggestion") or ""
+                record_payload["missing_variables"] = log_data.get("missing_variables") or []
             if fc:
                 if result_status == "passed":
                     fc.test_result = "passed"
@@ -1737,6 +1793,16 @@ def _background_execute_functional(
                 "missing_variables": missing_variables,
                 "screenshot": "",
                 "log": log_text,
+                "current_url": "",
+                "final_url": "",
+                "failed_step": None,
+                "failed_step_detail": None,
+                "suggestion": log_payload.get("suggestion") or "",
+                "extracted_variables": {},
+                "setup_result": {},
+                "teardown_result": {},
+                "execution_policy": (payload_obj.execution_policy if payload_obj else "isolated_per_case") or "isolated_per_case",
+                "environment_reason": "",
             }
             gathered_records.append(record_payload)
             _write_run_progress(fc.title, len(processed_case_ids))
@@ -1767,6 +1833,19 @@ def _background_execute_functional(
                         "result": "blocked",
                         "status": "auth_blocked",
                         "error": str(exc),
+                        "result_reason": "auth_blocked",
+                        "blocked_type": "auth",
+                        "screenshot": "",
+                        "current_url": "",
+                        "final_url": "",
+                        "failed_step": None,
+                        "failed_step_detail": None,
+                        "suggestion": "绑定完整测试账号并验证登录成功后再执行",
+                        "missing_variables": [],
+                        "extracted_variables": {},
+                        "setup_result": {},
+                        "teardown_result": {},
+                        "environment_reason": "",
                     }
                 )
                 processed_case_ids.add(blocked_case.id)
@@ -1786,7 +1865,7 @@ def _background_execute_functional(
             "environment_blocked_count": total_environment_blocked,
             "execution_policy": (payload_obj.execution_policy if payload_obj else "isolated_per_case") or "isolated_per_case",
         }, ensure_ascii=False, default=str)
-        bg_task.status = final_result
+        bg_task.status = _functional_task_overall_status(bg_db, task_id, fallback=final_result)
         bg_db.commit()
     except Exception:
         import traceback

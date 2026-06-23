@@ -130,7 +130,7 @@
 
   function renderNextActionsBar(workflow) {
     if (!workflow || !workflow.next_actions || !workflow.next_actions.length) return "";
-    var actions = workflow.next_actions.filter(function(a) { return a.key !== "check_diagnosis"; });
+    var actions = workflow.next_actions || [];
     if (!actions.length) return "";
     return '<div class="next-actions-bar"><strong>下一步建议：</strong>' +
       actions.map(function(a) {
@@ -534,6 +534,8 @@
         <span>${badge(task.status)}</span>
       </div>
       <div class="functional-summary">
+        <div><span>测试包整体状态</span><strong>${escapeHtml(summaryCtx.overall_status || task.status || "-")}</strong></div>
+        <div><span>最近一次执行</span><strong>${escapeHtml(summaryCtx.latest_run_result || "-")}</strong></div>
         <div><span>项目</span><strong>${escapeHtml(task.project_name || task.project_id)}</strong></div>
         <div><span>默认测试账号</span><strong>${escapeHtml(task.account_profile_name || "跟随项目默认账号")}</strong></div>
         <div><span>入口页面</span><strong>${escapeHtml(task.target_url)}</strong></div>
@@ -737,6 +739,16 @@
         } else if (action === "check_diagnosis") {
           var timelineBtn = document.querySelector('[data-functional-run-timeline]');
           if (timelineBtn) timelineBtn.click();
+          else {
+            var panel = document.querySelector('[data-workflow-panel="execution"]');
+            if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        } else if (action === "fix_data" || action === "fix_account") {
+          var preflightPanel = document.querySelector('[data-workflow-panel="preflight"]');
+          if (preflightPanel) preflightPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (action === "review_assertions") {
+          var casesPanel = document.querySelector('[data-workflow-panel="cases"]');
+          if (casesPanel) casesPanel.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       });
     });

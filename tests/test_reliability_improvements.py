@@ -30,7 +30,8 @@ import app.main as main
 import app.routers.functional_tasks as functional_task_router
 from app.database import SessionLocal
 from app.main import app
-from app.models import FunctionalCase
+from app.models import FunctionalCase, FunctionalTask, UiCase
+from app.services.requirement_workflow import build_workflow_status
 
 
 PNG_1X1 = base64.b64decode(
@@ -346,6 +347,207 @@ def test_protected_functional_preflight_without_account_is_blocked(monkeypatch):
     assert data["can_execute"] is False
     assert data["login"]["status"] == "blocked"
     assert data["login"]["blocking_reason"] == "account_missing"
+
+
+def test_preflight_probes_confirmed_case_urls_for_auth(monkeypatch):
+    def task_login_public_case_protected(url):
+        if str(url).endswith("/dashboard"):
+            return {
+                "target_url": url,
+                "auth_required": True,
+                "protected_page_detected": True,
+                "current_url": "https://orange.example/auth/login",
+                "login_url": "https://orange.example/auth/login",
+                "probe_error": "",
+                "evidence": {"looks_like_login": True},
+            }
+        return {
+            "target_url": url,
+            "auth_required": False,
+            "protected_page_detected": False,
+            "current_url": url,
+            "login_url": "",
+            "probe_error": "",
+            "evidence": {"looks_like_login": True},
+        }
+
+    monkeypatch.setattr(core_utils, "probe_target_auth_state", task_login_public_case_protected)
+    with TestClient(app) as client:
+        token = login(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        project = client.post("/api/projects", headers=headers, json={"name": "case-url-auth-project", "desc": ""}).json()
+        task = client.post(
+            "/api/functional-tasks",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "iteration_name": "case url auth task",
+                "target_url": "https://orange.example/auth/login",
+                "requirement_text": "",
+            },
+        ).json()
+        ui_case = client.post(
+            "/api/ui-cases",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "case_name": "dashboard protected case",
+                "page_url": "https://orange.example/dashboard",
+                "steps": [{"action": "text_assert", "locator": "body", "value": "Dashboard"}],
+                "timeout": 5,
+                "status": "active",
+            },
+        ).json()
+        db = SessionLocal()
+        try:
+            db.add(
+                FunctionalCase(
+                    task_id=task["id"],
+                    title="dashboard case",
+                    precondition="",
+                    steps="open dashboard",
+                    expected="Dashboard",
+                    category="acceptance",
+                    priority="P1",
+                    automation_status="approved",
+                    test_result="untested",
+                    ui_case_id=ui_case["id"],
+                    quality_status="unchecked",
+                    quality_report="",
+                    failure_count=0,
+                    create_time=datetime.now(),
+                )
+            )
+            db.commit()
+        finally:
+            db.close()
+
+        response = client.post(f"/api/functional-tasks/{task['id']}/preflight-package", headers=headers, json={})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["login"]["status"] == "blocked"
+    assert data["login"]["blocking_reason"] == "account_missing"
+    assert any(item["source"] == "case" and item["auth_required"] for item in data["login"]["auth_probe_sources"])
+    assert any(item["source"] == "case" and item["auth_required"] for item in data["auth_probe_sources"])
+
+
+def test_business_username_input_is_not_stripped_as_login_step():
+    steps = [
+        {"name": "search username", "action": "input", "locator": "input[name='username']", "value": "Admin"},
+        {"name": "search", "action": "click", "locator": "button:has-text('Search')"},
+    ]
+    context = {
+        "login_config": {
+            "username_locator": "input[name='login_user']",
+            "password_locator": "input[name='login_password']",
+            "submit_locator": "button[type='submit']",
+        }
+    }
+
+    kept, removed = executors._strip_leading_login_steps(steps, context)
+
+    assert removed == []
+    assert kept[0]["locator"] == "input[name='username']"
+
+
+def test_configured_leading_login_steps_are_stripped():
+    steps = [
+        {"action": "goto", "value": "https://orange.example/auth/login"},
+        {"action": "input", "locator": "input[name='username']", "value": "Admin"},
+        {"action": "input", "locator": "input[name='password']", "value": "admin123"},
+        {"action": "click", "locator": "button[type='submit']"},
+        {"action": "wait"},
+        {"action": "text_assert", "locator": "body", "value": "Dashboard"},
+    ]
+    context = {
+        "login_config": {
+            "username_locator": "input[name='username']",
+            "password_locator": "input[name='password']",
+            "submit_locator": "button[type='submit']",
+        }
+    }
+
+    kept, removed = executors._strip_leading_login_steps(steps, context)
+
+    assert len(removed) == 5
+    assert kept == [{"action": "text_assert", "locator": "body", "value": "Dashboard"}]
+
+
+def test_task_overall_status_aggregates_all_case_results():
+    db = SessionLocal()
+    try:
+        task = FunctionalTask(
+            project_id=9001,
+            iteration_name="overall status task",
+            requirement_text="",
+            axure_path="",
+            target_url="https://example.test",
+            context="",
+            status="passed",
+            create_time=datetime.now(),
+        )
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        db.add_all(
+            [
+                FunctionalCase(task_id=task.id, title="passed", precondition="", steps="", expected="", category="", priority="P1", automation_status="approved", test_result="passed", ui_case_id=None, quality_status="executable", quality_report="", failure_count=0, create_time=datetime.now()),
+                FunctionalCase(task_id=task.id, title="failed", precondition="", steps="", expected="", category="", priority="P1", automation_status="approved", test_result="failed", ui_case_id=None, quality_status="executable", quality_report="", failure_count=0, create_time=datetime.now()),
+                FunctionalCase(task_id=task.id, title="blocked", precondition="", steps="", expected="", category="", priority="P1", automation_status="approved", test_result="blocked", ui_case_id=None, quality_status="missing_variables", quality_report="", failure_count=0, create_time=datetime.now()),
+            ]
+        )
+        db.commit()
+
+        assert functional_task_router._functional_task_overall_status(db, task.id, fallback="passed") == "failed"
+    finally:
+        db.close()
+
+
+def test_passed_record_current_url_uses_business_verification_final_url():
+    log_data = {
+        "business_verification": {"final_url": "https://orange.example/dashboard"},
+        "step_logs": [{"current_url_after": "https://orange.example/old"}],
+    }
+
+    assert functional_task_router._record_current_url_from_log(log_data) == "https://orange.example/dashboard"
+
+
+def test_workflow_next_actions_do_not_repeat_passed_trusted_cases():
+    db = SessionLocal()
+    try:
+        task = FunctionalTask(
+            project_id=9002,
+            iteration_name="workflow actions task",
+            requirement_text="",
+            axure_path="",
+            target_url="https://example.test",
+            context="",
+            status="failed",
+            create_time=datetime.now(),
+        )
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        ui_case = UiCase(project_id=9002, case_name="passed ui", page_url="https://example.test", steps="[]", timeout=5, status="active", create_time=datetime.now())
+        db.add(ui_case)
+        db.commit()
+        db.refresh(ui_case)
+        passed_case = FunctionalCase(task_id=task.id, title="trusted passed", precondition="", steps="", expected="", category="", priority="P1", automation_status="approved", test_result="passed", ui_case_id=ui_case.id, quality_status="executable", quality_report="", failure_count=0, create_time=datetime.now())
+        failed_case = FunctionalCase(task_id=task.id, title="failed case", precondition="", steps="", expected="", category="", priority="P1", automation_status="approved", test_result="failed", ui_case_id=ui_case.id, quality_status="executable", quality_report="", failure_count=1, create_time=datetime.now())
+        db.add_all([passed_case, failed_case])
+        db.commit()
+        db.refresh(passed_case)
+        passed_case_id = passed_case.id
+
+        workflow = build_workflow_status(db, task)
+    finally:
+        db.close()
+
+    action_keys = [item["key"] for item in workflow["next_actions"]]
+    execute_actions = [item for item in workflow["next_actions"] if item["key"] == "execute"]
+    assert "check_diagnosis" in action_keys
+    assert all(passed_case_id not in item.get("target_case_ids", []) for item in execute_actions)
 
 
 def test_root_login_protected_page_without_account_blocks_execution(monkeypatch):

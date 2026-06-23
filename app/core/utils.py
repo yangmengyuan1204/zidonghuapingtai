@@ -1494,21 +1494,72 @@ def _account_remediation_actions(task: FunctionalTask, *, missing_credentials: l
     return actions
 
 
+def _probe_functional_auth_sources(db: Session, task: FunctionalTask, *, limit: int = 5) -> list[Dict[str, Any]]:
+    urls: list[tuple[str, str, int | None]] = []
+    seen: set[str] = set()
+
+    def add_url(source: str, url: Any, case_id: int | None = None) -> None:
+        text = str(url or "").strip()
+        if not text or text in seen:
+            return
+        seen.add(text)
+        urls.append((source, text, case_id))
+
+    add_url("task", task.target_url, None)
+    case_rows = (
+        db.query(FunctionalCase.id, UiCase.page_url)
+        .join(UiCase, FunctionalCase.ui_case_id == UiCase.id)
+        .filter(
+            FunctionalCase.task_id == task.id,
+            FunctionalCase.automation_status == "approved",
+            FunctionalCase.ui_case_id.isnot(None),
+        )
+        .order_by(FunctionalCase.id.asc())
+        .limit(limit)
+        .all()
+    )
+    for case_id, page_url in case_rows:
+        add_url("case", page_url, int(case_id))
+
+    sources: list[Dict[str, Any]] = []
+    for source, url, case_id in urls:
+        probe = probe_target_auth_state(url)
+        item = {
+            "source": source,
+            "url": url,
+            "target_url": probe.get("target_url") or url,
+            "case_id": case_id,
+            "auth_required": bool(probe.get("auth_required")),
+            "protected_page_detected": bool(probe.get("protected_page_detected")),
+            "current_url": probe.get("current_url") or "",
+            "login_url": probe.get("login_url") or "",
+            "probe_error": probe.get("probe_error") or "",
+            "evidence": probe.get("evidence") or {},
+        }
+        sources.append(item)
+        if item["auth_required"] or item["protected_page_detected"]:
+            break
+    return sources
+
+
 def account_preflight_status(
     db: Session,
     task: FunctionalTask,
     payload: FunctionalExecuteRequest | None,
 ) -> Dict[str, Any]:
     account_mode = (payload.account_mode if payload else "default") or "default"
-    probe = probe_target_auth_state(task.target_url)
-    auth_required = bool(probe.get("auth_required") or probe.get("protected_page_detected"))
+    auth_probe_sources = _probe_functional_auth_sources(db, task)
+    probe = next((item for item in auth_probe_sources if item.get("source") == "task"), None) or (auth_probe_sources[0] if auth_probe_sources else {})
+    protected_probe = next((item for item in auth_probe_sources if item.get("auth_required") or item.get("protected_page_detected")), probe)
+    auth_required = any(item.get("auth_required") or item.get("protected_page_detected") for item in auth_probe_sources)
     base: Dict[str, Any] = {
         "auth_required": auth_required,
-        "protected_page_detected": bool(probe.get("protected_page_detected")),
-        "current_url": probe.get("current_url") or "",
+        "protected_page_detected": bool(protected_probe.get("protected_page_detected")),
+        "current_url": protected_probe.get("current_url") or probe.get("current_url") or "",
         "target_url": task.target_url,
-        "probe_error": probe.get("probe_error") or "",
+        "probe_error": protected_probe.get("probe_error") or probe.get("probe_error") or "",
         "probe": probe,
+        "auth_probe_sources": auth_probe_sources,
         "missing_credentials": [],
         "candidate_profiles": active_account_profile_candidates(db, task.project_id),
         "remediation_actions": _account_remediation_actions(task),
@@ -1730,6 +1781,7 @@ def preflight_functional_package(
         "task_id": task.id,
         "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "login": account_status,
+        "auth_probe_sources": account_status.get("auth_probe_sources") or [],
         "auth_required": bool(account_status.get("auth_required")),
         "protected_page_detected": bool(account_status.get("protected_page_detected")),
         "account_status": account_status.get("status"),
