@@ -166,9 +166,14 @@ def test_functional_execution_result_classifies_blocked_and_review():
         {"verification_status": "failed_verification", "business_verification": {"business_assertion_count": 0}},
         ensure_ascii=False,
     )
+    login_redirect_log = json.dumps(
+        {"current_url": "https://example.test/#/login", "failed_step": {"action": "click"}, "error_category": "定位器找不到"},
+        ensure_ascii=False,
+    )
 
     assert functional_task_router._classify_functional_execution_result(False, "login_required #/login", "executable")[0] == "blocked"
     assert functional_task_router._classify_functional_execution_result(False, "option_not_found", "executable")[0] == "blocked"
+    assert functional_task_router._classify_functional_execution_result(False, login_redirect_log, "executable") == ("blocked", "auth_redirected_to_login")
     assert functional_task_router._classify_functional_execution_result(False, missing_assertion_log, "executable")[0] == "needs_review"
     assert functional_task_router._classify_functional_execution_result(False, "preflight", core_utils.QUALITY_MISSING_VARIABLES)[0] == "blocked"
     assert functional_task_router._classify_functional_execution_result(False, "preflight", core_utils.QUALITY_NEEDS_REVIEW)[0] == "needs_review"
@@ -218,3 +223,156 @@ def test_scan_endpoint_returns_trace_without_unbound_scanned(monkeypatch):
     assert response.status_code == 400
     assert "扫描过程" in response.json()["detail"]
     assert "导航失败" in response.json()["detail"]
+
+
+def protected_probe(url):
+    return {
+        "target_url": url,
+        "auth_required": True,
+        "protected_page_detected": True,
+        "current_url": "https://example.test/#/login",
+        "login_url": "https://example.test/#/login",
+        "probe_error": "",
+        "evidence": {"looks_like_login": True},
+    }
+
+
+def create_functional_task_for_auth(client, headers, name="auth gate task"):
+    project = client.post("/api/projects", headers=headers, json={"name": name, "desc": ""}).json()
+    task = client.post(
+        "/api/functional-tasks",
+        headers=headers,
+        json={
+            "project_id": project["id"],
+            "iteration_name": name,
+            "target_url": "https://example.test/#/protected",
+            "requirement_text": "",
+        },
+    ).json()
+    return project, task
+
+
+def test_protected_functional_preflight_without_account_is_blocked(monkeypatch):
+    monkeypatch.setattr(core_utils, "probe_target_auth_state", protected_probe)
+    with TestClient(app) as client:
+        token = login(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        _, task = create_functional_task_for_auth(client, headers, "protected-no-account")
+
+        response = client.post(f"/api/functional-tasks/{task['id']}/preflight-package", headers=headers, json={})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["auth_required"] is True
+    assert data["can_execute"] is False
+    assert data["login"]["status"] == "blocked"
+    assert data["login"]["blocking_reason"] == "account_missing"
+
+
+def test_protected_functional_preflight_with_multiple_accounts_requires_binding(monkeypatch):
+    monkeypatch.setattr(core_utils, "probe_target_auth_state", protected_probe)
+    with TestClient(app) as client:
+        token = login(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        project, task = create_functional_task_for_auth(client, headers, "protected-ambiguous-account")
+        for index in range(2):
+            client.post(
+                "/api/test-accounts",
+                headers=headers,
+                json={
+                    "project_id": project["id"],
+                    "profile_name": f"账号{index}",
+                    "variables": {"username": f"user{index}"},
+                    "sensitive_variables": {"password": "secret"},
+                    "status": "active",
+                },
+            )
+
+        response = client.post(f"/api/functional-tasks/{task['id']}/preflight-package", headers=headers, json={})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["login"]["status"] == "blocked"
+    assert data["login"]["blocking_reason"] == "account_ambiguous"
+    assert len(data["login"]["candidate_profiles"]) >= 2
+
+
+def test_force_execute_cannot_bypass_missing_password(monkeypatch):
+    monkeypatch.setattr(core_utils, "probe_target_auth_state", protected_probe)
+    with TestClient(app) as client:
+        token = login(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        project, task = create_functional_task_for_auth(client, headers, "protected-missing-password")
+        client.post(
+            "/api/test-accounts",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "profile_name": "缺密码账号",
+                "variables": {"username": "user-no-password"},
+                "sensitive_variables": {},
+                "status": "active",
+            },
+        )
+
+        response = client.post(
+            f"/api/functional-tasks/{task['id']}/execute-async",
+            headers=headers,
+            json={"force": True},
+        )
+
+    assert response.status_code == 400
+    assert "登录前置缺失" in response.json()["detail"]
+
+
+def test_executor_blocks_business_steps_when_target_redirects_to_login():
+    class FakeLocator:
+        def __init__(self, selector):
+            self.selector = selector
+
+        @property
+        def first(self):
+            return self
+
+        def is_visible(self, timeout=0):
+            return self.selector == "body" or "password" in self.selector.lower() or "登录" in self.selector
+
+        def inner_text(self, timeout=0):
+            return "RAKUMART 登录 立即登录 请输入密码"
+
+    class FakeLoginPage:
+        url = "https://example.test/#/login"
+
+        def set_default_timeout(self, timeout):
+            pass
+
+        def goto(self, url, wait_until="domcontentloaded", timeout=None):
+            self.url = "https://example.test/#/login"
+
+        def wait_for_load_state(self, state, timeout=0):
+            pass
+
+        def wait_for_timeout(self, timeout):
+            pass
+
+        def locator(self, selector):
+            return FakeLocator(selector)
+
+        def screenshot(self, path, full_page=True):
+            Path(path).write_bytes(PNG_1X1)
+
+    case = SimpleNamespace(
+        id=10001,
+        case_name="受保护页面搜索",
+        page_url="https://example.test/#/protected",
+        steps=json.dumps([{"action": "click", "locator": "button:has-text('搜索')"}], ensure_ascii=False),
+        timeout=5,
+    )
+
+    passed, log_text, _, _ = executors.execute_ui_case_in_page(case, FakeLoginPage(), {}, {})
+    log_data = json.loads(log_text)
+
+    assert passed is False
+    assert log_data["error_category"] == "auth_blocked"
+    assert "登录前置失败" in log_data["error"]
+    assert log_data["auth_context"]["auth_blocked"] is True
