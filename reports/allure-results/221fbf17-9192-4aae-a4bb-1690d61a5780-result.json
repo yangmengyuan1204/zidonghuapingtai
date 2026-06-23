@@ -1,0 +1,22 @@
+{
+  "uuid": "221fbf17-9192-4aae-a4bb-1690d61a5780",
+  "name": "辅料生成",
+  "fullName": "data_script.辅料生成",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1782206463195,
+  "stop": 1782206464264,
+  "labels": [
+    {
+      "name": "suite",
+      "value": "data_script"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "log",
+      "source": "221fbf17-9192-4aae-a4bb-1690d61a5780-log.txt",
+      "type": "text/plain"
+    }
+  ]
+}

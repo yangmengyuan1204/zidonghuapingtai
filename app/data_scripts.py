@@ -6240,30 +6240,83 @@ def run_material_generation_script(env: Env, variables: Dict[str, Any] | None = 
         log["login"] = {"success": True, "account": account, "token_extracted": bool(token)}
 
         # 查询已有辅料名称，并解析最大编号
-        list_params = {
-            "name": base_name, "name_trans": "", "type_id": "",
-            "page": "1", "pageSize": "200",
-        }
         list_url = base_url + "/client/material/material/list"
         existing_names: set = set()
         max_existing_idx = 0
         _name_pattern = re.compile(r"^" + re.escape(base_name) + r"-(\d+)$")
-        try:
-            list_resp = client.session.get(list_url, params=list_params, timeout=timeout)
-            if list_resp.ok:
-                list_data = list_resp.json()
-                if list_data.get("success") and isinstance(list_data.get("data"), dict):
-                    items = list_data["data"].get("data") or []
-                    if isinstance(items, list):
-                        for item in items:
-                            if isinstance(item, dict) and item.get("name"):
-                                name_text = item["name"]
-                                existing_names.add(name_text)
-                                _m = _name_pattern.match(name_text)
-                                if _m:
-                                    max_existing_idx = max(max_existing_idx, int(_m.group(1)))
-        except Exception as list_err:
-            log["list_error"] = str(list_err)
+
+        def _parse_list_items(list_data: Any) -> list:
+            """从列表接口响应中提取 items，兼容多种返回格式"""
+            if not isinstance(list_data, dict):
+                return []
+            data = list_data.get("data")
+            if isinstance(data, dict):
+                return data.get("data") or data.get("list") or data.get("items") or []
+            if isinstance(data, list):
+                return data
+            return []
+
+        # 先不带 name 过滤拉取全量列表（某些接口 name 是精确匹配，模糊搜索需空 name）
+        _query_variants = [
+            {"page": "1", "pageSize": "500"},
+            {"name": "", "page": "1", "pageSize": "500"},
+            {"name": base_name, "page": "1", "pageSize": "500"},
+        ]
+        for query_params in _query_variants:
+            try:
+                list_resp = client.session.get(list_url, params=query_params, timeout=timeout)
+                log.setdefault("list_responses", []).append({
+                    "params": dict(query_params),
+                    "method": "GET",
+                    "status": list_resp.status_code,
+                    "body_preview": list_resp.text[:800] if list_resp.ok else list_resp.text[:300],
+                })
+                if list_resp.ok:
+                    list_data = list_resp.json()
+                    if list_data.get("success") or list_data.get("code") == 200 or list_data.get("code") == 0:
+                        items = _parse_list_items(list_data)
+                        if isinstance(items, list):
+                            for item in items:
+                                if isinstance(item, dict) and item.get("name"):
+                                    name_text = item["name"]
+                                    existing_names.add(name_text)
+                                    _m = _name_pattern.match(name_text)
+                                    if _m:
+                                        max_existing_idx = max(max_existing_idx, int(_m.group(1)))
+            except Exception as list_err:
+                log.setdefault("list_errors", []).append(f"GET {query_params}: {list_err}")
+
+        # 如果 GET 方式没查到数据，尝试 POST form-data（部分接口只接受 POST）
+        if not existing_names:
+            _post_variants = [
+                {"page": "1", "pageSize": "500"},
+                {"name": "", "page": "1", "pageSize": "500"},
+                {"name": base_name, "name_trans": "", "type_id": "", "page": "1", "pageSize": "500"},
+            ]
+            for post_fields in _post_variants:
+                try:
+                    files = [(k, (None, str(v))) for k, v in post_fields.items()]
+                    list_resp = client.session.post(list_url, files=files, timeout=timeout)
+                    log.setdefault("list_responses", []).append({
+                        "params": dict(post_fields),
+                        "method": "POST",
+                        "status": list_resp.status_code,
+                        "body_preview": list_resp.text[:800] if list_resp.ok else list_resp.text[:300],
+                    })
+                    if list_resp.ok:
+                        list_data = list_resp.json()
+                        if list_data.get("success") or list_data.get("code") == 200 or list_data.get("code") == 0:
+                            items = _parse_list_items(list_data)
+                            if isinstance(items, list):
+                                for item in items:
+                                    if isinstance(item, dict) and item.get("name"):
+                                        name_text = item["name"]
+                                        existing_names.add(name_text)
+                                        _m = _name_pattern.match(name_text)
+                                        if _m:
+                                            max_existing_idx = max(max_existing_idx, int(_m.group(1)))
+                except Exception as list_err:
+                    log.setdefault("list_errors", []).append(f"POST {post_fields}: {list_err}")
 
         # 从已有最大编号 +1 开始创建
         start_idx = max_existing_idx + 1
