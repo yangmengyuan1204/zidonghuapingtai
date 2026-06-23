@@ -1900,3 +1900,4 @@ INFO:     127.0.0.1:56599 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:56599 - "GET /favicon.ico HTTP/1.1" 404 Not Found
 INFO:     127.0.0.1:62614 - "GET / HTTP/1.1" 200 OK
 INFO:     127.0.0.1:64198 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64612 - "GET / HTTP/1.1" 200 OK
