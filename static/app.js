@@ -256,26 +256,37 @@ const appEl = document.querySelector("#app");const toastEl = document.querySelec
       const customerId = String(variables.customer_id || splitParamList(variables.customer_ids)[0] || "").trim();
       const baseName = String(variables.name || "").trim();
       const count = Math.max(1, Number(variables.count) || 1);
-      if (!customerId || !baseName) {
-        progress.fail("缺少必要参数：客户ID和辅料名称不能为空");
-        showToast("缺少必要参数");
+      if (!baseName) {
+        progress.fail("缺少必要参数：辅料名称不能为空");
+        showToast("缺少必要参数：请输入辅料名称");
         return;
       }
+      const authHeaders = {};
+      if (state.token) authHeaders.Authorization = "Bearer " + state.token;
       progress.update(20, "正在获取现有辅料名称...");
       const listUrl = BASE + "/client/material/material/list?name=" + encodeURIComponent(baseName) + "&name_trans=&type_id=&page=1&pageSize=100";
-      const listResp = await fetch(listUrl, { credentials: "include" });
       let existingNames = new Set();
-      if (listResp.ok) {
-        const listData = await listResp.json();
-        if (listData.success && listData.data && Array.isArray(listData.data.data)) {
-          listData.data.data.forEach(function(item) { if (item.name) existingNames.add(item.name); });
+      try {
+        const listResp = await fetch(listUrl, { credentials: "include", headers: authHeaders });
+        if (listResp.ok) {
+          const listData = await listResp.json();
+          if (listData.success && listData.data && Array.isArray(listData.data.data)) {
+            listData.data.data.forEach(function(item) { if (item.name) existingNames.add(item.name); });
+          }
         }
+      } catch (listErr) {
+        progress.fail("获取辅料列表失败：" + listErr.message);
+        showToast("获取辅料列表失败");
+        return;
       }
       progress.update(30, "开始循环创建辅料...");
       var created = [];
       var skipped = [];
       var idx = 1;
-      while (created.length < count) {
+      var maxIterations = count + 200;
+      var consecutiveFailures = 0;
+      var MAX_CONSECUTIVE_FAILURES = 10;
+      while (created.length < count && idx <= maxIterations && consecutiveFailures < MAX_CONSECUTIVE_FAILURES) {
         var candidate = baseName + "-" + idx;
         if (existingNames.has(candidate)) {
           skipped.push(candidate);
@@ -290,30 +301,44 @@ const appEl = document.querySelector("#app");const toastEl = document.querySelec
           main_image: "https://rakumart-ps20.oss-ap-northeast-1.aliyuncs.com/dest/202606/265055113/O1CN01nklPMm2KqWS7HYtvi_!!2248919608.jpg",
           notice: "",
         };
-        var createResp = await fetch(BASE + "/client/material/material/store", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(bodyObj),
-        });
-        if (createResp.ok) {
-          var createData = await createResp.json();
-          if (createData.success) {
-            created.push({ name: candidate, id: createData.data.id });
+        try {
+          var createResp = await fetch(BASE + "/client/material/material/store", {
+            method: "POST",
+            headers: Object.assign({ "Content-Type": "application/json" }, authHeaders),
+            credentials: "include",
+            body: JSON.stringify(bodyObj),
+          });
+          if (createResp.ok) {
+            var createData = await createResp.json();
+            if (createData.success) {
+              created.push({ name: candidate, id: createData.data.id });
+              consecutiveFailures = 0;
+            } else {
+              skipped.push(candidate + "(" + (createData.msg || "创建失败") + ")");
+              consecutiveFailures++;
+            }
           } else {
-            skipped.push(candidate + "(" + (createData.msg || "创建失败") + ")");
+            skipped.push(candidate + "(HTTP " + createResp.status + ")");
+            consecutiveFailures++;
           }
-        } else {
-          skipped.push(candidate + "(HTTP " + createResp.status + ")");
+        } catch (fetchErr) {
+          skipped.push(candidate + "(网络错误: " + fetchErr.message + ")");
+          consecutiveFailures++;
         }
         existingNames.add(candidate);
         idx++;
         var pct = Math.min(90, 30 + Math.round(created.length / count * 55));
         progress.update(pct, "已创建 " + created.length + "/" + count + " 个辅料...");
       }
-      progress.success("辅料生成完成");
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES && created.length < count) {
+        progress.fail("连续 " + MAX_CONSECUTIVE_FAILURES + " 次创建失败，已中止。已创建 " + created.length + "/" + count);
+      } else if (created.length < count) {
+        progress.fail("达到最大尝试次数，已创建 " + created.length + "/" + count);
+      } else {
+        progress.success("辅料生成完成");
+      }
       return presentScriptResult({
-        records: [{ id: "", case_name: flow.name, result: "passed" }],
+        records: [{ id: "", case_name: flow.name, result: created.length > 0 ? "passed" : "failed" }],
         variables: {
           material_generation_name: baseName,
           material_generation_count: count,

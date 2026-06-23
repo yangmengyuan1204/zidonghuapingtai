@@ -1904,3 +1904,82 @@ INFO:     127.0.0.1:64612 - "GET / HTTP/1.1" 200 OK
 INFO:     127.0.0.1:52909 - "GET / HTTP/1.1" 200 OK
 INFO:     127.0.0.1:51227 - "GET / HTTP/1.1" 200 OK
 INFO:     127.0.0.1:51227 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59070 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59070 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57416 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57416 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57416 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58538 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58538 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53735 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53735 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59447 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62339 - "GET /static/app.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59447 - "GET /static/styles.css?v=20260617-ui-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61287 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59552 - "GET /static/test-status.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53950 - "GET /static/full-flow.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62489 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59447 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62339 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59447 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59447 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59447 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59447 - "GET /api/functional-tasks?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62339 - "GET /api/functional-tasks/1/workflow HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59447 - "GET /api/functional-tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59447 - "GET /api/test-accounts?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59447 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62339 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62339 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET /static/styles.css?v=20260617-ui-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58749 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59043 - "GET /static/app.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53470 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62990 - "GET /static/test-status.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64219 - "GET /static/full-flow.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59043 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57927 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62990 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET /static/styles.css?v=20260617-ui-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64219 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58749 - "GET /static/test-status.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53470 - "GET /static/full-flow.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59043 - "GET /static/app.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59043 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59043 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59043 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59043 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET /static/app.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53470 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64219 - "GET /static/test-status.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58749 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59043 - "GET /static/styles.css?v=20260617-ui-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62990 - "GET /static/full-flow.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53470 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53470 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57927 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59043 - "GET /static/requirement-pack.js?v=20260616-requirement-pack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58749 - "GET /static/full-flow.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64219 - "GET /static/test-status.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62990 - "GET /static/case-generation.js?v=20260619-screenshot-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57927 - "GET /static/styles.css?v=20260617-ui-fix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53470 - "GET /static/app.js?v=20260626-resume-porder HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58749 - "GET /static/quick-start.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58749 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53470 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58749 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58749 - "GET /api/dashboard?project_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58749 - "GET /api/envs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53470 - "GET /api/api-cases HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53470 - "GET /api/data-scripts/latest-order-sn?project_id=1 HTTP/1.1" 200 OK
