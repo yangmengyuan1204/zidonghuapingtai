@@ -1398,6 +1398,16 @@ def save_functional_run(
 
 BLOCKED_QUALITY_STATUSES = {QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES, QUALITY_NOT_RECOMMENDED}
 REVIEW_QUALITY_STATUSES = {QUALITY_NEEDS_REVIEW}
+PREEXEC_BLOCKED_QUALITY_STATUSES = {QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES, QUALITY_NOT_RECOMMENDED}
+ASSERTION_ACTIONS = {"text_assert", "assert_visible", "assert_value", "assert_url"}
+
+
+def _quality_blocked_reason(quality_status: str | None) -> tuple[str, str]:
+    if quality_status == QUALITY_AUTH_RISK:
+        return "auth_blocked", "auth"
+    if quality_status == QUALITY_MISSING_VARIABLES:
+        return "data_missing", "data"
+    return "blocked_prerequisite", "prerequisite"
 
 
 def _classify_functional_execution_result(passed: bool, log_text: str, quality_status: str | None) -> tuple[str, str]:
@@ -1410,10 +1420,11 @@ def _classify_functional_execution_result(passed: bool, log_text: str, quality_s
         return "needs_review", f"preflight:{quality}"
 
     log_data = parse_json_value(log_text, {})
-    if isinstance(log_data, dict) and log_data:
-        text = json.dumps(log_data, ensure_ascii=False, default=str).lower()
-    else:
-        text = str(log_text or "").lower()
+    full_text = (
+        json.dumps(log_data, ensure_ascii=False, default=str).lower()
+        if isinstance(log_data, dict) and log_data
+        else str(log_text or "").lower()
+    )
     if isinstance(log_data, dict):
         auth_context = log_data.get("auth_context") if isinstance(log_data.get("auth_context"), dict) else {}
         current_url = str(log_data.get("current_url") or "").lower()
@@ -1423,17 +1434,36 @@ def _classify_functional_execution_result(passed: bool, log_text: str, quality_s
             log_data.get("failed_step") or log_data.get("error_category")
         ):
             return "blocked", "auth_redirected_to_login"
+        failed_step = log_data.get("failed_step") if isinstance(log_data.get("failed_step"), dict) else {}
+        failed_action = str(failed_step.get("action") or "").strip().lower()
+        error_category = str(log_data.get("error_category") or "").lower()
+        error_text = " ".join(
+            str(log_data.get(key) or "")
+            for key in ["error", "error_category", "failure_reason", "suggestion", "result_reason"]
+        ).lower()
+        if failed_action in ASSERTION_ACTIONS or "断言失败" in error_category or "assert" in error_text:
+            return "failed", "assertion_or_page_failure"
+        blocked_text = " ".join(
+            [
+                str(log_data.get("error") or ""),
+                str(log_data.get("error_category") or ""),
+                str(log_data.get("failure_reason") or ""),
+                str(log_data.get("suggestion") or ""),
+                str(log_data.get("result_reason") or ""),
+                json.dumps(log_data.get("failed_step_detail") or {}, ensure_ascii=False, default=str),
+                json.dumps(log_data.get("verification_issues") or [], ensure_ascii=False, default=str),
+            ]
+        ).lower()
+    else:
+        blocked_text = str(log_text or "").lower()
     verification_status = log_data.get("verification_status") if isinstance(log_data, dict) else ""
     business = log_data.get("business_verification") if isinstance(log_data, dict) else {}
     if isinstance(business, dict) and int(business.get("business_assertion_count") or 0) == 0:
         return "needs_review", "missing_business_assertion"
-    if verification_status == "failed_verification" and "业务断言" in text:
+    if verification_status == "failed_verification" and "业务断言" in full_text:
         return "needs_review", "missing_business_assertion"
 
     blocked_markers = [
-        "login_required",
-        "#/login",
-        "/login",
         "登录前置",
         "登录态",
         "缺少真实数据",
@@ -1447,7 +1477,7 @@ def _classify_functional_execution_result(passed: bool, log_text: str, quality_s
         "not found order",
         "order_not_found",
     ]
-    if any(marker.lower() in text for marker in blocked_markers):
+    if any(marker.lower() in blocked_text for marker in blocked_markers):
         return "blocked", "blocked_prerequisite"
     return "failed", "assertion_or_page_failure"
 
@@ -1489,11 +1519,23 @@ def _background_execute_functional(
         _cached_vars = dict(variables)
         processed_case_ids: set[int] = set()
         batch_items: list[Dict[str, Any]] = []
+        preblocked_items: list[Dict[str, Any]] = []
         payload_obj = FunctionalExecuteRequest(**payload_data) if payload_data else None
 
         for fc in bg_cases:
             ui_case = bg_db.get(UiCase, fc.ui_case_id) if fc.ui_case_id else None
             if not ui_case:
+                continue
+            quality_status = fc.quality_status or QUALITY_UNCHECKED
+            if payload_data.get("force") and quality_status in PREEXEC_BLOCKED_QUALITY_STATUSES:
+                preblocked_items.append(
+                    {
+                        "case": ui_case,
+                        "functional_case": fc,
+                        "functional_case_id": fc.id,
+                        "quality_status": quality_status,
+                    }
+                )
                 continue
             case_variables, execution_context = resolve_execution_account(
                 bg_db,
@@ -1560,7 +1602,12 @@ def _background_execute_functional(
                 "log": log_text,
             }
             record_text = json.dumps(record_payload, ensure_ascii=False, default=str)
-            auth_blocked = result_status == "blocked" and ("登录前置失败" in record_text or ("login_required" in record_text and "#/login" in record_text))
+            auth_blocked = result_status == "blocked" and result_reason in {"auth_blocked", "auth_redirected_to_login"}
+            if result_status == "blocked":
+                _, blocked_type = _quality_blocked_reason(quality_status)
+                if result_reason in {"auth_blocked", "auth_redirected_to_login"}:
+                    blocked_type = "auth"
+                record_payload["blocked_type"] = blocked_type
             if fc:
                 if result_status == "passed":
                     fc.test_result = "passed"
@@ -1597,8 +1644,73 @@ def _background_execute_functional(
                 len(processed_case_ids),
             )
 
+        def _on_case_preblocked(item: Dict[str, Any]) -> None:
+            nonlocal total_blocked, total_auth_blocked
+            fc = bg_db.get(FunctionalCase, int(item.get("functional_case_id")))
+            ui_case = item.get("case")
+            if not fc or not ui_case:
+                return
+            quality_status = str(item.get("quality_status") or fc.quality_status or QUALITY_UNCHECKED)
+            result_reason, blocked_type = _quality_blocked_reason(quality_status)
+            quality_report = parse_json_value(fc.quality_report, {})
+            if not isinstance(quality_report, dict):
+                quality_report = {}
+            issues = quality_report.get("issues") if isinstance(quality_report.get("issues"), list) else []
+            missing_variables = quality_report.get("required_seed_keys") if isinstance(quality_report.get("required_seed_keys"), list) else []
+            if quality_status == QUALITY_MISSING_VARIABLES and not missing_variables:
+                for issue in issues:
+                    text = str(issue or "")
+                    if "：" in text:
+                        missing_variables.append(text.rsplit("：", 1)[-1].strip())
+            reason_text = str(quality_report.get("reason") or "预检阻断，未进入浏览器执行")
+            suggestion_map = {
+                QUALITY_AUTH_RISK: "绑定完整测试账号并验证登录成功后再执行",
+                QUALITY_MISSING_VARIABLES: "先抽样或补充真实业务数据后再执行",
+                QUALITY_NOT_RECOMMENDED: "先补齐 UI 步骤、确认用例或修复预检问题",
+            }
+            log_payload = {
+                "case_name": getattr(ui_case, "case_name", fc.title),
+                "pre_execution_blocked": True,
+                "quality_status": quality_status,
+                "result_reason": result_reason,
+                "blocked_type": blocked_type,
+                "missing_variables": missing_variables,
+                "error_category": result_reason,
+                "failure_reason": reason_text,
+                "suggestion": suggestion_map.get(quality_status, "先修复预检阻断项后再执行"),
+                "quality_report": quality_report,
+                "finished_at": datetime.now(),
+            }
+            log_text = json.dumps(log_payload, ensure_ascii=False, default=str)
+            record = save_ui_record(bg_db, ui_case, False, log_text, "", "")
+            fc.test_result = "blocked"
+            if quality_status == QUALITY_AUTH_RISK:
+                total_auth_blocked += 1
+            total_blocked += 1
+            processed_case_ids.add(fc.id)
+            record_payload: Dict[str, Any] = {
+                "functional_case_id": fc.id,
+                "ui_case_id": getattr(ui_case, "id", None),
+                "record_id": record.id,
+                "title": fc.title,
+                "result": "blocked",
+                "record_result": record.result,
+                "quality_status": quality_status,
+                "result_reason": result_reason,
+                "blocked_type": blocked_type,
+                "missing_variables": missing_variables,
+                "screenshot": "",
+                "log": log_text,
+            }
+            gathered_records.append(record_payload)
+            _write_run_progress(fc.title, len(processed_case_ids))
+
+        for item in preblocked_items:
+            _on_case_preblocked(item)
+
         try:
-            execute_ui_cases_batch(batch_items, on_case_start=_on_case_start, on_case_finish=_on_case_finish)
+            if batch_items:
+                execute_ui_cases_batch(batch_items, on_case_start=_on_case_start, on_case_finish=_on_case_finish)
         except Exception as exc:
             if "登录前置失败" not in str(exc):
                 raise

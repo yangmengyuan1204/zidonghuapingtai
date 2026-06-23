@@ -1654,7 +1654,7 @@ def functional_package_preflight_summary(cases: list[Dict[str, Any]]) -> Dict[st
     counts = Counter((item.get("quality_status") or QUALITY_UNCHECKED) for item in cases)
     total = len(cases)
     manual_statuses = {QUALITY_NEEDS_REVIEW, QUALITY_MISSING_VARIABLES, QUALITY_LOCATOR_RISK, QUALITY_AUTH_RISK, QUALITY_NOT_RECOMMENDED}
-    trial_statuses = {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_MISSING_VARIABLES, QUALITY_LOCATOR_RISK}
+    trial_statuses = {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_LOCATOR_RISK}
     return {
         "total": total,
         "executable": counts.get(QUALITY_EXECUTABLE, 0),
