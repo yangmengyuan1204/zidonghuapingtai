@@ -872,6 +872,8 @@
   function renderRequirementExecutionMode(task, caseIds) {
     const counts = requirementExecutionModeCounts(task, caseIds);
     const trialChecked = counts.trusted <= 0 && counts.trial > 0;
+    const summary = task?.preflight_summary || {};
+    const authBlocked = Number(summary.auth_blocked || 0);
     return `
       <details class="functional-requirement" id="requirementExecutionMode" open>
         <summary>执行模式</summary>
@@ -889,6 +891,11 @@
           counts.trusted <= 0 && counts.trial > 0
             ? `<p class="muted-text">当前没有高可信用例，已默认切换为试跑模式。</p>`
             : `<p class="muted-text">试跑模式会执行定位风险、缺数据和需确认用例，结果仍按真实通过、失败、阻断或需确认分类。</p>`
+        }
+        ${
+          authBlocked
+            ? `<div class="alert error">当前预检存在 ${escapeHtml(authBlocked)} 条登录阻断。试跑模式不会绕过登录前置，请先通过「默认账号」绑定完整账号并验证登录。</div>`
+            : ""
         }
       </details>
     `;
@@ -975,6 +982,10 @@
     const counts = result?.counts || {};
     const seed = result?.seed?.variables || {};
     const manualItems = result?.manual_check_items || [];
+    const login = result?.login || {};
+    const missingCredentials = login.missing_credentials || result?.missing_credentials || [];
+    const candidates = login.candidate_profiles || [];
+    const actions = login.remediation_actions || result?.remediation_actions || [];
     return `
       <div class="preflight-report">
         <section class="diagnosis-summary">
@@ -989,7 +1000,28 @@
         </section>
         <section class="diagnosis-card">
           <div class="diagnosis-card-head"><span>登录与页面</span></div>
-          <p>${escapeHtml(result?.login?.message || "-")}</p>
+          <p>${badge(login.status || "unchecked")} ${escapeHtml(login.message || "-")}</p>
+          <div class="diagnosis-grid">
+            <div><span>是否需要登录</span><strong>${login.auth_required ? "是" : "否"}</strong></div>
+            <div><span>账号档案</span><strong>${escapeHtml(login.account_profile_id || "未绑定")}</strong></div>
+            <div><span>当前页面</span><strong>${escapeHtml(login.current_url || result?.page?.target_url || "-")}</strong></div>
+            <div><span>阻断原因</span><strong>${escapeHtml(login.blocking_reason || "-")}</strong></div>
+          </div>
+          ${
+            missingCredentials.length
+              ? `<p class="danger-text">缺失：${escapeHtml(missingCredentials.join("、"))}</p>`
+              : ""
+          }
+          ${
+            candidates.length
+              ? `<p class="muted-text">可绑定账号：${escapeHtml(candidates.slice(0, 5).map((item) => item.profile_name || item.id).join("、"))}</p>`
+              : ""
+          }
+          ${
+            actions.length
+              ? `<div class="diagnosis-actions"><button class="btn secondary" id="bindTaskAccountFromPreflight" type="button">绑定默认账号</button><span class="muted-text">${escapeHtml(actions.map((item) => item.label).join(" / "))}</span></div>`
+              : ""
+          }
           <p>${escapeHtml(result?.page?.message || "-")}</p>
         </section>
         <section class="diagnosis-card">
@@ -1024,6 +1056,10 @@
       <div class="modal-body">${renderRequirementPreflightResult(result)}</div>
     `;
     modalEl.showModal();
+    document.querySelector("#bindTaskAccountFromPreflight")?.addEventListener("click", () => {
+      modalEl.close();
+      document.querySelector("#bindFunctionalTaskAccount")?.click();
+    });
     document.querySelector("#closeModal")?.addEventListener("click", async () => {
       modalEl.close();
       await renderFunctionalTests();
