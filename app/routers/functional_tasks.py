@@ -56,6 +56,8 @@ from ..models import (
     FunctionalScreenshot,
     FunctionalTask,
     PageSnapshot,
+    TestAccountBinding,
+    TestRecord,
     UiCase,
     User,
 )
@@ -211,7 +213,15 @@ def delete_functional_task(
     for case in db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id).all():
         if case.ui_case_id:
             db.query(TestRecord).filter(TestRecord.case_type == "ui", TestRecord.case_id == case.ui_case_id).delete(synchronize_session=False)
+            db.query(TestAccountBinding).filter(
+                TestAccountBinding.target_type == "ui_case",
+                TestAccountBinding.target_id == case.ui_case_id,
+            ).delete(synchronize_session=False)
             db.query(UiCase).filter(UiCase.id == case.ui_case_id).delete(synchronize_session=False)
+        db.query(TestAccountBinding).filter(
+            TestAccountBinding.target_type == "functional_case",
+            TestAccountBinding.target_id == case.id,
+        ).delete(synchronize_session=False)
     db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id).delete(synchronize_session=False)
     db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).delete(synchronize_session=False)
     db.query(FunctionalScreenshot).filter(FunctionalScreenshot.task_id == task.id).delete(synchronize_session=False)
@@ -220,6 +230,10 @@ def delete_functional_task(
     db.query(FunctionalImpactItem).filter(FunctionalImpactItem.task_id == task.id).delete(synchronize_session=False)
     db.query(FunctionalDataCheckResult).filter(FunctionalDataCheckResult.task_id == task.id).delete(synchronize_session=False)
     db.query(FunctionalDataCheckRule).filter(FunctionalDataCheckRule.task_id == task.id).delete(synchronize_session=False)
+    db.query(TestAccountBinding).filter(
+        TestAccountBinding.target_type == "functional_task",
+        TestAccountBinding.target_id == task.id,
+    ).delete(synchronize_session=False)
     db.delete(task)
     db.commit()
     return {"message": "deleted"}

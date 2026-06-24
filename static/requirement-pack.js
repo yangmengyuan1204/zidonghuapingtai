@@ -678,20 +678,21 @@
   }
 
   async function renderRequirementPacks() {
-    const projects = await getProjects();
-    const tasks = await api(`/api/functional-tasks${queryString({ project_id: state.filters.projectId })}`);
-    if (state.functionalTaskId && !tasks.some((item) => String(item.id) === String(state.functionalTaskId))) {
-      state.functionalTaskId = "";
-      localStorage.removeItem("functionalTaskId");
-    }
-    const selectedId = state.functionalTaskId || (tasks[0]?.id ? String(tasks[0].id) : "");
-    const [selected, workflow] = await Promise.all([
-      selectedId ? api(`/api/functional-tasks/${selectedId}`) : Promise.resolve(null),
-      selectedId ? loadWorkflow(selectedId) : Promise.resolve(null),
-    ]);
-    const accounts = await api(`/api/test-accounts${queryString({ project_id: selected?.project_id || state.filters.projectId })}`);
-    const projectName = (id) => (projects.find((item) => String(item.id) === String(id)) || {}).name || id;
-    contentEl().innerHTML = `
+    try {
+      const projects = await getProjects();
+      const tasks = await api(`/api/functional-tasks${queryString({ project_id: state.filters.projectId })}`);
+      if (state.functionalTaskId && !tasks.some((item) => String(item.id) === String(state.functionalTaskId))) {
+        state.functionalTaskId = "";
+        localStorage.removeItem("functionalTaskId");
+      }
+      const selectedId = state.functionalTaskId || (tasks[0]?.id ? String(tasks[0].id) : "");
+      const [selected, workflow] = await Promise.all([
+        selectedId ? api(`/api/functional-tasks/${selectedId}`) : Promise.resolve(null),
+        selectedId ? loadWorkflow(selectedId) : Promise.resolve(null),
+      ]);
+      const accounts = await api(`/api/test-accounts${queryString({ project_id: selected?.project_id || state.filters.projectId })}`);
+      const projectName = (id) => (projects.find((item) => String(item.id) === String(id)) || {}).name || id;
+      contentEl().innerHTML = `
       <div class="toolbar">
         <div class="filters">
           <div class="field compact"><label>项目</label><select id="functionalProjectFilter">${optionList(projects, "id", "name", state.filters.projectId)}</select></div>
@@ -719,7 +720,11 @@
         </section>
       </div>
     `;
-    bindRequirementPackPage(selected, accounts, projects);
+      bindRequirementPackPage(selected, accounts, projects);
+    } catch (error) {
+      console.error("renderRequirementPacks 渲染失败:", error);
+      contentEl().innerHTML = `<div class="error-panel">页面加载失败: ${escapeHtml(error.message)}</div>`;
+    }
   }
 
   function bindRequirementPackPage(task, accounts = [], projects = []) {
