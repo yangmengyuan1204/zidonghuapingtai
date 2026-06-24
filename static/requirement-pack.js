@@ -1366,6 +1366,12 @@
       if (!executableCases.length) return showToast("所选范围内没有已确认且可执行的用例");
       openRequirementBatchExecuteForm(task, executableCases.map((item) => item.id), accounts, projects);
     });
+    document.querySelector("#requirementRepairEntryBtn")?.addEventListener("click", async () => {
+      const runs = task.runs || [];
+      const target = runs.find((item) => ["failed", "blocked", "needs_review", "error"].includes(item.result)) || runs[0];
+      if (!target) return showToast("暂无可诊断的执行记录");
+      await openExecutionTimeline(target.id);
+    });
   }
 
   function openImpactItemForm(task, item = null) {
@@ -1592,6 +1598,7 @@
       showToast("正在加载执行时间线...");
       var data = await api("/api/functional-runs/" + runId + "/timeline");
       var canRepair = (data.failed_count || 0) > 0 || (data.blocked_count || 0) > 0 || (data.review_count || 0) > 0 || data.status !== "passed";
+      var canApplyRepair = canRepair && isAdmin();
       modalEl.innerHTML = '' +
         '<div class="modal-head">' +
           '<h3>📋 执行时间线 #' + runId + '</h3>' +
@@ -1609,6 +1616,7 @@
         '<button class="btn secondary" id="repairPlanFromTimelineBtn" type="button" ' + (canRepair ? "" : "disabled") + '>生成修复计划</button>' +
           '<button class="btn" id="applyRepairFromTimelineBtn" type="button" ' + (canRepair ? "" : "disabled") + '>应用安全修复</button>',
       );
+      if (!canApplyRepair) document.querySelector("#applyRepairFromTimelineBtn")?.setAttribute("disabled", "disabled");
       document.querySelector("#closeModal")?.addEventListener("click", function() { modalEl.close(); });
       // 诊断按钮
       document.querySelector("#diagnoseFromTimelineBtn")?.addEventListener("click", async function() {
@@ -1627,6 +1635,35 @@
         }
       });
       // 截图点击放大
+      document.querySelector("#repairPlanFromTimelineBtn")?.addEventListener("click", async function() {
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = "生成中...";
+        try {
+          var plan = await api("/api/functional-runs/" + runId + "/repair-plan", { method: "POST" });
+          showToast("修复计划已生成：可自动修复 " + (plan.auto_fixable_count || 0) + " 项");
+        } catch(e) {
+          showToast(e.message || "生成修复计划失败");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "生成修复计划";
+        }
+      });
+      document.querySelector("#applyRepairFromTimelineBtn")?.addEventListener("click", async function() {
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = "应用中...";
+        try {
+          var result = await api("/api/functional-runs/" + runId + "/apply-repair", { method: "POST", body: {} });
+          showToast("安全修复已应用：" + (result.applied_count || 0) + " 处");
+          modalEl.close();
+          await openExecutionTimeline(runId);
+        } catch(e) {
+          showToast(e.message || "应用修复失败");
+          btn.disabled = false;
+          btn.textContent = "应用安全修复";
+        }
+      });
       modalEl.querySelectorAll("[data-shot]").forEach(function(el) {
         el.addEventListener("click", function() {
           var shotPath = this.dataset.shot;
