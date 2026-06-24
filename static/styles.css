@@ -274,6 +274,74 @@
   padding: 4px 8px;
 }
 
+.requirement-command-center {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+.requirement-command-head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.requirement-command-head strong {
+  display: block;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.requirement-command-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.requirement-command-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.requirement-command-metrics > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--soft);
+}
+
+.requirement-command-metrics span,
+.requirement-command-metrics small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.requirement-command-metrics strong {
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.requirement-command-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .requirement-case-batchbar {
   position: sticky;
   top: 72px;
@@ -359,6 +427,14 @@
 }
 
 @media (max-width: 900px) {
+  .requirement-command-head {
+    display: grid;
+  }
+
+  .requirement-command-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .requirement-preflight-overview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

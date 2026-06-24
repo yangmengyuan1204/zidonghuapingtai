@@ -312,32 +312,56 @@
     return ['<option value="">全部分组</option>'].concat(groups.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)).join("");
   }
 
-  function renderRequirementCaseBatchBarLegacy(cases) {
-    if (!cases.length) return "";
+  function requirementWorkstationMetrics(task, cases) {
+    const rows = cases || [];
+    const summary = task?.preflight_summary || {};
+    const trustedRows = rows.filter((item) => {
+      return item.automation_status === "approved" && item.ui_case_id && item.quality_status === "executable";
+    });
+    const trialStatuses = new Set(["executable", "unchecked", "needs_review", "locator_risk"]);
+    const trialRows = rows.filter((item) => {
+      return item.automation_status === "approved" && item.ui_case_id && trialStatuses.has(item.quality_status || "unchecked");
+    });
+    const manualRows = rows.filter((item) => {
+      const status = item.quality_status || "unchecked";
+      return ["auth_risk", "missing_variables", "needs_review", "locator_risk", "not_recommended"].includes(status);
+    });
+    return {
+      design: rows.length || summary.total || 0,
+      trusted: Math.min(trustedRows.length || summary.executable || 0, 12),
+      trial: trialRows.length || summary.trial_runnable || 0,
+      manual: manualRows.length || summary.manual_check || 0,
+      passed: rows.filter((item) => item.test_result === "passed").length,
+      failed: rows.filter((item) => item.test_result === "failed").length,
+      blocked: rows.filter((item) => item.test_result === "blocked").length,
+    };
+  }
+
+  function renderRequirementCommandCenter(task, cases, executable) {
+    const metrics = requirementWorkstationMetrics(task, cases);
+    const hasCases = metrics.design > 0;
     return `
-      <div class="requirement-case-batchbar">
-        <div class="requirement-case-batchbar-main">
-          <label class="requirement-check-label">
-            <input type="checkbox" id="requirementCaseSelectAll" />
-            <span id="requirementCaseSelectedText">已选 0/${cases.length}</span>
-          </label>
-          <select class="requirement-select" id="requirementCaseBatchScope">
-            <option value="selected">选中用例</option>
-            <option value="all" selected>全部用例</option>
-          </select>
-          <select class="requirement-select" id="requirementCaseGroupScope">
-            ${requirementCaseGroupOptions(cases)}
-          </select>
-          <select class="requirement-select" id="requirementCaseBatchStatus">
-            ${resultOptions("passed")}
-          </select>
-          ${isAdmin() ? `<button class="btn secondary" id="batchUpdateCaseStatusBtn" type="button">批量标记</button>` : ""}
+      <section class="requirement-command-center">
+        <div class="requirement-command-head">
+          <div>
+            <strong>精简重构版 · 三步工作台</strong>
+            <p>测试设计生成 20-30 条；可信执行池只保留 5-12 条适合自动化的用例；人工/高级场景不拖累自动执行。</p>
+          </div>
+          <span class="badge ok">默认串行执行</span>
         </div>
-        <div class="actions">
-          ${isAdmin() ? `<button class="btn secondary" id="batchGenerateStepsBtn" type="button">一键生成步骤</button><button class="btn secondary" id="batchApproveCasesBtn" type="button">一键确认</button><button class="btn secondary" id="seedTestDataBtn" type="button">抽样测试数据</button><button class="btn secondary" id="preflightPackageBtn" type="button">预检测试包</button>` : ""}
-          <button class="btn" id="batchExecuteCasesBtn" type="button">预检并执行</button>
+        <div class="requirement-command-metrics">
+          <div><span>测试设计</span><strong>${escapeHtml(metrics.design)}</strong><small>目标 20-30 条</small></div>
+          <div><span>可信执行池</span><strong>${escapeHtml(metrics.trusted)}</strong><small>默认执行 5-12 条</small></div>
+          <div><span>可试跑</span><strong>${escapeHtml(metrics.trial)}</strong><small>不含缺账号/缺数据</small></div>
+          <div><span>人工/高级</span><strong>${escapeHtml(metrics.manual)}</strong><small>权限/异常/复杂状态</small></div>
         </div>
-      </div>
+        <div class="requirement-command-steps">
+          <button class="btn" id="generateCasesBtn" type="button">1. 生成测试设计</button>
+          <button class="btn secondary" id="preflightPackageBtn" type="button" ${hasCases ? "" : "disabled"}>2. 准备并预检</button>
+          <button class="btn" id="executeFunctionalBtn" type="button" ${executable ? "" : "disabled"}>3. 执行可信用例</button>
+          <button class="btn secondary" id="requirementRepairEntryBtn" type="button">诊断修复复跑</button>
+        </div>
+      </section>
     `;
   }
 
@@ -359,9 +383,7 @@
           </select>
         </div>
         <div class="actions">
-          ${isAdmin() ? `<button class="btn secondary" id="preflightPackageBtn" type="button">准备并预检</button>` : ""}
-          <button class="btn" id="batchExecuteCasesBtn" type="button">执行选中用例</button>
-          <button class="btn secondary" id="requirementRepairEntryBtn" type="button">诊断并修复</button>
+          <button class="btn secondary" id="batchExecuteCasesBtn" type="button">执行当前选择</button>
           <details class="advanced-actions">
             <summary>高级操作</summary>
             <div class="actions">
@@ -388,6 +410,7 @@
 
   function renderRequirementPreflightOverview(summary = {}, cases = []) {
     const unchecked = summary.unchecked ?? cases.filter((item) => !item.quality_status || item.quality_status === "unchecked").length;
+    const metrics = requirementWorkstationMetrics({ preflight_summary: summary }, cases);
     const trialRunnable = summary.trial_runnable ?? 0;
     const sampleReasons = cases
       .filter((item) => item.quality_status && item.quality_status !== "executable")
@@ -399,9 +422,10 @@
       .join("");
     return `
       <div class="requirement-preflight-overview">
-        <div><span>可自动执行</span><strong>${escapeHtml(summary.executable ?? 0)}</strong></div>
+        <div><span>测试设计</span><strong>${escapeHtml(metrics.design)}</strong></div>
+        <div><span>可信执行池</span><strong>${escapeHtml(metrics.trusted)}</strong></div>
         <div><span>可试跑</span><strong>${escapeHtml(trialRunnable)}</strong></div>
-        <div><span>需人工核对</span><strong>${escapeHtml(summary.manual_check ?? 0)}</strong></div>
+        <div><span>人工/高级</span><strong>${escapeHtml(metrics.manual)}</strong></div>
         <div><span>登录阻断</span><strong>${escapeHtml(summary.auth_blocked ?? 0)}</strong></div>
         <div><span>缺真实数据</span><strong>${escapeHtml(summary.data_missing ?? 0)}</strong></div>
         <div><span>定位风险</span><strong>${escapeHtml(summary.locator_risk ?? 0)}</strong></div>
@@ -465,11 +489,8 @@
       <section class="requirement-section">
         <div class="panel-title">
           <h3>新功能验证</h3>
-          <div class="actions">
-            ${isAdmin() ? `<button class="btn secondary" id="bindFunctionalTaskAccount">默认账号</button><button class="btn secondary" id="uploadAxureBtn">上传Axure</button><button class="btn secondary" id="uploadScreenshotBtn">上传截图</button><button class="btn secondary" id="addRequirementNoteBtn">补充需求</button><button class="btn secondary" id="scanPageBtn">扫描页面</button><button class="btn secondary" id="generateCasesBtn">生成测试点</button>` : ""}
-            <button class="btn" id="executeFunctionalBtn" ${executable ? "" : "disabled"}>预检并执行</button>
-          </div>
         </div>
+        ${renderRequirementCommandCenter(task, cases, executable)}
         ${renderRequirementPreflightOverview(task.preflight_summary || {}, cases)}
         ${renderFunctionalMaterials(task)}
         ${renderRequirementCaseBatchBar(cases)}
@@ -557,11 +578,8 @@
       <section class="requirement-section" style="margin:0;border-top:0">
         <div class="panel-title">
           <h3>新功能验证</h3>
-          <div class="actions">
-            ${isAdmin() ? `<button class="btn secondary" id="bindFunctionalTaskAccount">默认账号</button><button class="btn secondary" id="uploadAxureBtn">上传Axure</button><button class="btn secondary" id="uploadScreenshotBtn">上传截图</button><button class="btn secondary" id="addRequirementNoteBtn">补充需求</button><button class="btn secondary" id="scanPageBtn">扫描页面</button><button class="btn secondary" id="generateCasesBtn">生成测试点</button>` : ""}
-            <button class="btn" id="executeFunctionalBtn" ${executable ? "" : "disabled"}>预检并执行</button>
-          </div>
         </div>
+        ${renderRequirementCommandCenter(task, cases, executable)}
         ${renderRequirementPreflightOverview(task.preflight_summary || {}, cases)}
         ${renderRequirementCaseBatchBar(cases)}
         <div class="requirement-case-table">
