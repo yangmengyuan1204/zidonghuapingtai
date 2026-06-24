@@ -1013,8 +1013,8 @@
         <div class="form-grid">
           <label>并发数
             <select class="requirement-select" id="requirementParallelism">
-              <option value="1">1</option>
-              <option value="2" selected>2</option>
+              <option value="1" selected>1</option>
+              <option value="2">2</option>
               <option value="3">3</option>
             </select>
           </label>
@@ -1038,8 +1038,8 @@
   }
 
   function readRequirementExecutionParallelism() {
-    const raw = Number(document.querySelector("#requirementParallelism")?.value || 2);
-    return Math.max(1, Math.min(raw || 2, 3));
+    const raw = Number(document.querySelector("#requirementParallelism")?.value || 1);
+    return Math.max(1, Math.min(raw || 1, 3));
   }
 
   function openRequirementBatchExecuteForm(task, caseIds, accounts = [], projects = []) {
@@ -1123,9 +1123,10 @@
         <section class="diagnosis-summary">
           <strong>测试包预检完成</strong>
           <div>
-            <span>可自动执行：${escapeHtml(result?.executable_count ?? 0)}</span>
+            <span>测试设计：${escapeHtml(result?.design_case_count ?? counts.total ?? 0)}</span>
+            <span>可信自动化：${escapeHtml(result?.trusted_case_count ?? result?.executable_count ?? 0)}</span>
             <span>可试跑：${escapeHtml(result?.trial_count ?? counts.trial_runnable ?? 0)}</span>
-            <span>需人工核对：${escapeHtml(counts.manual_check ?? 0)}</span>
+            <span>人工/高级：${escapeHtml(result?.manual_case_count ?? counts.manual_check ?? 0)}</span>
             <span>登录阻断：${escapeHtml(counts.auth_blocked ?? 0)}</span>
             <span>缺真实数据：${escapeHtml(counts.data_missing ?? 0)}</span>
           </div>
@@ -1169,9 +1170,10 @@
         <section class="diagnosis-summary">
           <strong>测试包预检完成</strong>
           <div>
-            <span>可执行：${escapeHtml(result?.executable_count ?? 0)}</span>
+            <span>测试设计：${escapeHtml(result?.design_case_count ?? counts.total ?? 0)}</span>
+            <span>可信自动化：${escapeHtml(result?.trusted_case_count ?? result?.executable_count ?? 0)}</span>
             <span>可试跑：${escapeHtml(result?.trial_count ?? counts.trial_runnable ?? 0)}</span>
-            <span>人工确认：${escapeHtml(counts.manual_check ?? 0)}</span>
+            <span>人工/高级：${escapeHtml(result?.manual_case_count ?? counts.manual_check ?? 0)}</span>
             <span>登录阻断：${escapeHtml(counts.auth_blocked ?? 0)}</span>
             <span>缺数据：${escapeHtml(counts.data_missing ?? 0)}</span>
             <span>建议动作：${escapeHtml(result?.primary_action || "-")}</span>
@@ -1276,7 +1278,7 @@
         method: "POST",
         body: { case_ids: caseIds, variables, save_variables: saveVariables },
       });
-      showToast(`预检完成：可自动执行 ${result.executable_count || 0} 条`);
+      showToast(`预检完成：可信自动化 ${result.trusted_case_count ?? result.executable_count ?? 0} 条`);
       showRequirementPreflightResult(result, task, caseIds);
     } catch (error) {
       showToast(error.message || "预检失败");

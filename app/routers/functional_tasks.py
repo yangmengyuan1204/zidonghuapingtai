@@ -26,6 +26,8 @@ from ..core.utils import (
     full_data_check_url,
     functional_task_conclusion_summary,
     functional_task_detail,
+    functional_case_auto_trusted,
+    functional_case_kind,
     get_or_404,
     impact_item_key,
     is_sensitive_account_key,
@@ -86,6 +88,7 @@ from ..executors import (
     execute_ui_case,
     execute_ui_cases_batch,
     parse_json_value,
+    _strip_leading_login_steps,
     to_json_text,
 )
 from ..functional_testing import (
@@ -784,6 +787,7 @@ def _prepare_requirement_package(
 
     ui_generated_count = 0
     ui_failed_count = 0
+    trusted_auto_count = 0
     latest_snapshot = db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).first()
 
     # 状态检查必须在 DB 修改之前
@@ -795,7 +799,10 @@ def _prepare_requirement_package(
     for fc in cases:
         try:
             generated_ui = generate_ui_steps(fc, task, latest_snapshot, latest_ai_config(db))
-            steps_text = to_json_text(generated_ui.items, [])
+            generated_steps = generated_ui.items
+            if functional_case_kind(fc) == "business_authenticated":
+                generated_steps, _removed_login_steps = _strip_leading_login_steps(generated_steps)
+            steps_text = to_json_text(generated_steps, [])
             if fc.ui_case_id:
                 ui_case = db.get(UiCase, fc.ui_case_id)
                 if ui_case:
@@ -818,8 +825,14 @@ def _prepare_requirement_package(
                 db.flush()
                 fc.ui_case_id = ui_case.id
             # demo_mode=True 时才自动确认；否则保持 ui_steps_generated 等待人工确认
-            if demo_mode and ui_steps_have_strong_assertion(generated_ui.items):
+            auto_trusted = (
+                ui_steps_have_strong_assertion(generated_steps)
+                and functional_case_auto_trusted(fc)
+                and trusted_auto_count < 12
+            )
+            if (demo_mode and ui_steps_have_strong_assertion(generated_steps)) or (not demo_mode and auto_trusted):
                 fc.automation_status = "approved"
+                trusted_auto_count += 1
             else:
                 fc.automation_status = "ui_steps_generated"
             ui_generated_count += 1
@@ -838,8 +851,8 @@ def _prepare_requirement_package(
         "ok": ui_failed_count == 0,
         "total": len(cases),
         "generated": ui_generated_count,
-        "approved": approved_count if demo_mode else 0,
-        "needs_review": max(ui_generated_count - (approved_count if demo_mode else 0), 0),
+        "approved": approved_count,
+        "needs_review": max(ui_generated_count - approved_count, 0),
         "failed": ui_failed_count,
         "demo_mode": demo_mode,
     }
@@ -1220,7 +1233,10 @@ def save_generated_functional_ui_steps(
     snapshot: PageSnapshot | None = None,
 ) -> Dict[str, Any]:
     generated = generate_ui_steps(case, task, snapshot, latest_ai_config(db))
-    steps_text = to_json_text(generated.items, [])
+    generated_steps = generated.items
+    if functional_case_kind(case) == "business_authenticated":
+        generated_steps, _removed_login_steps = _strip_leading_login_steps(generated_steps)
+    steps_text = to_json_text(generated_steps, [])
     if case.ui_case_id:
         ui_case = db.get(UiCase, case.ui_case_id)
         if ui_case:
@@ -1247,11 +1263,12 @@ def save_generated_functional_ui_steps(
     _assert_forward_status(task, "ui_steps_generated")
 
     task.status = "ui_steps_generated"
-    return {"source": generated.source, "warning": generated.warning, "case": serialize(case), "steps": generated.items}
+    return {"source": generated.source, "warning": generated.warning, "case": serialize(case), "steps": generated_steps}
 
 
 def can_execute_functional_case(
     functional_case: FunctionalCase,
+    payload: FunctionalExecuteRequest | None = None,
 ) -> tuple[bool, str]:
     """
     执行前门禁检查。
@@ -1262,7 +1279,10 @@ def can_execute_functional_case(
     if not functional_case.ui_case_id:
         return False, "尚未关联 UI 步骤，无法执行"
     quality = functional_case.quality_status or QUALITY_UNCHECKED
-    if quality in (QUALITY_AUTH_RISK, QUALITY_NOT_RECOMMENDED):
+    trial_mode = bool(payload and (payload.force or payload.execution_mode == "trial"))
+    if quality in (QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES, QUALITY_NOT_RECOMMENDED):
+        return False, f"预检未通过（{quality}），不允许自动执行"
+    if quality in (QUALITY_LOCATOR_RISK, QUALITY_NEEDS_REVIEW) and not trial_mode:
         return False, f"预检未通过（{quality}），不允许自动执行"
     return True, ""
 
@@ -1274,7 +1294,7 @@ def execute_functional_case_for_run(
     payload: FunctionalExecuteRequest | None = None,
 ) -> tuple[Dict[str, Any], int, int]:
     # ── 执行门禁 ──────────────────────────────────────
-    allowed, reason = can_execute_functional_case(functional_case)
+    allowed, reason = can_execute_functional_case(functional_case, payload)
     if not allowed:
         return (
             {
@@ -1433,6 +1453,11 @@ def _classify_functional_execution_result(passed: bool, log_text: str, quality_s
     else:
         text = str(log_text or "").lower()
     verification_status = log_data.get("verification_status") if isinstance(log_data, dict) else ""
+    error_category = str(log_data.get("error_category") or "").lower() if isinstance(log_data, dict) else ""
+    if error_category == "step_validation_failed":
+        return "blocked", "step_invalid"
+    if error_category in {"parallel_execution_failed", "system_error"}:
+        return "failed", "system_error"
     business = log_data.get("business_verification") if isinstance(log_data, dict) else {}
     if isinstance(business, dict) and int(business.get("business_assertion_count") or 0) == 0:
         return "needs_review", "missing_business_assertion"
@@ -1607,7 +1632,13 @@ def _background_execute_functional(
         )
         if selected_bg_case_ids:
             bg_cases_query = bg_cases_query.filter(FunctionalCase.id.in_(selected_bg_case_ids))
-        if not payload_data.get("force"):
+        if payload_data.get("force"):
+            bg_cases_query = bg_cases_query.filter(
+                FunctionalCase.quality_status.in_(
+                    [QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_LOCATOR_RISK]
+                )
+            )
+        else:
             bg_cases_query = bg_cases_query.filter(FunctionalCase.quality_status == QUALITY_EXECUTABLE)
         bg_cases = bg_cases_query.order_by(FunctionalCase.id.asc()).all()
 
@@ -1621,7 +1652,7 @@ def _background_execute_functional(
         batch_items: list[Dict[str, Any]] = []
         payload_obj = FunctionalExecuteRequest(**payload_data) if payload_data else None
         execution_policy = str(payload_data.get("execution_policy") or "isolated_per_case")
-        parallelism = max(1, min(int(payload_data.get("parallelism") or 2), 3))
+        parallelism = max(1, min(int(payload_data.get("parallelism") or 1), 3))
         if execution_policy == "scenario_chain":
             parallelism = 1
         started_ts = time.time()
@@ -1701,6 +1732,7 @@ def _background_execute_functional(
                 "ui_case_id": getattr(ui_case, "id", None),
                 "record_id": record.id,
                 "title": fc.title if fc else getattr(ui_case, "case_name", "未知用例"),
+                "case_kind": (parse_json_value(getattr(fc, "quality_report", ""), {}) or {}).get("case_kind") if fc else "",
                 "result": result_status,
                 "record_result": record.result,
                 "quality_status": quality_status,
@@ -1846,7 +1878,7 @@ def execute_functional_task_async(
     if execution_mode == "trial":
         force_execute = True
     execution_policy = (payload.execution_policy if payload else "isolated_per_case") or "isolated_per_case"
-    parallelism = max(1, min(int((payload.parallelism if payload else 2) or 2), 3))
+    parallelism = max(1, min(int((payload.parallelism if payload else 1) or 1), 3))
     if execution_policy == "scenario_chain":
         parallelism = 1
     selected_case_ids: list[int] = []
@@ -1859,6 +1891,7 @@ def execute_functional_task_async(
     seed_variables = dict((preflight_result.get("seed") or {}).get("variables") or {})
     variables = {**seed_variables, **(payload.variables if payload else {})}
     saved_runtime_variables = _save_functional_runtime_variables(task, payload.variables if payload and payload.save_variables else {})
+    trusted_case_ids = [int(item) for item in preflight_result.get("trusted_case_ids") or preflight_result.get("executable_case_ids") or []]
     cases_query = db.query(FunctionalCase).filter(
         FunctionalCase.task_id == task.id,
         FunctionalCase.automation_status == "approved",
@@ -1866,8 +1899,16 @@ def execute_functional_task_async(
     )
     if selected_case_ids:
         cases_query = cases_query.filter(FunctionalCase.id.in_(selected_case_ids))
-    if not force_execute:
+    if force_execute:
+        cases_query = cases_query.filter(
+            FunctionalCase.quality_status.in_(
+                [QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_LOCATOR_RISK]
+            )
+        )
+    else:
         cases_query = cases_query.filter(FunctionalCase.quality_status == QUALITY_EXECUTABLE)
+        if trusted_case_ids:
+            cases_query = cases_query.filter(FunctionalCase.id.in_(trusted_case_ids))
     cases = cases_query.order_by(FunctionalCase.id.asc()).all()
     if not cases:
         counts = preflight_result.get("counts") or {}
@@ -1926,7 +1967,7 @@ def execute_functional_task_async(
     payload_data["execution_policy"] = execution_policy
     payload_case_id = payload_data.get("case_id") if payload_data else None
     payload_case_ids = payload_data.get("case_ids") if payload_data else []
-    selected_bg_case_ids: list[int] = []
+    selected_bg_case_ids: list[int] = [case.id for case in cases]
     if payload_case_id:
         selected_bg_case_ids = [int(payload_case_id)]
     elif payload_case_ids:

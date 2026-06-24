@@ -291,7 +291,7 @@ class FunctionalExecuteRequest(BaseModel):
     force: bool = False
     execution_mode: Optional[str] = "trusted"
     execution_policy: Optional[str] = "isolated_per_case"
-    parallelism: int = 2
+    parallelism: int = 1
     save_variables: bool = False
 
 

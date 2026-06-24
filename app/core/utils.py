@@ -48,7 +48,7 @@ from ..data_scripts import (
     run_shopping_cart_script,
     run_warehouse_delivery_script,
 )
-from ..executors import ensure_report_dirs, execute_api_case, execute_ui_case, execute_ui_cases_batch, parse_json_value, to_json_text
+from ..executors import ensure_report_dirs, execute_api_case, execute_ui_case, execute_ui_cases_batch, parse_json_value, to_json_text, _strip_leading_login_steps
 from ..functional_testing import (
     FunctionalScanError,
     analyze_functional_screenshot,
@@ -1122,6 +1122,11 @@ QUALITY_NOT_RECOMMENDED = "not_recommended"
 
 ASSERTION_ACTIONS = {"assert_url", "assert_visible", "assert_value", "text_assert"}
 LOCATOR_REQUIRED_ACTIONS = {"input", "click", "wait_for_selector", "text_assert", "select", "check", "uncheck", "assert_visible", "assert_value"}
+VALUE_REQUIRED_ACTIONS = {"goto", "input", "select", "wait", "assert_url", "assert_value", "text_assert"}
+FUNCTIONAL_CASE_KIND_BUSINESS_AUTH = "business_authenticated"
+FUNCTIONAL_CASE_KIND_AUTH_NEGATIVE = "auth_negative"
+FUNCTIONAL_CASE_KIND_MANUAL_ONLY = "manual_only"
+FUNCTIONAL_TRUSTED_CATEGORIES = {"主流程", "查询筛选", "表单交互", "页面展示", "输入校验"}
 BUILTIN_RUNTIME_VARS = {
     "timestamp",
     "datetime",
@@ -1196,6 +1201,82 @@ def functional_case_ui_payload(db: Session, case: FunctionalCase) -> tuple[UiCas
     return ui_case, parse_case_steps(ui_case.steps)
 
 
+def functional_case_kind(case: FunctionalCase) -> str:
+    text = " ".join([case.title or "", case.precondition or "", case.steps or "", case.expected or "", case.category or ""]).lower()
+    auth_negative_markers = [
+        "未登录",
+        "未登陆",
+        "不登录",
+        "无账号",
+        "unauth",
+        "without login",
+        "not logged",
+        "直接访问",
+    ]
+    if any(marker in text for marker in auth_negative_markers):
+        return FUNCTIONAL_CASE_KIND_AUTH_NEGATIVE
+    manual_markers = [
+        "网络中断",
+        "断网",
+        "弱网",
+        "权限绕过",
+        "已删除",
+        "不存在",
+        "无效id",
+        "无效 id",
+        "库存不足",
+        "并发",
+        "安全",
+        "越权",
+        "导出",
+        "删除",
+        "network",
+        "permission",
+        "deleted",
+        "invalid id",
+        "stock",
+        "concurrency",
+        "security",
+        "privilege",
+        "export",
+        "delete",
+    ]
+    manual_categories = {"权限状态", "数据结果"}
+    if str(case.category or "") in manual_categories or any(marker in text for marker in manual_markers):
+        return FUNCTIONAL_CASE_KIND_MANUAL_ONLY
+    return FUNCTIONAL_CASE_KIND_BUSINESS_AUTH
+
+
+def functional_case_auto_trusted(case: FunctionalCase) -> bool:
+    if functional_case_kind(case) != FUNCTIONAL_CASE_KIND_BUSINESS_AUTH:
+        return False
+    category = str(case.category or "")
+    text = " ".join([case.title or "", case.steps or "", case.expected or ""]).lower()
+    if category in FUNCTIONAL_TRUSTED_CATEGORIES:
+        return True
+    trusted_markers = ["登录后", "进入", "访问", "查看", "查询", "搜索", "筛选", "点击", "弹窗", "表单", "登记", "列表", "search", "filter"]
+    risky_markers = [
+        "删除",
+        "导出",
+        "网络",
+        "权限",
+        "未登录",
+        "不存在",
+        "已删除",
+        "越权",
+        "库存不足",
+        "network",
+        "permission",
+        "deleted",
+        "invalid id",
+        "security",
+        "privilege",
+        "export",
+        "delete",
+    ]
+    return any(marker in text for marker in trusted_markers) and not any(marker in text for marker in risky_markers)
+
+
 def case_has_business_assertion(case: FunctionalCase, steps: list[Dict[str, Any]]) -> bool:
     for step in steps:
         action = str(step.get("action") or "").strip().lower()
@@ -1250,6 +1331,17 @@ def case_locator_issues(steps: list[Dict[str, Any]]) -> list[str]:
         action = str(step.get("action") or "").strip().lower()
         locator = str(step.get("locator") or "").strip()
         if action in LOCATOR_REQUIRED_ACTIONS and not locator:
+            issues.append(f"第{index}步 {action} 缺少 locator")
+    return issues
+
+
+def case_step_structure_issues(steps: list[Dict[str, Any]]) -> list[str]:
+    issues: list[str] = []
+    for index, step in enumerate(steps, start=1):
+        action = str(step.get("action") or "").strip().lower()
+        if action in VALUE_REQUIRED_ACTIONS and step.get("value") in (None, ""):
+            issues.append(f"第{index}步 {action} 缺少 value")
+        if action in LOCATOR_REQUIRED_ACTIONS and not str(step.get("locator") or "").strip():
             issues.append(f"第{index}步 {action} 缺少 locator")
     return issues
 
@@ -1567,7 +1659,29 @@ def evaluate_functional_case_quality(
         return quality_report_payload(QUALITY_AUTH_RISK, account_status.get("message") or "登录前置未通过")
     if not steps:
         return quality_report_payload(QUALITY_NOT_RECOMMENDED, "UI 步骤为空，无法自动执行")
+    case_kind = functional_case_kind(case)
+    if case_kind == FUNCTIONAL_CASE_KIND_AUTH_NEGATIVE:
+        return quality_report_payload(
+            QUALITY_NOT_RECOMMENDED,
+            "未登录/负向认证用例默认作为人工/高级用例，不进入可信自动执行",
+            case_kind=case_kind,
+        )
+    if case_kind == FUNCTIONAL_CASE_KIND_MANUAL_ONLY:
+        return quality_report_payload(
+            QUALITY_NOT_RECOMMENDED,
+            "该用例依赖权限、异常环境或复杂业务状态，默认不进入可信自动执行",
+            case_kind=case_kind,
+        )
     steps, generated_weak_assertion = ensure_weak_business_assertion(db, case, ui_case, steps)
+    step_issues = case_step_structure_issues(steps)
+    if step_issues:
+        return quality_report_payload(
+            QUALITY_NOT_RECOMMENDED,
+            "UI 步骤结构不完整，需修复后才能自动执行",
+            step_issues,
+            case_kind=case_kind,
+            result_reason="step_invalid",
+        )
     locator_issues = case_locator_issues(steps)
     if locator_issues:
         return quality_report_payload(QUALITY_LOCATOR_RISK, "存在缺失 locator 的步骤", locator_issues)
@@ -1755,6 +1869,7 @@ def preflight_functional_package(
                 "priority": case.priority,
                 "automation_status": case.automation_status,
                 "quality_status": status_value,
+                "case_kind": report.get("case_kind") or functional_case_kind(case),
                 "reason": report.get("reason") or "",
                 "issues": report.get("issues") or [],
                 "required_seed_keys": report.get("required_seed_keys") or [],
@@ -1765,12 +1880,18 @@ def preflight_functional_package(
     missing_variables_detail = functional_missing_variables_detail(case_items, seed_variables)
     primary_action = functional_preflight_primary_action(account_status, summary, missing_variables_detail)
     executable_case_ids = [item["case_id"] for item in case_items if item["quality_status"] == QUALITY_EXECUTABLE]
+    trusted_case_ids = executable_case_ids[:12]
     trial_case_ids = [
         item["case_id"]
         for item in case_items
         if item["quality_status"] in {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_LOCATOR_RISK}
     ]
     manual_items = [item for item in case_items if item["quality_status"] != QUALITY_EXECUTABLE]
+    blocked_cases = [
+        item
+        for item in case_items
+        if item["quality_status"] in {QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES, QUALITY_NOT_RECOMMENDED}
+    ]
     page_status = "ready" if db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).first() else "unchecked"
     result = {
         "task_id": task.id,
@@ -1784,10 +1905,15 @@ def preflight_functional_package(
         "seed": seed_result,
         "counts": summary,
         "total": len(case_items),
-        "executable_count": len(executable_case_ids),
-        "executable_case_ids": executable_case_ids,
+        "design_case_count": len(case_items),
+        "trusted_case_count": len(trusted_case_ids),
+        "manual_case_count": len(manual_items),
+        "executable_count": len(trusted_case_ids),
+        "executable_case_ids": trusted_case_ids,
+        "trusted_case_ids": trusted_case_ids,
         "trial_count": len(trial_case_ids),
         "trial_case_ids": trial_case_ids,
+        "blocked_cases": blocked_cases[:80],
         "manual_check_items": manual_items[:80],
         "case_groups": case_groups,
         "missing_variables_detail": missing_variables_detail,
@@ -2783,7 +2909,10 @@ def save_generated_functional_ui_steps(
     snapshot: PageSnapshot | None = None,
 ) -> Dict[str, Any]:
     generated = generate_ui_steps(case, task, snapshot, latest_ai_config(db))
-    steps_text = to_json_text(generated.items, [])
+    generated_steps = generated.items
+    if functional_case_kind(case) == FUNCTIONAL_CASE_KIND_BUSINESS_AUTH:
+        generated_steps, _removed_login_steps = _strip_leading_login_steps(generated_steps)
+    steps_text = to_json_text(generated_steps, [])
     if case.ui_case_id:
         ui_case = db.get(UiCase, case.ui_case_id)
         if ui_case:
@@ -2808,11 +2937,12 @@ def save_generated_functional_ui_steps(
         case.ui_case_id = ui_case.id
     case.automation_status = "draft"
     task.status = "ui_steps_generated"
-    return {"source": generated.source, "warning": generated.warning, "case": serialize(case), "steps": generated.items}
+    return {"source": generated.source, "warning": generated.warning, "case": serialize(case), "steps": generated_steps}
 
 
 def can_execute_functional_case(
     functional_case: FunctionalCase,
+    payload: FunctionalExecuteRequest | None = None,
 ) -> tuple[bool, str]:
     """
     执行前门禁检查。
@@ -2823,7 +2953,10 @@ def can_execute_functional_case(
     if not functional_case.ui_case_id:
         return False, "尚未关联 UI 步骤，无法执行"
     quality = functional_case.quality_status or QUALITY_UNCHECKED
-    if quality in (QUALITY_AUTH_RISK, QUALITY_NOT_RECOMMENDED):
+    trial_mode = bool(payload and (payload.force or payload.execution_mode == "trial"))
+    if quality in (QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES, QUALITY_NOT_RECOMMENDED):
+        return False, f"预检未通过（{quality}），不允许自动执行"
+    if quality in (QUALITY_LOCATOR_RISK, QUALITY_NEEDS_REVIEW) and not trial_mode:
         return False, f"预检未通过（{quality}），不允许自动执行"
     return True, ""
 
@@ -2835,7 +2968,7 @@ def execute_functional_case_for_run(
     payload: FunctionalExecuteRequest | None = None,
 ) -> tuple[Dict[str, Any], int, int]:
     # ── 执行门禁 ──────────────────────────────────────
-    allowed, reason = can_execute_functional_case(functional_case)
+    allowed, reason = can_execute_functional_case(functional_case, payload)
     if not allowed:
         return (
             {

@@ -1015,16 +1015,19 @@ def _normalize_generated_cases(
                 "automation_status": "draft",
             }
         )
-    return result[:12], questions
+    return result[:30], questions
 
 
 def normalize_case_category(value: Any, fallback_text: str = "") -> str:
     text = str(value or "").strip()
     category_aliases = {
         "主流程": "主流程",
+        "查询筛选": "查询筛选",
+        "表单交互": "表单交互",
         "等价类": "等价类",
         "边界值": "边界值",
         "异常流程": "异常流程",
+        "异常提示": "异常提示",
         "权限状态": "权限状态",
         "权限/状态": "权限状态",
         "数据结果": "数据结果",
@@ -1041,6 +1044,8 @@ def normalize_case_category(value: Any, fallback_text: str = "") -> str:
     if "equivalence" in source or "等价" in source:
         return "等价类"
     keyword_map = [
+        ("查询筛选", ("查询", "搜索", "筛选", "检索", "keyword", "search", "filter")),
+        ("表单交互", ("表单", "弹窗", "登记", "新增", "编辑", "保存", "取消", "dialog", "modal", "form")),
         ("数据结果", ("金额", "数量", "库存", "数据", "接口", "计算", "合计", "price", "amount", "total")),
         ("权限/状态", ("权限", "状态", "审核", "启用", "禁用", "登录", "角色", "status", "auth")),
         ("异常流程", ("异常", "失败", "错误", "为空", "重复", "非法", "超限", "error", "fail")),
@@ -1079,8 +1084,10 @@ def rule_generate_cases(task: FunctionalTask, axure_text: str, extra_context: st
         picked = [f"验证页面 {task.target_url} 的核心功能流程"]
 
     result = []
-    default_categories = ["主流程", "等价类", "边界值", "异常流程", "权限状态", "数据结果"]
-    for index, line in enumerate(picked[:12], start=1):
+    default_categories = ["主流程", "查询筛选", "等价类", "边界值", "异常提示", "权限状态", "数据结果"]
+    while len(picked) < 20:
+        picked.append(f"验证{task.iteration_name or '目标页面'}核心场景 {len(picked) + 1}")
+    for index, line in enumerate(picked[:30], start=1):
         title = line[:80]
         result.append(
             {
@@ -1113,15 +1120,15 @@ def generate_functional_cases(
 3. 如果有多张截图或多个页面信息，请设计跨页面的完整业务流程用例
 4. 对需求不明确的地方，在 questions_for_product 数组中列出需要向产品确认的问题
 5. 只输出合法 JSON，不要输出说明文字
-6. 请生成足够多（至少40条）的功能测试用例，覆盖上面提到的所有页面和功能模块
+6. 请生成 20-30 条结构化测试设计用例，覆盖核心页面和主要功能模块；不要堆重复用例
 
 输出格式：
 {{"cases":[{{"title":"","precondition":"","steps":"","expected":"","category":"页面展示/输入校验/主流程/异常流程/权限/状态/数据结果","priority":"P0/P1/P2"}}],"questions_for_product":["问题1","问题2"]}}
 
 新增硬性约束：
-- 只生成 8-12 条高价值用例，不要堆重复用例。
-- category 只能使用：主流程、等价类、边界值、异常流程、权限状态、数据结果。
-- 优先 P0/P1，至少包含 1 条主流程、1 条等价类、1 条边界值、1 条异常流程。
+- category 只能使用：主流程、查询筛选、等价类、边界值、异常提示、权限状态、数据结果。
+- 自动化友好的主流程、查询筛选、表单交互用例优先 P0/P1；网络中断、权限绕过、已删除数据、复杂业务状态只作为人工/高级用例。
+- 生成的是测试设计全集，不代表全部都要自动执行。
 
 {requirement_context}
 """
@@ -1130,8 +1137,8 @@ def generate_functional_cases(
     try:
         raw_payload = call_local_model_json(config, prompt)
         generated, questions = _normalize_generated_cases(raw_payload)
-        if len(generated) < 8:
-            warning = f"AI 仅生成了 {len(generated)} 条测试点，期望 8-12 条高价值用例，建议补充需求描述后重试"
+        if len(generated) < 20:
+            warning = f"AI 仅生成了 {len(generated)} 条测试点，期望 20-30 条结构化测试设计用例，建议补充需求描述后重试"
     except Exception as exc:
         generated = []
         warning = f"本地模型调用失败，已使用规则生成：{exc}"

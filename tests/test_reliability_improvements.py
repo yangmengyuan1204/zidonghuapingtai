@@ -27,6 +27,7 @@ import app.functional_testing as functional_testing
 import app.main as main
 import app.routers.functional_tasks as functional_task_router
 from app.main import app
+from app.schemas import FunctionalExecuteRequest
 
 
 PNG_1X1 = base64.b64decode(
@@ -210,7 +211,7 @@ def test_preflight_summary_counts_trial_runnable():
     assert summary["auth_blocked"] == 1
 
 
-def test_generated_functional_cases_are_limited_to_high_value_batch():
+def test_generated_functional_cases_return_design_batch_up_to_thirty():
     payload = {
         "cases": [
             {
@@ -221,15 +222,65 @@ def test_generated_functional_cases_are_limited_to_high_value_batch():
                 "category": "主流程",
                 "priority": "P0",
             }
-            for index in range(15)
+            for index in range(35)
         ]
     }
 
     cases, questions = functional_testing._normalize_generated_cases(payload)
 
     assert questions == []
-    assert len(cases) == 12
+    assert len(cases) == 30
     assert {item["priority"] for item in cases} == {"P0"}
+
+
+def test_functional_case_kind_and_trusted_pool_rules():
+    trusted_case = SimpleNamespace(
+        title="search material list",
+        precondition="logged in",
+        steps="open page and search by keyword",
+        expected="result list is visible",
+        category="",
+    )
+    auth_negative_case = SimpleNamespace(
+        title="without login access protected page",
+        precondition="",
+        steps="open protected page without login",
+        expected="login required",
+        category="",
+    )
+    manual_case = SimpleNamespace(
+        title="network interruption should show retry message",
+        precondition="",
+        steps="disconnect network",
+        expected="warning",
+        category="",
+    )
+
+    assert core_utils.functional_case_kind(trusted_case) == core_utils.FUNCTIONAL_CASE_KIND_BUSINESS_AUTH
+    assert core_utils.functional_case_auto_trusted(trusted_case) is True
+    assert core_utils.functional_case_kind(auth_negative_case) == core_utils.FUNCTIONAL_CASE_KIND_AUTH_NEGATIVE
+    assert core_utils.functional_case_auto_trusted(auth_negative_case) is False
+    assert core_utils.functional_case_kind(manual_case) == core_utils.FUNCTIONAL_CASE_KIND_MANUAL_ONLY
+    assert core_utils.functional_case_auto_trusted(manual_case) is False
+
+
+def test_step_structure_validation_blocks_missing_value_before_execution():
+    issues = core_utils.case_step_structure_issues(
+        [
+            {"name": "open", "action": "goto", "value": "https://example.test"},
+            {"name": "search", "action": "input", "locator": "#keyword"},
+        ]
+    )
+
+    assert any("value" in item for item in issues)
+
+
+def test_functional_execute_request_defaults_to_serial_execution():
+    payload = FunctionalExecuteRequest()
+
+    assert payload.execution_mode == "trusted"
+    assert payload.execution_policy == "isolated_per_case"
+    assert payload.parallelism == 1
 
 
 def test_preflight_groups_and_missing_variables_detail():
