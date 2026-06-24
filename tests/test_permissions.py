@@ -1683,6 +1683,64 @@ def test_resume_order_flow_pending_purchase_skips_order_quote_and_payment(monkey
     assert any(item["node"] == "order_paid" for item in summary["skipped_nodes"])
 
 
+def test_detect_resume_order_flow_shelf_stored_from_order_status(monkeypatch):
+    monkeypatch.setattr(data_scripts, "_admin_session_from", lambda variables: SimpleNamespace(headers={}))
+    monkeypatch.setattr(data_scripts, "_admin_login", lambda session, base_url, variables, timeout: ({"success": True, "code": 0}, "TOKEN"))
+    monkeypatch.setattr(
+        data_scripts,
+        "_order_detail_data",
+        lambda session, base_url, variables, order_sn, timeout: (
+            {"success": True, "code": 0},
+            {"order_sn": order_sn, "status": 60, "order_detail": [{"id": "DETAIL-STORED", "statusName": "待发货"}]},
+        ),
+    )
+    monkeypatch.setattr(data_scripts, "_post_admin_form", lambda *args, **kwargs: {"success": True, "code": 0, "data": []})
+
+    passed, summary = data_scripts._detect_resume_order_state(full_flow_env(), {}, "ORDER-STORED", {})
+
+    assert passed is True
+    assert summary["detected_start_node"] == "shelf_stored"
+    assert summary["order_detail_id"] == "DETAIL-STORED"
+    assert summary["order_detail_ids"] == ["DETAIL-STORED"]
+
+
+def test_resume_order_flow_shelf_stored_skips_shelf_and_runs_delivery(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    calls = []
+
+    def detect(env, variables, order_sn, log):
+        return True, {
+            "order_sn": order_sn,
+            "order_status": 60,
+            "detected_start_node": "shelf_stored",
+            "order_detail_id": "DETAIL-STORED",
+            "order_detail_ids": ["DETAIL-STORED"],
+        }
+
+    def delivery(env, variables):
+        calls.append("delivery")
+        assert variables["order_sn"] == "ORDER-STORED"
+        assert variables["order_detail_id"] == "DETAIL-STORED"
+        assert variables["order_detail_ids"] == ["DETAIL-STORED"]
+        return True, "", "delivery-report", {"order_sn": "ORDER-STORED", "porder_sn": "PORDER-STORED", "current_node": "porder_offered"}
+
+    monkeypatch.setattr(data_scripts, "_detect_resume_order_state", detect)
+    monkeypatch.setattr(data_scripts, "_run_backend_order_flow_resume", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("backend quote should be skipped")))
+    monkeypatch.setattr(data_scripts, "_payment_with_bank_fallback", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("order payment should be skipped")))
+    monkeypatch.setattr(data_scripts, "run_purchase_to_shelf_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("shelf should be skipped")))
+    monkeypatch.setattr(data_scripts, "run_warehouse_delivery_script", delivery)
+
+    passed, _, _, summary = data_scripts.run_resume_order_flow_script(full_flow_env(), {"order_sn": "ORDER-STORED"})
+
+    assert passed is True
+    assert calls == ["delivery"]
+    assert summary["current_node"] == "porder_offered"
+    assert summary["detected_start_node"] == "shelf_stored"
+    assert summary["order_sn"] == "ORDER-STORED"
+    assert summary["porder_sn"] == "PORDER-STORED"
+    assert any(item["node"] == "shelf_stored" for item in summary["skipped_nodes"])
+
+
 def test_resume_order_flow_endpoint_returns_summary(monkeypatch):
     def fake_resume(env, variables):
         assert variables["order_sn"] == "ORDER-ENDPOINT"

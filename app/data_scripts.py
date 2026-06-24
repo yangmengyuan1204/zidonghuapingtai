@@ -2043,6 +2043,38 @@ def _resume_node_for_order_status(status: int | None) -> str:
     return ""
 
 
+def _order_detail_ids(order_data: Dict[str, Any]) -> list[str]:
+    details = order_data.get("order_detail")
+    if not isinstance(details, list):
+        return []
+    ids: list[str] = []
+    for item in details:
+        if not isinstance(item, dict):
+            continue
+        for key in ["order_detail_id", "orderDetailId", "detail_id", "id"]:
+            value = item.get(key)
+            if value not in (None, ""):
+                ids.append(str(value).strip())
+                break
+    return _unique_list(ids)
+
+
+def _order_ready_for_warehouse_delivery(status: int | None, order_data: Dict[str, Any]) -> bool:
+    if status == 60:
+        return True
+    details = order_data.get("order_detail")
+    if not isinstance(details, list):
+        return False
+    ready_names = ["\u5f85\u53d1\u8d27", "\u53ef\u53d1\u8d27", "\u5df2\u5165\u5e93"]
+    for item in details:
+        if not isinstance(item, dict):
+            continue
+        status_name = str(item.get("statusName") or item.get("status_name") or "")
+        if any(name in status_name for name in ready_names):
+            return True
+    return False
+
+
 def _purchase_is_pending_start(item: Dict[str, Any]) -> bool:
     return "\u5f85\u62cd\u4e0b" in _purchase_status_name(item)
 
@@ -2097,7 +2129,13 @@ def _detect_resume_order_state(
     }
 
     order_status = _order_status_code(order_data)
-    detected_start_node = "pending_purchase" if pending_purchase_items else _resume_node_for_order_status(order_status)
+    order_detail_ids = _order_detail_ids(order_data)
+    if pending_purchase_items:
+        detected_start_node = "pending_purchase"
+    elif _order_ready_for_warehouse_delivery(order_status, order_data):
+        detected_start_node = "shelf_stored"
+    else:
+        detected_start_node = _resume_node_for_order_status(order_status)
     summary: Dict[str, Any] = {
         "order_sn": order_sn,
         "order_status": order_status,
@@ -2108,8 +2146,13 @@ def _detect_resume_order_state(
         "order_detail": _admin_detail_brief(order_data),
         "order_data": order_data,
     }
+    if order_detail_ids:
+        summary["order_detail_id"] = order_detail_ids[0]
+        summary["order_detail_ids"] = order_detail_ids
     if pending_purchase_items:
         summary["purchase_items"] = [_purchase_item_brief(item) for item in pending_purchase_items[:20]]
+        return True, summary
+    if detected_start_node == "shelf_stored":
         return True, summary
     if purchase_items:
         summary["reason"] = "\u8ba2\u5355\u5df2\u8fdb\u5165\u91c7\u8d2d\u4e2d\u95f4\u72b6\u6001\uff0c\u672c\u811a\u672c\u672c\u8f6e\u4ec5\u652f\u6301\u5f85\u62cd\u4e0b\u4f5c\u4e3a\u91c7\u8d2d\u8d77\u70b9"
@@ -7715,12 +7758,34 @@ def run_resume_order_flow_script(env: Env, variables: Dict[str, Any] | None = No
 
         detected_start_node = str(detect_summary.get("detected_start_node") or "")
         order_status = detect_summary.get("order_status")
+        skip_shelf = False
         if detected_start_node == "pending_purchase":
             _resume_record_skipped(
                 log,
                 ["order_translated", "order_confirmed", "order_offered", "order_paid"],
                 "\u8ba2\u5355\u5df2\u5728\u5f85\u62cd\u4e0b\uff0c\u8df3\u8fc7\u8ba2\u5355\u540e\u53f0\u62a5\u4ef7\u548c\u8ba2\u5355\u652f\u4ed8",
             )
+        elif detected_start_node == "shelf_stored":
+            skip_shelf = True
+            _resume_record_skipped(
+                log,
+                [
+                    "order_translated",
+                    "order_confirmed",
+                    "order_offered",
+                    "order_paid",
+                    "pending_purchase",
+                    "purchase_no_saved",
+                    "purchase_wait_modify_price",
+                    "purchase_wait_pay",
+                    "purchase_paid",
+                    "checking_started",
+                    "shelf_stored",
+                ],
+                "\u8ba2\u5355\u5df2\u5230\u4ed3\u5e93\u5f85\u53d1\u8d27\uff0c\u8df3\u8fc7\u8ba2\u5355\u548c\u4e0a\u67b6\u9636\u6bb5",
+            )
+            if _full_flow_stop_reached(variables, "shelf_stored"):
+                return _resume_flow_finish(log, True, "shelf_stored", paused=True)
         else:
             if order_status == 30:
                 _resume_record_skipped(
@@ -7781,23 +7846,24 @@ def run_resume_order_flow_script(env: Env, variables: Dict[str, Any] | None = No
             if _full_flow_stop_reached(variables, "order_paid"):
                 return _resume_flow_finish(log, True, "order_paid", paused=True)
 
-        shelf_vars = dict(variables)
-        shelf_vars["order_sn"] = order_sn
-        shelf_vars["purchase_no"] = str(variables.get("purchase_no") or _purchase_timestamp_no())
-        shelf_vars["link_quote_balance_before_shelf"] = False
-        shelf_vars["auto_quote_and_pay"] = False
-        shelf_passed, shelf_log, shelf_report, shelf_summary = run_purchase_to_shelf_script(env, shelf_vars)
-        shelf_summary = dict(shelf_summary or {})
-        _full_flow_record_step(log, str(shelf_summary.get("current_node") or "shelf_stored"), PURCHASE_TO_SHELF_SCRIPT_NAME, shelf_passed, shelf_summary, shelf_report)
-        if not shelf_passed:
-            return _resume_flow_finish(
-                log,
-                False,
-                str(shelf_summary.get("current_node") or "shelf_stored"),
-                reason=str(shelf_summary.get("reason") or shelf_summary.get("error") or "\u5f85\u62cd\u4e0b\u5230\u4e0a\u67b6\u5931\u8d25"),
-            )
-        if _is_paused(shelf_summary):
-            return _resume_flow_finish(log, True, str(shelf_summary.get("current_node") or "shelf_stored"), paused=True)
+        if not skip_shelf:
+            shelf_vars = dict(variables)
+            shelf_vars["order_sn"] = order_sn
+            shelf_vars["purchase_no"] = str(variables.get("purchase_no") or _purchase_timestamp_no())
+            shelf_vars["link_quote_balance_before_shelf"] = False
+            shelf_vars["auto_quote_and_pay"] = False
+            shelf_passed, shelf_log, shelf_report, shelf_summary = run_purchase_to_shelf_script(env, shelf_vars)
+            shelf_summary = dict(shelf_summary or {})
+            _full_flow_record_step(log, str(shelf_summary.get("current_node") or "shelf_stored"), PURCHASE_TO_SHELF_SCRIPT_NAME, shelf_passed, shelf_summary, shelf_report)
+            if not shelf_passed:
+                return _resume_flow_finish(
+                    log,
+                    False,
+                    str(shelf_summary.get("current_node") or "shelf_stored"),
+                    reason=str(shelf_summary.get("reason") or shelf_summary.get("error") or "\u5f85\u62cd\u4e0b\u5230\u4e0a\u67b6\u5931\u8d25"),
+                )
+            if _is_paused(shelf_summary):
+                return _resume_flow_finish(log, True, str(shelf_summary.get("current_node") or "shelf_stored"), paused=True)
 
         delivery_vars = dict(variables)
         delivery_vars.update(log["shared_data"])
