@@ -70,7 +70,6 @@ if (!window.__fullFlowDataScriptLoaded) {
     CUSTOMER_ID_FIELD,
     { name: "order_sn", label: "订单号", required: true },
     { name: "purchase_no", label: "交易号（可选）" },
-    { name: "order_item_num", label: "订单商品数量", type: "number", default: 10 },
     { name: "warehouse_sku_count", label: "仓库提出番数", type: "number", default: 1 },
     { name: "send_num", label: "每番配送数量", type: "number", default: 1 },
     { name: "stop_after_node", label: "暂停节点", type: "select", options: RESUME_ORDER_STOP_NODE_OPTIONS, default: "porder_offered" },

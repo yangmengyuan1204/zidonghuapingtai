@@ -3915,7 +3915,7 @@ def _select_warehouse_items(rows: list[Dict[str, Any]], variables: Dict[str, Any
     order_sn = str(variables.get("warehouse_order_sn") or variables.get("order_sn") or "").strip()
     fill_scope = str(variables.get("warehouse_fill_scope") or "").strip().lower()
     require_full_count = _as_bool(variables.get("require_warehouse_sku_count"), False)
-    current_first = fill_scope in {"current_order", "current_order_then_history"} or bool(requested_id_set and limit > 1)
+    current_first = fill_scope in {"current_order", "current_order_then_history"} or bool(requested_id_set and limit > 1) or bool(order_sn)
     allow_history = fill_scope != "current_order"
     target_count = max(1, limit)
     selected: list[Dict[str, Any]] = []
@@ -7868,7 +7868,8 @@ def run_resume_order_flow_script(env: Env, variables: Dict[str, Any] | None = No
         delivery_vars = dict(variables)
         delivery_vars.update(log["shared_data"])
         delivery_vars["run_backend_delivery_flow"] = True
-        delivery_vars.setdefault("warehouse_fill_scope", "current_order_then_history")
+        delivery_vars["warehouse_order_sn"] = order_sn
+        delivery_vars["warehouse_fill_scope"] = "current_order_then_history"
         delivery_vars.setdefault("require_warehouse_sku_count", True)
         delivery_vars.setdefault("warehouse_fill_retries", 3)
         delivery_vars.setdefault("warehouse_fill_retry_delay", 1)
