@@ -117,6 +117,23 @@ def test_ocr_numpy_runtime_error_is_compacted():
     assert "_multiarray_umath" not in message
 
 
+def test_scan_request_failure_text_accepts_string_dict_and_method():
+    assert functional_testing._request_failure_text(SimpleNamespace(failure="net::ERR_ABORTED")) == "net::ERR_ABORTED"
+    assert functional_testing._request_failure_text(SimpleNamespace(failure={"errorText": "net::ERR_FAILED"})) == "net::ERR_FAILED"
+
+    class RequestWithFailureMethod:
+        def failure(self):
+            return {"error": "timeout"}
+
+    assert functional_testing._request_failure_text(RequestWithFailureMethod()) == "timeout"
+
+
+def test_scan_error_screenshot_skips_closed_page():
+    assert functional_testing._page_available_for_screenshot(None) is False
+    assert functional_testing._page_available_for_screenshot(SimpleNamespace(is_closed=lambda: True)) is False
+    assert functional_testing._page_available_for_screenshot(SimpleNamespace(is_closed=lambda: False)) is True
+
+
 def test_steps_without_business_assertion_are_not_trusted_success():
     steps = [{"action": "goto", "value": "https://example.test"}, {"action": "click", "locator": "text=提交"}]
     normalized, issues = executors._validate_ui_steps_for_execution(steps)

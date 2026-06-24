@@ -1827,6 +1827,32 @@ def _scan_screenshot(page: Any, trace: list[str]) -> Path:
     return screenshot
 
 
+def _request_failure_text(request: Any) -> str:
+    try:
+        failure = getattr(request, "failure", None)
+        if callable(failure):
+            failure = failure()
+        if isinstance(failure, dict):
+            return str(failure.get("errorText") or failure.get("error") or "request failed")
+        if failure:
+            return str(failure)
+    except Exception as exc:
+        return str(exc)
+    return "request failed"
+
+
+def _page_available_for_screenshot(page: Any) -> bool:
+    if not page:
+        return False
+    try:
+        is_closed = getattr(page, "is_closed", None)
+        if callable(is_closed):
+            return not bool(is_closed())
+    except Exception:
+        return False
+    return True
+
+
 def _scan_locator_quality(elements: list[dict]) -> dict:
     """评估定位器质量。"""
     total = len(elements)
@@ -1920,7 +1946,7 @@ def scan_page_dom(page_url: str, timeout: int = 30, auth: Dict[str, Any] | None 
             context = browser.new_context()
             page = context.new_page()
             page.on("console", lambda msg: console_errors.append(f"{msg.type}: {msg.text}") if msg.type in {"error", "warning"} else None)
-            page.on("requestfailed", lambda request: network_errors.append(f"{request.method} {request.url}: {request.failure.get('errorText') if request.failure else 'request failed'}"))
+            page.on("requestfailed", lambda request: network_errors.append(f"{request.method} {request.url}: {_request_failure_text(request)}"))
 
             with _step_timeout(page, min(timeout, 20), "导航到目标页面", trace):
                 _scan_navigate(page, page_url, timeout, trace)
@@ -1942,7 +1968,7 @@ def scan_page_dom(page_url: str, timeout: int = 30, auth: Dict[str, Any] | None 
         _scan_trace(trace, f"扫描过程中断：{error_msg}")
         partial["error_step"] = "unknown"
         partial["error"] = error_msg
-        if page:
+        if _page_available_for_screenshot(page):
             try:
                 screenshot_path = _scan_screenshot(page, trace)
             except Exception:
