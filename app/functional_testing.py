@@ -1015,15 +1015,31 @@ def _normalize_generated_cases(
                 "automation_status": "draft",
             }
         )
-    return result[:100], questions
+    return result[:12], questions
 
 
 def normalize_case_category(value: Any, fallback_text: str = "") -> str:
     text = str(value or "").strip()
+    category_aliases = {
+        "主流程": "主流程",
+        "等价类": "等价类",
+        "边界值": "边界值",
+        "异常流程": "异常流程",
+        "权限状态": "权限状态",
+        "权限/状态": "权限状态",
+        "数据结果": "数据结果",
+        "页面展示": "页面展示",
+    }
+    if text in category_aliases:
+        return category_aliases[text]
     allowed = ["页面展示", "输入校验", "主流程", "异常流程", "权限/状态", "数据结果"]
     if text in allowed:
         return text
     source = f"{text} {fallback_text}".lower()
+    if "boundary" in source or "边界" in source or "临界" in source:
+        return "边界值"
+    if "equivalence" in source or "等价" in source:
+        return "等价类"
     keyword_map = [
         ("数据结果", ("金额", "数量", "库存", "数据", "接口", "计算", "合计", "price", "amount", "total")),
         ("权限/状态", ("权限", "状态", "审核", "启用", "禁用", "登录", "角色", "status", "auth")),
@@ -1063,7 +1079,8 @@ def rule_generate_cases(task: FunctionalTask, axure_text: str, extra_context: st
         picked = [f"验证页面 {task.target_url} 的核心功能流程"]
 
     result = []
-    for index, line in enumerate(picked[:10], start=1):
+    default_categories = ["主流程", "等价类", "边界值", "异常流程", "权限状态", "数据结果"]
+    for index, line in enumerate(picked[:12], start=1):
         title = line[:80]
         result.append(
             {
@@ -1071,7 +1088,7 @@ def rule_generate_cases(task: FunctionalTask, axure_text: str, extra_context: st
                 "precondition": "测试账号可登录，测试环境数据可用。",
                 "steps": f"1. 打开目标页面\n2. 按需求执行：{line}\n3. 观察页面反馈和数据变化",
                 "expected": "页面提示正确，数据状态符合需求，核心流程无报错。",
-                "category": normalize_case_category("", title),
+                "category": normalize_case_category(default_categories[(index - 1) % len(default_categories)], title),
                 "priority": "P0" if index <= 2 else "P1",
                 "automation_status": "draft",
             }
@@ -1101,6 +1118,11 @@ def generate_functional_cases(
 输出格式：
 {{"cases":[{{"title":"","precondition":"","steps":"","expected":"","category":"页面展示/输入校验/主流程/异常流程/权限/状态/数据结果","priority":"P0/P1/P2"}}],"questions_for_product":["问题1","问题2"]}}
 
+新增硬性约束：
+- 只生成 8-12 条高价值用例，不要堆重复用例。
+- category 只能使用：主流程、等价类、边界值、异常流程、权限状态、数据结果。
+- 优先 P0/P1，至少包含 1 条主流程、1 条等价类、1 条边界值、1 条异常流程。
+
 {requirement_context}
 """
     warning = ""
@@ -1108,8 +1130,8 @@ def generate_functional_cases(
     try:
         raw_payload = call_local_model_json(config, prompt)
         generated, questions = _normalize_generated_cases(raw_payload)
-        if len(generated) < 20:
-            warning = f"AI 仅生成了 {len(generated)} 条测试点，期望至少 20 条，建议补充需求描述后重试"
+        if len(generated) < 8:
+            warning = f"AI 仅生成了 {len(generated)} 条测试点，期望 8-12 条高价值用例，建议补充需求描述后重试"
     except Exception as exc:
         generated = []
         warning = f"本地模型调用失败，已使用规则生成：{exc}"

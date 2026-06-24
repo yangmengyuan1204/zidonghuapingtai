@@ -4,6 +4,8 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.venv*/
+.venv_ocr/
 
 # Node
 node_modules/
@@ -15,9 +17,36 @@ package-lock.json
 *.swp
 *.swo
 
+# Large binaries / runtime deps
+.ocr_cache/
+ms-playwright/
+.playwright-cli/
+.codegraph/
+*.exe
+*.zip
+*.rp
+python-3.14.5-amd64.exe
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+logs/
+*.log
+server*.log
+uvicorn*.log
+
+# Test reports (large, regenerable)
+reports/screenshots/
+reports/allure-results/
+reports/functional/
+
 # Temp files
 _*.js
 -*
+$null
 CC_Switch/
 fix_route_script.py
 public-access.bat

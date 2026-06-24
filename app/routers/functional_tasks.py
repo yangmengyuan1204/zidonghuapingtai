@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 import json
 import sys
 import threading
+import time
 from datetime import datetime
 from typing import Any, Dict, Iterable, Type
 
@@ -27,6 +28,7 @@ from ..core.utils import (
     functional_task_detail,
     get_or_404,
     impact_item_key,
+    is_sensitive_account_key,
     latest_ai_config,
     lookup_nested_value,
     normalize_data_check_payload,
@@ -470,6 +472,8 @@ def preflight_functional_task_package(
             selected_case_ids = [payload.case_id]
         elif payload.case_ids:
             selected_case_ids = list(dict.fromkeys(int(item) for item in payload.case_ids if int(item) > 0))
+        if payload.save_variables:
+            _save_functional_runtime_variables(task, payload.variables or {})
     return preflight_functional_package(db, task, payload, selected_case_ids or None, persist=True)
 
 
@@ -1443,6 +1447,128 @@ def _classify_functional_execution_result(passed: bool, log_text: str, quality_s
     return "failed", "assertion_or_page_failure"
 
 
+def _execution_event(event_type: str, **payload: Any) -> Dict[str, Any]:
+    return {
+        "type": event_type,
+        "timestamp": datetime.now().isoformat(),
+        **payload,
+    }
+
+
+def _save_functional_runtime_variables(task: FunctionalTask, variables: Dict[str, Any] | None) -> Dict[str, Any]:
+    safe_variables = {
+        str(key): value
+        for key, value in (variables or {}).items()
+        if value not in ("", None) and not is_sensitive_account_key(key)
+    }
+    if not safe_variables:
+        return {}
+    payload = parse_json_value(task.context or "", None)
+    if not isinstance(payload, dict):
+        payload = {"notes": task.context or ""}
+    runtime_variables = payload.get("runtime_variables") if isinstance(payload.get("runtime_variables"), dict) else {}
+    runtime_variables.update(safe_variables)
+    payload["runtime_variables"] = runtime_variables
+    task.context = json.dumps(payload, ensure_ascii=False, default=str)
+    return safe_variables
+
+
+def _functional_execution_payload(run: FunctionalRun) -> Dict[str, Any]:
+    log_data = parse_json_value(run.log, {})
+    if not isinstance(log_data, dict):
+        log_data = {}
+    return {
+        "job_id": run.id,
+        "status": run.result,
+        "total": log_data.get("total", 0),
+        "completed": log_data.get("completed", 0),
+        "passed_count": run.passed_count,
+        "failed_count": run.failed_count,
+        "blocked_count": log_data.get("blocked_count", 0),
+        "review_count": log_data.get("review_count", 0),
+        "preflight": log_data.get("preflight", None),
+        "current_case_title": log_data.get("current_case_title", ""),
+        "active_case_id": log_data.get("active_case_id"),
+        "active_step_index": log_data.get("active_step_index"),
+        "active_step_name": log_data.get("active_step_name", ""),
+        "elapsed_ms": log_data.get("elapsed_ms", 0),
+        "events": log_data.get("events", []),
+        "records": log_data.get("records", []),
+        "task_name": log_data.get("task", ""),
+        "error": log_data.get("error", None),
+    }
+
+
+def _repair_issue_type(record: Dict[str, Any], ui_log: Dict[str, Any]) -> str:
+    text = json.dumps({"record": record, "log": ui_log}, ensure_ascii=False, default=str).lower()
+    if record.get("result") == "blocked" and ("auth" in text or "login" in text or "#/login" in text):
+        return "auth"
+    if "missing_variables" in text or "data_missing" in text or "缺" in text and "数据" in text:
+        return "data"
+    if any(marker in text for marker in ["healed", "locator", "strict mode violation", "timeout"]):
+        return "locator"
+    if "assert" in text or "断言" in text:
+        return "assertion"
+    if "environment" in text or "net::" in text or "5xx" in text:
+        return "environment"
+    return "test_design" if record.get("result") == "needs_review" else "app_bug"
+
+
+def _build_functional_repair_plan(run: FunctionalRun) -> Dict[str, Any]:
+    run_log = parse_json_value(run.log, {})
+    records = run_log.get("records") if isinstance(run_log.get("records"), list) else []
+    repairs: list[Dict[str, Any]] = []
+    for record in records:
+        if not isinstance(record, dict) or record.get("result") == "passed":
+            continue
+        ui_log = parse_json_value(record.get("log"), {})
+        if not isinstance(ui_log, dict):
+            ui_log = {}
+        step_logs = ui_log.get("step_logs") if isinstance(ui_log.get("step_logs"), list) else []
+        issue_type = _repair_issue_type(record, ui_log)
+        repair = {
+            "record_id": record.get("record_id"),
+            "functional_case_id": record.get("functional_case_id"),
+            "ui_case_id": record.get("ui_case_id"),
+            "case_title": record.get("title") or "",
+            "issue_type": issue_type,
+            "root_cause": ui_log.get("failure_reason") or ui_log.get("error") or record.get("result_reason") or "",
+            "confidence": "high" if issue_type in {"auth", "data", "locator"} else "medium",
+            "auto_fixable": False,
+            "fix_type": "",
+            "suggested_action": ui_log.get("suggestion") or "",
+            "locator_updates": [],
+        }
+        locator_updates = []
+        for step in step_logs:
+            if isinstance(step, dict) and step.get("healed") and step.get("original_locator") and step.get("suggested_locator"):
+                locator_updates.append(
+                    {
+                        "original_locator": step.get("original_locator"),
+                        "suggested_locator": step.get("suggested_locator"),
+                    }
+                )
+        if locator_updates:
+            repair.update(
+                {
+                    "auto_fixable": True,
+                    "fix_type": "locator",
+                    "suggested_action": "应用已自愈成功的 locator，并复跑失败用例",
+                    "locator_updates": locator_updates,
+                }
+            )
+        elif issue_type == "data":
+            repair["suggested_action"] = repair["suggested_action"] or "补齐缺失变量后重新预检并执行"
+        elif issue_type == "auth":
+            repair["suggested_action"] = repair["suggested_action"] or "绑定并验证测试账号后重新执行"
+        repairs.append(repair)
+    return {
+        "run_id": run.id,
+        "repair_items": repairs,
+        "auto_fixable_count": sum(1 for item in repairs if item.get("auto_fixable")),
+    }
+
+
 def _background_execute_functional(
     task_id: int,
     run_id: int,
@@ -1480,6 +1606,14 @@ def _background_execute_functional(
         processed_case_ids: set[int] = set()
         batch_items: list[Dict[str, Any]] = []
         payload_obj = FunctionalExecuteRequest(**payload_data) if payload_data else None
+        execution_policy = str(payload_data.get("execution_policy") or "isolated_per_case")
+        parallelism = max(1, min(int(payload_data.get("parallelism") or 2), 3))
+        if execution_policy == "scenario_chain":
+            parallelism = 1
+        started_ts = time.time()
+        events: list[Dict[str, Any]] = [
+            _execution_event("run_started", run_id=run_id, total=len(bg_cases), parallelism=parallelism, execution_policy=execution_policy)
+        ]
 
         for fc in bg_cases:
             ui_case = bg_db.get(UiCase, fc.ui_case_id) if fc.ui_case_id else None
@@ -1518,6 +1652,13 @@ def _background_execute_functional(
                 "review_count": total_review,
                 "completed": completed,
                 "current_case_title": current_title,
+                "active_case_id": None,
+                "active_step_index": None,
+                "active_step_name": "",
+                "elapsed_ms": int((time.time() - started_ts) * 1000),
+                "events": events[-200:],
+                "parallelism": parallelism,
+                "execution_policy": execution_policy,
             }, ensure_ascii=False, default=str)
             bg_run.passed_count = total_passed
             bg_run.failed_count = total_failed
@@ -1526,6 +1667,7 @@ def _background_execute_functional(
         def _on_case_start(item: Dict[str, Any]) -> None:
             fc = item.get("functional_case")
             title = getattr(fc, "title", "正在执行用例")
+            events.append(_execution_event("case_started", functional_case_id=getattr(fc, "id", None), title=title))
             _write_run_progress(title, len(processed_case_ids))
 
         def _on_case_finish(item: Dict[str, Any], result_tuple: tuple[bool, str, str, str]) -> None:
@@ -1536,6 +1678,10 @@ def _background_execute_functional(
             record = save_ui_record(bg_db, ui_case, passed, log_text, report_path, screenshot_path)
             quality_status = getattr(fc, "quality_status", QUALITY_UNCHECKED) if fc else QUALITY_UNCHECKED
             result_status, result_reason = _classify_functional_execution_result(passed, log_text, quality_status)
+            log_data = parse_json_value(log_text, {})
+            if not isinstance(log_data, dict):
+                log_data = {}
+            business_verification = log_data.get("business_verification") if isinstance(log_data.get("business_verification"), dict) else {}
             record_payload: Dict[str, Any] = {
                 "functional_case_id": fc.id if fc else item.get("functional_case_id"),
                 "ui_case_id": getattr(ui_case, "id", None),
@@ -1547,6 +1693,9 @@ def _background_execute_functional(
                 "result_reason": result_reason,
                 "screenshot": screenshot_path,
                 "log": log_text,
+                "current_url": log_data.get("current_url") or business_verification.get("final_url", ""),
+                "failed_step": log_data.get("failed_step"),
+                "failed_step_detail": log_data.get("failed_step_detail"),
             }
             record_text = json.dumps(record_payload, ensure_ascii=False, default=str)
             auth_blocked = result_status == "blocked" and ("登录前置失败" in record_text or ("login_required" in record_text and "#/login" in record_text))
@@ -1580,13 +1729,33 @@ def _background_execute_functional(
                     total_failed += 1
                 processed_case_ids.add(fc.id)
             gathered_records.append(record_payload)
+            step_logs = log_data.get("step_logs") if isinstance(log_data.get("step_logs"), list) else []
+            for step in step_logs[-20:]:
+                if isinstance(step, dict):
+                    events.append(
+                        _execution_event(
+                            "step_finished",
+                            functional_case_id=record_payload.get("functional_case_id"),
+                            step_index=step.get("index"),
+                            step_name=step.get("name") or step.get("action") or "",
+                            status=step.get("status") or "",
+                        )
+                    )
+            events.append(
+                _execution_event(
+                    "case_finished",
+                    functional_case_id=record_payload.get("functional_case_id"),
+                    title=record_payload["title"],
+                    result=result_status,
+                )
+            )
             _write_run_progress(
                 "登录前置失败，后续用例已阻断" if auth_blocked else record_payload["title"],
                 len(processed_case_ids),
             )
 
         try:
-            execute_ui_cases_batch(batch_items, on_case_start=_on_case_start, on_case_finish=_on_case_finish)
+            execute_ui_cases_batch(batch_items, on_case_start=_on_case_start, on_case_finish=_on_case_finish, parallelism=parallelism)
         except Exception as exc:
             if "登录前置失败" not in str(exc):
                 raise
@@ -1609,18 +1778,22 @@ def _background_execute_functional(
                         "error": str(exc),
                     }
                 )
+                events.append(_execution_event("case_finished", functional_case_id=blocked_case.id, title=blocked_case.title, result="blocked"))
                 processed_case_ids.add(blocked_case.id)
                 total_blocked += 1
             _write_run_progress("登录前置失败，已停止后续用例", len(processed_case_ids))
 
         final_result = "failed" if total_failed else ("blocked" if total_blocked else ("needs_review" if total_review else "passed"))
         bg_run.result = final_result
+        events.append(_execution_event("run_finished", run_id=run_id, status=final_result))
         bg_run.log = json.dumps({
             **json.loads(bg_run.log or "{}"),
             "current_case_title": "执行完毕",
             "status": final_result,
             "blocked_count": total_blocked,
             "review_count": total_review,
+            "elapsed_ms": int((time.time() - started_ts) * 1000),
+            "events": events[-200:],
         }, ensure_ascii=False, default=str)
         bg_task.status = final_result
         bg_db.commit()
@@ -1654,7 +1827,14 @@ def execute_functional_task_async(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     task = get_or_404(db, FunctionalTask, task_id)
+    execution_mode = (payload.execution_mode if payload else "trusted") or "trusted"
     force_execute = bool(payload.force) if payload else False
+    if execution_mode == "trial":
+        force_execute = True
+    execution_policy = (payload.execution_policy if payload else "isolated_per_case") or "isolated_per_case"
+    parallelism = max(1, min(int((payload.parallelism if payload else 2) or 2), 3))
+    if execution_policy == "scenario_chain":
+        parallelism = 1
     selected_case_ids: list[int] = []
     if payload:
         if payload.case_id:
@@ -1664,6 +1844,7 @@ def execute_functional_task_async(
     preflight_result = preflight_functional_package(db, task, payload, selected_case_ids or None, persist=True)
     seed_variables = dict((preflight_result.get("seed") or {}).get("variables") or {})
     variables = {**seed_variables, **(payload.variables if payload else {})}
+    saved_runtime_variables = _save_functional_runtime_variables(task, payload.variables if payload and payload.save_variables else {})
     cases_query = db.query(FunctionalCase).filter(
         FunctionalCase.task_id == task.id,
         FunctionalCase.automation_status == "approved",
@@ -1697,7 +1878,16 @@ def execute_functional_task_async(
         "review_count": 0,
         "total": len(cases),
         "preflight": preflight_result,
+        "saved_runtime_variables": saved_runtime_variables,
         "completed": 0,
+        "active_case_id": None,
+        "active_step_index": None,
+        "active_step_name": "",
+        "elapsed_ms": 0,
+        "parallelism": parallelism,
+        "execution_mode": execution_mode,
+        "execution_policy": execution_policy,
+        "events": [_execution_event("run_started", total=len(cases), parallelism=parallelism, execution_policy=execution_policy)],
         "current_case_title": "初始化执行器...",
     }
     run = FunctionalRun(
@@ -1717,6 +1907,9 @@ def execute_functional_task_async(
     payload_data = schema_data(payload) if payload else {}
     payload_data["variables"] = variables
     payload_data["force"] = force_execute
+    payload_data["parallelism"] = parallelism
+    payload_data["execution_mode"] = execution_mode
+    payload_data["execution_policy"] = execution_policy
     payload_case_id = payload_data.get("case_id") if payload_data else None
     payload_case_ids = payload_data.get("case_ids") if payload_data else []
     selected_bg_case_ids: list[int] = []
@@ -1737,6 +1930,14 @@ def execute_functional_task_async(
         "status": "running",
         "total": len(cases),
         "completed": 0,
+        "active_case_id": None,
+        "active_step_index": None,
+        "active_step_name": "",
+        "elapsed_ms": 0,
+        "parallelism": parallelism,
+        "execution_mode": execution_mode,
+        "execution_policy": execution_policy,
+        "events": [_execution_event("run_started", total=len(cases), parallelism=parallelism, execution_policy=execution_policy)],
         "passed_count": 0,
         "failed_count": 0,
         "blocked_count": 0,
@@ -1754,22 +1955,41 @@ def get_functional_execution(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     run = get_or_404(db, FunctionalRun, job_id)
-    log_data = parse_json_value(run.log, {})
-    return {
-        "job_id": run.id,
-        "status": run.result,
-        "total": log_data.get("total", 0),
-        "completed": log_data.get("completed", 0),
-        "passed_count": run.passed_count,
-        "failed_count": run.failed_count,
-        "blocked_count": log_data.get("blocked_count", 0),
-        "review_count": log_data.get("review_count", 0),
-        "preflight": log_data.get("preflight", None),
-        "current_case_title": log_data.get("current_case_title", ""),
-        "records": log_data.get("records", []),
-        "task_name": log_data.get("task", ""),
-        "error": log_data.get("error", None),
-    }
+    return _functional_execution_payload(run)
+
+
+@router.get("/functional-executions/{job_id}/events")
+def stream_functional_execution_events(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    get_or_404(db, FunctionalRun, job_id)
+
+    def event_stream():
+        from ..database import SessionLocal
+
+        sent_count = 0
+        while True:
+            stream_db = SessionLocal()
+            try:
+                run = stream_db.get(FunctionalRun, job_id)
+                if not run:
+                    yield "event: error\ndata: {\"error\":\"run_not_found\"}\n\n"
+                    break
+                payload = _functional_execution_payload(run)
+                events = payload.get("events") or []
+                for event in events[sent_count:]:
+                    yield "event: execution\ndata: " + json.dumps(event, ensure_ascii=False, default=str) + "\n\n"
+                sent_count = len(events)
+                yield "event: snapshot\ndata: " + json.dumps(payload, ensure_ascii=False, default=str) + "\n\n"
+                if run.result in {"passed", "failed", "blocked", "needs_review", "error"}:
+                    break
+            finally:
+                stream_db.close()
+            time.sleep(1)
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @router.post("/functional-runs/{run_id}/diagnose")
@@ -1785,6 +2005,73 @@ def diagnose_functional_run(run_id: int, db: Session = Depends(get_db), current_
     db.commit()
     db.refresh(run)
     return {"run": serialize(run), "diagnosis": diagnosis}
+
+
+@router.post("/functional-runs/{run_id}/repair-plan")
+def functional_run_repair_plan(
+    run_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    run = get_or_404(db, FunctionalRun, run_id)
+    plan = _build_functional_repair_plan(run)
+    try:
+        payload = json.loads(run.log or "{}")
+    except json.JSONDecodeError:
+        payload = {"log": run.log or ""}
+    payload["repair_plan"] = plan
+    run.log = json.dumps(payload, ensure_ascii=False, indent=2, default=str)
+    db.commit()
+    return plan
+
+
+@router.post("/functional-runs/{run_id}/apply-repair")
+def apply_functional_run_repair(
+    run_id: int,
+    payload: Dict[str, Any] | None = Body(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    run = get_or_404(db, FunctionalRun, run_id)
+    plan = _build_functional_repair_plan(run)
+    selected_ids = {int(item) for item in (payload or {}).get("functional_case_ids", []) if str(item).isdigit()}
+    applied: list[Dict[str, Any]] = []
+    skipped: list[Dict[str, Any]] = []
+    for item in plan.get("repair_items", []):
+        if selected_ids and int(item.get("functional_case_id") or 0) not in selected_ids:
+            continue
+        if not item.get("auto_fixable") or item.get("fix_type") != "locator":
+            skipped.append({"functional_case_id": item.get("functional_case_id"), "reason": "not_auto_fixable"})
+            continue
+        ui_case = db.get(UiCase, int(item.get("ui_case_id") or 0))
+        if not ui_case:
+            skipped.append({"functional_case_id": item.get("functional_case_id"), "reason": "ui_case_not_found"})
+            continue
+        steps = parse_json_value(ui_case.steps, [])
+        if not isinstance(steps, list):
+            steps = []
+        changed = 0
+        for step in steps:
+            if not isinstance(step, dict):
+                continue
+            for update in item.get("locator_updates") or []:
+                if step.get("locator") == update.get("original_locator"):
+                    step["locator"] = update.get("suggested_locator")
+                    step["healed_at"] = datetime.now().isoformat()
+                    step["healed_from_run_id"] = run_id
+                    changed += 1
+        if changed:
+            ui_case.steps = to_json_text(steps, [])
+            applied.append({"functional_case_id": item.get("functional_case_id"), "ui_case_id": ui_case.id, "updated_count": changed})
+    if applied:
+        db.commit()
+    return {
+        "run_id": run_id,
+        "applied": applied,
+        "skipped": skipped,
+        "applied_count": sum(item.get("updated_count", 0) for item in applied),
+        "rerun_case_ids": [item["functional_case_id"] for item in applied if item.get("functional_case_id")],
+    }
 
 
 @router.post("/functional-runs/{run_id}/heal")

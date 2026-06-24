@@ -1466,7 +1466,26 @@ def seed_functional_package_data(db: Session, task: FunctionalTask) -> Dict[str,
     if dates:
         variables.update({"startDate": dates[0], "start_date": dates[0]})
         variables.update({"endDate": dates[-1], "end_date": dates[-1]})
+    saved_runtime_variables = functional_task_runtime_variables(task)
+    if saved_runtime_variables:
+        variables.update(saved_runtime_variables)
+        if "task_runtime_variables" not in sources:
+            sources.append("task_runtime_variables")
     return {"variables": variables, "sources": sources, "source_text_available": bool(text)}
+
+
+def functional_task_runtime_variables(task: FunctionalTask) -> Dict[str, Any]:
+    payload = parse_json_value(task.context or "", {})
+    if not isinstance(payload, dict):
+        return {}
+    raw_variables = payload.get("runtime_variables") or payload.get("__runtime_variables") or {}
+    if not isinstance(raw_variables, dict):
+        return {}
+    return {
+        str(key): value
+        for key, value in raw_variables.items()
+        if value not in ("", None) and not is_sensitive_account_key(key)
+    }
 
 
 def account_preflight_status(
@@ -1585,7 +1604,7 @@ def functional_package_preflight_summary(cases: list[Dict[str, Any]]) -> Dict[st
     counts = Counter((item.get("quality_status") or QUALITY_UNCHECKED) for item in cases)
     total = len(cases)
     manual_statuses = {QUALITY_NEEDS_REVIEW, QUALITY_MISSING_VARIABLES, QUALITY_LOCATOR_RISK, QUALITY_AUTH_RISK, QUALITY_NOT_RECOMMENDED}
-    trial_statuses = {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_MISSING_VARIABLES, QUALITY_LOCATOR_RISK}
+    trial_statuses = {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_LOCATOR_RISK}
     return {
         "total": total,
         "executable": counts.get(QUALITY_EXECUTABLE, 0),
@@ -1598,6 +1617,110 @@ def functional_package_preflight_summary(cases: list[Dict[str, Any]]) -> Dict[st
         "missing_assertion": counts.get(QUALITY_NEEDS_REVIEW, 0),
         "not_automatable": counts.get(QUALITY_NOT_RECOMMENDED, 0),
     }
+
+
+def _case_group_key(category: Any) -> str:
+    raw = str(category or "").strip()
+    aliases = {
+        "页面展示": "页面展示",
+        "输入校验": "等价类",
+        "主流程": "主流程",
+        "异常流程": "异常流程",
+        "权限/状态": "权限状态",
+        "权限状态": "权限状态",
+        "数据结果": "数据结果",
+        "边界值": "边界值",
+        "等价类": "等价类",
+    }
+    if raw in aliases:
+        return aliases[raw]
+    if "边界" in raw:
+        return "边界值"
+    if "等价" in raw or "输入" in raw or "校验" in raw:
+        return "等价类"
+    if "权限" in raw or "状态" in raw:
+        return "权限状态"
+    if "异常" in raw:
+        return "异常流程"
+    if "数据" in raw:
+        return "数据结果"
+    return "主流程"
+
+
+def functional_preflight_case_groups(cases: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+    order = ["主流程", "等价类", "边界值", "异常流程", "权限状态", "数据结果", "页面展示"]
+    grouped: Dict[str, Dict[str, Any]] = {}
+    for item in cases:
+        key = _case_group_key(item.get("category"))
+        group = grouped.setdefault(
+            key,
+            {
+                "category": key,
+                "total": 0,
+                "executable": 0,
+                "blocked": 0,
+                "needs_review": 0,
+                "locator_risk": 0,
+                "case_ids": [],
+            },
+        )
+        status_value = item.get("quality_status") or QUALITY_UNCHECKED
+        group["total"] += 1
+        group["case_ids"].append(item.get("case_id"))
+        if status_value == QUALITY_EXECUTABLE:
+            group["executable"] += 1
+        elif status_value in {QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES, QUALITY_NOT_RECOMMENDED}:
+            group["blocked"] += 1
+        elif status_value == QUALITY_NEEDS_REVIEW:
+            group["needs_review"] += 1
+        elif status_value == QUALITY_LOCATOR_RISK:
+            group["locator_risk"] += 1
+    return sorted(grouped.values(), key=lambda item: order.index(item["category"]) if item["category"] in order else len(order))
+
+
+def functional_missing_variables_detail(cases: list[Dict[str, Any]], seed_variables: Dict[str, Any]) -> list[Dict[str, Any]]:
+    details: Dict[str, Dict[str, Any]] = {}
+    for item in cases:
+        if item.get("quality_status") != QUALITY_MISSING_VARIABLES:
+            continue
+        required_keys = item.get("required_seed_keys") or []
+        if not required_keys:
+            for issue in item.get("issues") or []:
+                text = str(issue or "")
+                if "：" in text:
+                    required_keys.append(text.rsplit("：", 1)[-1].strip())
+                elif ":" in text:
+                    required_keys.append(text.rsplit(":", 1)[-1].strip())
+        for name in required_keys:
+            key = str(name or "").strip()
+            if not key:
+                continue
+            row = details.setdefault(
+                key,
+                {
+                    "name": key,
+                    "affected_case_ids": [],
+                    "suggested_value": seed_variables.get(key, ""),
+                    "source": "seed" if seed_variables.get(key) not in ("", None) else "",
+                    "required": True,
+                },
+            )
+            row["affected_case_ids"].append(item.get("case_id"))
+    return list(details.values())
+
+
+def functional_preflight_primary_action(account_status: Dict[str, Any], summary: Dict[str, Any], missing_details: list[Dict[str, Any]]) -> str:
+    if account_status.get("status") == "blocked" or summary.get("auth_blocked", 0):
+        return "bind_account"
+    if missing_details or summary.get("data_missing", 0):
+        return "fill_variables"
+    if summary.get("locator_risk", 0):
+        return "fix_locators"
+    if summary.get("missing_assertion", 0):
+        return "review_assertions"
+    if summary.get("executable", 0):
+        return "execute"
+    return "review_assertions"
 
 
 def preflight_functional_package(
@@ -1628,19 +1751,24 @@ def preflight_functional_package(
             {
                 "case_id": case.id,
                 "title": case.title,
+                "category": case.category,
                 "priority": case.priority,
                 "automation_status": case.automation_status,
                 "quality_status": status_value,
                 "reason": report.get("reason") or "",
                 "issues": report.get("issues") or [],
+                "required_seed_keys": report.get("required_seed_keys") or [],
             }
         )
     summary = functional_package_preflight_summary(case_items)
+    case_groups = functional_preflight_case_groups(case_items)
+    missing_variables_detail = functional_missing_variables_detail(case_items, seed_variables)
+    primary_action = functional_preflight_primary_action(account_status, summary, missing_variables_detail)
     executable_case_ids = [item["case_id"] for item in case_items if item["quality_status"] == QUALITY_EXECUTABLE]
     trial_case_ids = [
         item["case_id"]
         for item in case_items
-        if item["quality_status"] in {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_MISSING_VARIABLES, QUALITY_LOCATOR_RISK}
+        if item["quality_status"] in {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_LOCATOR_RISK}
     ]
     manual_items = [item for item in case_items if item["quality_status"] != QUALITY_EXECUTABLE]
     page_status = "ready" if db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).first() else "unchecked"
@@ -1661,6 +1789,10 @@ def preflight_functional_package(
         "trial_count": len(trial_case_ids),
         "trial_case_ids": trial_case_ids,
         "manual_check_items": manual_items[:80],
+        "case_groups": case_groups,
+        "missing_variables_detail": missing_variables_detail,
+        "primary_action": primary_action,
+        "can_execute_now": bool(executable_case_ids) and account_status.get("status") != "blocked",
     }
     if persist:
         db.commit()

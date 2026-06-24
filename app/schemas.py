@@ -289,6 +289,10 @@ class FunctionalExecuteRequest(BaseModel):
     case_id: Optional[int] = None
     case_ids: list[int] = []
     force: bool = False
+    execution_mode: Optional[str] = "trusted"
+    execution_policy: Optional[str] = "isolated_per_case"
+    parallelism: int = 2
+    save_variables: bool = False
 
 
 class CaseGenerationTaskCreate(BaseModel):

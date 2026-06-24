@@ -9,6 +9,12 @@
   ];
 
   const CATEGORY_OPTIONS = [
+    "主流程",
+    "等价类",
+    "边界值",
+    "异常流程",
+    "权限状态",
+    "数据结果",
     "页面展示",
     "输入校验",
     "主流程",
@@ -49,6 +55,36 @@
     if (reviewEl) reviewEl.textContent = String(job?.review_count || 0);
   }
 
+  async function streamFunctionalExecutionProgress(initialJob) {
+    if (!initialJob?.job_id || !window.fetch || !window.ReadableStream) throw new Error("stream unsupported");
+    let lastJob = initialJob;
+    let buffer = "";
+    const response = await fetch(`/api/functional-executions/${initialJob.job_id}/events`, {
+      headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
+    });
+    if (!response.ok || !response.body) throw new Error("stream unavailable");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() || "";
+      for (const part of parts) {
+        const line = part.split("\n").find((item) => item.startsWith("data: "));
+        if (!line) continue;
+        const payload = JSON.parse(line.slice(6));
+        if (payload && payload.job_id) {
+          lastJob = payload;
+          window.renderFunctionalExecutionProgress(lastJob);
+          augmentFunctionalExecutionSummary(lastJob);
+        }
+      }
+    }
+    return lastJob;
+  }
+
   function patchFunctionalExecutionProgress() {
     if (typeof window === "undefined" || window.__requirementExecutionProgressPatched) return;
     window.__requirementExecutionProgressPatched = true;
@@ -71,6 +107,17 @@
           closed = true;
         };
         modalEl.addEventListener("close", onClose, { once: true });
+        try {
+          window.renderFunctionalExecutionProgress(job);
+          job = await streamFunctionalExecutionProgress(job);
+          if (!closed) {
+            showToast(functionalExecutionToast(job));
+            await renderFunctionalTests();
+          }
+          return;
+        } catch (error) {
+          // SSE 失败时回退到原有轮询。
+        }
         while (true) {
           window.renderFunctionalExecutionProgress(job);
           if (isTerminalFunctionalJob(job)) break;
@@ -260,6 +307,11 @@
     `;
   }
 
+  function requirementCaseGroupOptions(cases) {
+    const groups = Array.from(new Set((cases || []).map((item) => item.category || "主流程").filter(Boolean)));
+    return ['<option value="">全部分组</option>'].concat(groups.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)).join("");
+  }
+
   function renderRequirementCaseBatchBar(cases) {
     if (!cases.length) return "";
     return `
@@ -272,6 +324,9 @@
           <select class="requirement-select" id="requirementCaseBatchScope">
             <option value="selected">选中用例</option>
             <option value="all" selected>全部用例</option>
+          </select>
+          <select class="requirement-select" id="requirementCaseGroupScope">
+            ${requirementCaseGroupOptions(cases)}
           </select>
           <select class="requirement-select" id="requirementCaseBatchStatus">
             ${resultOptions("passed")}
@@ -833,16 +888,20 @@
 
   function requirementCaseScopeIds(task) {
     const scope = document.querySelector("#requirementCaseBatchScope")?.value || "selected";
-    if (scope === "all") return (task.cases || []).map((item) => item.id);
-    return requirementCheckedCaseIds();
+    const group = document.querySelector("#requirementCaseGroupScope")?.value || "";
+    let rows = scope === "all" ? (task.cases || []) : (task.cases || []).filter((item) => requirementCheckedCaseIds().includes(item.id));
+    if (group) rows = rows.filter((item) => String(item.category || "主流程") === group);
+    return rows.map((item) => item.id);
   }
 
   function updateRequirementCaseBatchState(task) {
     const cases = task.cases || [];
     const checkedIds = new Set(requirementCheckedCaseIds());
     const scope = document.querySelector("#requirementCaseBatchScope")?.value || "selected";
+    const group = document.querySelector("#requirementCaseGroupScope")?.value || "";
     const selectedText = document.querySelector("#requirementCaseSelectedText");
-    if (selectedText) selectedText.textContent = scope === "all" ? `全部 ${cases.length}` : `已选 ${checkedIds.size}/${cases.length}`;
+    const scopedCount = requirementCaseScopeIds(task).length;
+    if (selectedText) selectedText.textContent = `${group || (scope === "all" ? "全部" : "已选")} ${scopedCount}/${cases.length}`;
     const selectAll = document.querySelector("#requirementCaseSelectAll");
     if (selectAll) {
       selectAll.checked = cases.length > 0 && checkedIds.size === cases.length;
@@ -860,7 +919,7 @@
 
   function requirementExecutionModeCounts(task, caseIds) {
     const selected = new Set(caseIds || []);
-    const trialStatuses = new Set(["executable", "unchecked", "needs_review", "missing_variables", "locator_risk"]);
+    const trialStatuses = new Set(["executable", "unchecked", "needs_review", "locator_risk"]);
     const rows = (task.cases || []).filter((item) => {
       return selected.has(item.id) && item.automation_status === "approved" && item.ui_case_id;
     });
@@ -1081,6 +1140,7 @@
       checkbox.addEventListener("change", () => updateRequirementCaseBatchState(task));
     });
     document.querySelector("#requirementCaseBatchScope")?.addEventListener("change", () => updateRequirementCaseBatchState(task));
+    document.querySelector("#requirementCaseGroupScope")?.addEventListener("change", () => updateRequirementCaseBatchState(task));
     updateRequirementCaseBatchState(task);
 
     document.querySelector("#batchUpdateCaseStatusBtn")?.addEventListener("click", async () => {

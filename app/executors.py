@@ -8,6 +8,7 @@ import re
 import shutil
 import string
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Iterable, Tuple
 from urllib.parse import urljoin, urlparse, urlunparse
 from uuid import uuid4
@@ -1527,10 +1528,32 @@ def execute_ui_cases_batch(
     items: Iterable[Dict[str, Any]],
     on_case_start: Any | None = None,
     on_case_finish: Any | None = None,
+    parallelism: int = 1,
 ) -> list[Tuple[bool, str, str, str]]:
     ensure_report_dirs()
     batch_items = list(items)
     results: list[Tuple[bool, str, str, str]] = []
+    worker_count = max(1, min(int(parallelism or 1), 3))
+    if worker_count > 1:
+        indexed_items = list(enumerate(batch_items))
+        future_map = {}
+        ordered_results: list[Tuple[bool, str, str, str] | None] = [None] * len(indexed_items)
+        with ThreadPoolExecutor(max_workers=worker_count) as pool:
+            for index, item in indexed_items:
+                if on_case_start:
+                    on_case_start(item)
+                future_map[pool.submit(execute_ui_case, item["case"], item.get("variables"), item.get("execution_context"))] = (index, item)
+            for future in as_completed(future_map):
+                index, item = future_map[future]
+                try:
+                    result = future.result()
+                except Exception as exc:
+                    log_text = json.dumps({"error": str(exc), "error_category": "parallel_execution_failed"}, ensure_ascii=False)
+                    result = (False, log_text, "", "")
+                ordered_results[index] = result
+                if on_case_finish:
+                    on_case_finish(item, result)
+        return [item for item in ordered_results if item is not None]
 
     try:
         from playwright.sync_api import sync_playwright
