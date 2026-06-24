@@ -188,9 +188,141 @@ def test_preflight_summary_counts_trial_runnable():
     )
 
     assert summary["executable"] == 1
-    assert summary["trial_runnable"] == 5
+    assert summary["trial_runnable"] == 4
     assert summary["manual_check"] == 5
     assert summary["auth_blocked"] == 1
+
+
+def test_generated_functional_cases_are_limited_to_high_value_batch():
+    payload = {
+        "cases": [
+            {
+                "title": f"case-{index}",
+                "precondition": "",
+                "steps": ["open page"],
+                "expected": "ok",
+                "category": "主流程",
+                "priority": "P0",
+            }
+            for index in range(15)
+        ]
+    }
+
+    cases, questions = functional_testing._normalize_generated_cases(payload)
+
+    assert questions == []
+    assert len(cases) == 12
+    assert {item["priority"] for item in cases} == {"P0"}
+
+
+def test_preflight_groups_and_missing_variables_detail():
+    cases = [
+        {"case_id": 1, "category": "主流程", "quality_status": core_utils.QUALITY_EXECUTABLE},
+        {
+            "case_id": 2,
+            "category": "边界值",
+            "quality_status": core_utils.QUALITY_MISSING_VARIABLES,
+            "required_seed_keys": ["keyword"],
+        },
+        {"case_id": 3, "category": "异常流程", "quality_status": core_utils.QUALITY_NEEDS_REVIEW},
+    ]
+
+    summary = core_utils.functional_package_preflight_summary(cases)
+    groups = core_utils.functional_preflight_case_groups(cases)
+    missing = core_utils.functional_missing_variables_detail(cases, {"keyword": "Admin"})
+
+    assert summary["trial_runnable"] == 2
+    assert sum(item["total"] for item in groups) == 3
+    assert missing == [
+        {
+            "name": "keyword",
+            "affected_case_ids": [2],
+            "suggested_value": "Admin",
+            "source": "seed",
+            "required": True,
+        }
+    ]
+
+
+def test_runtime_variables_saved_without_sensitive_values():
+    task = SimpleNamespace(context="plain notes")
+
+    saved = functional_task_router._save_functional_runtime_variables(
+        task,
+        {"keyword": "Admin", "password": "secret", "token": "abc", "empty": ""},
+    )
+
+    payload = json.loads(task.context)
+    assert saved == {"keyword": "Admin"}
+    assert payload["notes"] == "plain notes"
+    assert payload["runtime_variables"] == {"keyword": "Admin"}
+    assert core_utils.functional_task_runtime_variables(task) == {"keyword": "Admin"}
+
+
+def test_execute_ui_cases_batch_parallelism_uses_ordered_results(monkeypatch):
+    calls = []
+
+    def fake_execute_ui_case(case, variables=None, execution_context=None):
+        calls.append(case.id)
+        return True, json.dumps({"step_logs": [{"index": 1, "status": "passed"}]}), "", ""
+
+    monkeypatch.setattr(executors, "execute_ui_case", fake_execute_ui_case)
+    items = [
+        {"case": SimpleNamespace(id=1, case_name="case-1"), "variables": {}, "execution_context": {}},
+        {"case": SimpleNamespace(id=2, case_name="case-2"), "variables": {}, "execution_context": {}},
+    ]
+    started = []
+    finished = []
+
+    results = executors.execute_ui_cases_batch(
+        items,
+        on_case_start=lambda item: started.append(item["case"].id),
+        on_case_finish=lambda item, result: finished.append(item["case"].id),
+        parallelism=2,
+    )
+
+    assert [item[0] for item in results] == [True, True]
+    assert started == [1, 2]
+    assert sorted(finished) == [1, 2]
+    assert sorted(calls) == [1, 2]
+
+
+def test_functional_repair_plan_only_marks_safe_locator_updates_auto_fixable():
+    run = SimpleNamespace(
+        id=7,
+        log=json.dumps(
+            {
+                "records": [
+                    {
+                        "functional_case_id": 3,
+                        "ui_case_id": 9,
+                        "title": "search",
+                        "result": "failed",
+                        "result_reason": "assertion_or_page_failure",
+                        "log": json.dumps(
+                            {
+                                "step_logs": [
+                                    {
+                                        "healed": True,
+                                        "original_locator": "#old",
+                                        "suggested_locator": "#new",
+                                    }
+                                ]
+                            }
+                        ),
+                    },
+                    {"functional_case_id": 4, "title": "assert", "result": "failed", "result_reason": "assertion_or_page_failure"},
+                ]
+            }
+        ),
+    )
+
+    plan = functional_task_router._build_functional_repair_plan(run)
+
+    assert plan["auto_fixable_count"] == 1
+    assert plan["repair_items"][0]["fix_type"] == "locator"
+    assert plan["repair_items"][0]["locator_updates"] == [{"original_locator": "#old", "suggested_locator": "#new"}]
+    assert plan["repair_items"][1]["auto_fixable"] is False
 
 
 def test_scan_endpoint_returns_trace_without_unbound_scanned(monkeypatch):

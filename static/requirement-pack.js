@@ -312,7 +312,7 @@
     return ['<option value="">全部分组</option>'].concat(groups.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)).join("");
   }
 
-  function renderRequirementCaseBatchBar(cases) {
+  function renderRequirementCaseBatchBarLegacy(cases) {
     if (!cases.length) return "";
     return `
       <div class="requirement-case-batchbar">
@@ -336,6 +336,41 @@
         <div class="actions">
           ${isAdmin() ? `<button class="btn secondary" id="batchGenerateStepsBtn" type="button">一键生成步骤</button><button class="btn secondary" id="batchApproveCasesBtn" type="button">一键确认</button><button class="btn secondary" id="seedTestDataBtn" type="button">抽样测试数据</button><button class="btn secondary" id="preflightPackageBtn" type="button">预检测试包</button>` : ""}
           <button class="btn" id="batchExecuteCasesBtn" type="button">预检并执行</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderRequirementCaseBatchBar(cases) {
+    if (!cases.length) return "";
+    return `
+      <div class="requirement-case-batchbar">
+        <div class="requirement-case-batchbar-main">
+          <label class="requirement-check-label">
+            <input type="checkbox" id="requirementCaseSelectAll" />
+            <span id="requirementCaseSelectedText">已选 0/${cases.length}</span>
+          </label>
+          <select class="requirement-select" id="requirementCaseBatchScope">
+            <option value="selected">选中用例</option>
+            <option value="all" selected>全部用例</option>
+          </select>
+          <select class="requirement-select" id="requirementCaseGroupScope">
+            ${requirementCaseGroupOptions(cases)}
+          </select>
+        </div>
+        <div class="actions">
+          ${isAdmin() ? `<button class="btn secondary" id="preflightPackageBtn" type="button">准备并预检</button>` : ""}
+          <button class="btn" id="batchExecuteCasesBtn" type="button">执行选中用例</button>
+          <button class="btn secondary" id="requirementRepairEntryBtn" type="button">诊断并修复</button>
+          <details class="advanced-actions">
+            <summary>高级操作</summary>
+            <div class="actions">
+              <select class="requirement-select" id="requirementCaseBatchStatus">
+                ${resultOptions("passed")}
+              </select>
+              ${isAdmin() ? `<button class="btn secondary" id="batchUpdateCaseStatusBtn" type="button">批量标记</button><button class="btn secondary" id="batchGenerateStepsBtn" type="button">生成 UI 步骤</button><button class="btn secondary" id="batchApproveCasesBtn" type="button">批量确认</button><button class="btn secondary" id="seedTestDataBtn" type="button">抽样测试数据</button>` : ""}
+            </div>
+          </details>
         </div>
       </div>
     `;
@@ -933,7 +968,7 @@
     return { trusted, trial };
   }
 
-  function renderRequirementExecutionMode(task, caseIds) {
+  function renderRequirementExecutionModeLegacy(task, caseIds) {
     const counts = requirementExecutionModeCounts(task, caseIds);
     const trialChecked = counts.trusted <= 0 && counts.trial > 0;
     return `
@@ -958,6 +993,40 @@
     `;
   }
 
+  function renderRequirementExecutionMode(task, caseIds) {
+    const counts = requirementExecutionModeCounts(task, caseIds);
+    const trialChecked = counts.trusted <= 0 && counts.trial > 0;
+    return `
+      <details class="functional-requirement" id="requirementExecutionMode" open>
+        <summary>执行模式</summary>
+        <div class="form-grid">
+          <label class="check-field">
+            <input type="radio" name="__execution_mode" value="trusted" ${trialChecked ? "" : "checked"} />
+            可信执行（${escapeHtml(counts.trusted)}）
+          </label>
+          <label class="check-field">
+            <input type="radio" name="__execution_mode" value="trial" ${trialChecked ? "checked" : ""} ${counts.trial ? "" : "disabled"} />
+            试跑风险用例（${escapeHtml(counts.trial)}）
+          </label>
+        </div>
+        <p class="muted-text">试跑模式只执行定位风险、需确认用例；缺数据和登录缺失仍会阻断，不会误绿。</p>
+        <div class="form-grid">
+          <label>并发数
+            <select class="requirement-select" id="requirementParallelism">
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+            </select>
+          </label>
+          <label class="check-field">
+            <input type="checkbox" id="requirementSaveVariables" />
+            保存本次非敏感运行变量
+          </label>
+        </div>
+      </details>
+    `;
+  }
+
   function injectRequirementExecutionMode(task, caseIds) {
     const bodyEl = document.querySelector("#functionalExecuteForm .modal-body");
     if (!bodyEl || bodyEl.querySelector("#requirementExecutionMode")) return;
@@ -966,6 +1035,11 @@
 
   function readRequirementExecutionForce() {
     return document.querySelector('#functionalExecuteForm input[name="__execution_mode"]:checked')?.value === "trial";
+  }
+
+  function readRequirementExecutionParallelism() {
+    const raw = Number(document.querySelector("#requirementParallelism")?.value || 2);
+    return Math.max(1, Math.min(raw || 2, 3));
   }
 
   function openRequirementBatchExecuteForm(task, caseIds, accounts = [], projects = []) {
@@ -978,7 +1052,12 @@
       submitLabel: "预检并执行",
       onSubmit: async (payload) => {
         payload.case_ids = caseIds;
-        payload.force = readRequirementExecutionForce();
+        const trialMode = readRequirementExecutionForce();
+        payload.force = trialMode;
+        payload.execution_mode = trialMode ? "trial" : "trusted";
+        payload.execution_policy = "isolated_per_case";
+        payload.parallelism = readRequirementExecutionParallelism();
+        payload.save_variables = Boolean(document.querySelector("#requirementSaveVariables")?.checked);
         const job = await api(`/api/functional-tasks/${task.id}/execute-async`, {
           method: "POST",
           body: payload,
@@ -1035,7 +1114,7 @@
     }
   }
 
-  function renderRequirementPreflightResult(result) {
+  function renderRequirementPreflightResultLegacy(result) {
     const counts = result?.counts || {};
     const seed = result?.seed?.variables || {};
     const manualItems = result?.manual_check_items || [];
@@ -1079,7 +1158,93 @@
     `;
   }
 
-  function showRequirementPreflightResult(result) {
+  function renderRequirementPreflightResult(result) {
+    const counts = result?.counts || {};
+    const seed = result?.seed?.variables || {};
+    const manualItems = result?.manual_check_items || [];
+    const groups = result?.case_groups || [];
+    const missingVars = result?.missing_variables_detail || [];
+    return `
+      <div class="preflight-report">
+        <section class="diagnosis-summary">
+          <strong>测试包预检完成</strong>
+          <div>
+            <span>可执行：${escapeHtml(result?.executable_count ?? 0)}</span>
+            <span>可试跑：${escapeHtml(result?.trial_count ?? counts.trial_runnable ?? 0)}</span>
+            <span>人工确认：${escapeHtml(counts.manual_check ?? 0)}</span>
+            <span>登录阻断：${escapeHtml(counts.auth_blocked ?? 0)}</span>
+            <span>缺数据：${escapeHtml(counts.data_missing ?? 0)}</span>
+            <span>建议动作：${escapeHtml(result?.primary_action || "-")}</span>
+          </div>
+        </section>
+        <section class="diagnosis-card">
+          <div class="diagnosis-card-head"><span>用例分组</span></div>
+          ${
+            groups.length
+              ? `<ul>${groups
+                  .map(
+                    (item) =>
+                      `<li><strong>${escapeHtml(item.category || "-")}</strong><span>共 ${escapeHtml(item.total || 0)}，可执行 ${escapeHtml(item.executable || 0)}，阻断 ${escapeHtml(item.blocked || 0)}，需确认 ${escapeHtml(item.needs_review || 0)}</span></li>`,
+                  )
+                  .join("")}</ul>`
+              : `<div class="empty">暂无分组数据</div>`
+          }
+        </section>
+        <section class="diagnosis-card">
+          <div class="diagnosis-card-head"><span>缺失变量填写</span></div>
+          ${
+            missingVars.length
+              ? `<div class="form-grid">${missingVars
+                  .map((item) => {
+                    const value = item.suggested_value ?? seed[item.name] ?? "";
+                    return `<label>${escapeHtml(item.name)}<input data-preflight-variable="${escapeHtml(item.name)}" value="${escapeHtml(value)}" placeholder="影响 ${escapeHtml((item.affected_case_ids || []).length)} 条用例" /></label>`;
+                  })
+                  .join("")}</div>
+                <div class="actions" style="margin-top:8px">
+                  <button class="btn secondary" type="button" id="requirementPreflightRerunBtn">使用变量重新预检</button>
+                  <button class="btn primary" type="button" id="requirementPreflightSaveRerunBtn">保存变量并重新预检</button>
+                </div>`
+              : `<div class="empty">没有缺失变量</div>`
+          }
+        </section>
+        <section class="diagnosis-card">
+          <div class="diagnosis-card-head"><span>登录与页面</span></div>
+          <p>${escapeHtml(result?.login?.message || "-")}</p>
+          <p>${escapeHtml(result?.page?.message || "-")}</p>
+        </section>
+        <section class="diagnosis-card">
+          <div class="diagnosis-card-head"><span>抽样数据</span></div>
+          ${
+            Object.keys(seed).length
+              ? `<pre class="mini-log">${escapeHtml(JSON.stringify(seed, null, 2))}</pre>`
+              : `<div class="empty">暂未抽到可复用的真实搜索数据</div>`
+          }
+        </section>
+        <section class="diagnosis-card">
+          <div class="diagnosis-card-head"><span>人工确认/阻断项</span></div>
+          ${
+            manualItems.length
+              ? `<ul>${manualItems
+                  .slice(0, 30)
+                  .map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.reason || item.quality_status)}</span></li>`)
+                  .join("")}</ul>`
+              : `<div class="empty">没有人工确认项</div>`
+          }
+        </section>
+      </div>
+    `;
+  }
+
+  function readRequirementPreflightVariables() {
+    const variables = {};
+    document.querySelectorAll("[data-preflight-variable]").forEach((input) => {
+      const name = input.getAttribute("data-preflight-variable");
+      if (name && input.value.trim()) variables[name] = input.value.trim();
+    });
+    return variables;
+  }
+
+  function showRequirementPreflightResult(result, task, caseIds = []) {
     modalEl.innerHTML = `
       <div class="modal-head">
         <h3>测试包预检</h3>
@@ -1092,17 +1257,27 @@
       modalEl.close();
       await renderFunctionalTests();
     });
+    document.querySelector("#requirementPreflightRerunBtn")?.addEventListener("click", async () => {
+      const variables = readRequirementPreflightVariables();
+      modalEl.close();
+      await runRequirementPackagePreflight(task, caseIds, variables, false);
+    });
+    document.querySelector("#requirementPreflightSaveRerunBtn")?.addEventListener("click", async () => {
+      const variables = readRequirementPreflightVariables();
+      modalEl.close();
+      await runRequirementPackagePreflight(task, caseIds, variables, true);
+    });
   }
 
-  async function runRequirementPackagePreflight(task, caseIds = []) {
+  async function runRequirementPackagePreflight(task, caseIds = [], variables = {}, saveVariables = false) {
     try {
       showToast("正在预检测试包");
       const result = await api(`/api/functional-tasks/${task.id}/preflight-package`, {
         method: "POST",
-        body: { case_ids: caseIds },
+        body: { case_ids: caseIds, variables, save_variables: saveVariables },
       });
       showToast(`预检完成：可自动执行 ${result.executable_count || 0} 条`);
-      showRequirementPreflightResult(result);
+      showRequirementPreflightResult(result, task, caseIds);
     } catch (error) {
       showToast(error.message || "预检失败");
     }
@@ -1416,6 +1591,7 @@
     try {
       showToast("正在加载执行时间线...");
       var data = await api("/api/functional-runs/" + runId + "/timeline");
+      var canRepair = (data.failed_count || 0) > 0 || (data.blocked_count || 0) > 0 || (data.review_count || 0) > 0 || data.status !== "passed";
       modalEl.innerHTML = '' +
         '<div class="modal-head">' +
           '<h3>📋 执行时间线 #' + runId + '</h3>' +
@@ -1428,6 +1604,11 @@
           '<button class="btn secondary" id="diagnoseFromTimelineBtn" type="button" ' + (data.failed_count > 0 ? "" : "disabled") + '>🩺 生成/刷新诊断</button>' +
         '</div>';
       modalEl.showModal();
+      modalEl.querySelector(".modal-foot")?.insertAdjacentHTML(
+        "beforeend",
+        '<button class="btn secondary" id="repairPlanFromTimelineBtn" type="button" ' + (canRepair ? "" : "disabled") + '>生成修复计划</button>' +
+          '<button class="btn" id="applyRepairFromTimelineBtn" type="button" ' + (canRepair ? "" : "disabled") + '>应用安全修复</button>',
+      );
       document.querySelector("#closeModal")?.addEventListener("click", function() { modalEl.close(); });
       // 诊断按钮
       document.querySelector("#diagnoseFromTimelineBtn")?.addEventListener("click", async function() {
