@@ -1672,6 +1672,12 @@ def evaluate_functional_case_quality(
             "该用例依赖权限、异常环境或复杂业务状态，默认不进入可信自动执行",
             case_kind=case_kind,
         )
+    if case_kind == FUNCTIONAL_CASE_KIND_BUSINESS_AUTH:
+        stripped_steps, removed_login_steps = _strip_leading_login_steps(steps)
+        if removed_login_steps:
+            steps = stripped_steps
+            ui_case.steps = to_json_text(steps, [])
+            db.flush()
     steps, generated_weak_assertion = ensure_weak_business_assertion(db, case, ui_case, steps)
     step_issues = case_step_structure_issues(steps)
     if step_issues:
@@ -3003,6 +3009,8 @@ def execute_functional_case_for_run(
         ui_case.page_url,
     )
     case_variables = {**variables, **case_variables}
+    execution_context = dict(execution_context or {})
+    execution_context["strip_login_steps"] = True
     try:
         passed, log_text, screenshot_path, report_path = execute_ui_case(ui_case, case_variables, execution_context)
     except Exception as exc:

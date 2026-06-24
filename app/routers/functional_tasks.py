@@ -1329,6 +1329,8 @@ def execute_functional_case_for_run(
         ui_case.page_url,
     )
     case_variables = {**variables, **case_variables}
+    execution_context = dict(execution_context or {})
+    execution_context["strip_login_steps"] = True
     try:
         passed, log_text, screenshot_path, report_path = execute_ui_case(ui_case, case_variables, execution_context)
     except Exception as exc:
@@ -1456,6 +1458,8 @@ def _classify_functional_execution_result(passed: bool, log_text: str, quality_s
     error_category = str(log_data.get("error_category") or "").lower() if isinstance(log_data, dict) else ""
     if error_category == "step_validation_failed":
         return "blocked", "step_invalid"
+    if error_category == "case_timeout":
+        return "blocked", "environment_timeout"
     if error_category in {"parallel_execution_failed", "system_error"}:
         return "failed", "system_error"
     business = log_data.get("business_verification") if isinstance(log_data, dict) else {}
@@ -1677,6 +1681,7 @@ def _background_execute_functional(
                 profile_key = execution_context.get("account_profile_id") or "default"
                 execution_context["session_key"] = f"functional-task:{task_id}:profile:{profile_key}"
                 execution_context["target_url"] = execution_context.get("target_url") or bg_task.target_url or ui_case.page_url
+            execution_context["execution_policy"] = execution_policy
             batch_items.append(
                 {
                     "case": ui_case,
@@ -1739,7 +1744,10 @@ def _background_execute_functional(
                 "result_reason": result_reason,
                 "screenshot": screenshot_path,
                 "log": log_text,
-                "current_url": log_data.get("current_url") or business_verification.get("final_url", ""),
+                "current_url": log_data.get("current_url")
+                or business_verification.get("final_url", "")
+                or log_data.get("page_url")
+                or getattr(ui_case, "page_url", ""),
                 "failed_step": log_data.get("failed_step"),
                 "failed_step_detail": log_data.get("failed_step_detail"),
             }

@@ -2,6 +2,7 @@ import atexit
 import base64
 import json
 import os
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -275,6 +276,64 @@ def test_step_structure_validation_blocks_missing_value_before_execution():
     assert any("value" in item for item in issues)
 
 
+def test_preflight_strips_legacy_login_steps_before_structure_validation():
+    class FakeDb:
+        def __init__(self, ui_case):
+            self.ui_case = ui_case
+            self.flushed = False
+
+        def get(self, model, item_id):
+            return self.ui_case
+
+        def flush(self):
+            self.flushed = True
+
+    legacy_steps = [
+        {"name": "open login", "action": "goto", "value": "https://example.test/login"},
+        {"name": "input username", "action": "input", "locator": "#username", "value": ""},
+        {"name": "input password", "action": "input", "locator": "#password", "value": ""},
+        {"name": "remember account", "action": "check", "locator": "input[type=checkbox]"},
+        {"name": "submit login", "action": "click", "locator": "button:has-text('Login')"},
+        {"name": "wait menu", "action": "wait_for_selector", "locator": "a[href*=list]"},
+        {"name": "open page", "action": "goto", "value": "https://example.test/list"},
+        {"name": "assert page", "action": "text_assert", "locator": "body", "value": "List"},
+    ]
+    ui_case = SimpleNamespace(id=9, steps=json.dumps(legacy_steps, ensure_ascii=False))
+    case = SimpleNamespace(
+        automation_status="approved",
+        ui_case_id=9,
+        title="login then open list",
+        precondition="",
+        steps="",
+        expected="List",
+        category="主流程",
+    )
+
+    task = SimpleNamespace(target_url="https://example.test/list")
+    report = core_utils.evaluate_functional_case_quality(FakeDb(ui_case), task, case, {}, {"status": "warning"})
+    next_steps = json.loads(ui_case.steps)
+
+    assert report["status"] == core_utils.QUALITY_EXECUTABLE
+    assert all(step.get("locator") not in {"#username", "#password"} for step in next_steps)
+    assert next_steps[0]["value"] == "https://example.test/list"
+
+
+def test_strip_legacy_login_prefix_without_login_url_anchor():
+    steps = [
+        {"name": "remember account", "action": "check", "locator": "input[type=checkbox]"},
+        {"name": "submit login", "action": "click", "locator": "button:has-text('Login')"},
+        {"name": "wait menu", "action": "wait_for_selector", "locator": "a[href*=list]"},
+        {"name": "open page", "action": "goto", "value": "https://example.test/list"},
+        {"name": "assert page", "action": "text_assert", "locator": "body", "value": "List"},
+    ]
+
+    stripped, removed = executors._strip_leading_login_steps(steps)
+
+    assert len(removed) == 3
+    assert stripped[0]["action"] == "goto"
+    assert stripped[0]["value"] == "https://example.test/list"
+
+
 def test_functional_execute_request_defaults_to_serial_execution():
     payload = FunctionalExecuteRequest()
 
@@ -353,6 +412,37 @@ def test_execute_ui_cases_batch_parallelism_uses_ordered_results(monkeypatch):
     assert started == [1, 2]
     assert sorted(finished) == [1, 2]
     assert sorted(calls) == [1, 2]
+
+
+def test_execute_ui_case_with_deadline_returns_timeout(monkeypatch):
+    def slow_execute_ui_case(case, variables=None, execution_context=None):
+        time.sleep(2)
+        return True, json.dumps({"step_logs": []}), "", ""
+
+    monkeypatch.setattr(executors, "execute_ui_case", slow_execute_ui_case)
+    case = SimpleNamespace(id=1, case_name="slow case", page_url="https://example.test", timeout=30)
+
+    passed, log_text, screenshot, report_path = executors.execute_ui_case_with_deadline(case, {}, {}, 1)
+    log_data = json.loads(log_text)
+
+    assert passed is False
+    assert screenshot == ""
+    assert report_path
+    assert log_data["error_category"] == "case_timeout"
+    assert log_data["environment_reason"] == "case_execution_timeout"
+    assert log_data["current_url"] == "https://example.test"
+    assert log_data["failed_step"]["action"] == "case_timeout"
+
+
+def test_case_timeout_classifies_as_environment_blocked():
+    result, reason = functional_task_router._classify_functional_execution_result(
+        False,
+        json.dumps({"error_category": "case_timeout"}),
+        None,
+    )
+
+    assert result == "blocked"
+    assert reason == "environment_timeout"
 
 
 def test_functional_repair_plan_only_marks_safe_locator_updates_auto_fixable():

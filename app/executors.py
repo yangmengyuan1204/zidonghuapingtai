@@ -2,11 +2,13 @@ import logging
 from datetime import datetime
 import json
 import os
+import queue
 from pathlib import Path
 import random
 import re
 import shutil
 import string
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Iterable, Tuple
@@ -532,7 +534,7 @@ def _quote_locator_text(value: str) -> str:
     return str(value or "").replace('"', '\\"')
 
 
-def _step_timeout_ms(step: Dict[str, Any], default_seconds: int, cap_seconds: int = 12) -> int:
+def _step_timeout_ms(step: Dict[str, Any], default_seconds: int, cap_seconds: int = 8) -> int:
     raw = step.get("timeout")
     if raw in (None, ""):
         return min(default_seconds, cap_seconds) * 1000
@@ -810,6 +812,19 @@ def _is_login_related_step(step: Dict[str, Any]) -> bool:
 
 
 def _strip_leading_login_steps(steps: list[Dict[str, Any]]) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
+    prefix_actions = {"input", "click", "check", "uncheck", "wait", "wait_for_selector", "assert_visible", "text_assert"}
+    for index, step in enumerate(steps):
+        if not isinstance(step, dict):
+            break
+        action = str(step.get("action") or "").strip().lower()
+        if action == "goto" and not _looks_like_login_url(step.get("value")):
+            prefix = steps[:index]
+            if prefix and all(
+                isinstance(item, dict) and str(item.get("action") or "").strip().lower() in prefix_actions
+                for item in prefix
+            ):
+                return steps[index:], prefix
+            break
     kept: list[Dict[str, Any]] = []
     removed: list[Dict[str, Any]] = []
     stripping = True
@@ -820,6 +835,9 @@ def _strip_leading_login_steps(steps: list[Dict[str, Any]]) -> tuple[list[Dict[s
             continue
         action = str(step.get("action") or "").strip().lower()
         if stripping and (_is_login_related_step(step) or (removed and action == "wait")):
+            removed.append(step)
+            continue
+        if stripping and removed and action != "goto":
             removed.append(step)
             continue
         if action == "goto" and _looks_like_login_url(step.get("value")):
@@ -1381,7 +1399,7 @@ def execute_ui_case_in_page(
         inferred_variables = _business_variables_from_text(_page_text_excerpt(page, limit=12000))
         applied_variables = _merge_inferred_business_variables(variables, inferred_variables)
         steps = render_template(raw_steps, variables)
-        if execution_context.get("login_required"):
+        if execution_context.get("login_required") or execution_context.get("strip_login_steps"):
             steps, removed_login_steps = _strip_leading_login_steps(steps)
         steps, runtime_replacements = _stabilize_runtime_steps(steps, variables)
         steps, validation_issues = _validate_ui_steps_for_execution(steps)
@@ -1411,8 +1429,8 @@ def execute_ui_case_in_page(
             current_step = step if isinstance(step, dict) else {"raw": step}
             # 智能等待：操作前等待页面稳定
             action = (current_step or {}).get("action", "")
-            if action not in ("goto", "wait", "screenshot"):
-                _wait_page_stable(page)
+            if action in ("click", "input", "select", "check", "uncheck"):
+                _wait_page_stable(page, timeout=1500)
 
             try:
                 step_detail = _run_ui_step(page, current_step, screenshots, timeout)
@@ -1532,8 +1550,37 @@ def execute_ui_cases_batch(
 ) -> list[Tuple[bool, str, str, str]]:
     ensure_report_dirs()
     batch_items = list(items)
+    for item in batch_items:
+        if item.get("functional_case_id"):
+            execution_context = dict(item.get("execution_context") or {})
+            execution_context["strip_login_steps"] = True
+            item["execution_context"] = execution_context
     results: list[Tuple[bool, str, str, str]] = []
     worker_count = max(1, min(int(parallelism or 1), 3))
+    has_scenario_chain = any(
+        str((item.get("execution_context") or {}).get("execution_policy") or "").lower() == "scenario_chain"
+        for item in batch_items
+    )
+    if worker_count == 1 and not has_scenario_chain and any(item.get("functional_case_id") for item in batch_items):
+        for item in batch_items:
+            if on_case_start:
+                on_case_start(item)
+            case = item["case"]
+            execution_context = item.get("execution_context") or {}
+            deadline = int(
+                execution_context.get("case_timeout_seconds")
+                or min(max((getattr(case, "timeout", None) or 30) + 15, 30), 60)
+            )
+            result = execute_ui_case_with_deadline(
+                case,
+                item.get("variables"),
+                execution_context,
+                deadline,
+            )
+            results.append(result)
+            if on_case_finish:
+                on_case_finish(item, result)
+        return results
     if worker_count > 1:
         indexed_items = list(enumerate(batch_items))
         future_map = {}
@@ -1598,6 +1645,8 @@ def execute_ui_cases_batch(
                         auth_result = _prepare_authenticated_page(page, execution_context, item.get("variables") or {}, case.timeout or 30)
                         execution_context["login_trace"] = auth_result.get("trace") or []
                     execution_context["preauthenticated"] = True
+                if item.get("functional_case_id"):
+                    execution_context["strip_login_steps"] = True
                 item["execution_context"] = execution_context
                 result = execute_ui_case_in_page(case, page, item.get("variables"), execution_context)
                 results.append(result)
@@ -1858,6 +1907,79 @@ def execute_ui_case(
         return False, log_text, screenshot, report_path
 
 
+def execute_ui_case_with_deadline(
+    case: UiCase,
+    runtime_vars: Dict[str, Any] | None,
+    execution_context: Dict[str, Any] | None,
+    deadline_seconds: int,
+) -> Tuple[bool, str, str, str]:
+    result_queue: queue.Queue[Tuple[bool, str, str, str] | BaseException] = queue.Queue(maxsize=1)
+
+    def _runner() -> None:
+        try:
+            result_queue.put(execute_ui_case(case, runtime_vars, execution_context))
+        except BaseException as exc:
+            result_queue.put(exc)
+
+    thread = threading.Thread(target=_runner, daemon=True)
+    thread.start()
+    thread.join(max(1, deadline_seconds))
+    if thread.is_alive():
+        log_text = json.dumps(
+            {
+                "case_name": case.case_name,
+                "page_url": case.page_url,
+                "current_url": case.page_url,
+                "error": f"功能用例执行超过 {deadline_seconds} 秒仍未结束，已按超时终止本轮等待",
+                "error_category": "case_timeout",
+                "environment_reason": "case_execution_timeout",
+                "failed_step": {"action": "case_timeout", "timeout_seconds": deadline_seconds},
+                "suggestion": "缩短或拆分该用例步骤，检查页面是否有长时间加载、弹窗遮挡或定位器一直等待",
+                "timeout_seconds": deadline_seconds,
+                "finished_at": datetime.now(),
+            },
+            ensure_ascii=False,
+            indent=2,
+            default=str,
+        )
+        report_path = write_allure_result(case.case_name, "ui", False, log_text)
+        return False, log_text, "", report_path
+    if result_queue.empty():
+        log_text = json.dumps(
+            {
+                "case_name": case.case_name,
+                "page_url": case.page_url,
+                "current_url": case.page_url,
+                "error": "功能用例执行线程结束但没有返回结果",
+                "error_category": "system_error",
+                "failed_step": {"action": "system_error"},
+                "finished_at": datetime.now(),
+            },
+            ensure_ascii=False,
+            indent=2,
+            default=str,
+        )
+        report_path = write_allure_result(case.case_name, "ui", False, log_text)
+        return False, log_text, "", report_path
+    result = result_queue.get()
+    if isinstance(result, BaseException):
+        log_text = json.dumps(
+            {
+                "case_name": case.case_name,
+                "page_url": case.page_url,
+                "error": str(result),
+                "error_category": "system_error",
+                "finished_at": datetime.now(),
+            },
+            ensure_ascii=False,
+            indent=2,
+            default=str,
+        )
+        report_path = write_allure_result(case.case_name, "ui", False, log_text)
+        return False, log_text, "", report_path
+    return result
+
+
 # ═══════════════════════════════════════════════════════════
 # 操作模板匹配
 # ═══════════════════════════════════════════════════════════
@@ -2025,7 +2147,7 @@ def _heal_locator(page: Any, failed_locator: str, error_text: str) -> str | None
 # ═══════════════════════════════════════════════════════════
 
 
-def _wait_page_stable(page: Any, timeout: int = 5000) -> None:
+def _wait_page_stable(page: Any, timeout: int = 1500) -> None:
     """等待页面加载稳定"""
     try:
         page.wait_for_load_state("networkidle", timeout=timeout)
