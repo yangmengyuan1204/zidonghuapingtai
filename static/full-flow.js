@@ -75,6 +75,8 @@ if (!window.__fullFlowDataScriptLoaded) {
 
   SCRIPT_PARAM_SCHEMAS.full_flow = [
     CUSTOMER_ID_FIELD,
+    { name: "order_sn", label: "订单号（继续执行）" },
+    { name: "porder_sn", label: "配送单号（继续执行，优先）" },
     { name: "keyword", label: "关键词", default: "衣服" },
     { name: "shop_type", label: "商品来源", type: "select", options: SHOP_TYPE_OPTIONS, default: "1688" },
     { name: "target_shops", label: "加购目标店铺数", type: "number", default: 4 },
@@ -392,21 +394,13 @@ if (!window.__fullFlowDataScriptLoaded) {
         return Number.isFinite(number) ? number : item;
       });
     }
-    if (isFullFlowCopy(flow)) {
-      next.order_sn = String(next.order_sn || next.last_order_sn || "").trim();
-      next.porder_sn = String(next.porder_sn || "").trim();
-      if (!next.order_sn) delete next.order_sn;
-      if (!next.porder_sn) delete next.porder_sn;
-      delete next.last_order_sn;
-      delete next.order_sns;
-      delete next.porder_sns;
-    } else {
-      delete next.order_sn;
-      delete next.last_order_sn;
-      delete next.order_sns;
-      delete next.porder_sn;
-      delete next.porder_sns;
-    }
+    next.order_sn = String(next.order_sn || next.last_order_sn || "").trim();
+    next.porder_sn = String(next.porder_sn || "").trim();
+    if (!next.order_sn) delete next.order_sn;
+    if (!next.porder_sn) delete next.porder_sn;
+    delete next.last_order_sn;
+    delete next.order_sns;
+    delete next.porder_sns;
     delete next.shop_count;
     return next;
   };
@@ -886,13 +880,18 @@ if (!window.__fullFlowDataScriptLoaded) {
     }).join("");
   }
 
-  function fullFlowCopyDefaultVariables(variables) {
+  function fullFlowDefaultVariables(variables) {
     const next = { ...(variables || {}) };
     delete next.order_sn;
     delete next.last_order_sn;
     delete next.order_sns;
     delete next.porder_sn;
     delete next.porder_sns;
+    return next;
+  }
+
+  function fullFlowCopyDefaultVariables(variables) {
+    const next = fullFlowDefaultVariables(variables);
     Object.entries(FULL_FLOW_COPY_REMARK_DEFAULTS).forEach(([key, value]) => {
       next[key] = value;
     });
@@ -1062,7 +1061,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       try {
         const data = readForm(form);
         const next = runtimeVariables(true);
-        if (data.__save_defaults) saveFlowVariables(flow, next);
+        if (data.__save_defaults) saveFlowVariables(flow, fullFlowDefaultVariables(next));
         await runSavedFlow(flow, next);
       } catch (error) {
         showToast(error.message);
