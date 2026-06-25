@@ -216,7 +216,7 @@ if (!window.__fullFlowDataScriptLoaded) {
         { name: "box_length", label: "箱长", type: "number", default: 58 },
         { name: "box_width", label: "箱宽", type: "number", default: 51 },
         { name: "box_height", label: "箱高", type: "number", default: 50 },
-        { name: "box_weight", label: "箱重", type: "number", default: 10 },
+        { name: "box_weight", label: "箱重（KG）", type: "number", default: 10 },
       ],
     },
     {
@@ -893,13 +893,14 @@ if (!window.__fullFlowDataScriptLoaded) {
   }
 
   function renderFullFlowCopyFormField(field, value) {
-    if (field.name === "confirm_weight") {
+    if (field.name === "confirm_weight" || field.name === "box_weight") {
+      const unit = field.name === "box_weight" ? "KG" : "g";
       return `
         <div class="field">
           <label>${escapeHtml(field.label)}</label>
           <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center">
             <input name="${escapeHtml(field.name)}" type="number" value="${escapeHtml(value ?? field.default ?? "")}" />
-            <span style="color:#64748b;font-weight:600">（g）</span>
+            <span style="color:#64748b;font-weight:600">（${escapeHtml(unit)}）</span>
           </div>
         </div>
       `;
