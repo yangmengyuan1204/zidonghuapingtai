@@ -39,6 +39,10 @@ if (!window.__fullFlowDataScriptLoaded) {
     (option) => ["warehouse_delivery_created", "porder_translated", "porder_confirmed", "porder_wait_offer", "porder_offered", "porder_paid"].includes(option.value),
   ).map((option) => option.value === "porder_paid" ? { ...option, label: "不暂停（配送单全流程结束）" } : option);
   const FULL_FLOW_COPY_NAME = "全流程完全体_副本";
+  const FULL_FLOW_COPY_ALIASES = new Set([
+    FULL_FLOW_COPY_NAME,
+    "全流程脚本可根据订单和配送单输入后继续执行",
+  ]);
   const FULL_FLOW_PAYMENT_MODE_OPTIONS = [
     { value: "balance_first", label: "余额支付（余额不足自动银行支付）" },
     { value: "bank", label: "银行支付" },
@@ -244,7 +248,11 @@ if (!window.__fullFlowDataScriptLoaded) {
   const FULL_FLOW_SAVE_DEFAULTS_FIELD = { name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false };
 
   function isFullFlowCopy(flow) {
-    return flow?.scriptType === "full_flow" && String(flow?.name || "").trim() === FULL_FLOW_COPY_NAME;
+    if (flow?.scriptType !== "full_flow") return false;
+    const name = String(flow?.name || "").trim();
+    if (FULL_FLOW_COPY_ALIASES.has(name)) return true;
+    const builtin = BUILTIN_FLOW_DEFINITIONS.full_flow;
+    return flow?.id !== builtin?.id && name !== builtin?.name;
   }
 
   const originalSanitizeScriptVariablesForFullFlow = sanitizeScriptVariables;
