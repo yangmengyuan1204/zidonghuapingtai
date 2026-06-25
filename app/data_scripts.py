@@ -1845,7 +1845,7 @@ def _prepare_translate_data(order_data: Dict[str, Any], variables: Dict[str, Any
 
 
 def _build_confirm_data(order_data: Dict[str, Any], variables: Dict[str, Any], item_quantity: int) -> Dict[str, Any]:
-    quote_price = _decimal_text(variables.get("quote_unit_price") or variables.get("confirm_price") or "10")
+    quote_price = _decimal_text(variables.get("confirm_price") or variables.get("quote_unit_price") or "10")
     freight = _decimal_text(variables.get("confirm_freight") or variables.get("freight") or "5")
     volume = str(variables.get("confirm_volume") or "1x2x3")
     weight = _as_int(variables.get("confirm_weight") or variables.get("weight"), 200)
@@ -1874,7 +1874,7 @@ def _build_confirm_data(order_data: Dict[str, Any], variables: Dict[str, Any], i
 
 def _prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, Any], item_quantity: int) -> Dict[str, Any]:
     prepared = copy.deepcopy(order_data)
-    quote_price = _decimal_text(variables.get("quote_unit_price") or variables.get("offer_price") or "10")
+    quote_price = _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10")
     offer_freight = _decimal_text(variables.get("offer_freight") or variables.get("confirm_freight") or "5")
     prepared["other_price"] = _decimal_text(variables.get("other_price") or prepared.get("other_price") or "0")
     prepared["other_price_remark"] = str(variables.get("other_price_remark") or prepared.get("other_price_remark") or "")
@@ -1888,13 +1888,14 @@ def _prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, Any], i
             if not isinstance(detail, dict):
                 continue
             quantity = _as_int(detail.get("confirm_num") or detail.get("num") or item_quantity, item_quantity)
+            offer_quantity = _as_int(variables.get("offer_num"), quantity)
             detail["confirm_num"] = str(quantity)
             detail["confirm_price"] = quote_price
             detail["confirm_dicker_price"] = quote_price
-            detail["offer_num"] = quantity
+            detail["offer_num"] = offer_quantity
             detail["offer_price"] = quote_price
             detail["offer_freight"] = offer_freight
-            detail["offer_total"] = _money_total(quantity, quote_price, offer_freight)
+            detail["offer_total"] = _money_total(offer_quantity, quote_price, offer_freight)
     return prepared
 
 
@@ -2007,14 +2008,14 @@ def _run_backend_order_flow(
                 "order_sn": order_sn,
                 "backend_passed": True,
                 "backend_steps": ["login", "detail", "translate", "confirm", "offer"],
-                "quote_unit_price": _decimal_text(variables.get("quote_unit_price") or "10"),
+                "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
                 "backend_status": after_offer.get("status") if after_offer else None,
             },
         )
     return True, {
         "backend_passed": True,
         "backend_steps": ["login", "detail", "translate", "confirm", "offer"],
-        "quote_unit_price": _decimal_text(variables.get("quote_unit_price") or "10"),
+        "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
         "backend_status": after_offer.get("status") if after_offer else None,
     }
 
@@ -2296,7 +2297,7 @@ def _run_backend_order_flow_resume(
                     "order_sn": order_sn,
                     "backend_passed": True,
                     "backend_steps": backend_steps,
-                    "quote_unit_price": _decimal_text(variables.get("quote_unit_price") or "10"),
+                    "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
                     "backend_status": current_data.get("status") if current_data else None,
                 },
             )
@@ -2305,7 +2306,7 @@ def _run_backend_order_flow_resume(
         "order_sn": order_sn,
         "backend_passed": True,
         "backend_steps": backend_steps,
-        "quote_unit_price": _decimal_text(variables.get("quote_unit_price") or "10"),
+        "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
         "backend_status": current_data.get("status") if current_data else None,
     }
 

@@ -38,6 +38,7 @@ if (!window.__fullFlowDataScriptLoaded) {
   const RESUME_PORDER_STOP_NODE_OPTIONS = FULL_FLOW_STOP_NODE_OPTIONS.filter(
     (option) => ["warehouse_delivery_created", "porder_translated", "porder_confirmed", "porder_wait_offer", "porder_offered", "porder_paid"].includes(option.value),
   ).map((option) => option.value === "porder_paid" ? { ...option, label: "不暂停（配送单全流程结束）" } : option);
+  const FULL_FLOW_COPY_NAME = "全流程完全体_副本";
 
   SCRIPT_PARAM_SCHEMAS.full_flow = [
     CUSTOMER_ID_FIELD,
@@ -80,6 +81,126 @@ if (!window.__fullFlowDataScriptLoaded) {
     { name: "porder_sn", label: "配送单号", required: true },
     { name: "stop_after_node", label: "暂停节点", type: "select", options: RESUME_PORDER_STOP_NODE_OPTIONS, default: "porder_offered" },
   ];
+
+  const FULL_FLOW_COPY_FIELD_GROUPS = [
+    {
+      title: "基础加购",
+      fields: [
+        CUSTOMER_ID_FIELD,
+        { name: "keyword", label: "关键词", default: "衣服" },
+        { name: "shop_type", label: "商品来源", type: "select", options: SHOP_TYPE_OPTIONS, default: "1688" },
+        { name: "target_shops", label: "加购目标店铺数", type: "number", default: 4 },
+        { name: "per_shop", label: "每店商品数", type: "number", default: 5 },
+        { name: "quantities", label: "加购商品数量循环", default: "2,3,5" },
+      ],
+    },
+    {
+      title: "订单提单",
+      fields: [
+        { name: "order_shop_count", label: "订单店铺数", type: "number", default: 1 },
+        { name: "order_per_shop", label: "订单每店商品数", type: "number", default: 2 },
+        { name: "order_item_num", label: "每个商品数量", type: "number", default: 10 },
+        { name: "client_remark", label: "提单备注", default: "自动化提出订单" },
+      ],
+    },
+    {
+      title: "订单翻译",
+      fields: [{ name: "translate_remark", label: "翻译备注", default: "自动化订单翻译" }],
+    },
+    {
+      title: "订单确认",
+      open: true,
+      fields: [
+        { name: "confirm_price", label: "实际采购价", type: "number", default: 10 },
+        { name: "confirm_freight", label: "确认国内运费", type: "number", default: 5 },
+        { name: "confirm_volume", label: "单个商品尺寸", default: "1x2x3", placeholder: "例如 1x2x3" },
+        { name: "confirm_weight", label: "重量", type: "number", default: 200 },
+        { name: "confirm_remark", label: "采购调查备注", default: "自动化采购调查" },
+      ],
+    },
+    {
+      title: "订单报价",
+      fields: [
+        { name: "offer_num", label: "报价在库数", type: "number", placeholder: "留空沿用确认数量" },
+        { name: "offer_price", label: "报价单价", type: "number", default: 10 },
+        { name: "offer_freight", label: "报价国内运费", type: "number", default: 5 },
+        { name: "other_price", label: "其他费用", type: "number", default: 0 },
+        { name: "other_price_remark", label: "其他费用备注" },
+        { name: "offer_remark", label: "业务报价备注", default: "自动化业务报价" },
+      ],
+    },
+    {
+      title: "订单支付",
+      fields: [
+        { name: "discounts_id", label: "余额优惠ID" },
+        { name: "pay_bank_method", label: "支付方式", default: "1" },
+        { name: "pay_name", label: "付款人", default: "自动化测试" },
+        { name: "pay_remark", label: "付款备注", default: "自动化银行付款" },
+      ],
+    },
+    {
+      title: "待拍下采购",
+      fields: [
+        { name: "purchase_no", label: "交易号" },
+        { name: "purchase_unit_price", label: "实际采购价", type: "number", default: 10 },
+        { name: "purchase_freight", label: "国内运费", type: "number", default: 0 },
+        { name: "express_no", label: "快递单号" },
+      ],
+    },
+    {
+      title: "核查上架",
+      fields: [
+        { name: "grid_id", label: "指定库位ID" },
+        { name: "warehouse_index", label: "库位索引", default: "2" },
+        { name: "shelf_type_set", label: "上架类型", default: "1,3" },
+        { name: "warehouse_user_id", label: "仓库操作人ID" },
+      ],
+    },
+    {
+      title: "仓库提出配送单",
+      fields: [
+        { name: "warehouse_sku_count", label: "仓库提出番数", type: "number", default: 1 },
+        { name: "send_num", label: "每番配送数量", type: "number", default: 1 },
+        { name: "porder_detail_remark", label: "配送单明细备注" },
+      ],
+    },
+    {
+      title: "配送单翻译/装箱",
+      fields: [
+        { name: "client_remark_translate", label: "客户翻译备注" },
+        { name: "porder_y_remark", label: "后台配货备注" },
+        { name: "box_count", label: "箱子数量", type: "number", default: 1 },
+        { name: "box_length", label: "箱长", type: "number", default: 58 },
+        { name: "box_width", label: "箱宽", type: "number", default: 51 },
+        { name: "box_height", label: "箱高", type: "number", default: 50 },
+        { name: "box_weight", label: "箱重", type: "number", default: 10 },
+      ],
+    },
+    {
+      title: "配送单报价",
+      fields: [
+        { name: "delivery_quote_logistics_id", label: "国际物流方式", default: "25" },
+        { name: "logistics_price_artificial", label: "人工物流费", type: "number", default: 775 },
+        { name: "porder_offer_remark", label: "报价备注" },
+        { name: "fba_complete_num", label: "FBA完成数量", type: "number", default: 0 },
+      ],
+    },
+    {
+      title: "配送单支付",
+      fields: [{ name: "merge_pay", label: "合并支付", default: "0" }],
+    },
+    {
+      title: "执行控制",
+      fields: [{ name: "stop_after_node", label: "暂停节点", type: "select", options: FULL_FLOW_STOP_NODE_OPTIONS, default: "full_complete" }],
+    },
+  ];
+
+  const FULL_FLOW_COPY_FIELDS = FULL_FLOW_COPY_FIELD_GROUPS.flatMap((group) => group.fields);
+  const FULL_FLOW_SAVE_DEFAULTS_FIELD = { name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false };
+
+  function isFullFlowCopy(flow) {
+    return flow?.scriptType === "full_flow" && String(flow?.name || "").trim() === FULL_FLOW_COPY_NAME;
+  }
 
   const originalSanitizeScriptVariablesForFullFlow = sanitizeScriptVariables;
   sanitizeScriptVariables = function (scriptType, variables, flow = null) {
@@ -197,9 +318,15 @@ if (!window.__fullFlowDataScriptLoaded) {
     next.purchase_freight = next.purchase_freight || "0";
     next.warehouse_index = next.warehouse_index || "2";
     next.finance_confirm = true;
-    next.discounts_id = "";
+    next.discounts_id = next.discounts_id || "";
     next.predict_logistics_price_is_pay = "0";
     next.include_balance_pay_amount = false;
+    if (next.shelf_type_set) {
+      next.shelf_type_set = splitParamList(next.shelf_type_set).map((item) => {
+        const number = Number(item);
+        return Number.isFinite(number) ? number : item;
+      });
+    }
     delete next.order_sn;
     delete next.last_order_sn;
     delete next.order_sns;
@@ -669,6 +796,104 @@ if (!window.__fullFlowDataScriptLoaded) {
     });
   }
 
+  function renderFullFlowCopyFieldGroups(values) {
+    return FULL_FLOW_COPY_FIELD_GROUPS.map((group) => {
+      const groupBody = group.fields
+        .map((field) => renderFormField(field, values?.[field.name] ?? field.default ?? ""))
+        .join("");
+      const saveDefaults = group.title === "执行控制" ? renderFormField(FULL_FLOW_SAVE_DEFAULTS_FIELD, values?.__save_defaults ?? false) : "";
+      return `
+        <details class="functional-requirement" ${group.open ? "open" : ""}>
+          <summary>${escapeHtml(group.title)}</summary>
+          <div class="form-grid" style="margin-top:12px">${groupBody}${saveDefaults}</div>
+        </details>
+      `;
+    }).join("");
+  }
+
+  function openFullFlowCopyRunForm(flow) {
+    let variables = {};
+    try {
+      variables = parseJsonText(flow.variables || "{}", {});
+    } catch {
+      showToast("脚本变量不是合法 JSON");
+      return;
+    }
+    const fields = FULL_FLOW_COPY_FIELDS;
+    variables = withCustomerLoginInputs(mergeStoredCustomerIds(sanitizeScriptVariables("full_flow", variables, flow)));
+    const values = {
+      ...paramFormValues(fields, variables),
+      __save_defaults: false,
+    };
+    const initialCounts = orderOptionCountsFromVariables(variables.order_option_counts);
+    modalEl.innerHTML = `
+      <form id="fullFlowRunForm">
+        <div class="modal-head">
+          <h3>${escapeHtml(`执行 ${flow.name || FULL_FLOW_COPY_NAME}`)}</h3>
+          <button class="btn secondary" value="cancel" formmethod="dialog" type="button" id="closeModal">关闭</button>
+        </div>
+        <div class="modal-body">
+          ${renderFullFlowCopyFieldGroups(values)}
+          <details class="functional-requirement">
+            <summary>订单 option（可选）</summary>
+            <div id="fullFlowOrderOptionPreview"><div class="empty">正在读取订单 option...</div></div>
+            <div class="actions" style="margin-top:10px">
+              <button class="btn secondary" id="refreshFullFlowOrderOptions" type="button">刷新选项</button>
+            </div>
+          </details>
+        </div>
+        <div class="modal-foot"><span></span><button class="btn" type="submit">执行</button></div>
+      </form>
+    `;
+    modalEl.showModal();
+    const form = document.querySelector("#fullFlowRunForm");
+    const previewEl = document.querySelector("#fullFlowOrderOptionPreview");
+    function runtimeVariables(includeCurrentCounts = true) {
+      const data = readForm(form);
+      const next = sanitizeScriptVariables("full_flow", mergeParamValues(variables, fields, data), flow);
+      const counts = includeCurrentCounts ? readOrderOptionCounts(form) : initialCounts;
+      if (Object.keys(counts).length) next.order_option_counts = counts;
+      else delete next.order_option_counts;
+      return withCustomerLoginInputs(mergeStoredCustomerIds(next));
+    }
+    async function refreshOptions() {
+      const counts = readOrderOptionCounts(form);
+      previewEl.innerHTML = `<div class="empty">正在读取订单 option...</div>`;
+      try {
+        const result = await api("/api/data-scripts/order-quote/options-preview", {
+          method: "POST",
+          body: {
+            project_id: flow.projectId ? Number(flow.projectId) : null,
+            env_id: flow.envId ? Number(flow.envId) : null,
+            variables: runtimeVariables(false),
+          },
+        });
+        previewEl.innerHTML = renderOrderOptionPreview(result.options || [], { ...initialCounts, ...counts });
+      } catch (error) {
+        previewEl.innerHTML = `<div class="alert error">读取 option 失败：${escapeHtml(error.message)}</div>`;
+      }
+    }
+    document.querySelector("#closeModal").addEventListener("click", async () => {
+      modalEl.close();
+      if (state.view === "dataScripts" && !state.factory.editing) {
+        await renderDataScripts();
+      }
+    });
+    document.querySelector("#refreshFullFlowOrderOptions").addEventListener("click", refreshOptions);
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        const data = readForm(form);
+        const next = runtimeVariables(true);
+        if (data.__save_defaults) saveFlowVariables(flow, next);
+        await runSavedFlow(flow, next);
+      } catch (error) {
+        showToast(error.message);
+      }
+    });
+    refreshOptions();
+  }
+
   function openFullFlowRunForm(flow, fields) {
     let variables = {};
     try {
@@ -861,6 +1086,10 @@ if (!window.__fullFlowDataScriptLoaded) {
       return;
     }
     if (flow?.scriptType === "full_flow") {
+      if (isFullFlowCopy(flow)) {
+        openFullFlowCopyRunForm(flow);
+        return;
+      }
       openFullFlowRunForm(flow, scriptParamFields("full_flow", flow));
       return;
     }
