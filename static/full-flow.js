@@ -162,7 +162,7 @@ if (!window.__fullFlowDataScriptLoaded) {
         { name: "offer_price", label: "报价单价", type: "number", default: 10 },
         { name: "offer_freight", label: "报价国内运费", type: "number", default: 5 },
         { name: "other_price", label: "其他费用", type: "number", default: 0 },
-        { name: "other_price_remark", label: "其他费用备注" },
+        { name: "other_price_remark", label: "其他费用备注", default: "自动化其他费用备注" },
         { name: "offer_remark", label: "业务报价备注", default: "自动化业务报价" },
       ],
     },
@@ -198,7 +198,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       fields: [
         { name: "warehouse_sku_count", label: "仓库提出番数", type: "number", default: 1 },
         { name: "send_num", label: "每番配送数量", type: "number", default: 1 },
-        { name: "porder_detail_remark", label: "配送单明细备注" },
+        { name: "porder_detail_remark", label: "配送单明细备注", default: "自动化配送单明细备注" },
       ],
     },
     {
@@ -236,6 +236,11 @@ if (!window.__fullFlowDataScriptLoaded) {
   ];
 
   const FULL_FLOW_COPY_FIELDS = FULL_FLOW_COPY_FIELD_GROUPS.flatMap((group) => group.fields);
+  const FULL_FLOW_COPY_REMARK_DEFAULTS = Object.fromEntries(
+    FULL_FLOW_COPY_FIELDS
+      .filter((field) => String(field.label || "").includes("备注") && field.default !== undefined)
+      .map((field) => [field.name, field.default]),
+  );
   const FULL_FLOW_SAVE_DEFAULTS_FIELD = { name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false };
 
   function isFullFlowCopy(flow) {
@@ -360,9 +365,15 @@ if (!window.__fullFlowDataScriptLoaded) {
     next.order_payment_mode = next.order_payment_mode || "balance_first";
     next.porder_payment_mode = next.porder_payment_mode || "balance_first";
     next.pay_bank_method = next.pay_bank_method || "1";
-    next.client_remark_translate = next.client_remark_translate || "自动化配送单翻译";
-    next.porder_y_remark = next.porder_y_remark || "自动化装箱";
-    next.porder_offer_remark = next.porder_offer_remark || "自动化配送单报价";
+    if (isFullFlowCopy(flow)) {
+      Object.entries(FULL_FLOW_COPY_REMARK_DEFAULTS).forEach(([key, value]) => {
+        next[key] = next[key] || value;
+      });
+    } else {
+      next.client_remark_translate = next.client_remark_translate || "自动化配送单翻译";
+      next.porder_y_remark = next.porder_y_remark || "自动化装箱";
+      next.porder_offer_remark = next.porder_offer_remark || "自动化配送单报价";
+    }
     next.finance_confirm = true;
     next.discounts_id = next.discounts_id || "";
     next.predict_logistics_price_is_pay = "0";
@@ -874,7 +885,14 @@ if (!window.__fullFlowDataScriptLoaded) {
     delete next.order_sns;
     delete next.porder_sn;
     delete next.porder_sns;
+    Object.entries(FULL_FLOW_COPY_REMARK_DEFAULTS).forEach(([key, value]) => {
+      next[key] = value;
+    });
     return next;
+  }
+
+  function fullFlowCopyDisplayValues(values) {
+    return { ...(values || {}), ...FULL_FLOW_COPY_REMARK_DEFAULTS };
   }
 
   function openFullFlowCopyRunForm(flow) {
@@ -888,7 +906,7 @@ if (!window.__fullFlowDataScriptLoaded) {
     const fields = FULL_FLOW_COPY_FIELDS;
     variables = withCustomerLoginInputs(mergeStoredCustomerIds(sanitizeScriptVariables("full_flow", variables, flow)));
     const values = {
-      ...paramFormValues(fields, variables),
+      ...fullFlowCopyDisplayValues(paramFormValues(fields, variables)),
       __save_defaults: false,
     };
     const initialCounts = orderOptionCountsFromVariables(variables.order_option_counts);

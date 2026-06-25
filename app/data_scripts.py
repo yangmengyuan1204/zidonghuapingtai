@@ -1931,7 +1931,7 @@ def _prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, Any], i
     quote_price = _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10")
     offer_freight = _decimal_text(variables.get("offer_freight") or variables.get("confirm_freight") or "5")
     prepared["other_price"] = _decimal_text(variables.get("other_price") or prepared.get("other_price") or "0")
-    prepared["other_price_remark"] = str(variables.get("other_price_remark") or prepared.get("other_price_remark") or "")
+    prepared["other_price_remark"] = str(variables.get("other_price_remark") or prepared.get("other_price_remark") or "自动化其他费用备注")
     prepared["y_reply"] = str(variables.get("y_reply") or prepared.get("y_reply") or "")
     prepared["y_remark"] = str(variables.get("offer_remark") or prepared.get("y_remark") or "自动化业务报价")
     prepared["predict_logistics_price"] = _decimal_text(variables.get("predict_logistics_price") or prepared.get("predict_logistics_price") or "0")
@@ -4097,7 +4097,7 @@ def _porder_create_fields_for_items(items: list[Dict[str, Any]], porder_sn: str,
         prefix = f"porder_detail[{index}]"
         fields[f"{prefix}[order_detail_id]"] = str(item.get("order_detail_id") or "")
         fields[f"{prefix}[send_num]"] = _as_int(item.get("send_num"), 1)
-        fields[f"{prefix}[client_remark]"] = str(item.get("client_remark") or variables.get("porder_detail_remark") or "")
+        fields[f"{prefix}[client_remark]"] = str(item.get("client_remark") or variables.get("porder_detail_remark") or "自动化配送单明细备注")
     receiver = _merge_address(_default_receiver_address(), variables.get("receiver_address"))
     importer = _merge_address(_default_importer_address(), variables.get("importer_address"))
     fields.update(_address_fields("receiver_address", receiver))
@@ -4109,7 +4109,7 @@ def _porder_create_fields_for_items(items: list[Dict[str, Any]], porder_sn: str,
 
 def _porder_create_fields(order_detail_id: str, porder_sn: str, send_num: int, variables: Dict[str, Any]) -> OrderedDict[str, Any]:
     return _porder_create_fields_for_items(
-        [{"order_detail_id": order_detail_id, "send_num": send_num, "client_remark": variables.get("porder_detail_remark") or ""}],
+        [{"order_detail_id": order_detail_id, "send_num": send_num, "client_remark": variables.get("porder_detail_remark") or "自动化配送单明细备注"}],
         porder_sn,
         variables,
     )
@@ -5654,7 +5654,7 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
                     "sendable_num": max_send_num,
                     "sku_id": _warehouse_sku_id(item),
                     "source": item.get("_warehouse_source") or "history",
-                    "client_remark": str(variables.get("porder_detail_remark") or ""),
+                    "client_remark": str(variables.get("porder_detail_remark") or "自动化配送单明细备注"),
                     "row": item,
                 }
             )
