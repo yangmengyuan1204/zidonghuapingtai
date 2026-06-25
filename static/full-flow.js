@@ -156,7 +156,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       fields: [
         { name: "confirm_price", label: "实际采购价", type: "number", default: 10 },
         { name: "confirm_freight", label: "确认国内运费", type: "number", default: 5 },
-        { name: "confirm_volume", label: "单个商品尺寸", default: "1x2x3", placeholder: "例如 1x2x3" },
+        { name: "confirm_volume", label: "单个商品尺寸", type: "dimension", default: "1x2x3" },
         { name: "confirm_weight", label: "重量", type: "number", default: 200 },
         { name: "confirm_remark", label: "采购调查备注", default: "自动化采购调查" },
       ],
@@ -868,7 +868,7 @@ if (!window.__fullFlowDataScriptLoaded) {
   function renderFullFlowCopyFieldGroups(values) {
     return FULL_FLOW_COPY_FIELD_GROUPS.map((group) => {
       const groupBody = group.fields
-        .map((field) => renderFormField(field, values?.[field.name] ?? field.default ?? ""))
+        .map((field) => renderFullFlowCopyFormField(field, values?.[field.name] ?? field.default ?? ""))
         .join("");
       const saveDefaults = group.title === "执行控制" ? renderFormField(FULL_FLOW_SAVE_DEFAULTS_FIELD, values?.__save_defaults ?? false) : "";
       return `
@@ -878,6 +878,43 @@ if (!window.__fullFlowDataScriptLoaded) {
         </details>
       `;
     }).join("");
+  }
+
+  function fullFlowDimensionParts(value) {
+    const parts = String(value || "")
+      .trim()
+      .split(/[xX×*＊]/)
+      .map((item) => item.trim());
+    return {
+      length: parts[0] || "",
+      width: parts[1] || "",
+      height: parts[2] || "",
+    };
+  }
+
+  function renderFullFlowCopyFormField(field, value) {
+    if (field.name !== "confirm_volume") return renderFormField(field, value);
+    const parts = fullFlowDimensionParts(value || field.default || "");
+    return `
+      <div class="field">
+        <label>${escapeHtml(field.label)}</label>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center">
+          <input name="confirm_volume_length" type="text" inputmode="decimal" value="${escapeHtml(parts.length)}" placeholder="长" />
+          <span style="font-weight:700;text-align:center;color:#ef4444">x</span>
+          <input name="confirm_volume_width" type="text" inputmode="decimal" value="${escapeHtml(parts.width)}" placeholder="宽" />
+          <span style="font-weight:700;text-align:center;color:#ef4444">x</span>
+          <input name="confirm_volume_height" type="text" inputmode="decimal" value="${escapeHtml(parts.height)}" placeholder="高" />
+        </div>
+      </div>
+    `;
+  }
+
+  function fullFlowDimensionValue(data, fallback = "") {
+    const length = String(data.confirm_volume_length ?? "").trim();
+    const width = String(data.confirm_volume_width ?? "").trim();
+    const height = String(data.confirm_volume_height ?? "").trim();
+    if (length || width || height) return `${length}x${width}x${height}`;
+    return String(data.confirm_volume || fallback || "").trim();
   }
 
   function fullFlowDefaultVariables(variables) {
@@ -941,6 +978,7 @@ if (!window.__fullFlowDataScriptLoaded) {
     const previewEl = document.querySelector("#fullFlowOrderOptionPreview");
     function runtimeVariables(includeCurrentCounts = true) {
       const data = readForm(form);
+      data.confirm_volume = fullFlowDimensionValue(data, variables.confirm_volume);
       const next = sanitizeScriptVariables("full_flow", mergeParamValues(variables, fields, data), flow);
       const counts = includeCurrentCounts ? readOrderOptionCounts(form) : initialCounts;
       if (Object.keys(counts).length) next.order_option_counts = counts;
