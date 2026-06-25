@@ -930,22 +930,75 @@ def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) 
             token = client.login(account, password, client_tool)
             log["login"] = {"success": True, "account": account, "client_tool": client_tool, "token_extracted": bool(token)}
 
-        shops = bulk_cart.collect_items(
-            client=client,
-            keyword=keyword,
-            shop_type=shop_type,
-            target_shops=target_shops,
-            per_shop=per_shop,
-            page_size=page_size,
-            max_pages=max_pages,
-            sleep_seconds=sleep_seconds,
-            quantity_cycle=quantities,
-            allow_fallback_sku=allow_fallback_sku,
-            detail_workers=max(1, detail_workers),
-        )
-        items = bulk_cart.flatten_ready_shops(shops, target_shops, per_shop)
-        ready_shops = len(items) // per_shop if per_shop else 0
+        def collect_cart_items(keyword_value: str, shop_type_value: str) -> tuple[Dict[str, list[Dict[str, Any]]], list[Dict[str, Any]], int]:
+            collected_shops = bulk_cart.collect_items(
+                client=client,
+                keyword=keyword_value,
+                shop_type=shop_type_value,
+                target_shops=target_shops,
+                per_shop=per_shop,
+                page_size=page_size,
+                max_pages=max_pages,
+                sleep_seconds=sleep_seconds,
+                quantity_cycle=quantities,
+                allow_fallback_sku=allow_fallback_sku,
+                detail_workers=max(1, detail_workers),
+            )
+            collected_items = bulk_cart.flatten_ready_shops(collected_shops, target_shops, per_shop)
+            collected_ready_shops = len(collected_items) // per_shop if per_shop else 0
+            return collected_shops, collected_items, collected_ready_shops
+
+        shops, items, ready_shops = collect_cart_items(keyword, shop_type)
         expected_total = target_shops * per_shop
+        collection_attempts = [
+            {
+                "keyword": keyword,
+                "shop_type": shop_type,
+                "ready_shops": ready_shops,
+                "collected_shops": len(shops),
+                "selected_items": len(items),
+            }
+        ]
+        if not items and _as_bool(variables.get("auto_fill_cart_on_shortage"), False):
+            fallback_keywords = _unique_list(_as_list(variables.get("fallback_keywords"), PREFERRED_KEYWORDS) + PREFERRED_KEYWORDS + KEYWORDS)
+            fallback_keyword_rounds = _as_int(
+                variables.get("fallback_keyword_max_rounds") or variables.get("keyword_max_rounds"),
+                min(6, len(fallback_keywords) or 1),
+            )
+            fallback_keywords = fallback_keywords[: max(1, min(fallback_keyword_rounds, len(fallback_keywords) or 1))]
+            fallback_shop_types = _unique_list(_as_list(variables.get("fallback_shop_types"), ["1688"]) + ["1688"])
+            fallback_used = False
+            for fallback_shop_type in fallback_shop_types:
+                for fallback_keyword in fallback_keywords:
+                    if fallback_keyword == keyword and fallback_shop_type == shop_type:
+                        continue
+                    fallback_shops, fallback_items, fallback_ready_shops = collect_cart_items(fallback_keyword, fallback_shop_type)
+                    collection_attempts.append(
+                        {
+                            "keyword": fallback_keyword,
+                            "shop_type": fallback_shop_type,
+                            "ready_shops": fallback_ready_shops,
+                            "collected_shops": len(fallback_shops),
+                            "selected_items": len(fallback_items),
+                            "fallback": True,
+                        }
+                    )
+                    if fallback_items:
+                        log["fallback_collection"] = {
+                            "from": {"keyword": keyword, "shop_type": shop_type},
+                            "to": {"keyword": fallback_keyword, "shop_type": fallback_shop_type},
+                        }
+                        keyword = fallback_keyword
+                        shop_type = fallback_shop_type
+                        shops = fallback_shops
+                        items = fallback_items
+                        ready_shops = fallback_ready_shops
+                        fallback_used = True
+                        break
+                if fallback_used:
+                    break
+            log["keyword"] = keyword
+            log["shop_type"] = shop_type
 
         for index, (shop_key, shop_items) in enumerate(shops.items(), start=1):
             log["shops"].append(
@@ -965,6 +1018,7 @@ def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) 
             "selected_items": len(items),
             "expected_total": expected_total,
             "preview_items": [_item_brief(item) for item in items[:20]],
+            "attempts": collection_attempts,
         }
 
         if not items:
@@ -4525,8 +4579,8 @@ def _run_backend_porder_flow(
         _api_path(variables, "admin_porder_submit_translate", "/porder.submitTranslate"),
         {
             "porder_sn": porder_sn,
-            "client_remark_translate": str(variables.get("client_remark_translate") or ""),
-            "list": [{"id": item["porder_detail_id"], "y_remark": str(variables.get("porder_y_remark") or "")} for item in detail_items],
+            "client_remark_translate": str(variables.get("client_remark_translate") or "自动化配送单翻译"),
+            "list": [{"id": item["porder_detail_id"], "y_remark": str(variables.get("porder_y_remark") or "自动化装箱")} for item in detail_items],
             "is_temp": str(variables.get("porder_translate_is_temp") or "0"),
         },
         timeout,
@@ -4852,8 +4906,8 @@ def _run_backend_porder_flow(
         _api_path(variables, "admin_porder_submit_offer", "/porder.submitOffer"),
         {
             "porder_sn": porder_sn,
-            "y_remark": str(variables.get("porder_offer_remark") or ""),
-            "list": [{"id": item["porder_detail_id"], "y_remark": str(variables.get("porder_y_remark") or ""), "received_num": ""} for item in detail_items],
+            "y_remark": str(variables.get("porder_offer_remark") or "自动化配送单报价"),
+            "list": [{"id": item["porder_detail_id"], "y_remark": str(variables.get("porder_y_remark") or "自动化装箱"), "received_num": ""} for item in detail_items],
             "logistics_price_artificial": logistics_price,
             "fba_complete_num": str(variables.get("fba_complete_num") or "0"),
             "fba_overstep_reason": str(variables.get("fba_overstep_reason") or ""),
@@ -4982,8 +5036,8 @@ def _run_backend_porder_flow_resume(
             _api_path(variables, "admin_porder_submit_translate", "/porder.submitTranslate"),
             {
                 "porder_sn": porder_sn,
-                "client_remark_translate": str(variables.get("client_remark_translate") or ""),
-                "list": [{"id": item["porder_detail_id"], "y_remark": str(variables.get("porder_y_remark") or "")} for item in detail_items],
+                "client_remark_translate": str(variables.get("client_remark_translate") or "自动化配送单翻译"),
+                "list": [{"id": item["porder_detail_id"], "y_remark": str(variables.get("porder_y_remark") or "自动化装箱")} for item in detail_items],
                 "is_temp": str(variables.get("porder_translate_is_temp") or "0"),
             },
             timeout,
@@ -5275,8 +5329,8 @@ def _run_backend_porder_flow_resume(
             _api_path(variables, "admin_porder_submit_offer", "/porder.submitOffer"),
             {
                 "porder_sn": porder_sn,
-                "y_remark": str(variables.get("porder_offer_remark") or ""),
-                "list": [{"id": item["porder_detail_id"], "y_remark": str(variables.get("porder_y_remark") or ""), "received_num": ""} for item in detail_items],
+                "y_remark": str(variables.get("porder_offer_remark") or "自动化配送单报价"),
+                "list": [{"id": item["porder_detail_id"], "y_remark": str(variables.get("porder_y_remark") or "自动化装箱"), "received_num": ""} for item in detail_items],
                 "logistics_price_artificial": logistics_price,
                 "fba_complete_num": str(variables.get("fba_complete_num") or "0"),
                 "fba_overstep_reason": str(variables.get("fba_overstep_reason") or ""),
@@ -6919,9 +6973,21 @@ def _payment_with_bank_fallback(
 ) -> Tuple[bool, str, str, Dict[str, Any]]:
     balance_func = run_porder_balance_payment_script if porder else run_balance_payment_script
     bank_func = run_porder_bank_payment_script if porder else run_bank_payment_script
+    mode_key = "porder_payment_mode" if porder else "order_payment_mode"
+    payment_mode = str(variables.get(mode_key) or variables.get("payment_mode") or "balance_first").strip().lower()
+    if payment_mode in {"bank", "bank_payment"}:
+        bank_vars = dict(variables)
+        bank_vars["finance_confirm"] = True
+        bank_passed, bank_log, bank_report, bank_summary = bank_func(env, bank_vars)
+        bank_summary = dict(bank_summary or {})
+        bank_summary["attempted_payment_types"] = ["bank"]
+        bank_summary["payment_mode"] = "bank"
+        return bank_passed, bank_log, bank_report, bank_summary
+
     balance_passed, balance_log, balance_report, balance_summary = balance_func(env, variables)
     balance_summary = dict(balance_summary or {})
     balance_summary["attempted_payment_types"] = ["balance"]
+    balance_summary["payment_mode"] = "balance_first"
     if balance_passed:
         return balance_passed, balance_log, balance_report, balance_summary
     if not _looks_like_balance_insufficient(balance_summary, balance_log):
@@ -6935,6 +7001,7 @@ def _payment_with_bank_fallback(
         {
             "fallback_from_balance": True,
             "attempted_payment_types": ["balance", "bank"],
+            "payment_mode": "balance_first",
             "balance_failure": balance_summary,
         }
     )

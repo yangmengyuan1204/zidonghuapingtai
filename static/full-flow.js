@@ -39,6 +39,35 @@ if (!window.__fullFlowDataScriptLoaded) {
     (option) => ["warehouse_delivery_created", "porder_translated", "porder_confirmed", "porder_wait_offer", "porder_offered", "porder_paid"].includes(option.value),
   ).map((option) => option.value === "porder_paid" ? { ...option, label: "不暂停（配送单全流程结束）" } : option);
   const FULL_FLOW_COPY_NAME = "全流程完全体_副本";
+  const FULL_FLOW_PAYMENT_MODE_OPTIONS = [
+    { value: "balance_first", label: "余额支付（余额不足自动银行支付）" },
+    { value: "bank", label: "银行支付" },
+  ];
+  const FULL_FLOW_SHELF_TYPE_OPTIONS = [
+    { value: "1,3", label: "默认上架类型（1,3）" },
+  ];
+  const FULL_FLOW_DELIVERY_QUOTE_LOGISTICS_OPTIONS = [
+    { value: "14", label: "お任せ(お勧め)（ID 14）" },
+    { value: "24", label: "KS-JP航空経済便（ID 24）" },
+    { value: "20", label: "RW船便（ID 20）" },
+    { value: "30", label: "Rロジ専用船便（ID 30）" },
+    { value: "29", label: "海源電子特殊航空便（ID 29）" },
+    { value: "25", label: "KS-JP電子特殊便（ID 25）" },
+    { value: "23", label: "Raku-DQ（ID 23）" },
+    { value: "18", label: "KS-JP航空便（ID 18）" },
+    { value: "1", label: "EMS（ID 1）" },
+    { value: "3", label: "EMS船便（ID 3）" },
+    { value: "2", label: "OCS（ID 2）" },
+    { value: "4", label: "電子特殊便（ID 4）" },
+    { value: "12", label: "TW船便（ID 12）" },
+    { value: "15", label: "海源DQ船便（ID 15）" },
+    { value: "22", label: "海源TK船便（ID 22）" },
+    { value: "21", label: "DHL（ID 21）" },
+    { value: "6", label: "FBA新幹線（ID 6）" },
+    { value: "8", label: "コンテナ（ID 8）" },
+    { value: "13", label: "その他（ID 13）" },
+    { value: "19", label: "海源 LCLコンテナ混載便（ID 19）" },
+  ];
 
   SCRIPT_PARAM_SCHEMAS.full_flow = [
     CUSTOMER_ID_FIELD,
@@ -133,7 +162,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       title: "订单支付",
       fields: [
         { name: "discounts_id", label: "余额优惠ID" },
-        { name: "pay_bank_method", label: "支付方式", default: "1" },
+        { name: "order_payment_mode", label: "支付方式", type: "select", options: FULL_FLOW_PAYMENT_MODE_OPTIONS, default: "balance_first" },
         { name: "pay_name", label: "付款人", default: "自动化测试" },
         { name: "pay_remark", label: "付款备注", default: "自动化银行付款" },
       ],
@@ -150,10 +179,10 @@ if (!window.__fullFlowDataScriptLoaded) {
     {
       title: "核查上架",
       fields: [
-        { name: "grid_id", label: "指定库位ID" },
-        { name: "warehouse_index", label: "库位索引", default: "2" },
-        { name: "shelf_type_set", label: "上架类型", default: "1,3" },
-        { name: "warehouse_user_id", label: "仓库操作人ID" },
+        { name: "grid_id", label: "指定库位ID（留空自动选择）" },
+        { name: "warehouse_index", label: "自动库位分组", default: "2", placeholder: "默认第2组" },
+        { name: "shelf_type_set", label: "上架类型", type: "select", options: FULL_FLOW_SHELF_TYPE_OPTIONS, default: "1,3" },
+        { name: "warehouse_user_id", label: "仓库操作人ID（留空自动识别）" },
       ],
     },
     {
@@ -167,8 +196,8 @@ if (!window.__fullFlowDataScriptLoaded) {
     {
       title: "配送单翻译/装箱",
       fields: [
-        { name: "client_remark_translate", label: "客户翻译备注" },
-        { name: "porder_y_remark", label: "后台配货备注" },
+        { name: "client_remark_translate", label: "客户翻译备注", default: "自动化配送单翻译" },
+        { name: "porder_y_remark", label: "后台配货备注", default: "自动化装箱" },
         { name: "box_count", label: "箱子数量", type: "number", default: 1 },
         { name: "box_length", label: "箱长", type: "number", default: 58 },
         { name: "box_width", label: "箱宽", type: "number", default: 51 },
@@ -179,15 +208,18 @@ if (!window.__fullFlowDataScriptLoaded) {
     {
       title: "配送单报价",
       fields: [
-        { name: "delivery_quote_logistics_id", label: "国际物流方式", default: "25" },
+        { name: "delivery_quote_logistics_id", label: "国际物流方式", type: "select", options: FULL_FLOW_DELIVERY_QUOTE_LOGISTICS_OPTIONS, default: "25" },
         { name: "logistics_price_artificial", label: "人工物流费", type: "number", default: 775 },
-        { name: "porder_offer_remark", label: "报价备注" },
+        { name: "porder_offer_remark", label: "报价备注", default: "自动化配送单报价" },
         { name: "fba_complete_num", label: "FBA完成数量", type: "number", default: 0 },
       ],
     },
     {
       title: "配送单支付",
-      fields: [{ name: "merge_pay", label: "合并支付", default: "0" }],
+      fields: [
+        { name: "porder_payment_mode", label: "支付方式", type: "select", options: FULL_FLOW_PAYMENT_MODE_OPTIONS, default: "balance_first" },
+        { name: "merge_pay", label: "合并支付", default: "0" },
+      ],
     },
     {
       title: "执行控制",
@@ -317,6 +349,12 @@ if (!window.__fullFlowDataScriptLoaded) {
     next.purchase_unit_price = next.purchase_unit_price || "10";
     next.purchase_freight = next.purchase_freight || "0";
     next.warehouse_index = next.warehouse_index || "2";
+    next.order_payment_mode = next.order_payment_mode || "balance_first";
+    next.porder_payment_mode = next.porder_payment_mode || "balance_first";
+    next.pay_bank_method = next.pay_bank_method || "1";
+    next.client_remark_translate = next.client_remark_translate || "自动化配送单翻译";
+    next.porder_y_remark = next.porder_y_remark || "自动化装箱";
+    next.porder_offer_remark = next.porder_offer_remark || "自动化配送单报价";
     next.finance_confirm = true;
     next.discounts_id = next.discounts_id || "";
     next.predict_logistics_price_is_pay = "0";
