@@ -1052,6 +1052,52 @@ def test_warehouse_delivery_current_order_then_history_fill(monkeypatch):
     assert summary["history_fill_count"] == 2
 
 
+def test_warehouse_delivery_uses_requested_ids_when_list_empty(monkeypatch):
+    calls = []
+
+    class FakeRakumartClient:
+        def __init__(self, base_url, timeout):
+            self.session = SimpleNamespace(headers={})
+
+        def login(self, account, password, client_tool):
+            return "token"
+
+        def post_form(self, path, fields):
+            calls.append((path, dict(fields)))
+            if "userLogin" in path:
+                return {"success": True, "code": 0, "data": {"userToken": "token"}}
+            if "stockAutoList" in path:
+                return {"success": True, "code": 0, "data": {"list": []}}
+            if "porderCreate" in path:
+                return {"success": True, "code": 0, "data": {"porder_sn": "PORDER-DIRECT"}}
+            return {"success": False, "code": 0, "msg": "route error"}
+
+    monkeypatch.setattr(data_scripts.bulk_cart, "RakumartClient", FakeRakumartClient)
+
+    passed, log_text, _report_path, summary = data_scripts.run_warehouse_delivery_script(
+        SimpleNamespace(base_url="https://example.test", timeout=30),
+        {
+            "account": "alice",
+            "password": "secret",
+            "warehouse_sku_count": 1,
+            "send_num": 1,
+            "run_backend_delivery_flow": False,
+            "warehouse_fill_scope": "current_order_then_history",
+            "require_warehouse_sku_count": True,
+            "order_detail_ids": ["DETAIL-1", "DETAIL-2"],
+        },
+    )
+
+    create_fields = next(fields for path, fields in calls if "porderCreate" in path)
+    log = json.loads(log_text)
+    assert passed is True
+    assert create_fields["porder_detail[0][order_detail_id]"] == "DETAIL-1"
+    assert summary["porder_sn"] == "PORDER-DIRECT"
+    assert summary["actual_warehouse_sku_count"] == 1
+    assert summary["current_order_count"] == 1
+    assert log["warehouse_direct_requested_ids"]["used_order_detail_ids"] == ["DETAIL-1"]
+
+
 def test_warehouse_delivery_fails_without_creating_when_required_stock_short(monkeypatch):
     calls = []
     rows = [

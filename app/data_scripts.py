@@ -5557,6 +5557,7 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
         selected_items: list[Dict[str, Any]] = []
         warehouse_rows: list[Dict[str, Any]] = []
         requested_id = str(variables.get("order_detail_id") or variables.get("porder_detail_id") or "").strip()
+        requested_ids = _warehouse_requested_order_detail_ids(variables)
         if requested_id and warehouse_sku_count <= 1 and not require_full_count:
             selected_items = [{"order_detail_id": requested_id, "send_num": send_num}]
         else:
@@ -5603,6 +5604,25 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
                     time.sleep(warehouse_fill_retry_delay)
             if not selected_items and best_selected:
                 selected_items = best_selected
+
+        if not selected_items and requested_ids:
+            direct_count = warehouse_sku_count if require_full_count else max(1, min(warehouse_sku_count, len(requested_ids)))
+            if not require_full_count or len(requested_ids) >= direct_count:
+                used_ids = requested_ids[:direct_count]
+                selected_items = [
+                    {
+                        "order_detail_id": item_id,
+                        "send_num": send_num,
+                        "_warehouse_source": "current_order",
+                        "_direct_requested_id": True,
+                    }
+                    for item_id in used_ids
+                ]
+                log["warehouse_direct_requested_ids"] = {
+                    "used_order_detail_ids": used_ids,
+                    "requested_order_detail_ids": requested_ids,
+                    "reason": "warehouse list empty or delayed",
+                }
 
         if not selected_items and requested_id and not require_full_count:
             selected_items = [{"order_detail_id": requested_id, "send_num": send_num}]
