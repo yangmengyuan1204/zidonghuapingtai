@@ -157,7 +157,7 @@ if (!window.__fullFlowDataScriptLoaded) {
         { name: "confirm_price", label: "实际采购价", type: "number", default: 10 },
         { name: "confirm_freight", label: "确认国内运费", type: "number", default: 5 },
         { name: "confirm_volume", label: "单个商品尺寸", type: "dimension", default: "1x2x3" },
-        { name: "confirm_weight", label: "重量", type: "number", default: 200 },
+        { name: "confirm_weight", label: "重量（g）", type: "number", default: 200 },
         { name: "confirm_remark", label: "采购调查备注", default: "自动化采购调查" },
       ],
     },
@@ -893,6 +893,17 @@ if (!window.__fullFlowDataScriptLoaded) {
   }
 
   function renderFullFlowCopyFormField(field, value) {
+    if (field.name === "confirm_weight") {
+      return `
+        <div class="field">
+          <label>${escapeHtml(field.label)}</label>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center">
+            <input name="${escapeHtml(field.name)}" type="number" value="${escapeHtml(value ?? field.default ?? "")}" />
+            <span style="color:#64748b;font-weight:600">（g）</span>
+          </div>
+        </div>
+      `;
+    }
     if (field.name !== "confirm_volume") return renderFormField(field, value);
     const parts = fullFlowDimensionParts(value || field.default || "");
     return `
