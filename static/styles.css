@@ -779,3 +779,33 @@
     text-align: left;
   }
 }
+
+/* Data script full-flow run modal scroll performance */
+#fullFlowRunForm .modal-body {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  contain: layout paint;
+  -webkit-overflow-scrolling: touch;
+}
+
+#fullFlowRunForm .functional-requirement {
+  background: #ffffff;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 220px;
+}
+
+#fullFlowRunForm .field input,
+#fullFlowRunForm .field select,
+#fullFlowRunForm .field textarea {
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    background-color 0.12s ease;
+}
+
+@supports selector(:has(*)) {
+  #modal:has(#fullFlowRunForm)::backdrop {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
