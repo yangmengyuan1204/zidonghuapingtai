@@ -7697,6 +7697,15 @@ def run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> T
     variables.setdefault("inspection_transition_delay", 0)
     variables.setdefault("after_box_submit_delay", 0.2)
     variables.setdefault("after_complete_box_delay", 0.2)
+    resume_porder_sn = str(variables.get("porder_sn") or "").strip()
+    resume_order_sn = str(variables.get("order_sn") or variables.get("last_order_sn") or "").strip()
+    if resume_porder_sn:
+        variables["porder_sn"] = resume_porder_sn
+        return run_resume_porder_flow_script(env, variables)
+    if resume_order_sn:
+        variables["order_sn"] = resume_order_sn
+        return run_resume_order_flow_script(env, variables)
+
     input_adjustments = _full_flow_prepare_warehouse_counts(variables)
     stop_after = _stop_after_node(variables) or FULL_FLOW_COMPLETE_NODE
     variables["stop_after_node"] = stop_after

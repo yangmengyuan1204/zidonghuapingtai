@@ -113,6 +113,14 @@ if (!window.__fullFlowDataScriptLoaded) {
 
   const FULL_FLOW_COPY_FIELD_GROUPS = [
     {
+      title: "继续执行",
+      open: true,
+      fields: [
+        { name: "order_sn", label: "订单号（继续执行）" },
+        { name: "porder_sn", label: "配送单号（继续执行，优先）" },
+      ],
+    },
+    {
       title: "基础加购",
       fields: [
         CUSTOMER_ID_FIELD,
@@ -365,11 +373,21 @@ if (!window.__fullFlowDataScriptLoaded) {
         return Number.isFinite(number) ? number : item;
       });
     }
-    delete next.order_sn;
-    delete next.last_order_sn;
-    delete next.order_sns;
-    delete next.porder_sn;
-    delete next.porder_sns;
+    if (isFullFlowCopy(flow)) {
+      next.order_sn = String(next.order_sn || next.last_order_sn || "").trim();
+      next.porder_sn = String(next.porder_sn || "").trim();
+      if (!next.order_sn) delete next.order_sn;
+      if (!next.porder_sn) delete next.porder_sn;
+      delete next.last_order_sn;
+      delete next.order_sns;
+      delete next.porder_sns;
+    } else {
+      delete next.order_sn;
+      delete next.last_order_sn;
+      delete next.order_sns;
+      delete next.porder_sn;
+      delete next.porder_sns;
+    }
     delete next.shop_count;
     return next;
   };
@@ -849,6 +867,16 @@ if (!window.__fullFlowDataScriptLoaded) {
     }).join("");
   }
 
+  function fullFlowCopyDefaultVariables(variables) {
+    const next = { ...(variables || {}) };
+    delete next.order_sn;
+    delete next.last_order_sn;
+    delete next.order_sns;
+    delete next.porder_sn;
+    delete next.porder_sns;
+    return next;
+  }
+
   function openFullFlowCopyRunForm(flow) {
     let variables = {};
     try {
@@ -923,7 +951,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       try {
         const data = readForm(form);
         const next = runtimeVariables(true);
-        if (data.__save_defaults) saveFlowVariables(flow, next);
+        if (data.__save_defaults) saveFlowVariables(flow, fullFlowCopyDefaultVariables(next));
         await runSavedFlow(flow, next);
       } catch (error) {
         showToast(error.message);
