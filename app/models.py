@@ -353,4 +353,9 @@ class LocatorHealLog(Base):
     screenshot_path = Column(String(500), nullable=True)
     confirmed = Column(Integer, nullable=False, default=0)
     create_time = Column(DateTime, nullable=False)
+    # 自动自愈扩展字段
+    step_action = Column(String(32), nullable=True)
+    ai_prompt = Column(Text, nullable=True)
+    ai_response = Column(Text, nullable=True)
+    auto_applied = Column(Integer, nullable=False, default=0)
 

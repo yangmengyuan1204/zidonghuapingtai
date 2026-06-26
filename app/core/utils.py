@@ -765,6 +765,12 @@ def init_app() -> None:
                 "needs_manual_confirm": "ALTER TABLE case_generation_screenshot ADD COLUMN needs_manual_confirm INTEGER DEFAULT 1",
                 "ocr_error": "ALTER TABLE case_generation_screenshot ADD COLUMN ocr_error TEXT",
             },
+            "locator_heal_log": {
+                "step_action": "ALTER TABLE locator_heal_log ADD COLUMN step_action VARCHAR(32)",
+                "ai_prompt": "ALTER TABLE locator_heal_log ADD COLUMN ai_prompt TEXT",
+                "ai_response": "ALTER TABLE locator_heal_log ADD COLUMN ai_response TEXT",
+                "auto_applied": "ALTER TABLE locator_heal_log ADD COLUMN auto_applied INTEGER DEFAULT 0",
+            },
         }
         with engine.begin() as conn:
             for table_name, table_migrations in migrations.items():
@@ -827,6 +833,8 @@ def serialize(obj: Any, hide_password: bool = True) -> Dict[str, Any]:
         if isinstance(value, datetime):
             value = value.strftime("%Y-%m-%d %H:%M:%S")
         data[field] = value
+    if isinstance(obj, TestRecord):
+        data.update(test_record_credibility_payload(obj))
     return data
 
 
@@ -1063,6 +1071,8 @@ def functional_task_detail(db: Session, task: FunctionalTask) -> Dict[str, Any]:
     for case in db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id).order_by(FunctionalCase.id.asc()).all():
         item = serialize(case)
         item.update(account_profile_summary(default_account_profile_for_target(db, "functional_case", case.id, task.project_id)))
+        ui_case = db.get(UiCase, case.ui_case_id) if case.ui_case_id else None
+        item.update(functional_case_credibility_payload(case, ui_case))
         cases.append(item)
     data["cases"] = cases
     data["snapshots"] = serialize_many(db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).all())
@@ -1109,6 +1119,7 @@ def functional_task_detail(db: Session, task: FunctionalTask) -> Dict[str, Any]:
     )
     data["conclusion"] = functional_task_conclusion_summary(db, task)
     data["preflight_summary"] = functional_package_preflight_summary(cases)
+    data["credibility_summary"] = functional_case_credibility_summary(cases)
     return data
 
 
@@ -1302,6 +1313,186 @@ def meaningful_expected_text(case: FunctionalCase) -> str:
     if expected in GENERIC_EXPECTED_TEXTS:
         return ""
     return expected[:160]
+
+
+TRUST_LEVEL_LABELS = {
+    "trusted": "可信",
+    "weak": "弱可信",
+    "untrusted": "不建议采信",
+}
+
+RESULT_CREDIBILITY_LABELS = {
+    "trusted_passed": "可信通过",
+    "weak_passed": "弱通过",
+    "failed_with_reason": "失败已归因",
+    "failed_unclassified": "失败未归因",
+    "blocked": "阻塞",
+    "unknown": "未知",
+}
+
+FAILURE_CATEGORY_LABELS = {
+    "product_or_assertion": "产品缺陷/断言失败",
+    "script_issue": "脚本问题",
+    "locator_issue": "定位器问题",
+    "test_data_issue": "测试数据问题",
+    "account_permission_issue": "账号/权限问题",
+    "environment_issue": "环境问题",
+    "requirement_unclear": "需求不明确",
+    "unknown": "未知失败",
+}
+
+
+def _json_log_payload(value: Any) -> Dict[str, Any]:
+    payload = parse_json_value(value, {})
+    return payload if isinstance(payload, dict) else {}
+
+
+def _business_assertion_count_from_log(log_data: Dict[str, Any]) -> int:
+    business = log_data.get("business_verification")
+    if isinstance(business, dict):
+        try:
+            return int(business.get("business_assertion_count") or 0)
+        except (TypeError, ValueError):
+            return 0
+    steps = log_data.get("steps")
+    if isinstance(steps, list):
+        return sum(1 for step in steps if isinstance(step, dict) and str(step.get("action") or "").lower() in ASSERTION_ACTIONS)
+    return 0
+
+
+def _api_assertion_count_from_log(log_data: Dict[str, Any]) -> int:
+    assertions = log_data.get("assertions")
+    return len(assertions) if isinstance(assertions, list) else 0
+
+
+def classify_failure_category(log_data: Dict[str, Any], log_text: str = "") -> str:
+    text = json.dumps(log_data, ensure_ascii=False, default=str).lower() if log_data else str(log_text or "").lower()
+    error_category = str(log_data.get("error_category") or "").lower() if isinstance(log_data, dict) else ""
+    if error_category in {"step_validation_failed", "system_error", "parallel_execution_failed"}:
+        return "script_issue"
+    if error_category in {"case_timeout", "environment_timeout"}:
+        return "environment_issue"
+    if any(marker in text for marker in ["locator", "selector", "not visible", "not found element", "定位器", "元素"]):
+        return "locator_issue"
+    if any(marker in text for marker in ["login_required", "/login", "#/login", "permission", "unauthorized", "forbidden", "登录", "权限", "越权"]):
+        return "account_permission_issue"
+    if any(marker in text for marker in ["missing_variables", "order_not_found", "not found order", "库存不足", "数据不足", "缺少变量", "缺少真实数据"]):
+        return "test_data_issue"
+    if any(marker in text for marker in ["timeout", "timed out", "network", "connection", "http 5", "502", "503", "504", "环境"]):
+        return "environment_issue"
+    if any(marker in text for marker in ["missing_business_assertion", "缺少业务断言", "需求", "needs_review"]):
+        return "requirement_unclear"
+    if any(marker in text for marker in ["assert", "failed_verification", "断言失败", "验证失败"]):
+        return "product_or_assertion"
+    return "unknown"
+
+
+def test_record_credibility_payload(record: TestRecord) -> Dict[str, Any]:
+    log_data = _json_log_payload(record.log)
+    case_id = int(record.case_id or 0)
+    script_label = str(log_data.get("script") or log_data.get("mode") or "").strip()
+    traceability_status = "bound" if case_id > 0 else ("scenario_only" if script_label else "unbound")
+    traceability_labels = {
+        "bound": "已绑定用例",
+        "scenario_only": "仅绑定脚本场景",
+        "unbound": "未绑定测试对象",
+    }
+    warnings: list[str] = []
+    if traceability_status != "bound":
+        warnings.append("执行记录未绑定具体用例，不能作为强可信通过证据")
+
+    result = str(record.result or "unknown")
+    business_assertions = _business_assertion_count_from_log(log_data)
+    api_assertions = _api_assertion_count_from_log(log_data)
+    verification_status = str(log_data.get("verification_status") or "")
+    if result == "passed":
+        if record.case_type == "ui":
+            trusted = traceability_status == "bound" and verification_status == "trusted_passed" and business_assertions > 0
+        elif record.case_type == "api":
+            trusted = traceability_status == "bound" and api_assertions > 0
+        else:
+            trusted = False
+        result_credibility = "trusted_passed" if trusted else "weak_passed"
+        if not trusted:
+            if record.case_type == "ui" and business_assertions <= 0:
+                warnings.append("UI 通过缺少业务断言证据，已按弱通过处理")
+            if record.case_type == "api" and api_assertions <= 0:
+                warnings.append("接口通过缺少显式断言，已按弱通过处理")
+    else:
+        failure_category = classify_failure_category(log_data, str(record.log or ""))
+        result_credibility = "failed_with_reason" if failure_category != "unknown" else "failed_unclassified"
+
+    failure_category = "" if result == "passed" else classify_failure_category(log_data, str(record.log or ""))
+    return {
+        "traceability_status": traceability_status,
+        "traceability_label": traceability_labels.get(traceability_status, traceability_status),
+        "test_object_label": script_label or (f"{record.case_type} #{case_id}" if case_id else ""),
+        "result_credibility": result_credibility if result in {"passed", "failed"} else ("blocked" if result == "blocked" else "unknown"),
+        "result_credibility_label": RESULT_CREDIBILITY_LABELS.get(result_credibility if result in {"passed", "failed"} else result, result),
+        "business_assertion_count": business_assertions,
+        "api_assertion_count": api_assertions,
+        "failure_category": failure_category,
+        "failure_category_label": FAILURE_CATEGORY_LABELS.get(failure_category, ""),
+        "credibility_warnings": warnings,
+        "is_trusted_pass": result == "passed" and result_credibility == "trusted_passed",
+        "is_weak_pass": result == "passed" and result_credibility == "weak_passed",
+    }
+
+
+def _check_item(key: str, label: str, passed: bool, warning: str = "") -> Dict[str, Any]:
+    return {"key": key, "label": label, "passed": bool(passed), "warning": warning if not passed else ""}
+
+
+def functional_case_credibility_payload(case: FunctionalCase, ui_case: UiCase | None = None) -> Dict[str, Any]:
+    steps = parse_json_value(ui_case.steps, []) if ui_case else []
+    if not isinstance(steps, list):
+        steps = []
+    quality = case.quality_status or QUALITY_UNCHECKED
+    report = _json_log_payload(case.quality_report)
+    has_precondition = bool(str(case.precondition or "").strip())
+    has_steps = bool(str(case.steps or "").strip()) or bool(steps)
+    has_expected = bool(str(case.expected or "").strip()) and bool(meaningful_expected_text(case) or str(case.expected or "").strip())
+    has_assertion = case_has_business_assertion(case, steps) if steps else False
+    has_test_data = quality != QUALITY_MISSING_VARIABLES and not report.get("required_seed_keys")
+    risk_text = " ".join(str(item or "") for item in [case.title, case.category, case.precondition, case.steps, case.expected]).lower()
+    covers_risk = any(marker in risk_text for marker in ["权限", "异常", "边界", "无效", "失败", "未登录", "越权", "error", "invalid"])
+
+    checklist = [
+        _check_item("precondition", "前置条件", has_precondition, "未写前置条件"),
+        _check_item("steps", "操作步骤", has_steps, "未写操作步骤"),
+        _check_item("expected", "预期结果", has_expected, "未写明确预期结果"),
+        _check_item("business_assertion", "业务断言", has_assertion, "缺少可验证业务断言"),
+        _check_item("test_data", "测试数据", has_test_data, "缺少真实测试数据或运行变量"),
+        _check_item("risk_case", "权限/异常/边界", covers_risk, "未体现权限、异常或边界风险点"),
+    ]
+    blocking_failed = [item for item in checklist if item["key"] in {"steps", "expected", "business_assertion", "test_data"} and not item["passed"]]
+    if quality == QUALITY_EXECUTABLE and not blocking_failed:
+        level = "trusted"
+    elif quality in {QUALITY_NOT_RECOMMENDED, QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES} or len(blocking_failed) >= 2:
+        level = "untrusted"
+    else:
+        level = "weak"
+    issues = [item["warning"] for item in checklist if item["warning"]]
+    return {
+        "credibility_level": level,
+        "credibility_label": TRUST_LEVEL_LABELS[level],
+        "self_check": checklist,
+        "self_check_warnings": issues,
+        "can_be_trusted_pass": level == "trusted",
+    }
+
+
+def functional_case_credibility_summary(cases: list[Dict[str, Any]]) -> Dict[str, Any]:
+    counts = Counter(str(item.get("credibility_level") or "weak") for item in cases)
+    return {
+        "total": len(cases),
+        "trusted": counts.get("trusted", 0),
+        "weak": counts.get("weak", 0),
+        "untrusted": counts.get("untrusted", 0),
+        "trusted_label": TRUST_LEVEL_LABELS["trusted"],
+        "weak_label": TRUST_LEVEL_LABELS["weak"],
+        "untrusted_label": TRUST_LEVEL_LABELS["untrusted"],
+    }
 
 
 def ensure_weak_business_assertion(db: Session, case: FunctionalCase, ui_case: UiCase, steps: list[Dict[str, Any]]) -> tuple[list[Dict[str, Any]], bool]:

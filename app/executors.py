@@ -1137,7 +1137,7 @@ def _prepare_authenticated_page(page: Any, execution_context: Dict[str, Any], va
     return {"trace": trace, "login_url": login_url, "submit_locator": submit_locator}
 
 
-def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int) -> Dict[str, Any]:
+def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int, case_id: int = 0, db: Any = None) -> Dict[str, Any]:
     started = time.time()
     action = str(step.get("action") or "").strip()
     locator = str(step.get("locator") or "").strip()
@@ -1266,6 +1266,46 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                                 detail["retry_count"] = attempt
                                 break
                         except Exception:
+                            # 规则自愈失败，尝试 AI 自愈
+                            if case_id and db is not None:
+                                try:
+                                    from .services.locator_heal import auto_heal
+                                    ai_healed = auto_heal(
+                                        page, case_id,
+                                        candidates[0] if candidates else "",
+                                        step, db,
+                                        screenshot_path=detail.get("before_screenshot") or "",
+                                    )
+                                    if ai_healed and ai_healed not in candidates:
+                                        candidates.insert(0, ai_healed)
+                                        detail["healed"] = True
+                                        detail["healed_locator"] = ai_healed
+                                        detail["ai_healed"] = True
+                                        target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
+                                        detail["used_locator"] = used_locator
+                                        detail["matched_count"] = matched_count
+                                        target.scroll_into_view_if_needed(timeout=1500)
+                                        if action == "input":
+                                            try:
+                                                target.fill("", timeout=timeout_ms)
+                                                target.fill(str(value or ""), timeout=timeout_ms)
+                                            except Exception:
+                                                target.click(timeout=timeout_ms)
+                                                page.keyboard.press("Control+A")
+                                                page.keyboard.type(str(value or ""))
+                                        elif action == "click":
+                                            target.click(timeout=timeout_ms)
+                                        elif action == "select":
+                                            target.select_option(str(value or ""), timeout=timeout_ms)
+                                        elif action == "assert_visible":
+                                            if not target.is_visible(timeout=timeout_ms):
+                                                raise AssertionError(f"assert_visible failed: locator {used_locator!r} is not visible")
+                                        elif action == "wait_for_selector":
+                                            target.wait_for(state="visible", timeout=timeout_ms)
+                                        detail["retry_count"] = attempt
+                                        break
+                                except Exception:
+                                    pass
                             raise last_error
                         raise
                     page.wait_for_timeout(350 * attempt)
@@ -1337,6 +1377,7 @@ def execute_ui_case_in_page(
     runtime_vars: Dict[str, Any] | None = None,
     execution_context: Dict[str, Any] | None = None,
     env: Env | None = None,
+    db_session: Any = None,
 ) -> Tuple[bool, str, str, str]:
     ensure_report_dirs()
     timeout = case.timeout or 30
@@ -1433,7 +1474,7 @@ def execute_ui_case_in_page(
                 _wait_page_stable(page, timeout=1500)
 
             try:
-                step_detail = _run_ui_step(page, current_step, screenshots, timeout)
+                step_detail = _run_ui_step(page, current_step, screenshots, timeout, case_id=getattr(case, 'id', 0) or 0, db=db_session)
                 step_detail["index"] = index
                 log_parts["step_logs"].append(step_detail)
                 # 智能等待：操作后等待页面响应
@@ -1446,7 +1487,7 @@ def execute_ui_case_in_page(
                         page.wait_for_timeout(retry_interval_ms)
                         _wait_page_stable(page)
                         try:
-                            step_detail = _run_ui_step(page, current_step, screenshots, timeout)
+                            step_detail = _run_ui_step(page, current_step, screenshots, timeout, case_id=getattr(case, 'id', 0) or 0, db=db_session)
                             step_detail["index"] = index
                             step_detail["retry_attempt"] = attempt + 1
                             log_parts["step_logs"].append(step_detail)
@@ -1773,6 +1814,7 @@ def execute_ui_case(
     runtime_vars: Dict[str, Any] | None = None,
     execution_context: Dict[str, Any] | None = None,
     env: Env | None = None,
+    db_session: Any = None,
 ) -> Tuple[bool, str, str, str]:
     ensure_report_dirs()
     timeout = case.timeout or 30
@@ -1833,7 +1875,7 @@ def execute_ui_case(
             browser = launch_chromium_browser(p, headless=True)
             page = browser.new_page()
             try:
-                passed, log_text, screenshot_path, report_path = execute_ui_case_in_page(case, page, runtime_vars, execution_context)
+                passed, log_text, screenshot_path, report_path = execute_ui_case_in_page(case, page, runtime_vars, execution_context, db_session=db_session)
             except Exception as inner_exc:
                 # 在 with 块内捕获异常，此时 browser/page 仍存活
                 screenshot = ""

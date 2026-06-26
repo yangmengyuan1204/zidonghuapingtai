@@ -1007,7 +1007,7 @@ def run_ui_case(
 ) -> Dict[str, Any]:
     case = get_or_404(db, UiCase, case_id)
     variables, execution_context = resolve_execution_account(db, payload, "ui_case", case.id, case.project_id, case.page_url)
-    passed, log_text, screenshot_path, report_path = execute_ui_case(case, variables, execution_context)
+    passed, log_text, screenshot_path, report_path = execute_ui_case(case, variables, execution_context, db_session=db)
     record = save_ui_record(db, case, passed, log_text, report_path, screenshot_path)
     return serialize(record)
 
@@ -1235,6 +1235,8 @@ def list_heal_logs(
             "screenshot_path": log.screenshot_path or "",
             "confirmed": log.confirmed,
             "create_time": log.create_time.isoformat(),
+            "step_action": log.step_action or "",
+            "auto_applied": log.auto_applied or 0,
         }
         for log in query.order_by(LocatorHealLog.id.desc()).limit(100).all()
     ]
