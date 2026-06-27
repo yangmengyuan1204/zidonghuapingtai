@@ -1137,6 +1137,43 @@ def _prepare_authenticated_page(page: Any, execution_context: Dict[str, Any], va
     return {"trace": trace, "login_url": login_url, "submit_locator": submit_locator}
 
 
+def _perform_ui_action(page: Any, target: Any, action: str, value: Any, used_locator: str, timeout_ms: int) -> None:
+    """在已定位的元素上执行 UI 动作（自愈路径复用，涵盖全部 action）。"""
+    try:
+        target.scroll_into_view_if_needed(timeout=1500)
+    except Exception:
+        pass
+    if action == "input":
+        try:
+            target.fill("", timeout=timeout_ms)
+            target.fill(str(value or ""), timeout=timeout_ms)
+        except Exception:
+            target.click(timeout=timeout_ms)
+            page.keyboard.press("Control+A")
+            page.keyboard.type(str(value or ""))
+    elif action == "click":
+        target.click(timeout=timeout_ms)
+    elif action == "select":
+        target.select_option(str(value or ""), timeout=timeout_ms)
+    elif action == "check":
+        target.check(timeout=timeout_ms)
+    elif action == "uncheck":
+        target.uncheck(timeout=timeout_ms)
+    elif action == "wait_for_selector":
+        target.wait_for(state="visible", timeout=timeout_ms)
+    elif action == "assert_visible":
+        if not target.is_visible(timeout=timeout_ms):
+            raise AssertionError(f"assert_visible failed: locator {used_locator!r} is not visible")
+    elif action == "assert_value":
+        actual = target.input_value(timeout=timeout_ms)
+        if _normalize_text(value) != _normalize_text(actual):
+            raise AssertionError(f"assert_value failed: expected {value!r}, actual {actual!r}")
+    elif action == "text_assert":
+        text_value = target.inner_text(timeout=timeout_ms)
+        if _normalize_text(value) not in _normalize_text(text_value):
+            raise AssertionError(f"text_assert failed: expected {value!r}, actual {text_value!r}")
+
+
 def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int, case_id: int = 0, db: Any = None) -> Dict[str, Any]:
     started = time.time()
     action = str(step.get("action") or "").strip()
@@ -1235,34 +1272,17 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                     last_error = exc
                     if attempt >= 3:
                         # 自愈尝试：解析定位器失败时尝试自愈
+                        healed_locator = locator or (candidates[0] if candidates else "")
                         try:
-                            healed = _heal_locator(page, candidates[0] if candidates else "", str(exc))
+                            healed = _heal_locator(page, healed_locator, str(exc))
                             if healed and healed not in candidates:
                                 candidates.insert(0, healed)
                                 detail["healed"] = True
                                 detail["healed_locator"] = healed
-                                # 用新定位器再试一次
                                 target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
                                 detail["used_locator"] = used_locator
                                 detail["matched_count"] = matched_count
-                                target.scroll_into_view_if_needed(timeout=1500)
-                                if action == "input":
-                                    try:
-                                        target.fill("", timeout=timeout_ms)
-                                        target.fill(str(value or ""), timeout=timeout_ms)
-                                    except Exception:
-                                        target.click(timeout=timeout_ms)
-                                        page.keyboard.press("Control+A")
-                                        page.keyboard.type(str(value or ""))
-                                elif action == "click":
-                                    target.click(timeout=timeout_ms)
-                                elif action == "select":
-                                    target.select_option(str(value or ""), timeout=timeout_ms)
-                                elif action == "assert_visible":
-                                    if not target.is_visible(timeout=timeout_ms):
-                                        raise AssertionError(f"assert_visible failed: locator {used_locator!r} is not visible")
-                                elif action == "wait_for_selector":
-                                    target.wait_for(state="visible", timeout=timeout_ms)
+                                _perform_ui_action(page, target, action, value, used_locator, timeout_ms)
                                 detail["retry_count"] = attempt
                                 break
                         except Exception:
@@ -1272,7 +1292,7 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                                     from .services.locator_heal import auto_heal
                                     ai_healed = auto_heal(
                                         page, case_id,
-                                        candidates[0] if candidates else "",
+                                        locator or (candidates[0] if candidates else ""),
                                         step, db,
                                         screenshot_path=detail.get("before_screenshot") or "",
                                     )
@@ -1284,24 +1304,7 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                                         target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
                                         detail["used_locator"] = used_locator
                                         detail["matched_count"] = matched_count
-                                        target.scroll_into_view_if_needed(timeout=1500)
-                                        if action == "input":
-                                            try:
-                                                target.fill("", timeout=timeout_ms)
-                                                target.fill(str(value or ""), timeout=timeout_ms)
-                                            except Exception:
-                                                target.click(timeout=timeout_ms)
-                                                page.keyboard.press("Control+A")
-                                                page.keyboard.type(str(value or ""))
-                                        elif action == "click":
-                                            target.click(timeout=timeout_ms)
-                                        elif action == "select":
-                                            target.select_option(str(value or ""), timeout=timeout_ms)
-                                        elif action == "assert_visible":
-                                            if not target.is_visible(timeout=timeout_ms):
-                                                raise AssertionError(f"assert_visible failed: locator {used_locator!r} is not visible")
-                                        elif action == "wait_for_selector":
-                                            target.wait_for(state="visible", timeout=timeout_ms)
+                                        _perform_ui_action(page, target, action, value, used_locator, timeout_ms)
                                         detail["retry_count"] = attempt
                                         break
                                 except Exception:
