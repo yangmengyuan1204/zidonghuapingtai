@@ -1923,6 +1923,18 @@ def execute_ui_case(
             except Exception:
                 pass
             browser = None
+            # 执行成功且发生过自愈时，更新历史 success_count
+            if passed and db_session:
+                try:
+                    from .services.locator_heal import update_heal_history_on_success
+                    # 从 log_text 中解析 healed 信息
+                    import json as _json
+                    log_data = _json.loads(log_text) if log_text else {}
+                    for step_log in (log_data.get("step_logs") or []):
+                        if step_log.get("healed") and step_log.get("original_locator") and step_log.get("healed_locator"):
+                            update_heal_history_on_success(db_session, step_log["original_locator"], step_log["healed_locator"])
+                except Exception:
+                    pass
             return passed, log_text, screenshot_path, report_path
     except Exception as exc:
         # 这里的异常只可能来自 sync_playwright() 或 launch 阶段（在 with 块外）

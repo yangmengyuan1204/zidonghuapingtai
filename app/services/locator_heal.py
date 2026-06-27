@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from ..core.utils import latest_ai_config
 from ..functional_testing import call_local_model_json
-from ..models import LocatorHealLog, UiCase
+from ..models import LocatorHealHistory, LocatorHealLog, UiCase
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,8 @@ _MAX_ELEMENTS = 80        # DOM 提取元素上限
 _MAX_TEXT_LEN = 50        # 元素文本截断长度
 _AI_TIMEOUT = 30          # AI 调用超时（秒），用户要求"立即修复继续"
 _VALIDATION_TIMEOUT = 3000  # locator 验证超时（毫秒）
+_SHADOW_DEPTH = 3         # Shadow DOM 递归深度上限
+_PAGE_STABLE_TIMEOUT = 2000  # 页面稳定等待（毫秒）
 
 # action → 允许的标签集合（用于验证 AI 返回的 locator 是否与动作兼容）
 _ACTION_TAG_COMPAT: Dict[str, set[str]] = {
@@ -36,12 +38,31 @@ _ACTION_TAG_COMPAT: Dict[str, set[str]] = {
     "assert_value": {"input", "textarea", "select"},
 }
 
-# page.evaluate 提取可交互元素的脚本
+# page.evaluate 提取可交互元素的脚本（含 Shadow DOM 穿透 + 多语言 selector）
 _EXTRACT_JS = """
 () => {
-  const sels = 'button, a, input, textarea, select, [role="button"], [onclick]';
+  const sels = 'button, a, input, textarea, select, [role="button"], [onclick], [class*="btn"], [class*="button"]';
   const esc = s => (s || '').replace(/"/g, '\\\\"').slice(0, %d);
-  return Array.from(document.querySelectorAll(sels)).slice(0, %d).map(el => {
+  function deepQueryAll(root, selector, depth) {
+    if (depth < 0) return [];
+    let results = Array.from(root.querySelectorAll(selector));
+    try {
+      for (const el of root.querySelectorAll('*')) {
+        if (el.shadowRoot) {
+          results = results.concat(deepQueryAll(el.shadowRoot, selector, depth - 1));
+        }
+      }
+    } catch(e) {}
+    return results;
+  }
+  const all = deepQueryAll(document, sels, %d).slice(0, %d);
+  const seen = new Set();
+  return all.filter(el => {
+    const key = el.tagName + '|' + (el.id||'') + '|' + (el.name||'') + '|' + (el.innerText||'').slice(0,20);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map(el => {
     const text = (el.innerText || el.value || '').trim();
     const tag = el.tagName.toLowerCase();
     return {
@@ -62,19 +83,103 @@ _EXTRACT_JS = """
     };
   });
 }
-""" % (_MAX_TEXT_LEN, _MAX_ELEMENTS, _MAX_TEXT_LEN)
+""" % (_MAX_TEXT_LEN, _SHADOW_DEPTH, _MAX_ELEMENTS, _MAX_TEXT_LEN)
 
 
 # ── DOM 提取 ─────────────────────────────────────────
+def _wait_page_stable(page: Any, timeout: int = _PAGE_STABLE_TIMEOUT) -> None:
+    """等待页面加载稳定（SPA 动态渲染）。"""
+    try:
+        page.wait_for_load_state("domcontentloaded", timeout=timeout)
+    except Exception:
+        pass
+    try:
+        page.wait_for_load_state("networkidle", timeout=timeout)
+    except Exception:
+        page.wait_for_timeout(300)
+
+
 def _extract_interactive_elements(page: Any) -> list[Dict[str, Any]]:
-    """提取页面可交互元素列表。"""
+    """提取页面可交互元素列表（含动态等待重试）。"""
+    _wait_page_stable(page)
     try:
         result = page.evaluate(_EXTRACT_JS)
         if isinstance(result, list):
             return result
     except Exception as exc:
         logger.warning("提取页面 DOM 失败: %s", exc)
+    # 元素为空时等待 1s 后重试 1 次
+    page.wait_for_timeout(1000)
+    try:
+        result = page.evaluate(_EXTRACT_JS)
+        if isinstance(result, list):
+            return result
+    except Exception:
+        pass
     return []
+
+
+# ── 历史学习 ──────────────────────────────────────────
+def _lookup_heal_history(db: Session, project_id: int | None, old_locator: str) -> str | None:
+    """从历史映射表中查找已验证的新 locator。"""
+    try:
+        q = db.query(LocatorHealHistory).filter(
+            LocatorHealHistory.old_locator == old_locator,
+            LocatorHealHistory.success_count > 0,
+        )
+        if project_id:
+            q = q.filter(
+                (LocatorHealHistory.project_id == project_id) | (LocatorHealHistory.project_id.is_(None))
+            )
+        record = q.order_by(LocatorHealHistory.success_count.desc()).first()
+        if record:
+            logger.info("历史学习命中: %s -> %s (success=%d)", old_locator, record.new_locator, record.success_count)
+            return record.new_locator
+    except Exception as exc:
+        logger.warning("历史学习查询失败: %s", exc)
+    return None
+
+
+def _record_heal_history(db: Session, project_id: int | None, old_locator: str, new_locator: str) -> None:
+    """记录 / 更新历史映射。"""
+    try:
+        existing = db.query(LocatorHealHistory).filter(
+            LocatorHealHistory.old_locator == old_locator,
+            LocatorHealHistory.new_locator == new_locator,
+        ).first()
+        if existing:
+            existing.apply_count = (existing.apply_count or 0) + 1
+            existing.last_used = datetime.now()
+            db.commit()
+        else:
+            record = LocatorHealHistory(
+                project_id=project_id,
+                old_locator=old_locator,
+                new_locator=new_locator,
+                apply_count=1,
+                success_count=0,
+                last_used=datetime.now(),
+                create_time=datetime.now(),
+            )
+            db.add(record)
+            db.commit()
+    except Exception as exc:
+        logger.warning("历史学习记录失败: %s", exc)
+
+
+def update_heal_history_on_success(db: Session, old_locator: str, new_locator: str) -> None:
+    """用例执行成功后调用，更新 success_count。"""
+    try:
+        record = db.query(LocatorHealHistory).filter(
+            LocatorHealHistory.old_locator == old_locator,
+            LocatorHealHistory.new_locator == new_locator,
+        ).first()
+        if record:
+            record.success_count = (record.success_count or 0) + 1
+            record.last_used = datetime.now()
+            db.commit()
+    except Exception as exc:
+        logger.warning("历史学习更新 success_count 失败: %s", exc)
 
 
 # ── Prompt 构建 ───────────────────────────────────────
@@ -288,6 +393,24 @@ def auto_heal(
         logger.info("Locator 自愈跳过：已关闭")
         return None
 
+    # 历史学习：先查已验证的映射，命中则跳过 AI（<10ms）
+    project_id = None
+    try:
+        case = db.get(UiCase, case_id)
+        if case:
+            project_id = case.project_id
+    except Exception:
+        pass
+    cached = _lookup_heal_history(db, project_id, failed_locator)
+    if cached and _validate_new_locator(page, cached, action):
+        _apply_heal_to_case(db, case_id, failed_locator, cached)
+        _persist_heal_log(
+            db, case_id, failed_locator, cached, page_url, screenshot_path,
+            action, "历史学习命中", "历史映射", 1,
+        )
+        logger.info("Locator 历史学习命中: %s -> %s", failed_locator, cached)
+        return {"locator": cached, "confidence": 1.0, "reason": "历史学习命中"}
+
     threshold = getattr(config, "heal_confidence_threshold", 0.7) or 0.7
 
     elements = _extract_interactive_elements(page)
@@ -350,6 +473,7 @@ def auto_heal(
 
         # 验证通过 + confidence 达标：写回用例
         _apply_heal_to_case(db, case_id, failed_locator, new_locator)
+        _record_heal_history(db, project_id, failed_locator, new_locator)
 
         _persist_heal_log(
             db, case_id, failed_locator, new_locator, page_url, screenshot_path,

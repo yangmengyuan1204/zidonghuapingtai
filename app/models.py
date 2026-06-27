@@ -361,3 +361,17 @@ class LocatorHealLog(Base):
     ai_response = Column(Text, nullable=True)
     auto_applied = Column(Integer, nullable=False, default=0)
 
+
+class LocatorHealHistory(Base):
+    """Locator 自愈历史学习表：记录同一 locator 的历史映射，加速二次自愈。"""
+    __tablename__ = "locator_heal_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=True, index=True)
+    old_locator = Column(String(500), nullable=False)
+    new_locator = Column(String(500), nullable=False)
+    apply_count = Column(Integer, nullable=False, default=1)
+    success_count = Column(Integer, nullable=False, default=0)
+    last_used = Column(DateTime, nullable=True)
+    create_time = Column(DateTime, nullable=False)
+
