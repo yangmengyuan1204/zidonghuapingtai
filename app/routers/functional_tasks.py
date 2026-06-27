@@ -1332,7 +1332,7 @@ def execute_functional_case_for_run(
     execution_context = dict(execution_context or {})
     execution_context["strip_login_steps"] = True
     try:
-        passed, log_text, screenshot_path, report_path = execute_ui_case(ui_case, case_variables, execution_context)
+        passed, log_text, screenshot_path, report_path = execute_ui_case(ui_case, case_variables, execution_context, None, db)
     except Exception as exc:
         passed = False
         screenshot_path = ""
@@ -1809,7 +1809,7 @@ def _background_execute_functional(
             )
 
         try:
-            execute_ui_cases_batch(batch_items, on_case_start=_on_case_start, on_case_finish=_on_case_finish, parallelism=parallelism)
+            execute_ui_cases_batch(batch_items, on_case_start=_on_case_start, on_case_finish=_on_case_finish, parallelism=parallelism, db_session=bg_db)
         except Exception as exc:
             if "登录前置失败" not in str(exc):
                 raise

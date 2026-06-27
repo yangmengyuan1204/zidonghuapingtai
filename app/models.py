@@ -297,6 +297,8 @@ class AiConfig(Base):
     model = Column(String(160), nullable=True)
     api_key = Column(String(500), nullable=True)
     create_time = Column(DateTime, nullable=False)
+    heal_enabled = Column(Integer, nullable=False, default=1)
+    heal_confidence_threshold = Column(Float, nullable=False, default=0.7)
 
 class TestAccountProfile(Base):
     __tablename__ = "test_account_profile"

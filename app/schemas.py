@@ -350,6 +350,8 @@ class AiConfigUpdate(BaseModel):
     base_url: Optional[str] = ""
     model: Optional[str] = ""
     api_key: Optional[str] = ""
+    heal_enabled: Optional[int] = 1
+    heal_confidence_threshold: Optional[float] = 0.7
 
 
 class QuickRunRequest(BaseModel):

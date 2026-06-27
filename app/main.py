@@ -1289,6 +1289,10 @@ def update_ai_config(
             config.model = data["model"] or ""
         if "api_key" in data:
             config.api_key = data["api_key"] or ""
+        if "heal_enabled" in data:
+            config.heal_enabled = int(data["heal_enabled"] or 1)
+        if "heal_confidence_threshold" in data:
+            config.heal_confidence_threshold = float(data["heal_confidence_threshold"] or 0.7)
     db.commit()
     db.refresh(config)
     return serialize_ai_config(config)

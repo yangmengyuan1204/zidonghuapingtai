@@ -771,6 +771,10 @@ def init_app() -> None:
                 "ai_response": "ALTER TABLE locator_heal_log ADD COLUMN ai_response TEXT",
                 "auto_applied": "ALTER TABLE locator_heal_log ADD COLUMN auto_applied INTEGER DEFAULT 0",
             },
+            "ai_config": {
+                "heal_enabled": "ALTER TABLE ai_config ADD COLUMN heal_enabled INTEGER DEFAULT 1",
+                "heal_confidence_threshold": "ALTER TABLE ai_config ADD COLUMN heal_confidence_threshold FLOAT DEFAULT 0.7",
+            },
         }
         with engine.begin() as conn:
             for table_name, table_migrations in migrations.items():
@@ -944,7 +948,7 @@ def latest_ai_config(db: Session) -> AiConfig | None:
 
 def serialize_ai_config(config: AiConfig | None) -> Dict[str, Any]:
     if not config:
-        return {"provider": "openai_compatible", "base_url": "", "model": "", "api_key": ""}
+        return {"provider": "openai_compatible", "base_url": "", "model": "", "api_key": "", "heal_enabled": 1, "heal_confidence_threshold": 0.7}
     data = serialize(config)
     data["api_key"] = ""
     return data
@@ -3203,7 +3207,7 @@ def execute_functional_case_for_run(
     execution_context = dict(execution_context or {})
     execution_context["strip_login_steps"] = True
     try:
-        passed, log_text, screenshot_path, report_path = execute_ui_case(ui_case, case_variables, execution_context)
+        passed, log_text, screenshot_path, report_path = execute_ui_case(ui_case, case_variables, execution_context, None, db)
     except Exception as exc:
         passed = False
         screenshot_path = ""

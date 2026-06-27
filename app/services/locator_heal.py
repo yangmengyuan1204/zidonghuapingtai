@@ -239,6 +239,24 @@ def _apply_heal_to_case(db: Session, case_id: int, old_locator: str, new_locator
         return False
 
 
+# ── 精简 prompt（重试时使用） ─────────────────────────
+def _build_compact_prompt(failed_locator: str, step: Dict[str, Any], elements: list[Dict[str, Any]]) -> str:
+    """精简 prompt（仅 tag+text），用于 AI 重试。"""
+    action = step.get("action") or ""
+    name = step.get("name") or ""
+    step_value = _mask_sensitive(step.get("value"), action, name)
+    compact = [
+        {"tag": e.get("tag"), "text": e.get("text"), "id": e.get("id")}
+        for e in elements[:20]
+    ]
+    return (
+        f"失效 locator: {failed_locator}\n"
+        f"动作: {action}\n"
+        f"元素: {json.dumps(compact, ensure_ascii=False)}\n"
+        '只返回 JSON: {"new_locator": "...", "confidence": 0.9}'
+    )
+
+
 # ── 对外入口 ──────────────────────────────────────────
 def auto_heal(
     page: Any,
@@ -247,10 +265,10 @@ def auto_heal(
     step: Dict[str, Any],
     db: Session,
     screenshot_path: str = "",
-) -> Optional[str]:
+) -> Optional[Dict[str, Any]]:
     """AI 自动修复失效 locator。
 
-    返回新 locator 字符串（已验证可用）；失败返回 None。
+    返回 dict: {"locator": 新locator, "confidence": 0.9, "reason": "..."}；失败返回 None。
     """
     action = step.get("action") or ""
     page_url = ""
@@ -264,50 +282,82 @@ def auto_heal(
         logger.info("Locator 自愈跳过：未配置 AI")
         return None
 
+    # 检查自愈开关
+    heal_enabled = getattr(config, "heal_enabled", 1)
+    if not heal_enabled:
+        logger.info("Locator 自愈跳过：已关闭")
+        return None
+
+    threshold = getattr(config, "heal_confidence_threshold", 0.7) or 0.7
+
     elements = _extract_interactive_elements(page)
     if not elements:
         logger.info("Locator 自愈跳过：页面无可交互元素")
         return None
 
-    prompt = _build_heal_prompt(failed_locator, step, elements)
+    # 两次尝试：标准 prompt → 精简 prompt
+    prompts = [
+        _build_heal_prompt(failed_locator, step, elements),
+        _build_compact_prompt(failed_locator, step, elements),
+    ]
 
-    # AI 调用
-    try:
-        result = call_local_model_json(config, prompt, timeout=_AI_TIMEOUT)
-    except Exception as exc:
-        logger.warning("Locator 自愈 AI 调用失败: %s", exc)
-        _fail(db, case_id, failed_locator, "", page_url, screenshot_path, action, prompt, f"AI 调用异常: {exc}")
-        return None
+    last_ai_raw = ""
+    for attempt_idx, prompt in enumerate(prompts):
+        try:
+            result = call_local_model_json(config, prompt, timeout=_AI_TIMEOUT)
+        except Exception as exc:
+            logger.warning("Locator 自愈 AI 调用失败(第%d次): %s", attempt_idx + 1, exc)
+            last_ai_raw = f"AI 调用异常: {exc}"
+            continue
 
-    if result is None:
-        _fail(db, case_id, failed_locator, "", page_url, screenshot_path, action, prompt, "AI 返回空")
-        return None
+        if result is None:
+            last_ai_raw = "AI 返回空"
+            continue
 
-    ai_raw = json.dumps(result, ensure_ascii=False) if isinstance(result, dict) else str(result)
+        ai_raw = json.dumps(result, ensure_ascii=False) if isinstance(result, dict) else str(result)
+        last_ai_raw = ai_raw
 
-    # 解析 AI 返回
-    new_locator = ""
-    if isinstance(result, dict):
-        new_locator = str(result.get("new_locator") or "").strip()
-    elif isinstance(result, str):
-        new_locator = result.strip()
+        # 解析 AI 返回
+        new_locator = ""
+        confidence = 0.0
+        reason = ""
+        if isinstance(result, dict):
+            new_locator = str(result.get("new_locator") or "").strip()
+            confidence = float(result.get("confidence") or 0)
+            reason = str(result.get("reason") or "")
+        elif isinstance(result, str):
+            new_locator = result.strip()
 
-    if not new_locator:
-        _fail(db, case_id, failed_locator, "", page_url, screenshot_path, action, prompt, ai_raw)
-        return None
+        if not new_locator:
+            continue
 
-    # 验证
-    if not _validate_new_locator(page, new_locator, action):
-        logger.info("Locator 自愈验证失败: %s", new_locator)
-        _fail(db, case_id, failed_locator, new_locator, page_url, screenshot_path, action, prompt, ai_raw)
-        return None
+        # 验证 locator 有效性
+        if not _validate_new_locator(page, new_locator, action):
+            logger.info("Locator 自愈验证失败(第%d次): %s", attempt_idx + 1, new_locator)
+            # 记录验证失败日志（仅最后一次）
+            if attempt_idx == len(prompts) - 1:
+                _fail(db, case_id, failed_locator, new_locator, page_url, screenshot_path, action, prompt, ai_raw)
+            continue
 
-    # 写回用例
-    _apply_heal_to_case(db, case_id, failed_locator, new_locator)
+        # confidence 阈值检查
+        if confidence < threshold:
+            logger.info("Locator 自愈 confidence %.2f < 阈值 %.2f，仅记录不自动应用", confidence, threshold)
+            _persist_heal_log(
+                db, case_id, failed_locator, new_locator, page_url, screenshot_path,
+                action, prompt, ai_raw, 0,
+            )
+            return None
 
-    _persist_heal_log(
-        db, case_id, failed_locator, new_locator, page_url, screenshot_path,
-        action, prompt, ai_raw, 1,
-    )
-    logger.info("Locator 自愈成功: %s -> %s", failed_locator, new_locator)
-    return new_locator
+        # 验证通过 + confidence 达标：写回用例
+        _apply_heal_to_case(db, case_id, failed_locator, new_locator)
+
+        _persist_heal_log(
+            db, case_id, failed_locator, new_locator, page_url, screenshot_path,
+            action, prompt, ai_raw, 1,
+        )
+        logger.info("Locator 自愈成功(第%d次): %s -> %s (confidence=%.2f)", attempt_idx + 1, failed_locator, new_locator, confidence)
+        return {"locator": new_locator, "confidence": confidence, "reason": reason}
+
+    # 两次尝试均失败
+    _fail(db, case_id, failed_locator, "", page_url, screenshot_path, action, prompts[0], last_ai_raw)
+    return None

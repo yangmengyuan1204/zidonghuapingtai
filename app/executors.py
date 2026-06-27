@@ -1290,23 +1290,27 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                             if case_id and db is not None:
                                 try:
                                     from .services.locator_heal import auto_heal
-                                    ai_healed = auto_heal(
+                                    heal_result = auto_heal(
                                         page, case_id,
                                         locator or (candidates[0] if candidates else ""),
                                         step, db,
                                         screenshot_path=detail.get("before_screenshot") or "",
                                     )
-                                    if ai_healed and ai_healed not in candidates:
-                                        candidates.insert(0, ai_healed)
-                                        detail["healed"] = True
-                                        detail["healed_locator"] = ai_healed
-                                        detail["ai_healed"] = True
-                                        target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
-                                        detail["used_locator"] = used_locator
-                                        detail["matched_count"] = matched_count
-                                        _perform_ui_action(page, target, action, value, used_locator, timeout_ms)
-                                        detail["retry_count"] = attempt
-                                        break
+                                    if heal_result:
+                                        ai_healed = heal_result["locator"]
+                                        if ai_healed and ai_healed not in candidates:
+                                            candidates.insert(0, ai_healed)
+                                            detail["healed"] = True
+                                            detail["healed_locator"] = ai_healed
+                                            detail["ai_healed"] = True
+                                            detail["heal_confidence"] = heal_result.get("confidence", 0)
+                                            detail["heal_reason"] = heal_result.get("reason", "")
+                                            target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
+                                            detail["used_locator"] = used_locator
+                                            detail["matched_count"] = matched_count
+                                            _perform_ui_action(page, target, action, value, used_locator, timeout_ms)
+                                            detail["retry_count"] = attempt
+                                            break
                                 except Exception:
                                     pass
                             raise last_error
@@ -1591,6 +1595,7 @@ def execute_ui_cases_batch(
     on_case_start: Any | None = None,
     on_case_finish: Any | None = None,
     parallelism: int = 1,
+    db_session: Any = None,
 ) -> list[Tuple[bool, str, str, str]]:
     ensure_report_dirs()
     batch_items = list(items)
@@ -1620,6 +1625,7 @@ def execute_ui_cases_batch(
                 item.get("variables"),
                 execution_context,
                 deadline,
+                db_session=db_session,
             )
             results.append(result)
             if on_case_finish:
@@ -1633,7 +1639,7 @@ def execute_ui_cases_batch(
             for index, item in indexed_items:
                 if on_case_start:
                     on_case_start(item)
-                future_map[pool.submit(execute_ui_case, item["case"], item.get("variables"), item.get("execution_context"))] = (index, item)
+                future_map[pool.submit(execute_ui_case, item["case"], item.get("variables"), item.get("execution_context"), None, db_session)] = (index, item)
             for future in as_completed(future_map):
                 index, item = future_map[future]
                 try:
@@ -1652,7 +1658,7 @@ def execute_ui_cases_batch(
         for item in batch_items:
             if on_case_start:
                 on_case_start(item)
-            result = execute_ui_case(item["case"], item.get("variables"), item.get("execution_context"))
+            result = execute_ui_case(item["case"], item.get("variables"), item.get("execution_context"), None, db_session)
             results.append(result)
             if on_case_finish:
                 on_case_finish(item, result)
@@ -1704,7 +1710,7 @@ def execute_ui_cases_batch(
         for item in batch_items[processed_count:]:
             if on_case_start:
                 on_case_start(item)
-            result = execute_ui_case(item["case"], item.get("variables"), item.get("execution_context"))
+            result = execute_ui_case(item["case"], item.get("variables"), item.get("execution_context"), None, db_session)
             results.append(result)
             if on_case_finish:
                 on_case_finish(item, result)
@@ -1957,12 +1963,13 @@ def execute_ui_case_with_deadline(
     runtime_vars: Dict[str, Any] | None,
     execution_context: Dict[str, Any] | None,
     deadline_seconds: int,
+    db_session: Any = None,
 ) -> Tuple[bool, str, str, str]:
     result_queue: queue.Queue[Tuple[bool, str, str, str] | BaseException] = queue.Queue(maxsize=1)
 
     def _runner() -> None:
         try:
-            result_queue.put(execute_ui_case(case, runtime_vars, execution_context))
+            result_queue.put(execute_ui_case(case, runtime_vars, execution_context, None, db_session))
         except BaseException as exc:
             result_queue.put(exc)
 
