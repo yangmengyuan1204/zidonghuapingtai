@@ -1219,13 +1219,17 @@ def test_run_template(
 @app.get("/api/locator-heal-logs")
 def list_heal_logs(
     case_id: int | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[Dict[str, Any]]:
+) -> Dict[str, Any]:
     query = db.query(LocatorHealLog)
     if case_id is not None:
         query = query.filter(LocatorHealLog.case_id == case_id)
-    return [
+    total = query.count()
+    offset = (page - 1) * page_size
+    items = [
         {
             "id": log.id,
             "case_id": log.case_id,
@@ -1237,9 +1241,12 @@ def list_heal_logs(
             "create_time": log.create_time.isoformat(),
             "step_action": log.step_action or "",
             "auto_applied": log.auto_applied or 0,
+            "ai_prompt": log.ai_prompt or "",
+            "ai_response": log.ai_response or "",
         }
-        for log in query.order_by(LocatorHealLog.id.desc()).limit(100).all()
+        for log in query.order_by(LocatorHealLog.id.desc()).offset(offset).limit(page_size).all()
     ]
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 @app.put("/api/locator-heal-logs/{log_id}")
@@ -1253,6 +1260,40 @@ def confirm_heal_log(
     log.confirmed = payload.confirmed
     db.commit()
     return {"message": "updated"}
+
+
+@app.post("/api/locator-heal-logs/{log_id}/apply")
+def apply_heal_log(
+    log_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    """手动确认应用一条 heal 记录到用例。"""
+    import json as _json
+    log = get_or_404(db, LocatorHealLog, log_id)
+    if not log.new_locator:
+        return {"message": "无新 locator，无法应用"}
+    case = db.get(UiCase, log.case_id)
+    if not case:
+        return {"message": "用例不存在"}
+    try:
+        steps = _json.loads(case.steps or "[]")
+        if isinstance(steps, list):
+            changed = False
+            for s in steps:
+                if isinstance(s, dict) and s.get("locator") == log.old_locator:
+                    s["locator"] = log.new_locator
+                    s["healed_at"] = datetime.now().isoformat()
+                    changed = True
+            if changed:
+                case.steps = _json.dumps(steps, ensure_ascii=False)
+                log.confirmed = 1
+                log.auto_applied = 1
+                db.commit()
+                return {"message": "已应用"}
+        return {"message": "未找到匹配的 locator"}
+    except Exception as exc:
+        return {"message": f"应用失败: {exc}"}
 
 
 # ─── AI 配置 ─────────────────────────────────────────────

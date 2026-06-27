@@ -14,9 +14,18 @@
     .heal-card .new { color: var(--ok); font-family: monospace; }
     .heal-card .meta { color: var(--text-dim); font-size: 13px; margin-bottom: 8px; }
     .heal-card .actions { margin-top: 8px; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+    .heal-card .detail { margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.05); border-radius: 4px; font-size: 13px; }
+    .heal-card .detail pre { white-space: pre-wrap; word-break: break-all; margin: 4px 0; }
+    .heal-card .screenshot { max-width: 400px; max-height: 200px; margin-top: 8px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 4px; }
     .badge.ok { background: #d4edda; color: #155724; }
     .badge.warn { background: #fff3cd; color: #856404; }
+    .badge.fail { background: #f8d7da; color: #721c24; }
+    .badge.ai { background: #d1ecf1; color: #0c5460; }
+    .toggle-detail { cursor: pointer; color: var(--text-dim); font-size: 12px; }
+    .toggle-detail:hover { text-decoration: underline; }
+    .pagination { display: flex; gap: 8px; justify-content: center; margin-top: 20px; }
+    .pagination button { padding: 6px 12px; }
     .toast { position: fixed; top: 20px; right: 20px; background: #333; color: #fff; padding: 12px 20px; border-radius: 6px; z-index: 9999; }
     .back-link { margin-bottom: 16px; display: inline-block; }
   </style>
@@ -25,9 +34,14 @@
   <a href="/" class="back-link">← 返回平台</a>
   <div class="page-head">
     <h1>定位器自愈记录</h1>
+    <div>
+      <input id="caseIdFilter" type="number" placeholder="按用例ID筛选" style="width:120px" />
+      <button class="btn" onclick="loadLogs(1)">查询</button>
+    </div>
   </div>
 
   <div id="healList"></div>
+  <div id="pagination" class="pagination"></div>
   <div id="toast" class="toast" hidden></div>
 
   <script>
@@ -53,41 +67,95 @@
       setTimeout(() => el.hidden = true, 2600);
     }
 
-    async function loadLogs() {
-      const logs = await API("/locator-heal-logs");
+    function escapeHtml(s) {
+      return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    let currentPage = 1;
+    let totalPages = 1;
+
+    async function loadLogs(page) {
+      currentPage = page || 1;
+      const caseId = document.getElementById("caseIdFilter").value;
+      let path = `/locator-heal-logs?page=${currentPage}&page_size=20`;
+      if (caseId) path += `&case_id=${caseId}`;
+      const data = await API(path);
+      const logs = data.items || [];
+      totalPages = Math.ceil((data.total || 0) / (data.page_size || 20));
       const container = document.getElementById("healList");
       if (!logs.length) {
         container.innerHTML = '<div class="panel"><div class="empty">暂无自愈记录</div></div>';
+        document.getElementById("pagination").innerHTML = "";
         return;
       }
-      container.innerHTML = logs.map(log => `
-        <div class="heal-card">
-          <div class="meta">
-            用例 #${log.case_id} · ${new Date(log.create_time).toLocaleString()}
-            <span class="badge ${log.confirmed ? 'ok' : 'warn'}">${log.confirmed ? '已确认' : '待确认'}</span>
+      container.innerHTML = logs.map(log => {
+        const statusBadge = log.auto_applied
+          ? '<span class="badge ok">已自动应用</span>'
+          : log.confirmed
+            ? '<span class="badge ok">已确认</span>'
+            : log.new_locator
+              ? '<span class="badge warn">待确认</span>'
+              : '<span class="badge fail">验证失败</span>';
+        const aiBadge = log.ai_response ? '<span class="badge ai">AI</span>' : '';
+        const hasDetail = log.ai_prompt || log.ai_response || log.screenshot_path;
+        const detailHtml = hasDetail ? `
+          <div class="toggle-detail" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display==='none'?'block':'none'">▸ 展开 AI 推理详情</div>
+          <div class="detail" style="display:none">
+            ${log.step_action ? `<div>步骤动作: <b>${escapeHtml(log.step_action)}</b></div>` : ""}
+            ${log.ai_response ? `<div>AI 返回: <pre>${escapeHtml(log.ai_response)}</pre></div>` : ""}
+            ${log.ai_prompt ? `<div>Prompt: <pre>${escapeHtml(log.ai_prompt).slice(0,500)}...</pre></div>` : ""}
+            ${log.screenshot_path ? `<img class="screenshot" src="${log.screenshot_path}" onclick="window.open(this.src)" />` : ""}
+          </div>` : "";
+        const actions = log.new_locator && !log.auto_applied
+          ? `<button class="btn secondary" onclick="applyLog(${log.id})">确认应用</button>
+             <button class="btn secondary" onclick="confirmLog(${log.id}, 0)">驳回</button>`
+          : log.confirmed
+            ? `<button class="btn secondary" onclick="confirmLog(${log.id}, 0)">撤销确认</button>`
+            : "";
+        return `
+          <div class="heal-card">
+            <div class="meta">
+              用例 #${log.case_id} · ${new Date(log.create_time).toLocaleString()}
+              ${statusBadge}${aiBadge}
+            </div>
+            <div>旧定位器：<span class="old">${escapeHtml(log.old_locator)}</span></div>
+            ${log.new_locator ? `<div>新定位器：<span class="new">${escapeHtml(log.new_locator)}</span></div>` : ""}
+            ${log.page_url ? `<div>页面：<a href="${escapeHtml(log.page_url)}" target="_blank">${escapeHtml(log.page_url)}</a></div>` : ""}
+            ${detailHtml}
+            <div class="actions">${actions}</div>
           </div>
-          <div>旧定位器：<span class="old">${log.old_locator}</span></div>
-          <div>新定位器：<span class="new">${log.new_locator}</span></div>
-          ${log.page_url ? `<div>页面：<a href="${log.page_url}" target="_blank">${log.page_url}</a></div>` : ""}
-          <div class="actions">
-            ${!log.confirmed ? `<button class="btn secondary" onclick="confirmLog(${log.id}, 1)">确认</button>` : ""}
-            <button class="btn secondary" onclick="confirmLog(${log.id}, 0)">驳回</button>
-          </div>
-        </div>
-      `).join("");
+        `;
+      }).join("");
+      renderPagination();
+    }
+
+    function renderPagination() {
+      const el = document.getElementById("pagination");
+      if (totalPages <= 1) { el.innerHTML = ""; return; }
+      let html = "";
+      if (currentPage > 1) html += `<button onclick="loadLogs(${currentPage - 1})">上一页</button>`;
+      html += `<span style="padding:6px 12px">第 ${currentPage} / ${totalPages} 页</span>`;
+      if (currentPage < totalPages) html += `<button onclick="loadLogs(${currentPage + 1})">下一页</button>`;
+      el.innerHTML = html;
     }
 
     async function confirmLog(id, confirmed) {
       await API(`/locator-heal-logs/${id}`, { method: "PUT", body: { confirmed } });
       showToast(confirmed ? "已确认" : "已驳回");
-      loadLogs();
+      loadLogs(currentPage);
+    }
+
+    async function applyLog(id) {
+      const res = await API(`/locator-heal-logs/${id}/apply`, { method: "POST" });
+      showToast(res.message || "操作完成");
+      loadLogs(currentPage);
     }
 
     const token = localStorage.getItem("token");
     if (!token) {
       document.body.innerHTML = '<p style="padding:40px;text-align:center">请先登录平台</p>';
     } else {
-      loadLogs();
+      loadLogs(1);
     }
   </script>
 </body>
