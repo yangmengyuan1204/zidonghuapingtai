@@ -278,6 +278,11 @@ async def no_cache_frontend_assets(request, call_next):
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+# 挂载 reports 目录，供前端访问截图
+_REPORT_DIR = BASE_DIR / "reports"
+if _REPORT_DIR.exists():
+    app.mount("/reports", StaticFiles(directory=str(_REPORT_DIR)), name="reports")
+
 
 # ─── 三大模块路由器 ──────────────────────────────────────
 

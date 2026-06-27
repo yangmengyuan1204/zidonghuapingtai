@@ -101,15 +101,14 @@ def _wait_page_stable(page: Any, timeout: int = _PAGE_STABLE_TIMEOUT) -> None:
 
 def _extract_interactive_elements(page: Any) -> list[Dict[str, Any]]:
     """提取页面可交互元素列表（含动态等待重试）。"""
-    _wait_page_stable(page)
     try:
         result = page.evaluate(_EXTRACT_JS)
-        if isinstance(result, list):
+        if isinstance(result, list) and result:
             return result
     except Exception as exc:
         logger.warning("提取页面 DOM 失败: %s", exc)
-    # 元素为空时等待 1s 后重试 1 次
-    page.wait_for_timeout(1000)
+    # 元素为空时等待页面稳定后重试 1 次
+    _wait_page_stable(page)
     try:
         result = page.evaluate(_EXTRACT_JS)
         if isinstance(result, list):
@@ -253,16 +252,20 @@ def _build_heal_prompt(failed_locator: str, step: Dict[str, Any], elements: list
 
 
 # ── 验证 ──────────────────────────────────────────────
-def _validate_new_locator(page: Any, new_locator: str, step_action: str) -> bool:
-    """验证 AI 返回的新 locator 是否唯一、可见、与动作兼容。"""
+def _validate_new_locator(page: Any, new_locator: str, step_action: str, quick: bool = False) -> bool:
+    """验证 AI 返回的新 locator 是否唯一、可见、与动作兼容。
+
+    quick=True 时使用短超时（历史学习命中场景，元素理应已存在）。
+    """
     if not new_locator or not isinstance(new_locator, str):
         return False
+    timeout = 800 if quick else _VALIDATION_TIMEOUT
     try:
         loc = page.locator(new_locator)
         if loc.count() != 1:
             return False
         first = loc.first
-        if not first.is_visible(timeout=_VALIDATION_TIMEOUT):
+        if not first.is_visible(timeout=timeout):
             return False
         # 动作兼容性检查
         allowed = _ACTION_TAG_COMPAT.get(step_action)
@@ -393,17 +396,21 @@ def auto_heal(
         logger.info("Locator 自愈跳过：已关闭")
         return None
 
-    # 历史学习：先查已验证的映射，命中则跳过 AI（<10ms）
+    # 查询用例（复用，避免后续重复查询）
+    case_obj = None
     project_id = None
     try:
-        case = db.get(UiCase, case_id)
-        if case:
-            project_id = case.project_id
+        case_obj = db.get(UiCase, case_id)
+        if case_obj:
+            project_id = case_obj.project_id
     except Exception:
         pass
+
+    # 历史学习：先查已验证的映射，命中则跳过 AI（<10ms）
     cached = _lookup_heal_history(db, project_id, failed_locator)
-    if cached and _validate_new_locator(page, cached, action):
+    if cached and _validate_new_locator(page, cached, action, quick=True):
         _apply_heal_to_case(db, case_id, failed_locator, cached)
+        _record_heal_history(db, project_id, failed_locator, cached)
         _persist_heal_log(
             db, case_id, failed_locator, cached, page_url, screenshot_path,
             action, "历史学习命中", "历史映射", 1,
@@ -446,7 +453,10 @@ def auto_heal(
         reason = ""
         if isinstance(result, dict):
             new_locator = str(result.get("new_locator") or "").strip()
-            confidence = float(result.get("confidence") or 0)
+            try:
+                confidence = float(result.get("confidence") or 0)
+            except (ValueError, TypeError):
+                confidence = 0.0
             reason = str(result.get("reason") or "")
         elif isinstance(result, str):
             new_locator = result.strip()

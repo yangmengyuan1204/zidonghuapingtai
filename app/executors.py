@@ -1278,6 +1278,7 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                             if healed and healed not in candidates:
                                 candidates.insert(0, healed)
                                 detail["healed"] = True
+                                detail["original_locator"] = healed_locator
                                 detail["healed_locator"] = healed
                                 target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
                                 detail["used_locator"] = used_locator
@@ -1292,7 +1293,7 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                                     from .services.locator_heal import auto_heal
                                     heal_result = auto_heal(
                                         page, case_id,
-                                        locator or (candidates[0] if candidates else ""),
+                                        healed_locator,
                                         step, db,
                                         screenshot_path=detail.get("before_screenshot") or "",
                                     )
@@ -1301,6 +1302,7 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                                         if ai_healed and ai_healed not in candidates:
                                             candidates.insert(0, ai_healed)
                                             detail["healed"] = True
+                                            detail["original_locator"] = healed_locator
                                             detail["healed_locator"] = ai_healed
                                             detail["ai_healed"] = True
                                             detail["heal_confidence"] = heal_result.get("confidence", 0)

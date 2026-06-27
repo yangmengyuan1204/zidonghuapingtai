@@ -71,6 +71,14 @@
       return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     }
 
+    function screenshotUrl(path) {
+      if (!path) return "";
+      // 文件系统路径转为 /reports/screenshots/xxx.png
+      const idx = path.replace(/\\\\/g, "/").lastIndexOf("reports/");
+      if (idx >= 0) return "/" + path.substr(idx).replace(/\\\\/g, "/");
+      return path;
+    }
+
     let currentPage = 1;
     let totalPages = 1;
 
@@ -104,7 +112,7 @@
             ${log.step_action ? `<div>步骤动作: <b>${escapeHtml(log.step_action)}</b></div>` : ""}
             ${log.ai_response ? `<div>AI 返回: <pre>${escapeHtml(log.ai_response)}</pre></div>` : ""}
             ${log.ai_prompt ? `<div>Prompt: <pre>${escapeHtml(log.ai_prompt).slice(0,500)}...</pre></div>` : ""}
-            ${log.screenshot_path ? `<img class="screenshot" src="${log.screenshot_path}" onclick="window.open(this.src)" />` : ""}
+            ${log.screenshot_path ? `<img class="screenshot" src="${screenshotUrl(log.screenshot_path)}" onclick="window.open(this.src)" />` : ""}
           </div>` : "";
         const actions = log.new_locator && !log.auto_applied
           ? `<button class="btn secondary" onclick="applyLog(${log.id})">确认应用</button>
