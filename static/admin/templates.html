@@ -4,26 +4,171 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>操作模板管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700&display=swap" />
   <link rel="stylesheet" href="/static/styles.css" />
   <style>
-    body { padding: 20px; max-width: 1200px; margin: 0 auto; }
-    .page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .page-head h1 { margin: 0; font-size: 24px; }
-    .back-link { margin-bottom: 16px; display: inline-block; }
-    .template-card { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-    .template-card h3 { margin: 0 0 8px; }
-    .template-card .meta { color: var(--text-dim); font-size: 13px; margin-bottom: 8px; }
-    .template-card .steps-preview { background: var(--bg); padding: 8px; border-radius: 4px; font: 12px monospace; max-height: 120px; overflow: auto; white-space: pre-wrap; }
-    .template-card .actions { margin-top: 8px; }
-    .template-card .actions button { margin-right: 8px; }
-    .toast { position: fixed; top: 20px; right: 20px; background: #333; color: #fff; padding: 12px 20px; border-radius: 6px; z-index: 9999; }
-    .field-group { border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
-    .field-group h4 { margin: 0 0 8px; font-size: 14px; }
-    .step-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; }
-    .step-row input, .step-row select { flex: 1; }
-    .step-row .btn-remove { flex: 0 0 30px; }
-    .step-list { margin: 8px 0; }
-    .keyword-tag { display: inline-block; background: var(--accent-bg); color: var(--accent); padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px; }
+    body { padding: 32px 24px; max-width: 1180px; margin: 0 auto; position: relative; }
+    body::before {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(circle at 8% 6%, var(--accent-glow) 0, transparent 32%),
+        radial-gradient(circle at 96% 94%, var(--accent-glow) 0, transparent 28%);
+      opacity: 0.6;
+    }
+    body > * { position: relative; z-index: 1; }
+
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--muted); text-decoration: none; font-size: 13px;
+      padding: 6px 12px; border-radius: var(--radius-sm);
+      transition: var(--transition);
+    }
+    .back-link:hover { color: var(--accent); background: var(--nav-hover-bg); }
+
+    .page-head {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 16px; flex-wrap: wrap;
+      margin: 18px 0 24px; padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+      position: relative;
+    }
+    .page-head::after {
+      content: ''; position: absolute; left: 0; bottom: -1px;
+      width: 56px; height: 2px; background: var(--accent-gradient);
+    }
+    .page-head h1 {
+      margin: 0; font-size: 28px; font-weight: 700;
+      letter-spacing: 0.02em; color: var(--text);
+      font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', serif;
+    }
+
+    .toolbar { margin-bottom: 18px; }
+    .toolbar .filters { gap: 12px; }
+    .toolbar .field.compact { min-width: 240px; }
+
+    .template-card {
+      position: relative;
+      background: var(--surface);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 18px 20px 16px; margin-bottom: 14px;
+      box-shadow: var(--shadow-sm); transition: var(--transition);
+      overflow: hidden;
+      animation: cardIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    }
+    .template-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: var(--accent-gradient); opacity: 0.55; transition: var(--transition);
+    }
+    .template-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--accent-light); }
+    .template-card:hover::before { opacity: 1; width: 4px; }
+    .template-card:nth-child(1) { animation-delay: 0.02s; }
+    .template-card:nth-child(2) { animation-delay: 0.06s; }
+    .template-card:nth-child(3) { animation-delay: 0.10s; }
+    .template-card:nth-child(4) { animation-delay: 0.14s; }
+    .template-card:nth-child(5) { animation-delay: 0.18s; }
+    .template-card:nth-child(n+6) { animation-delay: 0.22s; }
+    @keyframes cardIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .template-card h3 {
+      margin: 0 0 8px; font-size: 17px; font-weight: 700;
+      color: var(--text); letter-spacing: 0.02em;
+      font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', serif;
+    }
+    .template-card .meta {
+      color: var(--muted); font-size: 12.5px; margin-bottom: 10px;
+      letter-spacing: 0.02em;
+    }
+    .template-card .meta b { color: var(--text); font-weight: 600; }
+    .template-card > div { font-size: 14px; line-height: 1.7; color: var(--text); }
+    .template-card .steps-preview {
+      background: var(--nav-soft); border: 1px solid var(--line);
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      font: 12px 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+      max-height: 140px; overflow: auto; white-space: pre-wrap;
+      color: var(--muted); line-height: 1.6;
+    }
+    .template-card .actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .keyword-tag {
+      display: inline-flex; align-items: center;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      color: var(--accent);
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 11.5px; font-weight: 500;
+      margin: 2px 4px 2px 0;
+      border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+      transition: var(--transition);
+    }
+    .keyword-tag:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+
+    .field-group {
+      border: 1px solid var(--line); border-left: 3px solid var(--accent);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+      margin: 16px 0; background: var(--nav-soft);
+    }
+    .field-group h4 {
+      margin: 0 0 10px; font-size: 13px; font-weight: 600;
+      color: var(--text); text-transform: uppercase; letter-spacing: 0.06em;
+    }
+
+    .step-list { margin: 10px 0; display: grid; gap: 8px; }
+    .step-row {
+      display: grid;
+      grid-template-columns: 130px 1fr 1.4fr 1fr 1.4fr 38px;
+      gap: 8px; align-items: stretch;
+    }
+    .step-row select, .step-row input {
+      min-height: 38px; padding: 6px 10px;
+      border: 1px solid var(--line); border-radius: var(--radius-sm);
+      background: var(--surface-solid); color: var(--text);
+      font-size: 12.5px; transition: var(--transition);
+    }
+    .step-row select:focus, .step-row input:focus {
+      outline: none; border-color: var(--accent-light); box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .step-row .btn-remove { flex: 0 0 38px; min-width: 38px; padding: 0; }
+    @media (max-width: 720px) {
+      .step-row { grid-template-columns: 1fr 1fr; }
+      .step-row .btn-remove { grid-column: span 2; }
+    }
+
+    .empty-state {
+      text-align: center; padding: 64px 24px;
+      color: var(--muted);
+    }
+    .empty-state .empty-mark {
+      width: 56px; height: 56px; margin: 0 auto 16px;
+      border-radius: 50%;
+      background: var(--accent-gradient); opacity: 0.18;
+      position: relative;
+    }
+    .empty-state .empty-mark::after {
+      content: ''; position: absolute; inset: 14px;
+      border: 2px dashed var(--accent); border-radius: 50%; opacity: 0.6;
+    }
+    .empty-state h3 {
+      margin: 0 0 6px; font-size: 16px; font-weight: 600; color: var(--text);
+      font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
+    }
+    .empty-state p { margin: 0; font-size: 13px; }
+    .empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
+    .toast {
+      position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-12px);
+      background: var(--surface-solid); color: var(--text);
+      padding: 12px 22px; border-radius: var(--radius);
+      border: 1px solid var(--line); box-shadow: var(--shadow-lg);
+      z-index: 9999; font-size: 14px; font-weight: 500;
+      opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+    .toast:not([hidden]) { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .modal { border-radius: var(--radius); border: 1px solid var(--line); }
+    :focus-visible { outline: 2px solid var(--accent-light); outline-offset: 2px; border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -171,7 +316,7 @@
     function renderTemplates() {
       const container = document.querySelector("#templateList");
       if (!allTemplates.length) {
-        container.innerHTML = '<div class="panel"><div class="empty">暂无模板，点击上方"新建模板"创建</div></div>';
+        container.innerHTML = '<div class="empty-state"><div class="empty-mark"></div><h3>暂无操作模板</h3><p>点击右上角"新建模板"创建首个操作模板。</p></div>';
         return;
       }
       container.innerHTML = allTemplates.map(t => {
