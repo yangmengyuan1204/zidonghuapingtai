@@ -5,6 +5,9 @@ from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+# SEC-05: 上传文件大小上限（20MB），防止内存 DoS
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+
 from ..core.utils import (
     CASE_GENERATION_TEST_RESULTS,
     apply_case_generation_ocr_material,
@@ -96,6 +99,9 @@ async def upload_case_generation_workspace_screenshots(
         content = await file.read()
         if not content:
             errors.append(f"{file.filename}: 文件为空")
+            continue
+        if len(content) > MAX_UPLOAD_BYTES:
+            errors.append(f"{file.filename}: 文件过大，最大 20MB")
             continue
         try:
             image_path = store_functional_screenshot_file(file.filename or "screenshot.png", content)
@@ -290,6 +296,9 @@ async def upload_case_generation_screenshots(
         content = await file.read()
         if not content:
             errors.append(f"{file.filename}: 文件为空")
+            continue
+        if len(content) > MAX_UPLOAD_BYTES:
+            errors.append(f"{file.filename}: 文件过大，最大 20MB")
             continue
         try:
             image_path = store_functional_screenshot_file(file.filename or "screenshot.png", content)

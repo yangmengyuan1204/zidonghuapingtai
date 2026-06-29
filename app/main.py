@@ -242,20 +242,40 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="接口 + UI 自动化测试平台", lifespan=lifespan)
+# SEC-03: 生产环境通过 DISABLE_OPENAPI=1 关闭 /docs /redoc /openapi.json，默认保持开启以兼容现有行为
+_disable_docs = os.getenv("DISABLE_OPENAPI", "").strip() in {"1", "true", "yes"}
+app = FastAPI(
+    title="接口 + UI 自动化测试平台",
+    lifespan=lifespan,
+    docs_url=None if _disable_docs else "/docs",
+    redoc_url=None if _disable_docs else "/redoc",
+    openapi_url=None if _disable_docs else "/openapi.json",
+)
 
 # 保护「至少保留一个 admin」的序列化锁（SQLite 不支持 SELECT FOR UPDATE）
 _admin_lock = threading.Lock()
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "").strip()
 allowed_origins = [origin.strip() for origin in CORS_ORIGINS.split(",") if origin.strip()] if CORS_ORIGINS else ["http://localhost:8000", "http://127.0.0.1:8000"]
+# SEC-02: CORS 收紧 methods/headers 白名单（前端实际只用这些）
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+# SEC-09: 统一下发安全响应头（不改变业务逻辑，仅增强浏览器端防护）
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    return response
 
 
 @app.middleware("http")
@@ -1324,6 +1344,8 @@ def update_ai_config(
             model=data.get("model") or "",
             api_key=data.get("api_key") or "",
             create_time=datetime.now(),
+            heal_enabled=int(data.get("heal_enabled")) if data.get("heal_enabled") is not None else 1,
+            heal_confidence_threshold=float(data.get("heal_confidence_threshold")) if data.get("heal_confidence_threshold") is not None else 0.7,
         )
         db.add(config)
     else:
@@ -1336,9 +1358,9 @@ def update_ai_config(
         if "api_key" in data:
             config.api_key = data["api_key"] or ""
         if "heal_enabled" in data:
-            config.heal_enabled = int(data["heal_enabled"] or 1)
+            config.heal_enabled = int(data["heal_enabled"]) if data["heal_enabled"] is not None else 1
         if "heal_confidence_threshold" in data:
-            config.heal_confidence_threshold = float(data["heal_confidence_threshold"] or 0.7)
+            config.heal_confidence_threshold = float(data["heal_confidence_threshold"]) if data["heal_confidence_threshold"] is not None else 0.7
     db.commit()
     db.refresh(config)
     return serialize_ai_config(config)

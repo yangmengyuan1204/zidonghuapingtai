@@ -11,6 +11,9 @@ from typing import Any, Dict, Iterable, Type
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+# SEC-05: 上传文件大小上限（20MB），防止内存 DoS
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+
 from ..core.utils import (
     QUALITY_AUTH_RISK,
     QUALITY_EXECUTABLE,
@@ -526,6 +529,8 @@ async def upload_functional_axure(
     content = await file.read()
     if not content:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="上传文件不能为空")
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="文件过大，最大 20MB")
     task.axure_path = store_axure_file(file.filename or "prototype.rp", content)
     _assert_forward_status(task, "uploaded")
 
@@ -549,6 +554,8 @@ async def upload_functional_screenshot(
     content = await file.read()
     if not content:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="上传截图不能为空")
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="文件过大，最大 20MB")
     try:
         image_path = store_functional_screenshot_file(file.filename or "screenshot.png", content)
     except ValueError as exc:
@@ -582,6 +589,9 @@ async def upload_functional_screenshots_batch(
         content = await file.read()
         if not content:
             errors.append(f"{file.filename}: 文件为空")
+            continue
+        if len(content) > MAX_UPLOAD_BYTES:
+            errors.append(f"{file.filename}: 文件过大，最大 20MB")
             continue
         try:
             image_path = store_functional_screenshot_file(file.filename or "screenshot.png", content)
