@@ -918,6 +918,20 @@
 /* 表格条纹（不破坏已有 hover） */
 tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--muted) 4%, transparent); }
 tbody tr:hover td { background: var(--row-hover); }
+.drag-handle {
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+  cursor: grab;
+  user-select: none;
+  font-size: 1.1em;
+  color: var(--muted-foreground, #888);
+  line-height: 1;
+}
+.drag-handle:hover { color: var(--accent, #2563eb); }
+.drag-handle:active { cursor: grabbing; }
+tbody tr.dragging { opacity: 0.4; }
+tbody tr.drag-over > td { box-shadow: inset 0 2px 0 0 var(--accent, #2563eb); }
 
 /* Panel 微交互：默认 .panel:hover 已存在，加内容入场 */
 .panel-title + .panel-body,
