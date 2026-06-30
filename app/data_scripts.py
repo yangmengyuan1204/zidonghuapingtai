@@ -889,7 +889,7 @@ def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) 
     max_pages = _as_int(variables.get("max_pages"), 10)
     batch_size = _as_int(variables.get("batch_size"), 30)
     sleep_seconds = _as_float(variables.get("sleep"), 0.2)
-    detail_workers = _as_int(variables.get("detail_workers"), 4)
+    detail_workers = _as_int(variables.get("detail_workers"), 8)
     quantities = _quantity_cycle(variables.get("quantities"))
     allow_fallback_sku = not _as_bool(variables.get("no_fallback_sku"), False)
     strict_shop_count = _as_bool(variables.get("strict_shop_count") or variables.get("strict"), False)
@@ -2072,9 +2072,11 @@ def _run_backend_order_flow(
     if not _api_success(translate_payload):
         return False, {"backend_passed": False, "reason": "订单翻译提交失败", "translate": _payload_brief(translate_payload)}
 
-    _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
-    backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
+    # detail_after_translate：仅 order_translated 暂停点需要准确 status，非暂停路径跳过冗余查询
+    #（translate 不修改 order_detail 结构，confirm_source 直接用 translate_data 即可）
     if _checkpoint_requested(variables, "order_translated"):
+        _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
+        backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
         return True, _paused_summary(
             "order_translated",
             {
@@ -2084,8 +2086,8 @@ def _run_backend_order_flow(
                 "backend_status": after_translate.get("status") if after_translate else None,
             },
         )
-
-    confirm_source = after_translate or translate_data
+    backend_log["detail_after_translate"] = {**_admin_detail_brief(order_data), "cached_from": "detail_before"}
+    confirm_source = translate_data
     confirm_data = _build_confirm_data(confirm_source, variables, item_quantity)
     confirm_payload = _post_admin_form(
         session,
@@ -2134,9 +2136,15 @@ def _run_backend_order_flow(
     if not _api_success(offer_payload):
         return False, {"backend_passed": False, "reason": "业务报价提交失败", "offer": _payload_brief(offer_payload)}
 
-    _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=1)
-    backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
+    # detail_after_offer：order_offered 暂停点不需要最新 status，跳过冗余查询；
+    # 非暂停路径（继续到 order_paid）仍需查询以获取真实 status
     if _checkpoint_requested(variables, "order_offered"):
+        backend_log["detail_after_offer"] = {
+            **_admin_detail_brief(after_confirm),
+            "skipped": True,
+            "reason": "paused_at_order_offered",
+            "cached_from": "after_confirm",
+        }
         return True, _paused_summary(
             "order_offered",
             {
@@ -2144,9 +2152,11 @@ def _run_backend_order_flow(
                 "backend_passed": True,
                 "backend_steps": ["login", "detail", "translate", "confirm", "offer"],
                 "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
-                "backend_status": after_offer.get("status") if after_offer else None,
+                "backend_status": after_confirm.get("status") if after_confirm else None,
             },
         )
+    _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=1)
+    backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
     return True, {
         "backend_passed": True,
         "backend_steps": ["login", "detail", "translate", "confirm", "offer"],
@@ -6243,6 +6253,13 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
             token = _call_with_retry("client login", lambda: client.login(account, password, client_tool))
             log["login"] = {"success": True, "account": account, "client_tool": client_tool, "token_extracted": bool(token)}
 
+        # 若需要 order option，提前并行拉取 option_catalog，与 cart_list 并行以节省时间
+        option_prefetch_executor = None
+        option_prefetch_future = None
+        if option_counts:
+            option_prefetch_executor = ThreadPoolExecutor(max_workers=1)
+            option_prefetch_future = option_prefetch_executor.submit(_fetch_order_option_catalog, client, variables)
+
         cart_payload = _call_with_retry(
             "cart list",
             lambda: client.post_form(_api_path(variables, "client_cart_list", "/client/cart.goodsCartList"), {"priceCut": price_cut}),
@@ -6332,7 +6349,18 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
             )
 
         if option_counts:
-            option_catalog, option_payload, option_path = _fetch_order_option_catalog(client, variables)
+            # 复用预取结果，避免与 cart_list 串行等待；预取失败则回退串行重试
+            if option_prefetch_future is not None:
+                try:
+                    option_catalog, option_payload, option_path = option_prefetch_future.result()
+                except Exception as exc:
+                    log["order_option_prefetch_error"] = str(exc)
+                    option_catalog, option_payload, option_path = _fetch_order_option_catalog(client, variables)
+                finally:
+                    if option_prefetch_executor is not None:
+                        option_prefetch_executor.shutdown(wait=False)
+            else:
+                option_catalog, option_payload, option_path = _fetch_order_option_catalog(client, variables)
             log["order_option_list"] = {
                 "source_path": option_path,
                 **_payload_brief(option_payload),

@@ -1021,28 +1021,36 @@ def collect_items(
                 log("[WARN] detail exception goods_id={0}: {1}".format(goods_id, exc))
                 return raw
 
-        # 并行或串行获取商品详情
-        if detail_workers > 1 and ThreadPool is not None and len(goods) > 1:
-            pool = ThreadPool(detail_workers)
-            try:
-                detailed_goods = pool.map(load_detail, goods)
-            finally:
-                pool.close()
-                pool.join()
-        else:
-            detailed_goods = [load_detail(raw) for raw in goods]
+        # 分批拉取详情并在每批后早停，避免对整页商品做不必要的 detail 请求
+        detail_chunk_size = 10
+        for chunk_start in range(0, len(goods), detail_chunk_size):
+            chunk = goods[chunk_start:chunk_start + detail_chunk_size]
+            if detail_workers > 1 and ThreadPool is not None and len(chunk) > 1:
+                pool = ThreadPool(detail_workers)
+                try:
+                    detailed_chunk = pool.map(load_detail, chunk)
+                finally:
+                    pool.close()
+                    pool.join()
+            else:
+                detailed_chunk = [load_detail(raw) for raw in chunk]
 
-        # 将商品按店铺分组
-        for raw in detailed_goods:
-            candidates = build_cart_candidates(raw, client, quantity_cycle, allow_fallback_sku)
-            if not candidates:
-                continue  # 没有候选商品，跳过
-            shop_key = candidates[0].shop_id or candidates[0].shop_name
-            if not shop_key:
-                continue  # 没有店铺标识，跳过
-            bucket = shops.setdefault(shop_key, [])  # 获取或创建店铺桶
-            if len(bucket) < per_shop:
-                unique_append(bucket, candidates, per_shop)  # 添加不重复的商品
+            # 将本批商品按店铺分组
+            for raw in detailed_chunk:
+                candidates = build_cart_candidates(raw, client, quantity_cycle, allow_fallback_sku)
+                if not candidates:
+                    continue  # 没有候选商品，跳过
+                shop_key = candidates[0].shop_id or candidates[0].shop_name
+                if not shop_key:
+                    continue  # 没有店铺标识，跳过
+                bucket = shops.setdefault(shop_key, [])  # 获取或创建店铺桶
+                if len(bucket) < per_shop:
+                    unique_append(bucket, candidates, per_shop)  # 添加不重复的商品
+
+            # 每批后检查是否已达到目标店铺数，命中则跳过本页剩余商品
+            ready = sum(1 for items in shops.values() if len(items) >= per_shop)
+            if ready >= target_shops:
+                break
 
         # 检查是否已达到目标店铺数
         ready = sum(1 for items in shops.values() if len(items) >= per_shop)
