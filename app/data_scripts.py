@@ -26,6 +26,7 @@ PURCHASE_TO_SHELF_SCRIPT_NAME = "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b
 WAREHOUSE_DELIVERY_SCRIPT_NAME = "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355"
 POORDER_BALANCE_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u4f59\u989d\u4ed8\u6b3e"
 POORDER_BANK_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u94f6\u884c\u4ed8\u6b3e"
+BALANCE_RECHARGE_SCRIPT_NAME = "\u4f59\u989d\u5145\u503c"
 FULL_FLOW_SCRIPT_NAME = "\u5168\u6d41\u7a0b\u5b8c\u5168\u4f53"
 DIRECT_BOX_TO_SHELF_SCRIPT_NAME = "\u76f4\u63a5\u88c5\u7bb1\u4e0a\u67b6"
 RESUME_ORDER_FLOW_SCRIPT_NAME = "输入订单号继续执行操作"
@@ -959,6 +960,30 @@ def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) 
                 "selected_items": len(items),
             }
         ]
+        # 兜底1：当前 shop_type 收集为空且非 1688 时，自动尝试 1688（可通过 auto_fallback_shop_type=False 关闭）
+        if not items and shop_type != "1688" and _as_bool(variables.get("auto_fallback_shop_type"), True):
+            fb_shops, fb_items, fb_ready = collect_cart_items(keyword, "1688")
+            collection_attempts.append(
+                {
+                    "keyword": keyword,
+                    "shop_type": "1688",
+                    "ready_shops": fb_ready,
+                    "collected_shops": len(fb_shops),
+                    "selected_items": len(fb_items),
+                    "fallback": True,
+                    "fallback_reason": "shop_type_empty",
+                }
+            )
+            if fb_items:
+                log["fallback_collection"] = {
+                    "from": {"keyword": keyword, "shop_type": shop_type},
+                    "to": {"keyword": keyword, "shop_type": "1688"},
+                }
+                shop_type = "1688"
+                shops = fb_shops
+                items = fb_items
+                ready_shops = fb_ready
+                log["shop_type"] = shop_type
         if not items and _as_bool(variables.get("auto_fill_cart_on_shortage"), False):
             fallback_keywords = _unique_list(_as_list(variables.get("fallback_keywords"), PREFERRED_KEYWORDS) + PREFERRED_KEYWORDS + KEYWORDS)
             fallback_keyword_rounds = _as_int(
@@ -1022,6 +1047,29 @@ def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) 
         }
 
         if not items:
+            # 失败诊断：再调一次 searchGoods 探测接口返回，便于定位是接口报错还是返回空
+            search_probe = {"keyword": keyword, "shop_type": shop_type}
+            try:
+                probe_payload = client.search_goods(keyword, shop_type, 1, 1)
+                probe_data = probe_payload.get("data") or {}
+                probe_result = probe_data.get("result") if isinstance(probe_data, dict) else None
+                first_goods_count = 0
+                if isinstance(probe_result, list):
+                    first_goods_count = len(probe_result)
+                elif isinstance(probe_result, dict):
+                    inner = probe_result.get("result") or probe_result.get("list") or probe_result.get("data")
+                    if isinstance(inner, list):
+                        first_goods_count = len(inner)
+                search_probe.update(
+                    {
+                        "success": probe_payload.get("success"),
+                        "code": probe_payload.get("code"),
+                        "msg": probe_payload.get("msg"),
+                        "first_page_goods": first_goods_count,
+                    }
+                )
+            except Exception as exc:
+                search_probe["error"] = str(exc)
             return _finish(
                 log,
                 False,
@@ -1034,6 +1082,8 @@ def run_shopping_cart_script(env: Env, variables: Dict[str, Any] | None = None) 
                     "expected_total": expected_total,
                     "added_total": 0,
                     "reason": "\u672a\u6536\u96c6\u5230\u53ef\u52a0\u8d2d\u5546\u54c1",
+                    "search_probe": search_probe,
+                    "collection_attempts": collection_attempts,
                 },
             )
 
@@ -1644,6 +1694,37 @@ def _edit_cart_items_for_order(
     edit_logs = [logs_by_index[index] for index in range(len(selected_items)) if index in logs_by_index]
     failed_edits = [item.get("id") for item, _payload in failed_by_index.values()]
     return edit_logs, failed_edits
+
+
+# 后端日文错误提示 → 中文映射（命中即替换，未命中保留原文+数字）
+_ORDER_MSG_TRANSLATIONS = {
+    "注文提出商品数が最大制限に達しました": "订单提交商品数已达最大限制",
+    "操作が成功しました": "操作成功",
+    "ログインに失敗しました": "登录失败",
+    "パラメータエラー": "参数错误",
+    "システムエラー": "系统错误",
+    "注文情報が存在しません": "订单信息不存在",
+    "カート情報が存在しません": "购物车信息不存在",
+    "在庫が不足しています": "库存不足",
+}
+
+
+def _translate_order_msg(msg: Any) -> str:
+    """把后端日文错误提示翻译成中文，未命中的保留原文。"""
+    text = str(msg or "").strip()
+    if not text:
+        return ""
+    for jp, cn in _ORDER_MSG_TRANSLATIONS.items():
+        if jp in text:
+            return text.replace(jp, cn)
+    return text
+
+
+def _parse_order_max_limit(msg: Any) -> int | None:
+    """从"订单提交商品数已达最大限制:50"类提示中解析最大数量。"""
+    text = str(msg or "")
+    m = re.search(r"[:：]\s*(\d+)\s*$", text)
+    return int(m.group(1)) if m else None
 
 
 def _order_fields(
@@ -6283,17 +6364,41 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
         order_sn = _extract_order_sn(save_payload) or seed_order_sn
         log["create"]["save"] = {**_payload_brief(save_payload), "order_sn": order_sn}
         if not _api_success(save_payload) or not order_sn:
-            return _finish_named(
-                ORDER_SCRIPT_NAME,
-                log,
-                False,
-                {
-                    "order_sn": order_sn,
-                    "selected_count": len(selected_items),
-                    "item_quantity": item_quantity,
-                    "reason": "\u4e34\u65f6\u4fdd\u5b58\u8ba2\u5355\u5931\u8d25",
-                },
-            )
+            # 解析"商品数超过最大限制"提示，按后端给的最大数量截断后重试一次
+            save_msg = str(save_payload.get("msg") or save_payload.get("data") or "")
+            max_limit = _parse_order_max_limit(save_msg)
+            if max_limit and len(selected_items) > max_limit:
+                log["create"]["save_limit_retry"] = {
+                    "original_count": len(selected_items),
+                    "max_limit": max_limit,
+                    "raw_msg": save_msg,
+                }
+                selected_items = selected_items[:max_limit]
+                if option_counts:
+                    option_summary = _apply_order_options_to_items(selected_items, variables, option_catalog)
+                else:
+                    option_summary = _apply_order_options_to_items(selected_items, variables, OrderedDict())
+                log["order_options"] = option_summary
+                save_fields = _order_fields(selected_items, "save", seed_order_sn, item_quantity, logistics_id, client_remark)
+                save_payload = _call_with_retry(
+                    "order save retry",
+                    lambda: client.post_form(_api_path(variables, "client_order_create", "/client/order.orderCreate"), save_fields),
+                )
+                order_sn = _extract_order_sn(save_payload) or seed_order_sn
+                log["create"]["save_retry"] = {**_payload_brief(save_payload), "order_sn": order_sn, "truncated_to": max_limit}
+            if not _api_success(save_payload) or not order_sn:
+                final_msg = _translate_order_msg(save_payload.get("msg") or save_payload.get("data")) or "临时保存订单失败"
+                return _finish_named(
+                    ORDER_SCRIPT_NAME,
+                    log,
+                    False,
+                    {
+                        "order_sn": order_sn,
+                        "selected_count": len(selected_items),
+                        "item_quantity": item_quantity,
+                        "reason": final_msg,
+                    },
+                )
 
         final_payload = save_payload
         if submit_order:
@@ -6328,7 +6433,8 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
                 }
             )
         if not passed:
-            summary["reason"] = "\u6b63\u5f0f\u63d0\u51fa\u8ba2\u5355\u5931\u8d25" if submit_order else "\u8ba2\u5355\u4fdd\u5b58\u5931\u8d25"
+            final_msg = _translate_order_msg(final_payload.get("msg") or final_payload.get("data"))
+            summary["reason"] = final_msg or ("\u6b63\u5f0f\u63d0\u51fa\u8ba2\u5355\u5931\u8d25" if submit_order else "\u8ba2\u5355\u4fdd\u5b58\u5931\u8d25")
         elif _checkpoint_requested(variables, "order_created"):
             return _finish_named(ORDER_SCRIPT_NAME, log, True, _paused_summary("order_created", summary))
         elif run_backend_flow:
@@ -6553,6 +6659,166 @@ def run_material_generation_script(env: Env, variables: Dict[str, Any] | None = 
         )
 
 
+def run_balance_recharge_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    """\u4f59\u989d\u5145\u503c\u811a\u672c - \u524d\u53f0\u63d0\u4ea4\u94f6\u884c\u5145\u503c\u7533\u8bf7\uff0c\u540e\u53f0\u767b\u5f55\u540e\u786e\u8ba4\u5165\u91d1\uff0c\u5145\u503c\u91d1\u989d\u5230\u8fbe\u8be5\u8d26\u53f7\u4f59\u989d\u3002
+
+    \u63a5\u53e3\uff1a
+    - \u524d\u53f0\u63d0\u4ea4 POST /client/user.bankPayBalance (ClientToken)
+      \u5b57\u6bb5: pay_bank_method, pay_reach_date, pay_date, pay_name, pay_amount, pay_remark
+    - \u540e\u53f0\u67e5\u8be2 POST /bill.unConfirmList (AdminToken)
+    - \u540e\u53f0\u786e\u8ba4 POST /bill.confirm (AdminToken)  \u5b57\u6bb5: id
+
+    \u53ef\u914d\u7f6e\u53d8\u91cf\uff1a
+    - customer_id: \u5fc5\u586b\uff0c\u5145\u503c\u5230\u8be5\u5ba2\u6237\u4f59\u989d\uff08\u7531\u524d\u7aef/\u8def\u7531\u5c42\u6ce8\u5165\uff09
+    - amount: \u5fc5\u586b\uff0c\u5145\u503c\u91d1\u989d\uff08\u6620\u5c04\u5230 pay_amount\uff09
+    - pay_bank_method / pay_date / pay_reach_date / pay_name / pay_remark\uff1a\u53ef\u8986\u76d6\u9ed8\u8ba4\u503c
+    - client_recharge\uff1a\u524d\u53f0\u5145\u503c\u63d0\u4ea4\u63a5\u53e3\uff08\u9ed8\u8ba4 /client/user.bankPayBalance\uff09
+    - finance_confirm\uff1a\u662f\u5426\u6267\u884c\u540e\u53f0\u786e\u8ba4\uff08\u9ed8\u8ba4 True\uff09
+    """
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    customer_id = str(variables.get("customer_id") or "").strip()
+    amount = str(variables.get("amount") or variables.get("recharge_amount") or "").strip()
+    log: Dict[str, Any] = {
+        "script": BALANCE_RECHARGE_SCRIPT_NAME,
+        "mode": "balance_recharge",
+        "started_at": datetime.now(),
+        "customer_id": customer_id,
+        "amount": amount,
+        "recharge": {},
+        "finance": {},
+    }
+
+    if not customer_id:
+        return _finish_named(
+            BALANCE_RECHARGE_SCRIPT_NAME, log, False,
+            {"reason": "\u7f3a\u5c11\u5fc5\u586b\u53c2\u6570\uff1acustomer_id \u4e0d\u80fd\u4e3a\u7a7a"},
+        )
+    if not _positive_decimal(amount):
+        return _finish_named(
+            BALANCE_RECHARGE_SCRIPT_NAME, log, False,
+            {"reason": "\u7f3a\u5c11\u5fc5\u586b\u53c2\u6570\uff1a\u5145\u503c\u91d1\u989d amount \u5fc5\u987b\u4e3a\u6b63\u6570"},
+        )
+
+    try:
+        client, base_url, timeout, _ = _login_client_for_payment(env, variables, log)
+        log["base_url"] = base_url
+
+        # Step 1: 前台提交充值申请 POST /client/user.bankPayBalance
+        now = datetime.now()
+        pay_bank_method = str(variables.get("pay_bank_method") or "2")
+        pay_date = str(variables.get("pay_date") or now.strftime("%Y/%m/%d %H:%M:%S"))
+        pay_reach_date = str(variables.get("pay_reach_date") or now.strftime("%Y-%m-%d 00:00:00"))
+        pay_name = str(variables.get("pay_name") or "\u81ea\u52a8\u5316\u5145\u503c")
+        pay_remark = str(variables.get("pay_remark") or "")
+        fields: OrderedDict[str, Any] = OrderedDict()
+        fields["pay_bank_method"] = pay_bank_method
+        fields["pay_reach_date"] = pay_reach_date
+        fields["pay_date"] = pay_date
+        fields["pay_name"] = pay_name
+        fields["pay_amount"] = amount
+        fields["pay_remark"] = pay_remark
+        _apply_extra_fields(fields, variables.get("recharge_fields"))
+        recharge_payload = _call_with_retry(
+            "balance recharge",
+            lambda: client.post_form(_api_path(variables, "client_recharge", "/client/user.bankPayBalance"), fields),
+        )
+        recharge_ok = _api_success(recharge_payload)
+        recharge_data = recharge_payload.get("data") if isinstance(recharge_payload.get("data"), dict) else {}
+        serial_number = str(recharge_data.get("serial_number") or recharge_data.get("recharge_no") or recharge_data.get("bill_no") or "")
+        log["recharge"] = {**_payload_brief(recharge_payload), "request": dict(fields), "serial_number": serial_number}
+        if not recharge_ok:
+            reason = str(recharge_payload.get("msg") or recharge_payload.get("data") or "\u524d\u53f0\u5145\u503c\u63d0\u4ea4\u5931\u8d25")
+            return _finish_named(
+                BALANCE_RECHARGE_SCRIPT_NAME, log, False,
+                {
+                    "recharge_type": "balance",
+                    "customer_id": customer_id,
+                    "amount": amount,
+                    "serial_number": serial_number,
+                    "recharge_passed": False,
+                    "confirm_passed": False,
+                    "reason": reason,
+                },
+            )
+
+        # Step 2: 后台确认入金
+        finance_confirm = _as_bool(variables.get("finance_confirm"), True)
+        confirm_ok = True
+        if finance_confirm:
+            session = _admin_session_from(variables)
+            login_payload, token = _admin_login(session, base_url, variables, timeout)
+            log["finance"]["login"] = {
+                **_payload_brief(login_payload),
+                "account": str(variables.get("backend_account") or variables.get("backend_username") or "Y001"),
+                "token_extracted": bool(token),
+            }
+            if not _api_success(login_payload) or not token:
+                confirm_ok = False
+                log["finance"]["reason"] = "\u540e\u53f0\u767b\u5f55\u5931\u8d25"
+            else:
+                initial_delay = _as_float(variables.get("finance_confirm_initial_delay"), 2.0)
+                retry_delay = _as_float(variables.get("finance_confirm_delay"), 2.0)
+                retries = _as_int(variables.get("finance_confirm_retries"), 6)
+                if initial_delay > 0:
+                    time.sleep(initial_delay)
+                list_payload: Dict[str, Any] = {}
+                confirm_payload: Dict[str, Any] = {}
+                selected_bill: Dict[str, Any] | None = None
+                for attempt in range(retries):
+                    list_fields = _finance_unconfirm_fields(variables, serial_number, "")
+                    list_payload = _post_admin_form(
+                        session,
+                        base_url,
+                        _api_path(variables, "admin_bill_unconfirm_list", "/bill.unConfirmList"),
+                        list_fields,
+                        timeout,
+                    )
+                    rows = _finance_rows_from_payload(list_payload)
+                    selected_bill = _select_finance_bill(rows, serial_number, "")
+                    if _api_success(list_payload) and selected_bill and selected_bill.get("id") not in (None, ""):
+                        break
+                    if attempt < retries - 1:
+                        time.sleep(retry_delay)
+                log["finance"]["unconfirm_list"] = {**_payload_brief(list_payload), "serial_number": serial_number, "selected_bill": _finance_bill_brief(selected_bill)}
+                if _api_success(list_payload) and selected_bill and selected_bill.get("id") not in (None, ""):
+                    confirm_payload = _post_admin_form(
+                        session,
+                        base_url,
+                        _api_path(variables, "admin_bill_confirm", "/bill.confirm"),
+                        {"id": selected_bill.get("id")},
+                        timeout,
+                    )
+                    confirm_ok = _api_success(confirm_payload)
+                    log["finance"]["confirm"] = {**_payload_brief(confirm_payload), "request": {"id": selected_bill.get("id")}}
+                else:
+                    confirm_ok = False
+                    log["finance"]["confirm"] = {"serial_number": serial_number, "selected_bill": _finance_bill_brief(selected_bill)}
+                if not confirm_ok:
+                    last_payload = confirm_payload or list_payload
+                    last_msg = last_payload.get("msg") or last_payload.get("data") or "\u8d22\u52a1\u786e\u8ba4\u5165\u91d1\u5931\u8d25"
+                    log["finance"]["reason"] = f"\u8d22\u52a1\u786e\u8ba4\u5165\u91d1\u5931\u8d25\uff1a{last_msg}"
+
+        passed = recharge_ok and confirm_ok
+        summary = {
+            "recharge_type": "balance",
+            "customer_id": customer_id,
+            "amount": amount,
+            "serial_number": serial_number,
+            "recharge_passed": recharge_ok,
+            "confirm_passed": confirm_ok,
+        }
+        if not passed and "reason" not in summary:
+            summary["reason"] = log.get("finance", {}).get("reason") or "\u4f59\u989d\u5145\u503c\u5931\u8d25"
+        return _finish_named(BALANCE_RECHARGE_SCRIPT_NAME, log, passed, summary)
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _finish_named(
+            BALANCE_RECHARGE_SCRIPT_NAME, log, False,
+            {"recharge_type": "balance", "customer_id": customer_id, "amount": amount, "reason": str(exc)},
+        )
+
+
 SCRIPT_REGISTRY: Dict[str, Any] = {
     "shopping_cart": {
         "name": SCRIPT_NAME,
@@ -6614,6 +6880,10 @@ SCRIPT_REGISTRY: Dict[str, Any] = {
     "material_generation": {
         "name": MATERIAL_GENERATION_SCRIPT_NAME,
         "func": run_material_generation_script,
+    },
+    "balance_recharge": {
+        "name": BALANCE_RECHARGE_SCRIPT_NAME,
+        "func": run_balance_recharge_script,
     },
 }
 
