@@ -5559,7 +5559,42 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
         requested_id = str(variables.get("order_detail_id") or variables.get("porder_detail_id") or "").strip()
         requested_ids = _warehouse_requested_order_detail_ids(variables)
         if requested_id and warehouse_sku_count <= 1 and not require_full_count:
-            selected_items = [{"order_detail_id": requested_id, "send_num": send_num}]
+            # 快速路径：仍查询仓库列表拿真实可出荷数，避免 send_num 超过后端限制
+            list_fields = _warehouse_list_fields(variables)
+            fast_matched: Dict[str, Any] = {}
+            fast_path_used = ""
+            for path in _warehouse_candidate_paths(variables):
+                try:
+                    payload = _call_with_retry("warehouse list", lambda path=path: client.post_form(path, list_fields), attempts=1)
+                except Exception as exc:
+                    log["warehouse_attempts"].append({"attempt": 1, "path": path, "request": dict(list_fields), "error": str(exc), "fast_path": True})
+                    continue
+                rows = _nested_rows(payload)
+                log["warehouse_attempts"].append(
+                    {
+                        "attempt": 1,
+                        "path": path,
+                        "request": dict(list_fields),
+                        **_payload_brief(payload),
+                        "row_count": len(rows),
+                        "fast_path": True,
+                    }
+                )
+                for row in rows:
+                    if _warehouse_item_id(row) == requested_id and _warehouse_sendable_num(row) > 0:
+                        fast_matched = dict(row)
+                        fast_matched.setdefault("_warehouse_source", "current_order")
+                        fast_path_used = path
+                        warehouse_rows = rows
+                        break
+                if fast_matched:
+                    break
+            if fast_matched:
+                selected_items = [fast_matched]
+                log["warehouse_fast_path"] = {"matched": True, "path": fast_path_used, "sendable_num": _warehouse_sendable_num(fast_matched)}
+            else:
+                selected_items = [{"order_detail_id": requested_id, "send_num": send_num}]
+                log["warehouse_fast_path"] = {"matched": False, "fallback": "warehouse_list_no_match", "warning": "未取到真实可出荷数，沿用配置 send_num 提交"}
         else:
             list_fields = _warehouse_list_fields(variables)
             best_selected: list[Dict[str, Any]] = []
