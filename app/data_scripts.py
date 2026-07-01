@@ -8504,6 +8504,69 @@ def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[
     return str(token)
 
 
+def _oem_get_upload_token(session: requests.Session, base_url: str, client_token: str, timeout: int) -> Dict[str, Any]:
+    """调 OEM /common/common/getUploadToken 获取阿里云 OSS STS 临时凭证（需 clienttoken 头）。"""
+    url = urljoin(base_url.rstrip("/") + "/", "/common/common/getUploadToken")
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/plain, */*",
+        "clienttoken": client_token,
+        "Origin": OEM_DEFAULT_FRONTEND_ORIGIN,
+        "Referer": OEM_DEFAULT_FRONTEND_ORIGIN.rstrip("/") + "/",
+    }
+    response = session.post(url, json={}, headers=headers, timeout=timeout)
+    data = response.json() if response.ok else {}
+    if not isinstance(data, dict) or not data.get("success"):
+        raise RuntimeError(f"获取 OSS STS 失败: {data}")
+    sts = data.get("data") or {}
+    if not sts.get("AccessKeyId") or not sts.get("SecurityToken"):
+        raise RuntimeError(f"OSS STS 数据不完整: {sts}")
+    return sts
+
+
+def _oss_put_object(sts: Dict[str, Any], bucket: str, endpoint: str, object_key: str, content: bytes, content_type: str) -> str:
+    """用 STS 临时凭证签名 PUT 到阿里云 OSS，返回可访问 URL。"""
+    import hmac, hashlib, base64
+    from email.utils import formatdate
+    date = formatdate(usegmt=True)
+    # OSS v1 签名 StringToSign: VERB\nContent-MD5\nContent-Type\nDate\nCanonicalizedOSSHeaders\nCanonicalizedResource
+    string_to_sign = f"PUT\n\n{content_type}\n{date}\nx-oss-security-token:{sts['SecurityToken']}\n/{bucket}/{object_key}"
+    signature = base64.b64encode(
+        hmac.new(sts["AccessKeySecret"].encode("utf-8"), string_to_sign.encode("utf-8"), hashlib.sha1).digest()
+    ).decode("utf-8")
+    url = f"https://{bucket}.{endpoint}/{object_key}"
+    headers = {
+        "Authorization": f"OSS {sts['AccessKeyId']}:{signature}",
+        "Content-Type": content_type,
+        "Date": date,
+        "x-oss-security-token": sts["SecurityToken"],
+    }
+    response = requests.put(url, data=content, headers=headers, timeout=30)
+    if response.status_code not in (200, 204):
+        raise RuntimeError(f"OSS PUT 失败: {response.status_code} {response.text[:200]}")
+    return url
+
+
+OEM_OSS_BUCKET = "rakumart-oem"
+OEM_OSS_ENDPOINT = "oss-ap-northeast-1.aliyuncs.com"
+
+
+def upload_oem_image(file_name: str, content: bytes, content_type: str, base_url: str = OEM_DEFAULT_BASE_URL) -> str:
+    """OEM 图片上传：前台登录 -> 获取 STS -> PUT 到 OSS -> 返回 OSS URL。"""
+    session = requests.Session()
+    variables = {"account": "12345678990", "password": "123456"}
+    client_token = _oem_client_login(session, base_url, variables, 30)
+    sts = _oem_get_upload_token(session, base_url, client_token, 30)
+    # 构造 object_key: dest/202607/6位随机/文件名
+    now = datetime.now()
+    month_dir = now.strftime("%Y%m")
+    import random, string
+    rand_suffix = "".join(random.choices(string.digits, k=6))
+    safe_name = (file_name or "upload.png").replace("\\", "/").split("/")[-1]
+    object_key = f"dest/{month_dir}/{rand_suffix}/{safe_name}"
+    return _oss_put_object(sts, OEM_OSS_BUCKET, OEM_OSS_ENDPOINT, object_key, content, content_type)
+
+
 def _oem_parse_factory_urls(variables: Dict[str, Any]) -> list:
     """从前端多行文本解析工厂链接列表，兼容旧 factory_url 单值字段。"""
     raw = variables.get("factory_urls")

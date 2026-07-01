@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from ..core.utils import (
@@ -35,6 +35,7 @@ from ..data_scripts import (
     run_resume_porder_flow_script,
     run_shopping_cart_script,
     run_warehouse_delivery_script,
+    upload_oem_image,
 )
 from ..database import get_db
 from ..models import ApiCase, Env, TestRecord, User
@@ -348,3 +349,22 @@ def run_oem_new_inquiry_data_script(
     data = serialize(record)
     data["summary"] = summary
     return data
+
+
+@router.post("/oem/upload-image")
+async def upload_oem_image_route(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """OEM 商品图片上传：前端选文件 -> 后端登录OEM -> 拿STS -> PUT到OSS -> 返回URL。"""
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="上传文件不能为空")
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="文件过大，最大 20MB")
+    content_type = file.content_type or "application/octet-stream"
+    try:
+        url = upload_oem_image(file.filename or "upload.png", content, content_type)
+        return {"url": url}
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"OEM 图片上传失败: {exc}") from exc
