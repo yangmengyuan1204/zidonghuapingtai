@@ -847,8 +847,12 @@ function openOemSampleOrderRunForm(flow) {
       const result = await api(`/api/oem/inquiry-skus?order_sn=${encodeURIComponent(orderSn)}`);
       const list = result.sku_list || [];
       if (!list.length) {
-        skuArea.innerHTML = `<div class="alert warn">未找到该询价单的 SKU 信息，请检查单号是否正确</div>`;
-        submitBtn.disabled = true;
+        // 查询无结果：显示手动输入表格
+        showToast("未查到 SKU，请手动添加");
+        skuRows = [{ sku_id: "", num: 1, _index: 0 }];
+        renderSkuTable();
+        orderSnInput.readOnly = true;
+        submitBtn.disabled = false;
         return;
       }
       skuRows = list.map((item, index) => ({
@@ -861,8 +865,12 @@ function openOemSampleOrderRunForm(flow) {
       submitBtn.disabled = false;
       showToast(`已获取 ${skuRows.length} 个 SKU`);
     } catch (error) {
-      skuArea.innerHTML = `<div class="alert error">查询失败：${escapeHtml(error.message)}</div>`;
-      submitBtn.disabled = true;
+      // 请求异常：显示手动输入表格
+      showToast("查询失败，请手动添加 SKU");
+      skuRows = [{ sku_id: "", num: 1, _index: 0 }];
+      renderSkuTable();
+      orderSnInput.readOnly = true;
+      submitBtn.disabled = false;
     } finally {
       fetchBtn.textContent = "重新查询";
       fetchBtn.disabled = false;
@@ -870,34 +878,64 @@ function openOemSampleOrderRunForm(flow) {
   });
 
   function renderSkuTable() {
-    if (!skuRows.length) {
-      skuArea.innerHTML = `<div class="empty">暂无 SKU</div>`;
-      return;
+    let html = "";
+    if (skuRows.length) {
+      const rows = skuRows
+        .map(
+          (row) => `
+          <tr>
+            <td style="padding:6px 8px">
+              <input name="sku_id_${row._index}" type="number" min="1" value="${escapeHtml(row.sku_id)}"
+                style="width:120px;padding:4px 6px;border:1px solid var(--border);border-radius:4px" placeholder="SKU ID" />
+            </td>
+            <td style="padding:6px 8px">
+              <input name="sku_num_${row._index}" type="number" min="1" value="${escapeHtml(row.num)}"
+                style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:4px" />
+            </td>
+            <td style="padding:6px 8px">
+              <button class="btn danger" type="button" data-remove-sku="${row._index}" style="padding:2px 8px;font-size:12px">删除</button>
+            </td>
+          </tr>
+        `,
+        )
+        .join("");
+      html = `
+        <div class="panel-title" style="margin-bottom:8px"><h4>SKU 列表（可修改数量）</h4></div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:var(--bg-muted)">
+            <th style="padding:6px 8px;text-align:left">SKU ID</th>
+            <th style="padding:6px 8px;text-align:left">数量</th>
+            <th style="padding:6px 8px;text-align:left">操作</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="actions" style="margin-top:8px">
+          <button class="btn secondary" type="button" id="addSkuRow">+ 添加SKU</button>
+        </div>
+      `;
+    } else {
+      html = `<div class="empty">暂无 SKU，请点击「查询 SKU」或手动添加</div>`;
     }
-    const rows = skuRows
-      .map(
-        (row) => `
-        <tr>
-          <td style="padding:6px 8px">${escapeHtml(row.sku_id)}</td>
-          <td style="padding:6px 8px">
-            <input name="sku_num_${row._index}" type="number" min="1" value="${escapeHtml(row.num)}"
-              style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:4px" />
-            <input name="sku_id_${row._index}" type="hidden" value="${escapeHtml(row.sku_id)}" />
-          </td>
-        </tr>
-      `,
-      )
-      .join("");
-    skuArea.innerHTML = `
-      <div class="panel-title" style="margin-bottom:8px"><h4>SKU 列表（可修改数量）</h4></div>
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:var(--bg-muted)">
-          <th style="padding:6px 8px;text-align:left">SKU ID</th>
-          <th style="padding:6px 8px;text-align:left">数量</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    `;
+    skuArea.innerHTML = html;
+
+    // 绑定添加SKU按钮
+    const addBtn = document.querySelector("#addSkuRow");
+    if (addBtn) {
+      addBtn.addEventListener("click", () => {
+        const maxIndex = skuRows.reduce((max, r) => Math.max(max, r._index), -1);
+        skuRows.push({ sku_id: "", num: 1, _index: maxIndex + 1 });
+        renderSkuTable();
+      });
+    }
+
+    // 绑定删除SKU按钮
+    document.querySelectorAll("[data-remove-sku]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const index = parseInt(btn.dataset.removeSku, 10);
+        skuRows = skuRows.filter((r) => r._index !== index);
+        renderSkuTable();
+      });
+    });
   }
 
   form.addEventListener("submit", async (event) => {
@@ -907,12 +945,18 @@ function openOemSampleOrderRunForm(flow) {
       showToast("请先查询并确认 SKU 列表");
       return;
     }
-    // 收集 SKU 数量
+    // 收集 SKU 数量和ID（支持手动输入）
     const skuList = skuRows.map((row) => {
+      const idInput = form.querySelector(`[name="sku_id_${row._index}"]`);
       const numInput = form.querySelector(`[name="sku_num_${row._index}"]`);
+      const skuId = idInput ? parseInt(idInput.value, 10) || 0 : (row.sku_id || 0);
       const num = numInput ? parseInt(numInput.value, 10) || 1 : row.num;
-      return { sku_id: row.sku_id, num };
-    });
+      return { sku_id: skuId, num };
+    }).filter((item) => item.sku_id > 0);
+    if (!skuList.length) {
+      showToast("请至少填写一个有效的 SKU ID");
+      return;
+    }
     const variables = {
       order_sn: orderSn,
       sku_list: JSON.stringify(skuList),
