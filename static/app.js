@@ -800,13 +800,10 @@ function openOemSampleOrderRunForm(flow) {
       <div class="modal-body">
         <div class="form-grid">
           <div class="field">
-            <label>询价单ID</label>
+            <label>询价单号</label>
             <div style="display:flex;gap:8px">
-              <input name="detail_id" id="oemDetailId" placeholder="请输入询价单明细ID，如 946" required style="flex:1" />
+              <input name="order_sn" id="oemOrderSn" placeholder="如 X20260615132111-15-OEM" required style="flex:1" />
               <button class="btn secondary" type="button" id="fetchQuoteBtn">查询</button>
-            </div>
-            <div style="color:var(--muted);font-size:12px;margin-top:4px">
-              在 OEM 询价单详情页的网址中可找到此 ID
             </div>
           </div>
         </div>
@@ -823,7 +820,7 @@ function openOemSampleOrderRunForm(flow) {
   modalEl.showModal();
 
   const form = document.querySelector("#oemSampleOrderForm");
-  const detailInput = document.querySelector("#oemDetailId");
+  const detailInput = document.querySelector("#oemOrderSn");
   const fetchBtn = document.querySelector("#fetchQuoteBtn");
   const submitBtn = document.querySelector("#submitOemSampleOrder");
   const resultArea = document.querySelector("#quoteResultArea");
@@ -838,47 +835,40 @@ function openOemSampleOrderRunForm(flow) {
   });
 
   fetchBtn.addEventListener("click", async () => {
-    const detailId = detailInput.value.trim();
-    if (!detailId) { showToast("请输入询价单ID"); return; }
+    const orderSn = detailInput.value.trim();
+    if (!orderSn) { showToast("请输入询价单号"); return; }
     fetchBtn.disabled = true; fetchBtn.textContent = "查询中...";
     resultArea.innerHTML = `<div class="empty">正在查询报价详情...</div>`;
     try {
-      const resp = await api(`/api/oem/quote-detail?detail_id=${encodeURIComponent(detailId)}`);
+      const resp = await api(`/api/oem/inquiry-full?order_sn=${encodeURIComponent(orderSn)}`);
       const data = resp.data || {};
       if (!data || Object.keys(data).length === 0) {
-        resultArea.innerHTML = `<div class="alert warn">未查到该询价单的报价信息，请检查 ID 是否正确</div>`;
+        resultArea.innerHTML = `<div class="alert warn">未查到该询价单的信息，请检查单号是否正确</div>`;
         submitBtn.disabled = true; return;
       }
-      let rawList = [];
-      if (Array.isArray(data.sku_list)) rawList = data.sku_list;
-      else if (Array.isArray(data.skuInfo)) rawList = data.skuInfo;
-      else if (Array.isArray(data.list)) rawList = data.list;
-      else if (Array.isArray(data.details)) rawList = data.details;
-      else if (Array.isArray(data.items)) rawList = data.items;
-      else if (Array.isArray(data.quoteDetails)) rawList = data.quoteDetails;
-      else {
-        for (const key of Object.keys(data)) {
-          if (Array.isArray(data[key]) && data[key].length > 0) { rawList = data[key]; break; }
-        }
-      }
+      // 从 list 中提取第一条记录的 sku_detail
+      const records = data.list || [];
+      const first = records[0] || {};
+      const rawList = first.sku_detail || first.sku_list || first.skuInfo || first.details || first.items || [];
       if (!rawList.length) {
         resultArea.innerHTML = `<div class="alert warn">该询价单暂无 SKU 明细数据</div>`;
         submitBtn.disabled = true; return;
       }
+      const detailId = first.id || data.detail_id || "";
       skuItems = rawList.map((item, index) => {
-        const skuId = item.sku_id || item.skuId || item.id || item.goods_id || item.goodsId || `SKU-${index + 1}`;
-        const skuName = item.sku_name || item.skuName || item.goods_name || item.goodsName || item.name || "";
+        const skuId = item.goods_sku_id || item.sku_id || item.skuId || item.id || `SKU-${index + 1}`;
+        const skuName = item.sku || item.sku_name || item.skuName || item.goods_name || item.name || "";
         return {
-          _index: index, _checked: true, _raw: item,
+          _index: index, _checked: true, _raw: item, _detail_id: detailId,
           sku_id: skuId, sku_name: skuName, num: item.num || item.quantity || item.count || 1,
           sample_can: item.can_sample || item.can_make_sample || item.is_sample || "",
-          sample_fee: item.sample_fee || item.samplePrice || item.sample_price || "",
+          sample_fee: item.samples_price || item.sample_fee || item.samplePrice || item.sample_price || "",
           sample_refund: item.sample_refund || item.sampleReturn || item.sample_return || "",
           sample_other_fee: item.sample_other_fee || item.otherSampleFee || item.other_sample_fee || "",
           sample_shipping: item.sample_shipping || item.sampleShipping || item.sample_freight || "",
           sample_lead_time: item.sample_lead_time || item.sampleLeadTime || item.sample_delivery || "",
-          bulk_moq: item.moq || item.bulk_moq || item.min_order_qty || item.minOrderQty || "",
-          bulk_price: item.bulk_price || item.bulkPrice || item.unit_price || item.unitPrice || item.price || "",
+          bulk_moq: item.large_min_quantity || item.moq || item.bulk_moq || item.min_order_qty || item.minOrderQty || "",
+          bulk_price: item.large_price || item.bulk_price || item.bulkPrice || item.unit_price || item.unitPrice || item.price || "",
           bulk_other_fee: item.bulk_other_fee || item.bulkOtherFee || item.other_fee || item.otherFee || "",
           bulk_deposit_ratio: item.deposit_ratio || item.depositRatio || item.deposit || "",
           bulk_shipping: item.bulk_shipping || item.bulkShipping || item.bulk_freight || item.freight || "",
@@ -919,16 +909,16 @@ function openOemSampleOrderRunForm(flow) {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const detailId = detailInput.value.trim();
+    const orderSn = detailInput.value.trim();
     const checked = skuItems.filter((item) => item._checked);
-    if (!detailId || !checked.length) { showToast("请至少勾选一个 SKU"); return; }
+    if (!orderSn || !checked.length) { showToast("请至少勾选一个 SKU"); return; }
     const skuList = checked.map((item) => {
       const numInput = form.querySelector(`[name="sku_num_${item._index}"]`);
       const num = numInput ? parseInt(numInput.value, 10) || 1 : item.num;
       const skuId = parseInt(String(item.sku_id), 10);
       return { sku_id: isNaN(skuId) ? item.sku_id : skuId, num };
     });
-    const orderSn = (skuItems[0]?._raw?.order_sn) || detailId;
+    const detailId = skuItems[0]?._detail_id || "";
     const variables = { order_sn: orderSn, inquiry_detail_id: detailId, sku_list: JSON.stringify(skuList) };
     let flowVariables = {};
     try { flowVariables = parseJsonText(flow.variables || "{}", {}); } catch {}

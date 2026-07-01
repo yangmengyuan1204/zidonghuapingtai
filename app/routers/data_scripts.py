@@ -20,7 +20,7 @@ from ..core.utils import (
     split_customer_ids,
 )
 from ..data_scripts import (
-    fetch_oem_quote_detail,
+    fetch_oem_full_quote,
     preview_order_quote_options,
     run_balance_payment_script,
     run_balance_recharge_script,
@@ -370,13 +370,13 @@ def run_oem_sample_order_data_script(
     return data
 
 
-@router.get("/oem/quote-detail")
-def get_oem_quote_detail(
-    detail_id: str = Query(..., description="询价单明细ID"),
+@router.get("/oem/inquiry-full")
+def get_oem_full_quote(
+    order_sn: str = Query(..., description="询价单号，如 X20260615132111-15-OEM"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """根据询价单明细ID查询报价详情（quoteDetail 接口代理）。"""
+    """根据询价单号查询完整报价详情（两步：inquiryDetail → quoteDetail）。"""
     project = find_oem_data_script_project(db)
     if not project:
         return {"success": False, "data": {}, "message": "未找到 OEM 项目"}
@@ -391,7 +391,7 @@ def get_oem_quote_detail(
                 variables.update(global_vars)
         except (json.JSONDecodeError, TypeError):
             pass
-    data = fetch_oem_quote_detail(detail_id, variables)
+    data = fetch_oem_full_quote(order_sn, variables)
     return {"success": True, "data": data}
 
 

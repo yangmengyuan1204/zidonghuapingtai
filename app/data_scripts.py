@@ -8822,11 +8822,13 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
         return _finish_named(OEM_SAMPLE_ORDER_SCRIPT_NAME, log, False, {"reason": str(exc), "error": str(exc)})
 
 
-def fetch_oem_quote_detail(detail_id: str, variables: Dict[str, Any] | None = None) -> Dict[str, Any]:
-    """根据询价单明细ID 查询 OEM 报价详情。
+def fetch_oem_full_quote(order_sn: str, variables: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    """根据询价单号查询 OEM 完整报价详情。
 
-    调用 POST /api/quoteDetail，返回报价详情的完整 data 对象。
-    查询失败时返回空 dict。
+    两步调用：
+      1. POST /api/inquiryDetail  → 获取 detail_id 及工厂信息
+      2. POST /api/quoteDetail   → 获取完整报价明细
+    返回合并后的 data 对象，查询失败时返回空 dict。
     """
     variables = dict(variables or {})
     timeout = _as_int(variables.get("timeout"), 30)
@@ -8836,15 +8838,42 @@ def fetch_oem_quote_detail(detail_id: str, variables: Dict[str, Any] | None = No
         session = requests.Session()
         client_token = _oem_client_login(session, base_url, variables, timeout)
 
-        payload = _oem_post_json(
-            session, base_url, "/api/quoteDetail",
-            {"detail_id": detail_id}, timeout,
+        # 1. 查询询价单基本信息，获取 detail_id
+        inquiry_payload = _oem_post_json(
+            session, base_url, "/api/inquiryDetail",
+            {"order_sn": order_sn}, timeout,
             token=client_token, is_admin=False, variables=variables,
         )
-        if not payload.get("success") or payload.get("code") not in (0, "0", None):
+        if not inquiry_payload.get("success") or inquiry_payload.get("code") not in (0, "0", None):
             return {}
-        data = payload.get("data")
-        return data if isinstance(data, dict) else {}
+        inquiry_data = inquiry_payload.get("data")
+        if not isinstance(inquiry_data, dict):
+            return {}
+
+        # 提取第一条记录的 id 作为 detail_id
+        records = inquiry_data.get("list") or []
+        if not isinstance(records, list) or not records:
+            return {}
+        first = records[0] if isinstance(records[0], dict) else {}
+        detail_id = first.get("id") or ""
+        inquiry_data["detail_id"] = detail_id
+
+        # 2. 查询完整报价详情
+        if detail_id:
+            try:
+                quote_payload = _oem_post_json(
+                    session, base_url, "/api/quoteDetail",
+                    {"detail_id": str(detail_id)}, timeout,
+                    token=client_token, is_admin=False, variables=variables,
+                )
+                if quote_payload.get("success") and quote_payload.get("code") in (0, "0", None):
+                    quote_data = quote_payload.get("data")
+                    if isinstance(quote_data, dict):
+                        inquiry_data["quote_detail"] = quote_data
+            except Exception:
+                pass
+
+        return inquiry_data
 
     except Exception:
         return {}

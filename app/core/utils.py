@@ -923,6 +923,26 @@ OEM_DATA_SCRIPT_API_CASES: List[Dict[str, Any]] = [
         },
         "extract": {"data": "json.data"},
     },
+    {
+        # 后台接口：编辑工厂信息（需后台 admin Bearer token）。
+        # 用于更新询价单某条 detail 的工厂信息，factory_img 为 OSS 图片 URL。
+        "key": "oem_factory_edit",
+        "case_name": "OEM-编辑工厂",
+        "url": "/admin/factoryEdit",
+        "body": {
+            "detail_id": "{{detail_id}}",
+            "factory_iid": "{{factory_iid}}",
+            "factory_name": "{{factory_name}}",
+            "factory_province": "{{factory_province}}",
+            "factory_city": "{{factory_city}}",
+            "factory_img": "{{factory_img}}",
+            "factory_url": "{{factory_url}}",
+            "salesman": "{{salesman}}",
+            "salesman_phone": "{{salesman_phone}}",
+            "goods_url": "{{goods_url}}",
+        },
+        "extract": {"data": "json.data"},
+    },
 ]
 
 
