@@ -8822,11 +8822,11 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
         return _finish_named(OEM_SAMPLE_ORDER_SCRIPT_NAME, log, False, {"reason": str(exc), "error": str(exc)})
 
 
-def fetch_oem_inquiry_skus(order_sn: str, variables: Dict[str, Any] | None = None) -> list[Dict[str, Any]]:
-    """根据询价单号查询 OEM 询价单详情，返回 SKU 列表。
+def fetch_oem_quote_detail(detail_id: str, variables: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    """根据询价单明细ID 查询 OEM 报价详情。
 
-    返回格式：[{"sku_id": int, "num": int}, ...]
-    查询失败时返回空列表。
+    调用 POST /api/quoteDetail，返回报价详情的完整 data 对象。
+    查询失败时返回空 dict。
     """
     variables = dict(variables or {})
     timeout = _as_int(variables.get("timeout"), 30)
@@ -8836,61 +8836,15 @@ def fetch_oem_inquiry_skus(order_sn: str, variables: Dict[str, Any] | None = Non
         session = requests.Session()
         client_token = _oem_client_login(session, base_url, variables, timeout)
 
-        # 调用询价单列表接口，按 order_sn 过滤
-        body: Dict[str, Any] = {
-            "page": 1,
-            "pageSize": 100,
-            "order_sn": order_sn,
-            "status": "",
-            "start_time": "",
-            "end_time": "",
-            "goods_name": "",
-            "goods_type": "",
-        }
         payload = _oem_post_json(
-            session, base_url, "/api/inquiryList", body, timeout,
+            session, base_url, "/api/quoteDetail",
+            {"detail_id": detail_id}, timeout,
             token=client_token, is_admin=False, variables=variables,
         )
         if not payload.get("success") or payload.get("code") not in (0, "0", None):
-            return []
-
+            return {}
         data = payload.get("data")
-        if isinstance(data, dict):
-            records = data.get("list") or data.get("records") or data.get("result") or []
-        elif isinstance(data, list):
-            records = data
-        else:
-            return []
-
-        if not isinstance(records, list) or not records:
-            return []
-        record = records[0] if isinstance(records[0], dict) else {}
-
-        # 尝试多种可能的 SKU 列表字段名
-        sku_list_raw = (
-            record.get("sku_list")
-            or record.get("skuInfo")
-            or record.get("sku_info")
-            or record.get("goodsInfo", {}).get("skuList")
-            or record.get("inquiryDetails")
-            or []
-        )
-        if not isinstance(sku_list_raw, list):
-            return []
-
-        sku_list = []
-        for item in sku_list_raw:
-            if not isinstance(item, dict):
-                continue
-            sku_id = item.get("sku_id") or item.get("skuId") or item.get("id")
-            num = item.get("num") or item.get("quantity") or item.get("count") or 1
-            if sku_id is None:
-                continue
-            sku_list.append({
-                "sku_id": int(sku_id),
-                "num": int(num),
-            })
-        return sku_list
+        return data if isinstance(data, dict) else {}
 
     except Exception:
-        return []
+        return {}

@@ -20,7 +20,7 @@ from ..core.utils import (
     split_customer_ids,
 )
 from ..data_scripts import (
-    fetch_oem_inquiry_skus,
+    fetch_oem_quote_detail,
     preview_order_quote_options,
     run_balance_payment_script,
     run_balance_recharge_script,
@@ -370,19 +370,19 @@ def run_oem_sample_order_data_script(
     return data
 
 
-@router.get("/oem/inquiry-skus")
-def get_oem_inquiry_skus(
-    order_sn: str = Query(..., description="询价单号"),
+@router.get("/oem/quote-detail")
+def get_oem_quote_detail(
+    detail_id: str = Query(..., description="询价单明细ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """根据询价单号查询 OEM 询价单 SKU 列表（前台接口代理）。"""
+    """根据询价单明细ID查询报价详情（quoteDetail 接口代理）。"""
     project = find_oem_data_script_project(db)
     if not project:
-        return {"success": False, "sku_list": [], "message": "未找到 OEM 项目"}
+        return {"success": False, "data": {}, "message": "未找到 OEM 项目"}
     env = db.query(Env).filter(Env.project_id == project.id).order_by(Env.id.asc()).first()
     if not env:
-        return {"success": False, "sku_list": [], "message": "未找到 OEM 环境"}
+        return {"success": False, "data": {}, "message": "未找到 OEM 环境"}
     variables: Dict[str, Any] = {"base_url": env.base_url}
     if env.global_vars:
         try:
@@ -391,8 +391,8 @@ def get_oem_inquiry_skus(
                 variables.update(global_vars)
         except (json.JSONDecodeError, TypeError):
             pass
-    sku_list = fetch_oem_inquiry_skus(order_sn, variables)
-    return {"success": True, "sku_list": sku_list}
+    data = fetch_oem_quote_detail(detail_id, variables)
+    return {"success": True, "data": data}
 
 
 @router.post("/oem/upload-image")

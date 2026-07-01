@@ -800,15 +800,18 @@ function openOemSampleOrderRunForm(flow) {
       <div class="modal-body">
         <div class="form-grid">
           <div class="field">
-            <label>询价单号</label>
+            <label>询价单ID</label>
             <div style="display:flex;gap:8px">
-              <input name="order_sn" id="oemOrderSn" placeholder="请输入询价单号，如 Y20260701111904-15-OEM" required style="flex:1" />
-              <button class="btn secondary" type="button" id="fetchSkuBtn">查询 SKU</button>
+              <input name="detail_id" id="oemDetailId" placeholder="请输入询价单明细ID，如 946" required style="flex:1" />
+              <button class="btn secondary" type="button" id="fetchQuoteBtn">查询</button>
+            </div>
+            <div style="color:var(--muted);font-size:12px;margin-top:4px">
+              在 OEM 询价单详情页的网址中可找到此 ID
             </div>
           </div>
         </div>
-        <div id="skuResultArea" style="margin-top:12px">
-          <div class="empty">点击「查询 SKU」自动获取询价单中的商品列表</div>
+        <div id="quoteResultArea" style="margin-top:12px">
+          <div class="empty">输入询价单ID后点击「查询」</div>
         </div>
       </div>
       <div class="modal-foot">
@@ -820,12 +823,12 @@ function openOemSampleOrderRunForm(flow) {
   modalEl.showModal();
 
   const form = document.querySelector("#oemSampleOrderForm");
-  const orderSnInput = document.querySelector("#oemOrderSn");
-  const fetchBtn = document.querySelector("#fetchSkuBtn");
+  const detailInput = document.querySelector("#oemDetailId");
+  const fetchBtn = document.querySelector("#fetchQuoteBtn");
   const submitBtn = document.querySelector("#submitOemSampleOrder");
-  const skuArea = document.querySelector("#skuResultArea");
+  const resultArea = document.querySelector("#quoteResultArea");
 
-  let skuRows = [];
+  let skuItems = [];
 
   document.querySelector("#closeModal").addEventListener("click", async () => {
     modalEl.close();
@@ -835,144 +838,102 @@ function openOemSampleOrderRunForm(flow) {
   });
 
   fetchBtn.addEventListener("click", async () => {
-    const orderSn = orderSnInput.value.trim();
-    if (!orderSn) {
-      showToast("请先输入询价单号");
-      return;
-    }
-    fetchBtn.disabled = true;
-    fetchBtn.textContent = "查询中...";
-    skuArea.innerHTML = `<div class="empty">正在查询询价单 SKU...</div>`;
+    const detailId = detailInput.value.trim();
+    if (!detailId) { showToast("请输入询价单ID"); return; }
+    fetchBtn.disabled = true; fetchBtn.textContent = "查询中...";
+    resultArea.innerHTML = `<div class="empty">正在查询报价详情...</div>`;
     try {
-      const result = await api(`/api/oem/inquiry-skus?order_sn=${encodeURIComponent(orderSn)}`);
-      const list = result.sku_list || [];
-      if (!list.length) {
-        // 查询无结果：显示手动输入表格
-        showToast("未查到 SKU，请手动添加");
-        skuRows = [{ sku_id: "", num: 1, _index: 0 }];
-        renderSkuTable();
-        orderSnInput.readOnly = true;
-        submitBtn.disabled = false;
-        return;
+      const resp = await api(`/api/oem/quote-detail?detail_id=${encodeURIComponent(detailId)}`);
+      const data = resp.data || {};
+      if (!data || Object.keys(data).length === 0) {
+        resultArea.innerHTML = `<div class="alert warn">未查到该询价单的报价信息，请检查 ID 是否正确</div>`;
+        submitBtn.disabled = true; return;
       }
-      skuRows = list.map((item, index) => ({
-        sku_id: item.sku_id,
-        num: item.num || 1,
-        _index: index,
-      }));
-      renderSkuTable();
-      orderSnInput.readOnly = true;
-      submitBtn.disabled = false;
-      showToast(`已获取 ${skuRows.length} 个 SKU`);
+      let rawList = [];
+      if (Array.isArray(data.sku_list)) rawList = data.sku_list;
+      else if (Array.isArray(data.skuInfo)) rawList = data.skuInfo;
+      else if (Array.isArray(data.list)) rawList = data.list;
+      else if (Array.isArray(data.details)) rawList = data.details;
+      else if (Array.isArray(data.items)) rawList = data.items;
+      else if (Array.isArray(data.quoteDetails)) rawList = data.quoteDetails;
+      else {
+        for (const key of Object.keys(data)) {
+          if (Array.isArray(data[key]) && data[key].length > 0) { rawList = data[key]; break; }
+        }
+      }
+      if (!rawList.length) {
+        resultArea.innerHTML = `<div class="alert warn">该询价单暂无 SKU 明细数据</div>`;
+        submitBtn.disabled = true; return;
+      }
+      skuItems = rawList.map((item, index) => {
+        const skuId = item.sku_id || item.skuId || item.id || item.goods_id || item.goodsId || `SKU-${index + 1}`;
+        const skuName = item.sku_name || item.skuName || item.goods_name || item.goodsName || item.name || "";
+        return {
+          _index: index, _checked: true, _raw: item,
+          sku_id: skuId, sku_name: skuName, num: item.num || item.quantity || item.count || 1,
+          sample_can: item.can_sample || item.can_make_sample || item.is_sample || "",
+          sample_fee: item.sample_fee || item.samplePrice || item.sample_price || "",
+          sample_refund: item.sample_refund || item.sampleReturn || item.sample_return || "",
+          sample_other_fee: item.sample_other_fee || item.otherSampleFee || item.other_sample_fee || "",
+          sample_shipping: item.sample_shipping || item.sampleShipping || item.sample_freight || "",
+          sample_lead_time: item.sample_lead_time || item.sampleLeadTime || item.sample_delivery || "",
+          bulk_moq: item.moq || item.bulk_moq || item.min_order_qty || item.minOrderQty || "",
+          bulk_price: item.bulk_price || item.bulkPrice || item.unit_price || item.unitPrice || item.price || "",
+          bulk_other_fee: item.bulk_other_fee || item.bulkOtherFee || item.other_fee || item.otherFee || "",
+          bulk_deposit_ratio: item.deposit_ratio || item.depositRatio || item.deposit || "",
+          bulk_shipping: item.bulk_shipping || item.bulkShipping || item.bulk_freight || item.freight || "",
+          bulk_lead_time: item.bulk_lead_time || item.bulkLeadTime || item.delivery_time || item.deliveryTime || "",
+        };
+      });
+      detailInput.readOnly = true; submitBtn.disabled = false;
+      renderQuoteResult(data);
+      showToast(`已获取 ${skuItems.length} 个 SKU`);
     } catch (error) {
-      // 请求异常：显示手动输入表格
-      showToast("查询失败，请手动添加 SKU");
-      skuRows = [{ sku_id: "", num: 1, _index: 0 }];
-      renderSkuTable();
-      orderSnInput.readOnly = true;
-      submitBtn.disabled = false;
+      resultArea.innerHTML = `<div class="alert error">查询失败：${escapeHtml(error.message)}</div>`;
+      submitBtn.disabled = true;
     } finally {
-      fetchBtn.textContent = "重新查询";
-      fetchBtn.disabled = false;
+      fetchBtn.textContent = "重新查询"; fetchBtn.disabled = false;
     }
   });
 
-  function renderSkuTable() {
-    let html = "";
-    if (skuRows.length) {
-      const rows = skuRows
-        .map(
-          (row) => `
-          <tr>
-            <td style="padding:6px 8px">
-              <input name="sku_id_${row._index}" type="number" min="1" value="${escapeHtml(row.sku_id)}"
-                style="width:120px;padding:4px 6px;border:1px solid var(--border);border-radius:4px" placeholder="SKU ID" />
-            </td>
-            <td style="padding:6px 8px">
-              <input name="sku_num_${row._index}" type="number" min="1" value="${escapeHtml(row.num)}"
-                style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:4px" />
-            </td>
-            <td style="padding:6px 8px">
-              <button class="btn danger" type="button" data-remove-sku="${row._index}" style="padding:2px 8px;font-size:12px">删除</button>
-            </td>
-          </tr>
-        `,
-        )
-        .join("");
-      html = `
-        <div class="panel-title" style="margin-bottom:8px"><h4>SKU 列表（可修改数量）</h4></div>
-        <table style="width:100%;border-collapse:collapse">
-          <thead><tr style="background:var(--bg-muted)">
-            <th style="padding:6px 8px;text-align:left">SKU ID</th>
-            <th style="padding:6px 8px;text-align:left">数量</th>
-            <th style="padding:6px 8px;text-align:left">操作</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <div class="actions" style="margin-top:8px">
-          <button class="btn secondary" type="button" id="addSkuRow">+ 添加SKU</button>
-        </div>
-      `;
-    } else {
-      html = `<div class="empty">暂无 SKU，请点击「查询 SKU」或手动添加</div>`;
+  function renderQuoteResult(data) {
+    let infoHtml = "";
+    const infoFields = { order_sn: "询价单号", goods_name: "商品名称", goodsName: "商品名称", status: "状态", create_time: "创建时间", createdAt: "创建时间", factory_url: "工厂链接", factoryUrl: "工厂链接" };
+    const infoParts = [];
+    for (const [key, label] of Object.entries(infoFields)) {
+      if (data[key]) infoParts.push(`<div><span>${label}</span><strong>${escapeHtml(String(data[key]))}</strong></div>`);
     }
-    skuArea.innerHTML = html;
+    if (infoParts.length) infoHtml = `<div class="functional-summary" style="margin-bottom:14px">${infoParts.join("")}</div>`;
 
-    // 绑定添加SKU按钮
-    const addBtn = document.querySelector("#addSkuRow");
-    if (addBtn) {
-      addBtn.addEventListener("click", () => {
-        const maxIndex = skuRows.reduce((max, r) => Math.max(max, r._index), -1);
-        skuRows.push({ sku_id: "", num: 1, _index: maxIndex + 1 });
-        renderSkuTable();
-      });
-    }
+    const sh = `<th style="padding:6px 8px;text-align:left;white-space:nowrap">能否打样</th><th style="padding:6px 8px;text-align:left;white-space:nowrap">打样费用</th><th style="padding:6px 8px;text-align:left;white-space:nowrap">样品费退还</th><th style="padding:6px 8px;text-align:left;white-space:nowrap">其他费用</th><th style="padding:6px 8px;text-align:left;white-space:nowrap">样品运费</th><th style="padding:6px 8px;text-align:left;white-space:nowrap">打样货期</th>`;
+    const bh = `<th style="padding:6px 8px;text-align:left;white-space:nowrap">起订量</th><th style="padding:6px 8px;text-align:left;white-space:nowrap">大货单价(元)</th><th style="padding:6px 8px;text-align:left;white-space:nowrap">其他费用(元)</th><th style="padding:6px 8px;text-align:left;white-space:nowrap">定金比例</th><th style="padding:6px 8px;text-align:left;white-space:nowrap">大货运费(元)</th><th style="padding:6px 8px;text-align:left;white-space:nowrap">大货货期</th>`;
 
-    // 绑定删除SKU按钮
-    document.querySelectorAll("[data-remove-sku]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const index = parseInt(btn.dataset.removeSku, 10);
-        skuRows = skuRows.filter((r) => r._index !== index);
-        renderSkuTable();
-      });
+    const tbody = skuItems.map((it) => `<tr><td style="padding:6px 8px"><input type="checkbox" data-sku-check="${it._index}" ${it._checked?"checked":""} /></td><td style="padding:6px 8px;font-weight:600">${escapeHtml(String(it.sku_id))}</td><td style="padding:6px 8px">${it.sku_name?escapeHtml(it.sku_name):"-"}</td><td style="padding:6px 8px"><input name="sku_num_${it._index}" type="number" min="1" value="${escapeHtml(it.num)}" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:4px" /></td><td style="padding:6px 8px;text-align:center">${it.sample_can?escapeHtml(String(it.sample_can)):"-"}</td><td style="padding:6px 8px;text-align:right">${it.sample_fee?escapeHtml(String(it.sample_fee)):"-"}</td><td style="padding:6px 8px;text-align:center">${it.sample_refund?escapeHtml(String(it.sample_refund)):"-"}</td><td style="padding:6px 8px;text-align:right">${it.sample_other_fee?escapeHtml(String(it.sample_other_fee)):"-"}</td><td style="padding:6px 8px;text-align:right">${it.sample_shipping?escapeHtml(String(it.sample_shipping)):"-"}</td><td style="padding:6px 8px;text-align:center">${it.sample_lead_time?escapeHtml(String(it.sample_lead_time)):"-"}</td><td style="padding:6px 8px;text-align:center">${it.bulk_moq?escapeHtml(String(it.bulk_moq)):"-"}</td><td style="padding:6px 8px;text-align:right">${it.bulk_price?escapeHtml(String(it.bulk_price)):"-"}</td><td style="padding:6px 8px;text-align:right">${it.bulk_other_fee?escapeHtml(String(it.bulk_other_fee)):"-"}</td><td style="padding:6px 8px;text-align:center">${it.bulk_deposit_ratio?escapeHtml(String(it.bulk_deposit_ratio)):"-"}</td><td style="padding:6px 8px;text-align:right">${it.bulk_shipping?escapeHtml(String(it.bulk_shipping)):"-"}</td><td style="padding:6px 8px;text-align:center">${it.bulk_lead_time?escapeHtml(String(it.bulk_lead_time)):"-"}</td></tr>`).join("");
+
+    resultArea.innerHTML = `${infoHtml}<div class="panel-title" style="margin-bottom:8px"><h4>SKU 明细</h4></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg-muted)"><th style="padding:6px 8px;text-align:left">选择</th><th style="padding:6px 8px;text-align:left">SKU ID</th><th style="padding:6px 8px;text-align:left">名称</th><th style="padding:6px 8px;text-align:left">数量</th>${sh}${bh}</tr></thead><tbody>${tbody}</tbody></table></div><div style="margin-top:8px;color:var(--muted);font-size:12px">☑ 勾选的 SKU 将提交为样品单，取消勾选则跳过</div>`;
+
+    document.querySelectorAll("[data-sku-check]").forEach((cb) => {
+      cb.addEventListener("change", () => { const idx = parseInt(cb.dataset.skuCheck,10); const item = skuItems.find((i)=>i._index===idx); if (item) item._checked = cb.checked; });
     });
   }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const orderSn = orderSnInput.value.trim();
-    if (!orderSn || !skuRows.length) {
-      showToast("请先查询并确认 SKU 列表");
-      return;
-    }
-    // 收集 SKU 数量和ID（支持手动输入）
-    const skuList = skuRows.map((row) => {
-      const idInput = form.querySelector(`[name="sku_id_${row._index}"]`);
-      const numInput = form.querySelector(`[name="sku_num_${row._index}"]`);
-      const skuId = idInput ? parseInt(idInput.value, 10) || 0 : (row.sku_id || 0);
-      const num = numInput ? parseInt(numInput.value, 10) || 1 : row.num;
-      return { sku_id: skuId, num };
-    }).filter((item) => item.sku_id > 0);
-    if (!skuList.length) {
-      showToast("请至少填写一个有效的 SKU ID");
-      return;
-    }
-    const variables = {
-      order_sn: orderSn,
-      sku_list: JSON.stringify(skuList),
-    };
+    const detailId = detailInput.value.trim();
+    const checked = skuItems.filter((item) => item._checked);
+    if (!detailId || !checked.length) { showToast("请至少勾选一个 SKU"); return; }
+    const skuList = checked.map((item) => {
+      const numInput = form.querySelector(`[name="sku_num_${item._index}"]`);
+      const num = numInput ? parseInt(numInput.value, 10) || 1 : item.num;
+      const skuId = parseInt(String(item.sku_id), 10);
+      return { sku_id: isNaN(skuId) ? item.sku_id : skuId, num };
+    });
+    const orderSn = (skuItems[0]?._raw?.order_sn) || detailId;
+    const variables = { order_sn: orderSn, inquiry_detail_id: detailId, sku_list: JSON.stringify(skuList) };
     let flowVariables = {};
-    try {
-      flowVariables = parseJsonText(flow.variables || "{}", {});
-    } catch {}
-    // 合并登录账号等预设变量
+    try { flowVariables = parseJsonText(flow.variables || "{}", {}); } catch {}
     const merged = { ...flowVariables, ...variables };
-    try {
-      showToast("正在执行样品单...");
-      await runSavedFlow(flow, merged);
-    } catch (error) {
-      showToast(error.message);
-    }
+    try { showToast("正在执行样品单..."); await runSavedFlow(flow, merged); } catch (error) { showToast(error.message); }
   });
 }
 
