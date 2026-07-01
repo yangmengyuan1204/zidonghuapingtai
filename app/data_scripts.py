@@ -8504,6 +8504,19 @@ def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[
     return str(token)
 
 
+def _oem_parse_factory_urls(variables: Dict[str, Any]) -> list:
+    """从前端多行文本解析工厂链接列表，兼容旧 factory_url 单值字段。"""
+    raw = variables.get("factory_urls")
+    if raw and isinstance(raw, list):
+        return raw
+    if raw and isinstance(raw, str):
+        urls = [line.strip() for line in raw.splitlines() if line.strip()]
+        if urls:
+            return urls
+    old = variables.get("factory_url")
+    return [old] if old else []
+
+
 def run_oem_new_inquiry_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
     """OEM 创建询价单脚本：前台登录 -> 创建询价单，返回 inquiry_sn。"""
     ensure_report_dirs()
@@ -8551,7 +8564,7 @@ def run_oem_new_inquiry_script(env: Env, variables: Dict[str, Any] | None = None
             "goods_detail": variables.get("goods_detail") or "",
             "num": int(variables.get("num") or sum(int(s.get("num") or 0) for s in sku_info)),
             "customize_detail": variables.get("customize_detail") or "",
-            "factory_urls": variables.get("factory_urls") or [variables.get("factory_url") or ""],
+            "factory_urls": _oem_parse_factory_urls(variables),
             "factory_type": int(variables.get("factory_type") or 3),
             "goods_file": variables.get("goods_file") or [],
             "goods_img": variables.get("goods_img") or "",

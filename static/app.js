@@ -18,7 +18,7 @@ let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _
     { name: "hope_max_price", label: "期望最高价", default: "100" },
     { name: "hope_futures", label: "期望交期", default: "10" },
     { name: "goods_type", label: "商品类型", type: "number", default: 1 },
-    { name: "factory_url", label: "工厂链接" },
+    { name: "factory_urls", label: "工厂链接（每行一个）", type: "textarea", rows: 4 },
     { name: "goods_img", label: "商品主图URL" },
   ],};// 主题初始化
 (function initTheme() {
@@ -517,7 +517,7 @@ function ensureOemNewInquiryScript(flows, projects, envs, cases) {
     envId: String(envId),
     caseIds: [],
     variables: JSON.stringify(
-      { goods_name: "测试商品", hope_min_price: "1", hope_max_price: "100", hope_futures: "10", goods_type: 1, factory_url: "", goods_img: "" },
+      { goods_name: "测试商品", hope_min_price: "1", hope_max_price: "100", hope_futures: "10", goods_type: 1, factory_urls: "", goods_img: "" },
       null,
       2,
     ),
