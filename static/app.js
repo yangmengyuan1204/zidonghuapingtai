@@ -1,7 +1,7 @@
 let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _projectsCache = await api("/api/projects");  return _projectsCache;}function invalidateProjectsCache() { _projectsCache = null; }const state = {  token: localStorage.getItem("token") || "",  user: null,  view: "dashboard",  filters: {    projectId: localStorage.getItem("projectId") || "",    envId: "",    recordType: "",  },  selectedApiIds: new Set(),  factory: {    flowId: localStorage.getItem("factoryFlowId") || "",    projectId: localStorage.getItem("factoryProjectId") || localStorage.getItem("projectId") || "",    envId: localStorage.getItem("factoryEnvId") || "",    caseIds: JSON.parse(localStorage.getItem("factoryCaseIds") || "[]"),    variables: localStorage.getItem("factoryVariables") || '{\n  "keyword": "test",\n  "account": "abner"\n}',    editing: false,  },  dataScriptTab: localStorage.getItem("dataScriptTab") || "active",  functionalTaskId: localStorage.getItem("functionalTaskId") || "",};const views = [  { key: "dashboard", label: "工作台总览" },  { key: "projects", label: "项目空间" },  { key: "apiCases", label: "接口用例库" },  { key: "dataScripts", label: "数据工厂" },  { key: "caseGeneration", label: "AI用例生成" },  { key: "functionalTests", label: "功能验证中心" },  { key: "uiCases", label: "UI自动化" },  { key: "records", label: "执行报告" },  { key: "users", label: "权限中心", adminOnly: true },];const FLOW_STORAGE_KEY = "dataFactoryFlows";const DELETED_BUILTIN_KEY = "dataFactoryDeletedBuiltins";const DELETED_FLOW_STORAGE_KEY = "dataFactoryDeletedFlows";const HIDDEN_FLOW_STORAGE_KEY = "dataFactoryHiddenFlows";const HIDDEN_BUILTIN_KEY = "dataFactoryHiddenBuiltins";const DATA_SCRIPT_CUSTOMER_IDS_KEY = "dataScriptCustomerIds";const FUNCTIONAL_SCAN_AUTH_PREFIX = "functionalScanAuth:";const CASE_NAME_PREFIXES = ["\u6570\u636e\u811a\u672c-", "test-"];const BUILTIN_FLOW_DEFINITIONS = {  shopping_cart: { id: "shopping_cart_builtin", name: "\u5546\u54c1\u8d2d\u7269\u8f66" },  order_quote: { id: "order_quote_builtin", name: "\u8ba2\u5355\u62a5\u4ef7" },  balance_payment: { id: "balance_payment_builtin", name: "\u4f59\u989d\u652f\u4ed8" },  bank_payment: { id: "bank_payment_builtin", name: "\u94f6\u884c\u652f\u4ed8" },  purchase_to_shelf: { id: "purchase_to_shelf_builtin", name: "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6" },  purchase_to_shelf_chain: {    id: "purchase_to_shelf_chain_builtin",    name: "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6(\u7ec4\u5408\u811a\u672c)",  },  warehouse_delivery: { id: "warehouse_delivery_builtin", name: "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355" },  porder_balance_payment: { id: "porder_balance_payment_builtin", name: "\u914d\u9001\u5355\u4f59\u989d\u4ed8\u6b3e" },  porder_bank_payment: { id: "porder_bank_payment_builtin", name: "\u914d\u9001\u5355\u94f6\u884c\u4ed8\u6b3e" },
   material_generation: { id: "material_generation_builtin", name: "\u8f85\u6599\u751f\u6210" },
   balance_recharge: { id: "balance_recharge_builtin", name: "\u4f59\u989d\u5145\u503c" },
-  oem_new_inquiry: { id: "oem_new_inquiry_builtin", name: "OEM\u521b\u5efa\u8be2\u4ef7\u5355" },
+  oem_new_inquiry: { id: "oem_new_inquiry_builtin", name: "OEM\u63d0\u51fa\u8be2\u4ef7\u5355" },
 };const BUILTIN_DATA_SCRIPT_TYPES = Object.keys(BUILTIN_FLOW_DEFINITIONS);const CUSTOMER_ID_FIELD = { name: "customer_ids", label: "客户ID(多个换行或逗号)", type: "textarea", rows: 3, kind: "list", placeholder: "多个客户ID可用逗号或换行分隔" };const SHOP_TYPE_OPTIONS = [  { value: "1688", label: "1688" },  { value: "taobao", label: "taobao" },  { value: "tmall", label: "tmall" },  { value: "rakumart", label: "rakumart" },];const SCRIPT_PARAM_SCHEMAS = {  shopping_cart: [    { name: "keyword", label: "关键词" },    { name: "shop_type", label: "商品来源", type: "select", options: SHOP_TYPE_OPTIONS, default: "1688" },    { name: "target_shops", label: "目标店铺数", type: "number", default: 4 },    { name: "per_shop", label: "每店商品数", type: "number", default: 5 },  ],  order_quote: [    { name: "order_shop_count", label: "目标店铺数", type: "number", default: 1 },    { name: "order_per_shop", label: "每店商品数", type: "number", default: 2 },    { name: "order_item_num", label: "每个商品数量", type: "number", default: 10 },  ],  balance_payment: [    { name: "order_sns", label: "订单号(多个换行或逗号)", type: "textarea", rows: 4, kind: "list" },    { name: "order_sn", label: "单个订单号" },  ],  bank_payment: [    { name: "order_sns", label: "订单号(多个换行或逗号)", type: "textarea", rows: 4, kind: "list" },    { name: "order_sn", label: "单个订单号" },  ],  purchase_to_shelf: [    { name: "order_sn", label: "订单号" },    { name: "purchase_no", label: "交易号" },  ],  purchase_to_shelf_chain: [    { name: "purchase_no", label: "交易号" },  ],  warehouse_delivery: [    { name: "warehouse_sku_count", label: "仓库提出番数", type: "number", default: 1 },    { name: "send_num", label: "每番提出数量", type: "number", default: 1 },  ],  porder_balance_payment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],  porder_bank_payment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],  porder_shipment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],
   material_generation: [
     CUSTOMER_ID_FIELD,
@@ -422,7 +422,7 @@ const appEl = document.querySelector("#app");const toastEl = document.querySelec
       }, options);
     }
     if (flow.scriptType === "oem_new_inquiry") {
-      progress.update(24, "正在执行OEM创建询价单，请稍候...");
+      progress.update(24, "正在执行提出oem询价单，请稍候...");
       const result = await api("/api/data-scripts/oem-new-inquiry", {
         method: "POST",
         body: {
@@ -490,17 +490,28 @@ function ensureBalanceRechargeScript(flows, projects, envs, cases) {
 
 function ensureOemNewInquiryScript(flows, projects, envs, cases) {
   if (isBuiltinDeleted("oem_new_inquiry_builtin")) return flows;
-  // OEM 独立项目：优先匹配名为 "oem-测试" 的项目，其次回退首个项目
-  const oemProject = projects.find((p) => p.name === "oem-测试") || projects[0];
-  const env = (oemProject && (envs || []).find((e) => e.project_id === oemProject.id)) || envs[0];
-  const projectId = oemProject?.id || "";
-  const envId = env?.id || "";
-  if (!projectId || !envId) return flows;
+  // OEM 独立项目：优先匹配名为 "oem-测试" 的项目
+  const oemProject = projects.find((p) => p.name === "oem-测试");
+  if (!oemProject) return flows;
+  // 直接用 OEM 项目的第一个 env，不依赖 dataScriptDefaultEnv（它只认日本站）
+  const env = (envs || []).find((e) => String(e.project_id) === String(oemProject.id));
+  if (!env) return flows;
+  const projectId = oemProject.id;
+  const envId = env.id;
   const existingIndex = flows.findIndex((flow) => flow.id === "oem_new_inquiry_builtin");
-  if (existingIndex >= 0) return flows;
+  if (existingIndex >= 0) {
+    // 已存在则更新 projectId/envId（防止 OEM 项目后建导致绑定到错误项目）
+    const next = flows.map((flow) =>
+      flow.id === "oem_new_inquiry_builtin"
+        ? { ...flow, projectId: String(projectId), envId: String(envId), name: "提出oem询价单" }
+        : flow,
+    );
+    writeFlows(next);
+    return next;
+  }
   const nextFlow = {
     id: "oem_new_inquiry_builtin",
-    name: "OEM创建询价单",
+    name: "提出oem询价单",
     scriptType: "oem_new_inquiry",
     projectId: String(projectId),
     envId: String(envId),
