@@ -989,6 +989,50 @@ OEM_DATA_SCRIPT_API_CASES: List[Dict[str, Any]] = [
         },
         "extract": {"data": "json.data"},
     },
+    {
+        # 后台接口：询价完成（需后台 admin Bearer token）。
+        # 工厂报价完成后点击"询价完成"，订单进入"询价完成未报价"状态。
+        # body 为询价单完整详情对象，detail_list 含多家工厂报价明细
+        # （实际可能多条 detail，每条 status=1 表示该工厂已报价）。
+        "key": "oem_inquiry_complete",
+        "case_name": "OEM-询价完成",
+        "url": "/admin/inquiryComplete",
+        "body": {
+            "id": "{{inquiry_id}}",
+            "user_id": "{{user_id}}",
+            "order_sn": "{{order_sn}}",
+            "user_status": 2,
+            "admin_status": 0,
+            "y_admin_status": 2,
+            "g_admin_status": 2,
+            "factory_type": "{{factory_type}}",
+            "goods_id": "{{goods_id}}",
+            "goods_no": "{{goods_no}}",
+            "goods_type": "{{goods_type}}",
+            "num": "{{num}}",
+            "hope_futures": "{{hope_futures}}",
+            "hope_min_price": "{{hope_min_price}}",
+            "hope_max_price": "{{hope_max_price}}",
+            "y_id": "{{y_id}}",
+            "p_id": "{{p_id}}",
+            "g_id": "{{g_id}}",
+            "goods_class": "{{goods_class}}",
+            "goods_img": "{{goods_img}}",
+            "goods_name": "{{goods_name}}",
+            "goods_name_tr": "{{goods_name_tr}}",
+            "material": "{{material}}",
+            "material_tr": "{{material_tr}}",
+            "customize_detail": "{{customize_detail}}",
+            "customize_detail_tr": "{{customize_detail_tr}}",
+            "goods_detail": "{{goods_detail}}",
+            "goods_detail_tr": "{{goods_detail_tr}}",
+            "goods_file_tr": "{{goods_file_tr}}",
+            "sku_info": "{{sku_info}}",
+            "detail_list": "{{detail_list}}",
+            "factory_url": "{{factory_url}}",
+        },
+        "extract": {"data": "json.data"},
+    },
 ]
 
 
