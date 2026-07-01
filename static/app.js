@@ -3,10 +3,47 @@ let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _
   balance_recharge: { id: "balance_recharge_builtin", name: "\u4f59\u989d\u5145\u503c" },
   oem_new_inquiry: { id: "oem_new_inquiry_builtin", name: "OEM\u63d0\u51fa\u8be2\u4ef7\u5355" },
   oem_sample_order: { id: "oem_sample_order_builtin", name: "OEM\u63d0\u51fa\u6837\u54c1\u5355" },
+  oem_full_inquiry_flow: { id: "oem_full_inquiry_flow_builtin", name: "OEM询价单全流程" },
 };const BUILTIN_DATA_SCRIPT_TYPES = Object.keys(BUILTIN_FLOW_DEFINITIONS);const CUSTOMER_ID_FIELD = { name: "customer_ids", label: "客户ID(多个换行或逗号)", type: "textarea", rows: 3, kind: "list", placeholder: "多个客户ID可用逗号或换行分隔" };const SHOP_TYPE_OPTIONS = [  { value: "1688", label: "1688" },  { value: "taobao", label: "taobao" },  { value: "tmall", label: "tmall" },  { value: "rakumart", label: "rakumart" },];const SCRIPT_PARAM_SCHEMAS = {  shopping_cart: [    { name: "keyword", label: "关键词" },    { name: "shop_type", label: "商品来源", type: "select", options: SHOP_TYPE_OPTIONS, default: "1688" },    { name: "target_shops", label: "目标店铺数", type: "number", default: 4 },    { name: "per_shop", label: "每店商品数", type: "number", default: 5 },  ],  order_quote: [    { name: "order_shop_count", label: "目标店铺数", type: "number", default: 1 },    { name: "order_per_shop", label: "每店商品数", type: "number", default: 2 },    { name: "order_item_num", label: "每个商品数量", type: "number", default: 10 },  ],  balance_payment: [    { name: "order_sns", label: "订单号(多个换行或逗号)", type: "textarea", rows: 4, kind: "list" },    { name: "order_sn", label: "单个订单号" },  ],  bank_payment: [    { name: "order_sns", label: "订单号(多个换行或逗号)", type: "textarea", rows: 4, kind: "list" },    { name: "order_sn", label: "单个订单号" },  ],  purchase_to_shelf: [    { name: "order_sn", label: "订单号" },    { name: "purchase_no", label: "交易号" },  ],  purchase_to_shelf_chain: [    { name: "purchase_no", label: "交易号" },  ],  warehouse_delivery: [    { name: "warehouse_sku_count", label: "仓库提出番数", type: "number", default: 1 },    { name: "send_num", label: "每番提出数量", type: "number", default: 1 },  ],  porder_balance_payment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],  porder_bank_payment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],  porder_shipment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],
   oem_sample_order: [
     { name: "order_sn", label: "\u8be2\u4ef7\u5355\u53f7", required: true },
     { name: "sku_list", label: "SKU \u5217\u8868", type: "textarea", rows: 6, placeholder: "[{\"sku_id\": 1993, \"num\": 1}, {\"sku_id\": 1994, \"num\": 2}]" },
+  ],
+  oem_full_inquiry_flow: [
+    { name: "order_sn", label: "询价单号(留空则自动创建)" },
+    { name: "__section_create", type: "section", label: "询价单提出" },
+    { name: "goods_name", label: "商品名称", default: "测试商品" },
+    { name: "hope_min_price", label: "期望最低价", default: "1" },
+    { name: "hope_max_price", label: "期望最高价", default: "100" },
+    { name: "hope_futures", label: "期望交期", default: "10" },
+    { name: "goods_type", label: "商品类型", type: "number", default: 1 },
+    { name: "factory_type", label: "工厂类型", type: "number", default: 3 },
+    { name: "factory_urls", label: "工厂链接（每行一个）", type: "textarea", rows: 4 },
+    { name: "goods_img", label: "商品主图", type: "upload" },
+    { name: "sku1", label: "SKU1名称", default: "sku1" },
+    { name: "sku1_num", label: "SKU1数量", type: "number", default: 1 },
+    { name: "sku2", label: "SKU2名称", default: "sku2" },
+    { name: "sku2_num", label: "SKU2数量", type: "number", default: 2 },
+    { name: "sku3", label: "SKU3名称", default: "sku3" },
+    { name: "sku3_num", label: "SKU3数量", type: "number", default: 3 },
+    { name: "__section_translate", type: "section", label: "翻译阶段" },
+    { name: "goods_name_tr", label: "商品名称翻译(留空用原名)" },
+    { name: "material_tr", label: "材质翻译" },
+    { name: "customize_detail_tr", label: "定制详情翻译" },
+    { name: "goods_detail_tr", label: "商品详情翻译" },
+    { name: "__section_inquiry", type: "section", label: "询价阶段" },
+    { name: "factory_img", label: "工厂图片URL(留空则不设置)" },
+    { name: "salesman", label: "业务员名称", default: "测试业务员" },
+    { name: "salesman_phone", label: "业务员电话", default: "13800000000" },
+    { name: "__section_quote", type: "section", label: "报价阶段" },
+    { name: "samples_price", label: "样品单价", default: "12.00" },
+    { name: "large_price", label: "大货单价", default: "11.00" },
+    { name: "large_other_fee", label: "大货其他费用", default: "12.00" },
+    { name: "large_freight", label: "大货运费", default: "11.00" },
+    { name: "large_delivery_time", label: "大货交期(天)", type: "number", default: 15 },
+    { name: "large_deposit_rate", label: "大货定金比例", default: "100" },
+    { name: "real_samples_price", label: "实际样品单价", default: "10.00" },
+    { name: "real_large_price", label: "实际大货单价", default: "10.00" },
   ],
   material_generation: [
     CUSTOMER_ID_FIELD,
@@ -97,7 +134,8 @@ function openForm(title, fields, values, onSubmit, submitLabel = "保存") {  co
   if (baseFlows.length !== storedFlows.length) {
     writeFlows(baseFlows);
   }
-  let flows = ensureOemSampleOrderScript(
+  let flows = ensureOemFullInquiryFlowScript(
+    ensureOemSampleOrderScript(
     ensureOemNewInquiryScript(
     ensureBalanceRechargeScript(
     ensureMaterialGenerationScript(
@@ -137,6 +175,9 @@ function openForm(title, fields, values, onSubmit, submitLabel = "保存") {  co
     projects,
     allEnvs,
     allCases,
+  ),
+    projects,
+    allEnvs,
   );
   if (latestOrder?.order_sn) {
     flows = flows.map((flow) =>
@@ -512,6 +553,27 @@ function openForm(title, fields, values, onSubmit, submitLabel = "保存") {  co
         variables: summary,
       }, options);
     }
+    if (flow.scriptType === "oem_full_inquiry_flow") {
+      progress.update(24, "正在执行OEM询价单全流程，请稍候...");
+      const result = await api("/api/data-scripts/oem-full-inquiry-flow", {
+        method: "POST",
+        body: {
+          project_id: flow.projectId ? Number(flow.projectId) : null,
+          env_id: flow.envId ? Number(flow.envId) : null,
+          variables,
+        },
+      });
+      const summary = result.summary || {};
+      if (result.result === "passed") {
+        progress.success(`OEM询价单全流程执行成功：${summary.order_sn || summary.inquiry_sn || "-"}`);
+      } else {
+        progress.fail(summary.reason || "OEM询价单全流程执行失败");
+      }
+      return presentScriptResult({
+        records: [{ id: result.id, case_name: flow.name, result: result.result }],
+        variables: summary,
+      }, options);
+    }
     progress.update(24, `\u6b63\u5728\u987a\u5e8f\u6267\u884c ${Math.max((flow.caseIds || []).length, 1)} \u4e2a\u63a5\u53e3\u7528\u4f8b...`);    const payload = {      case_ids: flow.caseIds,      variables,    };    if (flow.envId) payload.env_id = Number(flow.envId);    const result = await api("/api/api-cases/batch-execute", { method: "POST", body: payload });    progress.success("\u811a\u672c\u6267\u884c\u5b8c\u6210\uff0c\u6b63\u5728\u5c55\u793a\u7ed3\u679c...");    return presentScriptResult(result, options);  } catch (error) {    progress.fail(`\u6267\u884c\u5931\u8d25\uff1a${error.message}`);    showToast(error.message);    if (options.collectOnly) throw error;  }}function renderChineseSummary(summary) {  if (!summary || typeof summary !== 'object' || !Object.keys(summary).length) {    return `<div class="empty">暂无执行汇总数据</div>`;  }  const LABEL_MAP = {    keyword: "搜索关键词",    expected_total: "期望添加商品数",    available_expected_total: "可用期望商品数",    added_total: "实际添加商品数",    shop_types: "商品来源",    skipped_shop_types: "跳过的来源",    failed_shop_types: "失败的来源",    strict_shop_count: "严格店铺数",    reason: "失败原因",    ready_shops: "已就绪店铺数",    target_shops: "目标店铺数",    per_shop: "每店商品数",    api_added_total: "API添加数",    verified_added_total: "验证通过数",    cart_selection: "购物车选择",    payment_type: "付款类型",    order_sn: "订单号",
     inquiry_sn: "询价单号",
     porder_sn: "配送单号",    pay_amount: "付款金额",    payment_passed: "付款是否成功",    serial_number: "流水号",    porder_matched: "配送单匹配",    purchase_no: "交易号",    selected_count: "选中商品数",    purchase_ids: "采购ID列表",    grid_id: "货位ID",    grid_number: "货位编号",    storage_count: "入库数量",    storage_passed: "入库是否成功",    customer_count: "客户总数",    executed_customers: "已执行客户数",    skipped_customers: "跳过的客户",    sn_count: "单号数量",    customers: "客户明细",    passed: "成功数",    failed: "失败数",    total: "总计",    material_generation_name: "辅料名称",    material_generation_count: "请求生成数",    created_count: "已创建数",    skipped_count: "已跳过数",    created_list: "已创建列表",    skipped_list: "已跳过列表",    completed: "已完成",    shop_type: "商品来源",    order_item_count: "每店商品数",    order_item_num: "每个商品数量",    logistics_id: "物流方式",    submit_order: "是否提交订单",    run_backend_flow: "是否执行后台流程",    send_num: "每番提出数量",    warehouse_sku_count: "请求番数",    actual_warehouse_sku_count: "实际番数",    total_send_num: "总提出数量",    selected_sku_ids: "选中SKU",    selected_warehouse_items: "选中仓库明细",    order_detail_ids: "仓库明细ID",    porder_detail_ids: "配送单明细ID",    porder_logistics_id: "配送物流ID",    warning: "提示",    error: "错误信息",    customer_id: "客户ID",    duration_ms: "耗时(ms)",    screenshot: "截图",    current_url: "当前URL",    total_box_item_num: "装箱商品总数",    requested_box_count: "请求箱数",    kept_box_count: "实际保留箱数",    box_ids: "箱ID列表",    box_item_counts: "每箱商品数",    box_allocations: "箱分配明细",    direct_box_passed: "直接装箱是否成功",    deleted_box_ids: "已删除箱ID",    unfinished_box_ids: "未完成箱ID",  };  const BOOL_TRUE_TEXT = { true: "是", false: "否", "true": "是", "false": "否" };  const entries = Object.entries(summary).filter(([key]) => key !== 'customers' && !Array.isArray(summary[key]) && typeof summary[key] !== 'object');  const arrayEntries = Object.entries(summary).filter(([key, val]) => key !== 'customers' && Array.isArray(val) && val.length);  const objectEntries = Object.entries(summary).filter(([key, val]) => key === 'customers' && Array.isArray(val) && val.length);  const html = [];  if (entries.length) {    html.push(`<table class="summary-table"><tbody>${entries.map(([key, val]) => {      const label = LABEL_MAP[key] || key;      const display = typeof val === 'boolean' || val === true || val === false ? (BOOL_TRUE_TEXT[String(val)] || String(val)) : String(val ?? '');      return `<tr><td class="summary-label">${escapeHtml(label)}</td><td class="summary-value">${escapeHtml(display)}</td></tr>`;    }).join('')}</tbody></table>`);  }  if (arrayEntries.length) {    arrayEntries.forEach(([key, val]) => {      const label = LABEL_MAP[key] || key;      const display = val.map((item) => typeof item === "object" && item !== null ? JSON.stringify(item, null, 2) : String(item)).join('\n');      html.push(`<details class="summary-detail"><summary>${escapeHtml(label)}（${val.length}项）</summary><pre class="log-view">${escapeHtml(display)}</pre></details>`);    });  }  if (objectEntries.length) {    objectEntries.forEach(([key, val]) => {      html.push(`<details class="summary-detail" open><summary>${escapeHtml(LABEL_MAP[key] || key)}（${val.length}条）</summary><table class="summary-table"><tbody>${val.map((item) => {        const itemEntries = Object.entries(item || {});        return itemEntries.map(([k, v]) => {          const label = LABEL_MAP[k] || k;          const display = typeof v === 'boolean' || v === true || v === false ? (BOOL_TRUE_TEXT[String(v)] || String(v)) : String(v ?? '');          return `<tr><td class="summary-label">${escapeHtml(label)}</td><td class="summary-value">${escapeHtml(display)}</td></tr>`;        }).join('');      }).join('<tr><td colspan="2" style="border-bottom:2px solid var(--border)"></td></tr>')}</tbody></table></details>`);    });  }  const unknownKeys = Object.keys(summary).filter((key) => !LABEL_MAP[key]);  if (unknownKeys.length) {    html.push(`<details class="summary-detail"><summary>其他原始数据</summary><pre class="log-view">${escapeHtml(JSON.stringify(summary, null, 2))}</pre></details>`);  }  return html.join('');}
@@ -630,6 +692,46 @@ function ensureOemSampleOrderScript(flows, projects, envs, cases) {
       null,
       2,
     ),
+  };
+  const next = [...flows, nextFlow];
+  writeFlows(next);
+  return next;
+}
+
+function ensureOemFullInquiryFlowScript(flows, projects, envs) {
+  if (isBuiltinDeleted("oem_full_inquiry_flow_builtin")) return flows;
+  const oemProject = projects.find((p) => p.name === "oem-测试");
+  if (!oemProject) return flows;
+  const env = (envs || []).find((e) => String(e.project_id) === String(oemProject.id));
+  if (!env) return flows;
+  const projectId = oemProject.id;
+  const envId = env.id;
+  const existingIndex = flows.findIndex((flow) => flow.id === "oem_full_inquiry_flow_builtin");
+  if (existingIndex >= 0) {
+    const next = flows.map((flow) =>
+      flow.id === "oem_full_inquiry_flow_builtin"
+        ? { ...flow, projectId: String(projectId), envId: String(envId), name: "OEM询价单全流程" }
+        : flow,
+    );
+    writeFlows(next);
+    return next;
+  }
+  const nextFlow = {
+    id: "oem_full_inquiry_flow_builtin",
+    name: "OEM询价单全流程",
+    scriptType: "oem_full_inquiry_flow",
+    projectId: String(projectId),
+    envId: String(envId),
+    caseIds: [],
+    variables: JSON.stringify({
+      goods_name: "测试商品", hope_min_price: "1", hope_max_price: "100", hope_futures: "10",
+      goods_type: 1, factory_type: 3, factory_urls: "", goods_img: "",
+      sku1: "sku1", sku1_num: 1, sku2: "sku2", sku2_num: 2, sku3: "sku3", sku3_num: 3,
+      factory_img: "", salesman: "测试业务员", salesman_phone: "13800000000",
+      samples_price: "12.00", large_price: "11.00", large_other_fee: "12.00",
+      large_freight: "11.00", large_delivery_time: 15, large_deposit_rate: "100",
+      real_samples_price: "10.00", real_large_price: "10.00",
+    }, null, 2),
   };
   const next = [...flows, nextFlow];
   writeFlows(next);
@@ -808,7 +910,7 @@ function openOemSampleOrderRunForm(flow) {
           </div>
         </div>
         <div id="quoteResultArea" style="margin-top:12px">
-          <div class="empty">输入询价单ID后点击「查询」</div>
+          <div class="empty">输入询价单号后点击「查询」</div>
         </div>
       </div>
       <div class="modal-foot">
@@ -855,24 +957,36 @@ function openOemSampleOrderRunForm(flow) {
         submitBtn.disabled = true; return;
       }
       const detailId = first.id || data.detail_id || "";
+      // 尝试从 quote_detail 中获取更完整的 SKU 覆盖数据
+      const quoteDetail = first.quote_detail || data.quote_detail || {};
+      const quoteSkuList = quoteDetail.sku_list || quoteDetail.skuInfo || quoteDetail.details || quoteDetail.items || quoteDetail.sku_detail || [];
+      // 建立 goods_sku_id → 富字段 的映射
+      const richMap = {};
+      for (const qs of quoteSkuList) {
+        const qId = qs.goods_sku_id || qs.sku_id || qs.skuId || qs.id || "";
+        if (qId) richMap[String(qId)] = qs;
+      }
       skuItems = rawList.map((item, index) => {
         const skuId = item.goods_sku_id || item.sku_id || item.skuId || item.id || `SKU-${index + 1}`;
         const skuName = item.sku || item.sku_name || item.skuName || item.goods_name || item.name || "";
+        // 如有 quoteDetail 富字段则合并
+        const rich = richMap[String(skuId)] || {};
+        const merged = { ...item, ...rich };
         return {
           _index: index, _checked: true, _raw: item, _detail_id: detailId,
-          sku_id: skuId, sku_name: skuName, num: item.num || item.quantity || item.count || 1,
-          sample_can: item.can_sample || item.can_make_sample || item.is_sample || "",
-          sample_fee: item.samples_price || item.sample_fee || item.samplePrice || item.sample_price || "",
-          sample_refund: item.sample_refund || item.sampleReturn || item.sample_return || "",
-          sample_other_fee: item.sample_other_fee || item.otherSampleFee || item.other_sample_fee || "",
-          sample_shipping: item.sample_shipping || item.sampleShipping || item.sample_freight || "",
-          sample_lead_time: item.sample_lead_time || item.sampleLeadTime || item.sample_delivery || "",
-          bulk_moq: item.large_min_quantity || item.moq || item.bulk_moq || item.min_order_qty || item.minOrderQty || "",
-          bulk_price: item.large_price || item.bulk_price || item.bulkPrice || item.unit_price || item.unitPrice || item.price || "",
-          bulk_other_fee: item.bulk_other_fee || item.bulkOtherFee || item.other_fee || item.otherFee || "",
-          bulk_deposit_ratio: item.deposit_ratio || item.depositRatio || item.deposit || "",
-          bulk_shipping: item.bulk_shipping || item.bulkShipping || item.bulk_freight || item.freight || "",
-          bulk_lead_time: item.bulk_lead_time || item.bulkLeadTime || item.delivery_time || item.deliveryTime || "",
+          sku_id: skuId, sku_name: skuName, num: merged.num || merged.quantity || merged.count || 1,
+          sample_can: merged.can_sample || merged.can_make_sample || merged.is_sample || "",
+          sample_fee: merged.samples_price || merged.sample_fee || merged.samplePrice || merged.sample_price || "",
+          sample_refund: merged.sample_refund || merged.sampleReturn || merged.sample_return || "",
+          sample_other_fee: merged.sample_other_fee || merged.otherSampleFee || merged.other_sample_fee || "",
+          sample_shipping: merged.sample_shipping || merged.sampleShipping || merged.sample_freight || "",
+          sample_lead_time: merged.sample_lead_time || merged.sampleLeadTime || merged.sample_delivery || "",
+          bulk_moq: merged.large_min_quantity || merged.moq || merged.bulk_moq || merged.min_order_qty || merged.minOrderQty || "",
+          bulk_price: merged.large_price || merged.bulk_price || merged.bulkPrice || merged.unit_price || merged.unitPrice || merged.price || "",
+          bulk_other_fee: merged.bulk_other_fee || merged.bulkOtherFee || merged.other_fee || merged.otherFee || "",
+          bulk_deposit_ratio: merged.deposit_ratio || merged.depositRatio || merged.deposit || "",
+          bulk_shipping: merged.bulk_shipping || merged.bulkShipping || merged.bulk_freight || merged.freight || "",
+          bulk_lead_time: merged.bulk_lead_time || merged.bulkLeadTime || merged.delivery_time || merged.deliveryTime || "",
         };
       });
       detailInput.readOnly = true; submitBtn.disabled = false;
@@ -888,10 +1002,13 @@ function openOemSampleOrderRunForm(flow) {
 
   function renderQuoteResult(data) {
     let infoHtml = "";
-    const infoFields = { order_sn: "询价单号", goods_name: "商品名称", goodsName: "商品名称", status: "状态", create_time: "创建时间", createdAt: "创建时间", factory_url: "工厂链接", factoryUrl: "工厂链接" };
+    const first = (data.list || [])[0] || {};
+    const infoFields = { order_sn: "询价单号", goods_name: "商品名称", goodsName: "商品名称", status: "状态", status_name: "状态", factory_name: "工厂名称", factory_url: "工厂链接", factoryUrl: "工厂链接", factory_city: "工厂城市", create_time: "创建时间", createdAt: "创建时间", samples_price: "样品总价", quote_at: "报价时间" };
     const infoParts = [];
+    // 优先从 first 取，其次从 data
     for (const [key, label] of Object.entries(infoFields)) {
-      if (data[key]) infoParts.push(`<div><span>${label}</span><strong>${escapeHtml(String(data[key]))}</strong></div>`);
+      const val = first[key] ?? data[key] ?? data.list?.[0]?.[key] ?? "";
+      if (val) infoParts.push(`<div><span>${label}</span><strong>${escapeHtml(String(val))}</strong></div>`);
     }
     if (infoParts.length) infoHtml = `<div class="functional-summary" style="margin-bottom:14px">${infoParts.join("")}</div>`;
 
@@ -927,8 +1044,66 @@ function openOemSampleOrderRunForm(flow) {
   });
 }
 
+function openOemFullInquiryFlowRunForm(flow) {
+  let variables = {};
+  try { variables = parseJsonText(flow.variables || "{}", {}); } catch { showToast("脚本变量不是合法 JSON"); return; }
+  const fields = (SCRIPT_PARAM_SCHEMAS.oem_full_inquiry_flow || []);
+  const formFields = fields.filter((f) => f.type !== "section");
+  variables = sanitizeScriptVariables(flow.scriptType, variables, flow);
+  const values = { ...paramFormValues(formFields, variables), __save_defaults: false };
+  const groups = [];
+  let current = { label: "基础参数", fields: [] };
+  for (const f of fields) {
+    if (f.type === "section") {
+      if (current.fields.length) groups.push(current);
+      current = { label: f.label, fields: [] };
+    } else {
+      current.fields.push(f);
+    }
+  }
+  if (current.fields.length) groups.push(current);
+  let bodyHtml = "";
+  for (const g of groups) {
+    bodyHtml += `<details class="functional-requirement"><summary>${escapeHtml(g.label)}</summary><div class="form-grid">`;
+    for (const f of g.fields) bodyHtml += renderFormField(f, values[f.name]);
+    bodyHtml += `</div></details>`;
+  }
+  bodyHtml += renderFormField({ name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false }, false);
+  modalEl.innerHTML = `
+    <form id="oemFullInquiryFlowForm">
+      <div class="modal-head">
+        <h3>${escapeHtml(`执行 ${flow.name || "OEM询价单全流程"}`)}</h3>
+        <button class="btn secondary" value="cancel" formmethod="dialog" type="button" id="closeModal">关闭</button>
+      </div>
+      <div class="modal-body">${bodyHtml}</div>
+      <div class="modal-foot"><span></span><button class="btn" type="submit">执行</button></div>
+    </form>
+  `;
+  modalEl.showModal();
+  bindUploadButtons();
+  const form = document.querySelector("#oemFullInquiryFlowForm");
+  document.querySelector("#closeModal").addEventListener("click", async () => {
+    modalEl.close();
+    if (state.view === "dataScripts" && !state.factory.editing) {
+      await renderDataScripts();
+    }
+  });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const data = readForm(form);
+      const runtimeVariables = sanitizeScriptVariables(flow.scriptType, mergeParamValues(variables, formFields, data), flow);
+      if (data.__save_defaults) saveFlowVariables(flow, runtimeVariables);
+      showToast("正在执行OEM询价单全流程...");
+      await runSavedFlow(flow, runtimeVariables);
+    } catch (error) {
+      showToast(error.message);
+    }
+  });
+}
+
 function openRunScriptForm(flow) {
-  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery", "porder_balance_payment", "porder_bank_payment", "material_generation", "balance_recharge", "oem_new_inquiry", "oem_sample_order"];
+  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery", "porder_balance_payment", "porder_bank_payment", "material_generation", "balance_recharge", "oem_new_inquiry", "oem_sample_order", "oem_full_inquiry_flow"];
   if (!flow || (!builtInTypes.includes(flow.scriptType) && !(flow.caseIds || []).length)) {
     showToast("脚本没有配置步骤");
     return;
@@ -946,6 +1121,7 @@ function openRunScriptForm(flow) {
     openOemSampleOrderRunForm(flow);
     return;
   }
+  if (flow.scriptType === "oem_full_inquiry_flow") { openOemFullInquiryFlowRunForm(flow); return; }
   let variables = {};
   try {
     variables = parseJsonText(flow.variables || "{}", {});
