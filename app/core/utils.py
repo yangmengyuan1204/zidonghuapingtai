@@ -843,6 +843,44 @@ OEM_DATA_SCRIPT_API_CASES: List[Dict[str, Any]] = [
             "Expiration": "json.data.Expiration",
         },
     },
+    {
+        # 后台接口：保存询价单翻译内容（需要后台 admin Bearer token）。
+        # is_temp=false 保存；goods_file_tr 为翻译文件 OSS URL 列表。
+        "key": "oem_inquiry_translate",
+        "case_name": "OEM-询价单翻译保存",
+        "url": "/admin/inquiryTranslate",
+        "body": {
+            "is_temp": False,
+            "order_sn": "{{order_sn}}",
+            "goods_name_tr": "{{goods_name_tr}}",
+            "material_tr": "{{material_tr}}",
+            "customize_detail_tr": "{{customize_detail_tr}}",
+            "goods_detail_tr": "{{goods_detail_tr}}",
+            "goods_file_tr": [{"file_url": "{{file_url}}", "file_name": "{{file_name}}"}],
+            "sku_info": [
+                {"id": "{{sku_id_1}}", "sku": "{{sku1}}", "sku_tr": "{{sku1_tr}}", "num": "{{sku1_num}}"},
+                {"id": "{{sku_id_2}}", "sku": "{{sku2}}", "sku_tr": "{{sku2_tr}}", "num": "{{sku2_num}}"},
+            ],
+            "goods_id": "{{goods_id}}",
+            "goods_class": "{{goods_class}}",
+            "y_remark": "{{y_remark}}",
+            "user_remark": "{{user_remark}}",
+        },
+        "extract": {"data": "json.data"},
+    },
+    {
+        # 后台接口：翻译完成提交给采购（需要后台 admin Bearer token）。
+        # point_name="translation" 表示翻译环节提交。
+        "key": "oem_inquiry_submit",
+        "case_name": "OEM-询价单翻译提交采购",
+        "url": "/admin/inquiryDetail",
+        "body": {
+            "order_sn": "{{order_sn}}",
+            "is_quote": False,
+            "point_name": "translation",
+        },
+        "extract": {"data": "json.data"},
+    },
 ]
 
 
