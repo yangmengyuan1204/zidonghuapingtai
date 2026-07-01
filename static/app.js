@@ -957,36 +957,44 @@ function openOemSampleOrderRunForm(flow) {
         submitBtn.disabled = true; return;
       }
       const detailId = first.id || data.detail_id || "";
-      // 尝试从 quote_detail 中获取更完整的 SKU 覆盖数据
+      // 从 quoteDetail 提取样品/大货明细
       const quoteDetail = first.quote_detail || data.quote_detail || {};
-      const quoteSkuList = quoteDetail.sku_list || quoteDetail.skuInfo || quoteDetail.details || quoteDetail.items || quoteDetail.sku_detail || [];
-      // 建立 goods_sku_id → 富字段 的映射
-      const richMap = {};
-      for (const qs of quoteSkuList) {
-        const qId = qs.goods_sku_id || qs.sku_id || qs.skuId || qs.id || "";
-        if (qId) richMap[String(qId)] = qs;
+      const samplesInfo = quoteDetail.samples_info || {};
+      const largeInfo = quoteDetail.large_info || {};
+      // 建立 sku 名称 → 样品字段映射
+      const sampleSkuMap = {};
+      for (const s of (samplesInfo.skus || [])) {
+        if (s.sku) sampleSkuMap[s.sku] = s;
+      }
+      // 建立 sku 名称 → 大货字段映射
+      const largeSkuMap = {};
+      for (const s of (largeInfo.skus || [])) {
+        if (s.sku) largeSkuMap[s.sku] = s;
       }
       skuItems = rawList.map((item, index) => {
         const skuId = item.goods_sku_id || item.sku_id || item.skuId || item.id || `SKU-${index + 1}`;
         const skuName = item.sku || item.sku_name || item.skuName || item.goods_name || item.name || "";
-        // 如有 quoteDetail 富字段则合并
-        const rich = richMap[String(skuId)] || {};
-        const merged = { ...item, ...rich };
+        // 按 sku 名称匹配样品/大货数据
+        const sSku = sampleSkuMap[skuName] || {};
+        const lSku = largeSkuMap[skuName] || {};
         return {
           _index: index, _checked: true, _raw: item, _detail_id: detailId,
-          sku_id: skuId, sku_name: skuName, num: merged.num || merged.quantity || merged.count || 1,
-          sample_can: merged.can_sample || merged.can_make_sample || merged.is_sample || "",
-          sample_fee: merged.samples_price || merged.sample_fee || merged.samplePrice || merged.sample_price || "",
-          sample_refund: merged.sample_refund || merged.sampleReturn || merged.sample_return || "",
-          sample_other_fee: merged.sample_other_fee || merged.otherSampleFee || merged.other_sample_fee || "",
-          sample_shipping: merged.sample_shipping || merged.sampleShipping || merged.sample_freight || "",
-          sample_lead_time: merged.sample_lead_time || merged.sampleLeadTime || merged.sample_delivery || "",
-          bulk_moq: merged.large_min_quantity || merged.moq || merged.bulk_moq || merged.min_order_qty || merged.minOrderQty || "",
-          bulk_price: merged.large_price || merged.bulk_price || merged.bulkPrice || merged.unit_price || merged.unitPrice || merged.price || "",
-          bulk_other_fee: merged.bulk_other_fee || merged.bulkOtherFee || merged.other_fee || merged.otherFee || "",
-          bulk_deposit_ratio: merged.deposit_ratio || merged.depositRatio || merged.deposit || "",
-          bulk_shipping: merged.bulk_shipping || merged.bulkShipping || merged.bulk_freight || merged.freight || "",
-          bulk_lead_time: merged.bulk_lead_time || merged.bulkLeadTime || merged.delivery_time || merged.deliveryTime || "",
+          sku_id: skuId, sku_name: skuName,
+          num: item.num || item.quantity || item.count || 1,
+          /** 样品信息 */
+          sample_can: sSku.can_proofing ?? (item.can_sample || item.can_make_sample || item.is_sample || ""),
+          sample_fee: sSku.samples_price || item.samples_price || item.sample_fee || item.samplePrice || item.sample_price || "",
+          sample_refund: sSku.samples_price_return || item.sample_refund || item.sampleReturn || item.sample_return || "",
+          sample_other_fee: samplesInfo.samples_other_fee || item.sample_other_fee || item.otherSampleFee || item.other_sample_fee || "",
+          sample_shipping: samplesInfo.samples_freight || item.sample_shipping || item.sampleShipping || item.sample_freight || "",
+          sample_lead_time: samplesInfo.samples_delivery_time || item.sample_lead_time || item.sampleLeadTime || item.sample_delivery || "",
+          /** 大货信息 */
+          bulk_moq: lSku.large_min_quantity || item.large_min_quantity || item.moq || item.bulk_moq || item.min_order_qty || item.minOrderQty || "",
+          bulk_price: lSku.large_price || item.large_price || item.bulk_price || item.bulkPrice || item.unit_price || item.unitPrice || item.price || "",
+          bulk_other_fee: largeInfo.large_other_fee || item.bulk_other_fee || item.bulkOtherFee || item.other_fee || item.otherFee || "",
+          bulk_deposit_ratio: largeInfo.large_deposit_rate || item.deposit_ratio || item.depositRatio || item.deposit || "",
+          bulk_shipping: largeInfo.large_freight || item.bulk_shipping || item.bulkShipping || item.bulk_freight || item.freight || "",
+          bulk_lead_time: largeInfo.large_delivery_time || item.bulk_lead_time || item.bulkLeadTime || item.delivery_time || item.deliveryTime || "",
         };
       });
       detailInput.readOnly = true; submitBtn.disabled = false;
@@ -1003,12 +1011,27 @@ function openOemSampleOrderRunForm(flow) {
   function renderQuoteResult(data) {
     let infoHtml = "";
     const first = (data.list || [])[0] || {};
-    const infoFields = { order_sn: "询价单号", goods_name: "商品名称", goodsName: "商品名称", status: "状态", status_name: "状态", factory_name: "工厂名称", factory_url: "工厂链接", factoryUrl: "工厂链接", factory_city: "工厂城市", create_time: "创建时间", createdAt: "创建时间", samples_price: "样品总价", quote_at: "报价时间" };
+    const qd = first.quote_detail || data.quote_detail || {};
+    const hope = qd.hope_info || {};
+    // 基本信息字段：优先从 hope_info / quote_detail / first / data 取
+    const infoFields = {
+      order_sn: "询价单号", goods_name: "商品名称", goods_no: "商品编号",
+      status: "状态", status_name: "状态", factory_name: "工厂名称",
+      factory_city: "工厂城市", factory_province: "工厂省份",
+      factory_url: "工厂链接", samples_price: "样品总价",
+      hope_min_price: "期望最低价", hope_max_price: "期望最高价", hope_futures: "期望交期",
+      samples_other_fee: "样品其他费用", samples_freight: "样品运费",
+      samples_delivery_time: "打样货期(天)",
+      large_other_fee: "大货其他费用", large_freight: "大货运费(元)",
+      large_delivery_time: "大货货期(天)", large_deposit_rate: "定金比例(%)",
+      remark: "备注", quote_at: "报价时间",
+    };
     const infoParts = [];
-    // 优先从 first 取，其次从 data
     for (const [key, label] of Object.entries(infoFields)) {
-      const val = first[key] ?? data[key] ?? data.list?.[0]?.[key] ?? "";
-      if (val) infoParts.push(`<div><span>${label}</span><strong>${escapeHtml(String(val))}</strong></div>`);
+      const val = hope[key] ?? qd.samples_info?.[key] ?? qd.large_info?.[key] ?? first[key] ?? data[key] ?? "";
+      if (val !== "" && val !== null && val !== undefined) {
+        infoParts.push(`<div><span>${label}</span><strong>${escapeHtml(String(val))}</strong></div>`);
+      }
     }
     if (infoParts.length) infoHtml = `<div class="functional-summary" style="margin-bottom:14px">${infoParts.join("")}</div>`;
 
