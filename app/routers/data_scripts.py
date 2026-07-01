@@ -26,6 +26,7 @@ from ..data_scripts import (
     run_full_flow_script,
     run_material_generation_script,
     run_oem_new_inquiry_script,
+    run_oem_sample_order_script,
     run_order_quote_script,
     run_porder_balance_payment_script,
     run_porder_bank_payment_script,
@@ -345,6 +346,21 @@ def run_oem_new_inquiry_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_new_inquiry_script", run_oem_new_inquiry_script)(env, variables)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+@router.post("/data-scripts/oem-sample-order")
+def run_oem_sample_order_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
+    passed, log_text, report_path, summary = _runtime_func("run_oem_sample_order_script", run_oem_sample_order_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
     data = serialize(record)
     data["summary"] = summary

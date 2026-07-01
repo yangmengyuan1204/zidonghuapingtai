@@ -389,7 +389,7 @@ def test_runtime_variables_saved_without_sensitive_values():
 def test_execute_ui_cases_batch_parallelism_uses_ordered_results(monkeypatch):
     calls = []
 
-    def fake_execute_ui_case(case, variables=None, execution_context=None):
+    def fake_execute_ui_case(case, variables=None, execution_context=None, env=None, db_session=None):
         calls.append(case.id)
         return True, json.dumps({"step_logs": [{"index": 1, "status": "passed"}]}), "", ""
 
@@ -415,7 +415,7 @@ def test_execute_ui_cases_batch_parallelism_uses_ordered_results(monkeypatch):
 
 
 def test_execute_ui_case_with_deadline_returns_timeout(monkeypatch):
-    def slow_execute_ui_case(case, variables=None, execution_context=None):
+    def slow_execute_ui_case(case, variables=None, execution_context=None, env=None, db_session=None):
         time.sleep(2)
         return True, json.dumps({"step_logs": []}), "", ""
 

@@ -8552,11 +8552,9 @@ OEM_OSS_ENDPOINT = "oss-ap-northeast-1.aliyuncs.com"
 
 
 def upload_oem_image(file_name: str, content: bytes, content_type: str, base_url: str = OEM_DEFAULT_BASE_URL) -> str:
-    """OEM 图片上传：前台登录 -> 获取 STS -> PUT 到 OSS -> 返回 OSS URL。"""
+    """OEM 图片上传：获取 STS -> PUT 到 OSS -> 返回 OSS URL（getUploadToken 无需登录鉴权）。"""
     session = requests.Session()
-    variables = {"account": "12345678990", "password": "123456"}
-    client_token = _oem_client_login(session, base_url, variables, 30)
-    sts = _oem_get_upload_token(session, base_url, client_token, 30)
+    sts = _oem_get_upload_token(session, base_url, "", 30)
     # 构造 object_key: dest/202607/6位随机/文件名
     now = datetime.now()
     month_dir = now.strftime("%Y%m")
@@ -8684,3 +8682,123 @@ def run_oem_new_inquiry_script(env: Env, variables: Dict[str, Any] | None = None
     except Exception as exc:
         log["error"] = str(exc)
         return _finish_named(OEM_SCRIPT_NAME, log, False, {"reason": str(exc), "error": str(exc)})
+
+
+# ─── OEM 样品单提出脚本 ───────────────────────────────────────────────
+
+OEM_SAMPLE_ORDER_SCRIPT_NAME = "OEM提出样品单"
+
+
+def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    """OEM 样品单提出脚本：前台登录 -> 创建样品单，返回 order_sn。
+
+    接口 POST /api/newOrder，从询价单提出样品单。
+
+    可配置变量：
+        - account / password: 前台登录账号（默认 12345678990 / 123456）
+        - order_sn: 询价单单号（必填，如 Y20260701111904-15-OEM）
+        - inquiry_detail_id: 询价单明细ID（必填）
+        - type: 订单类型（1=样品单，默认 1）
+        - sku_list: SKU 列表 JSON（如 [{"sku_id":1993,"num":1,"option":[]}]）
+        - sku1 / sku1_num ... sku3/sku3_num: 简写 SKU（sku_list 为空时使用）
+        - remark: 备注
+        - warehouse_city: 仓库城市（2=默认）
+    """
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+    base_url = (env.base_url or OEM_DEFAULT_BASE_URL).rstrip("/")
+
+    log: Dict[str, Any] = {
+        "script": OEM_SAMPLE_ORDER_SCRIPT_NAME,
+        "mode": "oem_sample_order",
+        "base_url": base_url,
+        "started_at": datetime.now(),
+        "steps": [],
+    }
+
+    try:
+        session = requests.Session()
+        # 前台登录
+        client_token = _oem_client_login(session, base_url, variables, timeout)
+        _step(
+            log,
+            "client_login",
+            {"account": variables.get("account") or "12345678990"},
+            {"url": "/client/userLogin", "method": "POST"},
+            {"token": client_token[:16] + "..."},
+        )
+
+        # 构造创建样品单请求体
+        sku_list = variables.get("sku_list")
+        if not isinstance(sku_list, list):
+            sku_list = []
+            for i in range(1, 4):
+                sku_id = variables.get(f"sku{i}")
+                num = variables.get(f"sku{i}_num")
+                if sku_id:
+                    sku_list.append({
+                        "sku_id": int(sku_id),
+                        "num": int(num or 1),
+                        "option": [],
+                    })
+
+        order_sn = str(variables.get("order_sn") or "").strip()
+        inquiry_detail_id = str(variables.get("inquiry_detail_id") or "").strip()
+
+        body: Dict[str, Any] = {
+            "order_sn": order_sn,
+            "inquiry_detail_id": inquiry_detail_id,
+            "type": int(variables.get("type") or 1),
+            "sku_list": sku_list,
+            "remark": str(variables.get("remark") or ""),
+            "warehouse_city": int(variables.get("warehouse_city") or 2),
+        }
+
+        # 调用创建样品单接口
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/plain, */*",
+            "Authorization": f"Bearer {client_token}",
+            "Origin": variables.get("frontend_origin", OEM_DEFAULT_FRONTEND_ORIGIN),
+            "Referer": variables.get("frontend_origin", OEM_DEFAULT_FRONTEND_ORIGIN).rstrip("/") + "/",
+        }
+        url = urljoin(base_url.rstrip("/") + "/", "/api/newOrder")
+        last_error: Exception | None = None
+        payload: Dict[str, Any] = {}
+        for attempt in range(3):
+            try:
+                response = session.post(url, json=body, headers=headers, timeout=timeout)
+                payload = response.json()
+                break
+            except (requests.ConnectionError, requests.Timeout, ValueError) as exc:
+                last_error = exc
+                if attempt < 2:
+                    time.sleep(0.8 * (attempt + 1))
+        else:
+            raise RuntimeError(f"创建样品单请求失败: {last_error}")
+
+        if not payload.get("success") or payload.get("code") not in (0, "0", None):
+            _step(log, "new_sample_order", payload, {"url": "/api/newOrder", "method": "POST"})
+            return _finish_named(
+                OEM_SAMPLE_ORDER_SCRIPT_NAME,
+                log,
+                False,
+                {"reason": f"创建样品单失败: {payload.get('msg')}", "error": payload.get("msg"), "payload": payload},
+            )
+
+        order_sn_out = str(payload.get("data") or "")
+        _step(
+            log,
+            "new_sample_order",
+            payload,
+            {"url": "/api/newOrder", "method": "POST"},
+            {"order_sn": order_sn_out, "success": True},
+        )
+
+        summary = {"order_sn": order_sn_out, "reason": "创建样品单成功"}
+        return _finish_named(OEM_SAMPLE_ORDER_SCRIPT_NAME, log, True, summary)
+
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _finish_named(OEM_SAMPLE_ORDER_SCRIPT_NAME, log, False, {"reason": str(exc), "error": str(exc)})
