@@ -682,7 +682,7 @@ function openOrderQuoteRunForm(flow, fields) {
 }
 
 function openRunScriptForm(flow) {
-  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery", "porder_balance_payment", "porder_bank_payment", "material_generation", "balance_recharge"];
+  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery", "porder_balance_payment", "porder_bank_payment", "material_generation", "balance_recharge", "oem_new_inquiry"];
   if (!flow || (!builtInTypes.includes(flow.scriptType) && !(flow.caseIds || []).length)) {
     showToast("脚本没有配置步骤");
     return;
