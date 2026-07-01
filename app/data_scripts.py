@@ -8637,11 +8637,11 @@ def run_oem_new_inquiry_script(env: Env, variables: Dict[str, Any] | None = None
             "forward_order": variables.get("forward_order") or {"forward_sn": "", "num": "", "goods_value": ""},
         }
 
-        # 调用创建询价单接口（前台 token 注入 clienttoken 头）
+        # 调用创建询价单接口（前台 token 注入 Authorization: Bearer 头）
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json, text/plain, */*",
-            "clienttoken": client_token,
+            "Authorization": f"Bearer {client_token}",
             "Origin": variables.get("frontend_origin", OEM_DEFAULT_FRONTEND_ORIGIN),
             "Referer": variables.get("frontend_origin", OEM_DEFAULT_FRONTEND_ORIGIN).rstrip("/") + "/",
         }
