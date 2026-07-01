@@ -765,9 +765,9 @@ OEM_DATA_SCRIPT_API_CASES: List[Dict[str, Any]] = [
     {
         "key": "oem_client_login",
         "case_name": "OEM-前台登录",
-        "url": "/client/userLogin",
+        "url": "/api/login",
         "body": {"account": "{{account}}", "password": "{{password}}"},
-        "extract": {"userToken": "json.data.userToken"},
+        "extract": {"access_token": "json.data.access_token"},
     },
     {
         "key": "oem_new_inquiry",
@@ -827,6 +827,20 @@ OEM_DATA_SCRIPT_API_CASES: List[Dict[str, Any]] = [
             "end_time": "",
             "goods_name": "",
             "goods_type": "",
+        },
+    },
+    {
+        # 询价单翻译流程：先调此接口拿阿里云 OSS STS 凭证，再 PUT 翻译文件到 OSS。
+        # 供后续"提给采购"脚本使用，此处仅登记接口，不写脚本逻辑。
+        "key": "oem_upload_token",
+        "case_name": "OEM-询价单翻译文件上传",
+        "url": "/common/common/getUploadToken",
+        "body": {},
+        "extract": {
+            "AccessKeyId": "json.data.AccessKeyId",
+            "AccessKeySecret": "json.data.AccessKeySecret",
+            "SecurityToken": "json.data.SecurityToken",
+            "Expiration": "json.data.Expiration",
         },
     },
 ]
