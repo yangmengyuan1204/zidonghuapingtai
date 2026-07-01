@@ -8489,18 +8489,20 @@ def _oem_admin_login(session: requests.Session, base_url: str, variables: Dict[s
 
 
 def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[str, Any], timeout: int) -> str:
-    """OEM 前台登录，返回 userToken。"""
+    """OEM 前台登录，返回 access_token。
+
+    站点接口为 POST /api/login，请求体 {"account","password"}，
+    返回 {"code":0,"msg":"操作成功","data":{"access_token":"..."}}，无 success 字段。
+    """
     fields = {
         "account": variables.get("account") or "12345678990",
         "password": variables.get("password") or "123456",
     }
-    payload = _oem_post_json(session, base_url, "/client/userLogin", fields, timeout, is_admin=False, variables=variables)
-    if not payload.get("success") or payload.get("code") not in (0, "0", None):
-        raise RuntimeError(f"OEM 前台登录失败: code={payload.get('code')} msg={payload.get('msg')}")
+    payload = _oem_post_json(session, base_url, "/api/login", fields, timeout, is_admin=False, variables=variables)
     data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
-    token = data.get("userToken") or data.get("token") or data.get("access_token")
+    token = data.get("access_token") or data.get("userToken") or data.get("token")
     if not token:
-        raise RuntimeError(f"OEM 前台登录成功但未返回 token: {payload}")
+        raise RuntimeError(f"OEM 前台登录失败: code={payload.get('code')} msg={payload.get('msg')}")
     return str(token)
 
 
@@ -8601,7 +8603,7 @@ def run_oem_new_inquiry_script(env: Env, variables: Dict[str, Any] | None = None
             log,
             "client_login",
             {"account": variables.get("account") or "12345678990"},
-            {"url": "/client/userLogin", "method": "POST"},
+            {"url": "/api/login", "method": "POST"},
             {"token": client_token[:16] + "..."},
         )
 
@@ -8696,23 +8698,28 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
 
     可配置变量：
         - account / password: 前台登录账号（默认 12345678990 / 123456）
-        - order_sn: 询价单单号（必填，如 Y20260701111904-15-OEM）
-        - inquiry_detail_id: 询价单明细ID（必填）
-        - type: 订单类型（1=样品单，默认 1）
-        - sku_list: SKU 列表 JSON（如 [{"sku_id":1993,"num":1,"option":[]}]）
-        - sku1 / sku1_num ... sku3/sku3_num: 简写 SKU（sku_list 为空时使用）
-        - remark: 备注
-        - warehouse_city: 仓库城市（2=默认）
+        - order_sn: 询价单号（必填，如 Y20260701111904-15-OEM）
+        - sku_list: SKU 列表，支持两种格式：
+            a) JSON 字符串 [{"sku_id":1993,"num":1},{"sku_id":1994,"num":2}]
+            b) 纯文本行，每行 "sku_id,num"（如 "1993,1"）
     """
     ensure_report_dirs()
     variables = dict(variables or {})
     timeout = _as_int(variables.get("timeout"), env.timeout or 25)
     base_url = (env.base_url or OEM_DEFAULT_BASE_URL).rstrip("/")
 
+    order_sn = str(variables.get("order_sn") or "").strip()
+    if not order_sn:
+        return _finish_named(
+            OEM_SAMPLE_ORDER_SCRIPT_NAME, {},
+            False, {"reason": "缺少必填参数：询价单号 order_sn 不能为空"},
+        )
+
     log: Dict[str, Any] = {
         "script": OEM_SAMPLE_ORDER_SCRIPT_NAME,
         "mode": "oem_sample_order",
         "base_url": base_url,
+        "order_sn": order_sn,
         "started_at": datetime.now(),
         "steps": [],
     }
@@ -8729,30 +8736,41 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
             {"token": client_token[:16] + "..."},
         )
 
-        # 构造创建样品单请求体
+        # 解析 SKU 列表
         sku_list = variables.get("sku_list")
-        if not isinstance(sku_list, list):
+        if isinstance(sku_list, list):
+            # 已是列表，直接使用
+            pass
+        elif isinstance(sku_list, str) and sku_list.strip().startswith("["):
+            # JSON 字符串解析
+            try:
+                sku_list = json.loads(sku_list)
+            except (json.JSONDecodeError, TypeError):
+                sku_list = []
+        elif isinstance(sku_list, str) and sku_list.strip():
+            # 纯文本行格式：每行 "sku_id,num"
             sku_list = []
-            for i in range(1, 4):
-                sku_id = variables.get(f"sku{i}")
-                num = variables.get(f"sku{i}_num")
-                if sku_id:
-                    sku_list.append({
-                        "sku_id": int(sku_id),
-                        "num": int(num or 1),
-                        "option": [],
-                    })
-
-        order_sn = str(variables.get("order_sn") or "").strip()
-        inquiry_detail_id = str(variables.get("inquiry_detail_id") or "").strip()
+            for line in sku_list.strip().splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split(",")
+                try:
+                    sku_id = int(parts[0].strip())
+                    num = int(parts[1].strip()) if len(parts) > 1 and parts[1].strip() else 1
+                    sku_list.append({"sku_id": sku_id, "num": num, "option": []})
+                except (ValueError, IndexError):
+                    continue
+        else:
+            sku_list = []
 
         body: Dict[str, Any] = {
             "order_sn": order_sn,
-            "inquiry_detail_id": inquiry_detail_id,
-            "type": int(variables.get("type") or 1),
-            "sku_list": sku_list,
-            "remark": str(variables.get("remark") or ""),
-            "warehouse_city": int(variables.get("warehouse_city") or 2),
+            "inquiry_detail_id": variables.get("inquiry_detail_id") or str(variables.get("id") or ""),
+            "type": 1,
+            "sku_list": sku_list if sku_list else [{"sku_id": 1993, "num": 1, "option": []}],
+            "remark": "",
+            "warehouse_city": 2,
         }
 
         # 调用创建样品单接口
