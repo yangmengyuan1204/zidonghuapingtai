@@ -6,16 +6,7 @@ let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _
 };const BUILTIN_DATA_SCRIPT_TYPES = Object.keys(BUILTIN_FLOW_DEFINITIONS);const CUSTOMER_ID_FIELD = { name: "customer_ids", label: "客户ID(多个换行或逗号)", type: "textarea", rows: 3, kind: "list", placeholder: "多个客户ID可用逗号或换行分隔" };const SHOP_TYPE_OPTIONS = [  { value: "1688", label: "1688" },  { value: "taobao", label: "taobao" },  { value: "tmall", label: "tmall" },  { value: "rakumart", label: "rakumart" },];const SCRIPT_PARAM_SCHEMAS = {  shopping_cart: [    { name: "keyword", label: "关键词" },    { name: "shop_type", label: "商品来源", type: "select", options: SHOP_TYPE_OPTIONS, default: "1688" },    { name: "target_shops", label: "目标店铺数", type: "number", default: 4 },    { name: "per_shop", label: "每店商品数", type: "number", default: 5 },  ],  order_quote: [    { name: "order_shop_count", label: "目标店铺数", type: "number", default: 1 },    { name: "order_per_shop", label: "每店商品数", type: "number", default: 2 },    { name: "order_item_num", label: "每个商品数量", type: "number", default: 10 },  ],  balance_payment: [    { name: "order_sns", label: "订单号(多个换行或逗号)", type: "textarea", rows: 4, kind: "list" },    { name: "order_sn", label: "单个订单号" },  ],  bank_payment: [    { name: "order_sns", label: "订单号(多个换行或逗号)", type: "textarea", rows: 4, kind: "list" },    { name: "order_sn", label: "单个订单号" },  ],  purchase_to_shelf: [    { name: "order_sn", label: "订单号" },    { name: "purchase_no", label: "交易号" },  ],  purchase_to_shelf_chain: [    { name: "purchase_no", label: "交易号" },  ],  warehouse_delivery: [    { name: "warehouse_sku_count", label: "仓库提出番数", type: "number", default: 1 },    { name: "send_num", label: "每番提出数量", type: "number", default: 1 },  ],  porder_balance_payment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],  porder_bank_payment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],  porder_shipment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],
   oem_sample_order: [
     { name: "order_sn", label: "\u8be2\u4ef7\u5355\u53f7", required: true },
-    { name: "inquiry_detail_id", label: "\u8be2\u4ef7\u5355\u660e\u7ec6ID", required: true },
-    { name: "type", label: "\u8ba2\u5355\u7c7b\u578b", type: "number", default: 1 },
-    { name: "sku1", label: "SKU1 ID" },
-    { name: "sku1_num", label: "SKU1 \u6570\u91cf", type: "number", default: 1 },
-    { name: "sku2", label: "SKU2 ID" },
-    { name: "sku2_num", label: "SKU2 \u6570\u91cf", type: "number", default: 1 },
-    { name: "sku3", label: "SKU3 ID" },
-    { name: "sku3_num", label: "SKU3 \u6570\u91cf", type: "number", default: 1 },
-    { name: "remark", label: "\u5907\u6ce8" },
-    { name: "warehouse_city", label: "\u4ed3\u5e93\u57ce\u5e02", type: "number", default: 2 },
+    { name: "sku_list", label: "SKU \u5217\u8868", type: "textarea", rows: 6, placeholder: "[{\"sku_id\": 1993, \"num\": 1}, {\"sku_id\": 1994, \"num\": 2}]" },
   ],
   material_generation: [
     CUSTOMER_ID_FIELD,
@@ -635,7 +626,7 @@ function ensureOemSampleOrderScript(flows, projects, envs, cases) {
     envId: String(envId),
     caseIds: [],
     variables: JSON.stringify(
-      { order_sn: "", inquiry_detail_id: "", type: 1, sku1: "", sku1_num: 1, warehouse_city: 2 },
+      { order_sn: "", sku_list: "" },
       null,
       2,
     ),
