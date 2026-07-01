@@ -8427,3 +8427,184 @@ SCRIPT_REGISTRY["porder_bank_payment"]["func"] = run_porder_bank_payment_script
 SCRIPT_REGISTRY["full_flow"]["func"] = run_full_flow_script
 SCRIPT_REGISTRY["resume_order_flow"]["func"] = run_resume_order_flow_script
 SCRIPT_REGISTRY["resume_porder_flow"]["func"] = run_resume_porder_flow_script
+
+
+# ─── OEM 独立数据脚本（与日本站完全隔离，不影响日本站脚本）──────────────
+
+OEM_SCRIPT_NAME = "OEM创建询价单"
+OEM_DEFAULT_BASE_URL = "https://oemapi.rakumart.cn"
+OEM_DEFAULT_FRONTEND_ORIGIN = "https://oem.rakumart.cn"
+OEM_DEFAULT_ADMIN_ORIGIN = "https://oemadmin.rakumart.cn"
+
+
+def _oem_post_json(
+    session: requests.Session,
+    base_url: str,
+    path: str,
+    body: Dict[str, Any],
+    timeout: int,
+    token: str | None = None,
+    is_admin: bool = False,
+    variables: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """OEM 通用 JSON POST 请求，自带 3 次重试。与日本站 multipart form 完全独立。"""
+    url = urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
+    headers = {"Content-Type": "application/json", "Accept": "application/json, text/plain, */*"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    origin = (variables or {}).get(
+        "backend_manage_origin" if is_admin else "frontend_origin",
+        OEM_DEFAULT_ADMIN_ORIGIN if is_admin else OEM_DEFAULT_FRONTEND_ORIGIN,
+    )
+    headers["Origin"] = origin
+    headers["Referer"] = (variables or {}).get(
+        "frontend_origin", OEM_DEFAULT_FRONTEND_ORIGIN
+    ).rstrip("/") + "/"
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            response = session.post(url, json=body, headers=headers, timeout=timeout)
+            payload = response.json()
+            return payload if isinstance(payload, dict) else {}
+        except (requests.ConnectionError, requests.Timeout, ValueError) as exc:
+            last_error = exc
+            if attempt < 2:
+                time.sleep(0.8 * (attempt + 1))
+    raise RuntimeError(f"oem request {path} failed after retries: {last_error}")
+
+
+def _oem_admin_login(session: requests.Session, base_url: str, variables: Dict[str, Any], timeout: int) -> str:
+    """OEM 后台登录，返回 access_token。"""
+    fields = {
+        "username": variables.get("backend_account") or "admin",
+        "password": variables.get("backend_password") or "123456",
+    }
+    payload = _oem_post_json(session, base_url, "/admin/login", fields, timeout, is_admin=True, variables=variables)
+    if not payload.get("success") or payload.get("code") not in (0, "0", None):
+        raise RuntimeError(f"OEM 后台登录失败: code={payload.get('code')} msg={payload.get('msg')}")
+    token = (payload.get("data") or {}).get("access_token")
+    if not token:
+        raise RuntimeError(f"OEM 后台登录成功但未返回 access_token: {payload}")
+    return str(token)
+
+
+def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[str, Any], timeout: int) -> str:
+    """OEM 前台登录，返回 userToken。"""
+    fields = {
+        "account": variables.get("account") or "12345678990",
+        "password": variables.get("password") or "123456",
+    }
+    payload = _oem_post_json(session, base_url, "/client/userLogin", fields, timeout, is_admin=False, variables=variables)
+    if not payload.get("success") or payload.get("code") not in (0, "0", None):
+        raise RuntimeError(f"OEM 前台登录失败: code={payload.get('code')} msg={payload.get('msg')}")
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    token = data.get("userToken") or data.get("token") or data.get("access_token")
+    if not token:
+        raise RuntimeError(f"OEM 前台登录成功但未返回 token: {payload}")
+    return str(token)
+
+
+def run_oem_new_inquiry_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    """OEM 创建询价单脚本：前台登录 -> 创建询价单，返回 inquiry_sn。"""
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+    base_url = (env.base_url or OEM_DEFAULT_BASE_URL).rstrip("/")
+
+    log: Dict[str, Any] = {
+        "script": OEM_SCRIPT_NAME,
+        "mode": "oem_new_inquiry",
+        "base_url": base_url,
+        "started_at": datetime.now(),
+        "steps": [],
+    }
+
+    try:
+        session = requests.Session()
+        # 前台登录
+        client_token = _oem_client_login(session, base_url, variables, timeout)
+        _step(
+            log,
+            "client_login",
+            {"account": variables.get("account") or "12345678990"},
+            {"url": "/client/userLogin", "method": "POST"},
+            {"token": client_token[:16] + "..."},
+        )
+
+        # 构造创建询价单请求体
+        sku_info = variables.get("sku_info")
+        if not isinstance(sku_info, list):
+            sku_info = [
+                {"sku": variables.get("sku1") or "sku1", "num": variables.get("sku1_num") or "1"},
+                {"sku": variables.get("sku2") or "sku2", "num": variables.get("sku2_num") or "2"},
+                {"sku": variables.get("sku3") or "sku3", "num": variables.get("sku3_num") or "3"},
+            ]
+        body: Dict[str, Any] = {
+            "goods_name": variables.get("goods_name") or "测试商品",
+            "hope_min_price": variables.get("hope_min_price") or "1",
+            "hope_max_price": variables.get("hope_max_price") or "100",
+            "hope_futures": variables.get("hope_futures") or "10",
+            "material": variables.get("material") or "",
+            "sku_info": sku_info,
+            "is_temporarily": False,
+            "goods_type": int(variables.get("goods_type") or 1),
+            "goods_detail": variables.get("goods_detail") or "",
+            "num": int(variables.get("num") or sum(int(s.get("num") or 0) for s in sku_info)),
+            "customize_detail": variables.get("customize_detail") or "",
+            "factory_urls": variables.get("factory_urls") or [variables.get("factory_url") or ""],
+            "factory_type": int(variables.get("factory_type") or 3),
+            "goods_file": variables.get("goods_file") or [],
+            "goods_img": variables.get("goods_img") or "",
+            "goods_other_img": variables.get("goods_other_img") or [],
+            "provide_prototype": False,
+            "register_forward": variables.get("register_forward") or "",
+            "forward_order": variables.get("forward_order") or {"forward_sn": "", "num": "", "goods_value": ""},
+        }
+
+        # 调用创建询价单接口（前台 token 注入 clienttoken 头）
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/plain, */*",
+            "clienttoken": client_token,
+            "Origin": variables.get("frontend_origin", OEM_DEFAULT_FRONTEND_ORIGIN),
+            "Referer": variables.get("frontend_origin", OEM_DEFAULT_FRONTEND_ORIGIN).rstrip("/") + "/",
+        }
+        url = urljoin(base_url.rstrip("/") + "/", "/api/newInquiry")
+        last_error: Exception | None = None
+        payload: Dict[str, Any] = {}
+        for attempt in range(3):
+            try:
+                response = session.post(url, json=body, headers=headers, timeout=timeout)
+                payload = response.json()
+                break
+            except (requests.ConnectionError, requests.Timeout, ValueError) as exc:
+                last_error = exc
+                if attempt < 2:
+                    time.sleep(0.8 * (attempt + 1))
+        else:
+            raise RuntimeError(f"创建询价单请求失败: {last_error}")
+
+        if not payload.get("success") or payload.get("code") not in (0, "0", None):
+            _step(log, "new_inquiry", payload, {"url": "/api/newInquiry", "method": "POST"})
+            return _finish_named(
+                OEM_SCRIPT_NAME,
+                log,
+                False,
+                {"reason": f"创建询价单失败: {payload.get('msg')}", "error": payload.get("msg"), "payload": payload},
+            )
+
+        inquiry_sn = str(payload.get("data") or "")
+        _step(
+            log,
+            "new_inquiry",
+            payload,
+            {"url": "/api/newInquiry", "method": "POST"},
+            {"inquiry_sn": inquiry_sn, "success": True},
+        )
+
+        summary = {"inquiry_sn": inquiry_sn, "reason": "创建询价单成功"}
+        return _finish_named(OEM_SCRIPT_NAME, log, True, summary)
+
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _finish_named(OEM_SCRIPT_NAME, log, False, {"reason": str(exc), "error": str(exc)})

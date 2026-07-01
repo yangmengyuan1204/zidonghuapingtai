@@ -17,7 +17,7 @@ from decimal import Decimal, InvalidOperation
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, Iterable, Type
+from typing import Any, Dict, Iterable, List, Type
 from urllib.parse import urljoin, urlparse
 from uuid import uuid4
 
@@ -237,7 +237,7 @@ TABLE_FIELDS = {
         "create_time",
         "update_time",
     ],
-    AiConfig: ["id", "provider", "base_url", "model", "create_time"],  # api_key 不从此泄露
+    AiConfig: ["id", "provider", "base_url", "model", "create_time", "heal_enabled", "heal_confidence_threshold"],  # api_key 不从此泄露
     TestAccountProfile: [
         "id", "project_id", "profile_name", "variables",
         "sensitive_variables", "login_url", "username_locator", "password_locator",
@@ -731,6 +731,173 @@ def ensure_data_script_api_cases(db: Session) -> None:
     db.commit()
 
 
+# ─── OEM 独立数据脚本初始化（与日本站完全隔离，不影响日本站脚本）──────────
+
+OEM_DATA_SCRIPT_PROJECT_NAME = "oem-测试"
+OEM_BASE_URL = "https://oemapi.rakumart.cn"
+OEM_ADMIN_ORIGIN = "https://oemadmin.rakumart.cn"
+OEM_FRONTEND_ORIGIN = "https://oem.rakumart.cn"
+
+
+def find_oem_data_script_project(db: Session) -> Project | None:
+    return db.query(Project).filter(Project.name == OEM_DATA_SCRIPT_PROJECT_NAME).order_by(Project.id.asc()).first()
+
+
+def find_oem_data_script_api_case(db: Session, item: Dict[str, Any], project_id: int | None = None) -> ApiCase | None:
+    case_name = strip_case_name_prefix(item["case_name"])
+    url = item["url"]
+    query = db.query(ApiCase).filter(ApiCase.url == url)
+    if project_id is not None:
+        query = query.filter(ApiCase.project_id == project_id)
+    return query.order_by(ApiCase.id.asc()).first()
+
+
+# OEM 接口用例库：前台/后台登录 + 创建询价单及辅助接口
+# 请求体均为 JSON（与日本站 multipart form 不同）
+OEM_DATA_SCRIPT_API_CASES: List[Dict[str, Any]] = [
+    {
+        "key": "oem_admin_login",
+        "case_name": "OEM-后台登录",
+        "url": "/admin/login",
+        "body": {"username": "{{backend_account}}", "password": "{{backend_password}}"},
+        "extract": {"access_token": "json.data.access_token"},
+    },
+    {
+        "key": "oem_client_login",
+        "case_name": "OEM-前台登录",
+        "url": "/client/userLogin",
+        "body": {"account": "{{account}}", "password": "{{password}}"},
+        "extract": {"userToken": "json.data.userToken"},
+    },
+    {
+        "key": "oem_new_inquiry",
+        "case_name": "OEM-创建询价单",
+        "url": "/api/newInquiry",
+        "body": {
+            "goods_name": "{{goods_name}}",
+            "hope_min_price": "{{hope_min_price}}",
+            "hope_max_price": "{{hope_max_price}}",
+            "hope_futures": "{{hope_futures}}",
+            "sku_info": [{"sku": "{{sku1}}", "num": "{{sku1_num}}"}, {"sku": "{{sku2}}", "num": "{{sku2_num}}"}],
+            "is_temporarily": False,
+            "goods_type": 1,
+            "num": "{{num}}",
+            "factory_urls": ["{{factory_url}}"],
+            "factory_type": 3,
+            "goods_img": "{{goods_img}}",
+            "goods_other_img": ["{{goods_other_img}}"],
+            "provide_prototype": False,
+        },
+        "extract": {"inquiry_sn": "json.data"},
+    },
+    {
+        "key": "oem_exchange_rate",
+        "case_name": "OEM-获取汇率",
+        "url": "/common/common/getExchangeRate",
+        "body": {},
+    },
+    {
+        "key": "oem_user_info",
+        "case_name": "OEM-用户信息",
+        "url": "/api/userInfo",
+        "body": {},
+    },
+    {
+        "key": "oem_user_attention",
+        "case_name": "OEM-用户关注信息",
+        "url": "/api/user.attentionInfo",
+        "body": {},
+    },
+    {
+        "key": "oem_inquiry_num",
+        "case_name": "OEM-询价单数量",
+        "url": "/api/inquiryNum",
+        "body": {"goods_type": "{{goods_type}}"},
+    },
+    {
+        "key": "oem_inquiry_list",
+        "case_name": "OEM-询价单列表",
+        "url": "/api/inquiryList",
+        "body": {
+            "page": "{{page}}",
+            "pageSize": "{{page_size}}",
+            "status": "{{status}}",
+            "order_sn": "{{order_sn}}",
+            "start_time": "",
+            "end_time": "",
+            "goods_name": "",
+            "goods_type": "",
+        },
+    },
+]
+
+
+def ensure_oem_data_script_api_cases(db: Session) -> None:
+    """初始化 OEM 独立项目/环境变量/接口用例库，与日本站完全隔离。"""
+    project = find_oem_data_script_project(db)
+    if not project:
+        project = Project(name=OEM_DATA_SCRIPT_PROJECT_NAME, desc="系统自动创建", create_time=datetime.now())
+        db.add(project)
+        db.commit()
+        db.refresh(project)
+
+    env = db.query(Env).filter(Env.project_id == project.id).order_by(Env.id.asc()).first()
+    if not env:
+        env = Env(
+            project_id=project.id,
+            env_name=project.name or "OEM-数据脚本",
+            base_url=OEM_BASE_URL,
+            global_headers=to_json_text({}, {}),
+            global_vars=to_json_text(
+                {
+                    "api": OEM_BASE_URL,
+                    "backend_manage_origin": OEM_ADMIN_ORIGIN,
+                    "frontend_origin": OEM_FRONTEND_ORIGIN,
+                },
+                {},
+            ),
+            timeout=30,
+        )
+        db.add(env)
+        db.commit()
+        db.refresh(env)
+
+    for item in OEM_DATA_SCRIPT_API_CASES:
+        case_name = strip_case_name_prefix(item["case_name"])
+        exists = find_oem_data_script_api_case(db, item, env.project_id)
+        if exists:
+            exists.case_name = case_name
+            exists.project_id = env.project_id
+            exists.env_id = env.id
+            exists.url = item["url"]
+            exists.body = to_json_text(item["body"], {})
+            assert_rule = {"status_code": 200}
+            if item.get("extract"):
+                assert_rule["extract"] = item["extract"]
+            exists.assert_rule = to_json_text(assert_rule, {})
+            exists.headers = to_json_text({"Content-Type": "application/json"}, {})
+            continue
+        assert_rule = {"status_code": 200}
+        if item.get("extract"):
+            assert_rule["extract"] = item["extract"]
+        db.add(
+            ApiCase(
+                project_id=env.project_id,
+                env_id=env.id,
+                case_name=case_name,
+                method="POST",
+                url=item["url"],
+                headers=to_json_text({"Content-Type": "application/json"}, {}),
+                params=to_json_text({}, {}),
+                body=to_json_text(item["body"], {}),
+                assert_rule=to_json_text(assert_rule, {}),
+                status="active",
+                create_time=datetime.now(),
+            )
+        )
+    db.commit()
+
+
 def init_app() -> None:
     Base.metadata.create_all(bind=engine)
     # 轻量迁移：补齐历史 SQLite 数据库缺失列。
@@ -818,6 +985,7 @@ def init_app() -> None:
                 )
         normalize_api_case_names(db)
         ensure_data_script_api_cases(db)
+        ensure_oem_data_script_api_cases(db)
     finally:
         db.close()
 
