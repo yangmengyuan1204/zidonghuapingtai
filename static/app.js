@@ -790,6 +790,148 @@ function openOrderQuoteRunForm(flow, fields) {
   refreshOptions();
 }
 
+function openOemSampleOrderRunForm(flow) {
+  modalEl.innerHTML = `
+    <form id="oemSampleOrderForm">
+      <div class="modal-head">
+        <h3>${escapeHtml(`执行 ${flow.name || "数据脚本"}`)}</h3>
+        <button class="btn secondary" value="cancel" formmethod="dialog" type="button" id="closeModal">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>询价单号</label>
+            <div style="display:flex;gap:8px">
+              <input name="order_sn" id="oemOrderSn" placeholder="请输入询价单号，如 Y20260701111904-15-OEM" required style="flex:1" />
+              <button class="btn secondary" type="button" id="fetchSkuBtn">查询 SKU</button>
+            </div>
+          </div>
+        </div>
+        <div id="skuResultArea" style="margin-top:12px">
+          <div class="empty">点击「查询 SKU」自动获取询价单中的商品列表</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span></span>
+        <button class="btn" type="submit" id="submitOemSampleOrder" disabled>执行样品单</button>
+      </div>
+    </form>
+  `;
+  modalEl.showModal();
+
+  const form = document.querySelector("#oemSampleOrderForm");
+  const orderSnInput = document.querySelector("#oemOrderSn");
+  const fetchBtn = document.querySelector("#fetchSkuBtn");
+  const submitBtn = document.querySelector("#submitOemSampleOrder");
+  const skuArea = document.querySelector("#skuResultArea");
+
+  let skuRows = [];
+
+  document.querySelector("#closeModal").addEventListener("click", async () => {
+    modalEl.close();
+    if (state.view === "dataScripts" && !state.factory.editing) {
+      await renderDataScripts();
+    }
+  });
+
+  fetchBtn.addEventListener("click", async () => {
+    const orderSn = orderSnInput.value.trim();
+    if (!orderSn) {
+      showToast("请先输入询价单号");
+      return;
+    }
+    fetchBtn.disabled = true;
+    fetchBtn.textContent = "查询中...";
+    skuArea.innerHTML = `<div class="empty">正在查询询价单 SKU...</div>`;
+    try {
+      const result = await api(`/api/oem/inquiry-skus?order_sn=${encodeURIComponent(orderSn)}`);
+      const list = result.sku_list || [];
+      if (!list.length) {
+        skuArea.innerHTML = `<div class="alert warn">未找到该询价单的 SKU 信息，请检查单号是否正确</div>`;
+        submitBtn.disabled = true;
+        return;
+      }
+      skuRows = list.map((item, index) => ({
+        sku_id: item.sku_id,
+        num: item.num || 1,
+        _index: index,
+      }));
+      renderSkuTable();
+      orderSnInput.readOnly = true;
+      submitBtn.disabled = false;
+      showToast(`已获取 ${skuRows.length} 个 SKU`);
+    } catch (error) {
+      skuArea.innerHTML = `<div class="alert error">查询失败：${escapeHtml(error.message)}</div>`;
+      submitBtn.disabled = true;
+    } finally {
+      fetchBtn.textContent = "重新查询";
+      fetchBtn.disabled = false;
+    }
+  });
+
+  function renderSkuTable() {
+    if (!skuRows.length) {
+      skuArea.innerHTML = `<div class="empty">暂无 SKU</div>`;
+      return;
+    }
+    const rows = skuRows
+      .map(
+        (row) => `
+        <tr>
+          <td style="padding:6px 8px">${escapeHtml(row.sku_id)}</td>
+          <td style="padding:6px 8px">
+            <input name="sku_num_${row._index}" type="number" min="1" value="${escapeHtml(row.num)}"
+              style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:4px" />
+            <input name="sku_id_${row._index}" type="hidden" value="${escapeHtml(row.sku_id)}" />
+          </td>
+        </tr>
+      `,
+      )
+      .join("");
+    skuArea.innerHTML = `
+      <div class="panel-title" style="margin-bottom:8px"><h4>SKU 列表（可修改数量）</h4></div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:var(--bg-muted)">
+          <th style="padding:6px 8px;text-align:left">SKU ID</th>
+          <th style="padding:6px 8px;text-align:left">数量</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const orderSn = orderSnInput.value.trim();
+    if (!orderSn || !skuRows.length) {
+      showToast("请先查询并确认 SKU 列表");
+      return;
+    }
+    // 收集 SKU 数量
+    const skuList = skuRows.map((row) => {
+      const numInput = form.querySelector(`[name="sku_num_${row._index}"]`);
+      const num = numInput ? parseInt(numInput.value, 10) || 1 : row.num;
+      return { sku_id: row.sku_id, num };
+    });
+    const variables = {
+      order_sn: orderSn,
+      sku_list: JSON.stringify(skuList),
+    };
+    let flowVariables = {};
+    try {
+      flowVariables = parseJsonText(flow.variables || "{}", {});
+    } catch {}
+    // 合并登录账号等预设变量
+    const merged = { ...flowVariables, ...variables };
+    try {
+      showToast("正在执行样品单...");
+      await runSavedFlow(flow, merged);
+    } catch (error) {
+      showToast(error.message);
+    }
+  });
+}
+
 function openRunScriptForm(flow) {
   const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery", "porder_balance_payment", "porder_bank_payment", "material_generation", "balance_recharge", "oem_new_inquiry", "oem_sample_order"];
   if (!flow || (!builtInTypes.includes(flow.scriptType) && !(flow.caseIds || []).length)) {
@@ -803,6 +945,10 @@ function openRunScriptForm(flow) {
   }
   if (flow.scriptType === "order_quote") {
     openOrderQuoteRunForm(flow, fields);
+    return;
+  }
+  if (flow.scriptType === "oem_sample_order") {
+    openOemSampleOrderRunForm(flow);
     return;
   }
   let variables = {};
