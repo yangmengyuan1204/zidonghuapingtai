@@ -9743,6 +9743,11 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
                             {"order_sn": sample_order_sn, "check_list": check_list},
                             timeout, admin_token, variables, log, "checkComplete")
 
+        # ── 14. 业务提交验货报告给客户 ──
+        _call_admin_api(session, base_url, "/admin/samplesCheckRaise",
+                        {"order_sn": sample_order_sn},
+                        timeout, admin_token, variables, log, "samplesCheckRaise")
+
         summary = {"order_sn": sample_order_sn, "serial_number": serial_number, "reason": "样品单全流程执行成功"}
         return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, True, summary)
 
