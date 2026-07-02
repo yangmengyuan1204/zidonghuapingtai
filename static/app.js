@@ -4,6 +4,7 @@ let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _
   oem_new_inquiry: { id: "oem_new_inquiry_builtin", name: "OEM\u63d0\u51fa\u8be2\u4ef7\u5355" },
   oem_sample_order: { id: "oem_sample_order_builtin", name: "OEM\u63d0\u51fa\u6837\u54c1\u5355" },
   oem_full_inquiry_flow: { id: "oem_full_inquiry_flow_builtin", name: "OEM询价单全流程" },
+  oem_sample_admin_flow: { id: "oem_sample_admin_flow_builtin", name: "OEM样品单后台流程" },
 };const BUILTIN_DATA_SCRIPT_TYPES = Object.keys(BUILTIN_FLOW_DEFINITIONS);const CUSTOMER_ID_FIELD = { name: "customer_ids", label: "客户ID(多个换行或逗号)", type: "textarea", rows: 3, kind: "list", placeholder: "多个客户ID可用逗号或换行分隔" };const SHOP_TYPE_OPTIONS = [  { value: "1688", label: "1688" },  { value: "taobao", label: "taobao" },  { value: "tmall", label: "tmall" },  { value: "rakumart", label: "rakumart" },];const SCRIPT_PARAM_SCHEMAS = {  shopping_cart: [    { name: "keyword", label: "关键词" },    { name: "shop_type", label: "商品来源", type: "select", options: SHOP_TYPE_OPTIONS, default: "1688" },    { name: "target_shops", label: "目标店铺数", type: "number", default: 4 },    { name: "per_shop", label: "每店商品数", type: "number", default: 5 },  ],  order_quote: [    { name: "order_shop_count", label: "目标店铺数", type: "number", default: 1 },    { name: "order_per_shop", label: "每店商品数", type: "number", default: 2 },    { name: "order_item_num", label: "每个商品数量", type: "number", default: 10 },  ],  balance_payment: [    { name: "order_sns", label: "订单号(多个换行或逗号)", type: "textarea", rows: 4, kind: "list" },    { name: "order_sn", label: "单个订单号" },  ],  bank_payment: [    { name: "order_sns", label: "订单号(多个换行或逗号)", type: "textarea", rows: 4, kind: "list" },    { name: "order_sn", label: "单个订单号" },  ],  purchase_to_shelf: [    { name: "order_sn", label: "订单号" },    { name: "purchase_no", label: "交易号" },  ],  purchase_to_shelf_chain: [    { name: "purchase_no", label: "交易号" },  ],  warehouse_delivery: [    { name: "warehouse_sku_count", label: "仓库提出番数", type: "number", default: 1 },    { name: "send_num", label: "每番提出数量", type: "number", default: 1 },  ],  porder_balance_payment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],  porder_bank_payment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],  porder_shipment: [    { name: "porder_sns", label: "\u914d\u9001\u5355\u53f7(\u591a\u4e2a\u6362\u884c\u6216\u9017\u53f7)", type: "textarea", rows: 4, kind: "list" },    { name: "porder_sn", label: "\u5355\u4e2a\u914d\u9001\u5355\u53f7" },  ],
   oem_sample_order: [
     { name: "order_sn", label: "\u8be2\u4ef7\u5355\u53f7", required: true },
@@ -44,6 +45,10 @@ let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _
     { name: "large_deposit_rate", label: "大货定金比例", default: "100" },
     { name: "real_samples_price", label: "实际样品单价", default: "10.00" },
     { name: "real_large_price", label: "实际大货单价", default: "10.00" },
+  ],
+  oem_sample_admin_flow: [
+    { name: "order_sn", label: "\u6837\u54c1\u5355\u53f7", required: true },
+    { name: "warehouse_city", label: "\u4ed3\u5e93\u57ce\u5e02", type: "number", default: 2 },
   ],
   material_generation: [
     CUSTOMER_ID_FIELD,
@@ -134,7 +139,8 @@ function openForm(title, fields, values, onSubmit, submitLabel = "保存") {  co
   if (baseFlows.length !== storedFlows.length) {
     writeFlows(baseFlows);
   }
-  let flows = ensureOemFullInquiryFlowScript(
+  let flows = ensureOemSampleAdminFlowScript(
+    ensureOemFullInquiryFlowScript(
     ensureOemSampleOrderScript(
     ensureOemNewInquiryScript(
     ensureBalanceRechargeScript(
@@ -175,6 +181,9 @@ function openForm(title, fields, values, onSubmit, submitLabel = "保存") {  co
     projects,
     allEnvs,
     allCases,
+  ),
+    projects,
+    allEnvs,
   ),
     projects,
     allEnvs,
@@ -574,6 +583,20 @@ function openForm(title, fields, values, onSubmit, submitLabel = "保存") {  co
         variables: summary,
       }, options);
     }
+    if (flow.scriptType === "oem_sample_admin_flow") {
+      progress.update(24, "正在执行OEM样品单后台流程...");
+      const result = await api("/api/data-scripts/oem-sample-admin-flow", {
+        method: "POST",
+        body: { project_id: flow.projectId ? Number(flow.projectId) : null, env_id: flow.envId ? Number(flow.envId) : null, variables },
+      });
+      const summary = result.summary || {};
+      if (result.result === "passed") {
+        progress.success(`OEM样品单后台流程执行成功：${summary.order_sn || "-"}`);
+      } else {
+        progress.fail(summary.reason || "OEM样品单后台流程执行失败");
+      }
+      return presentScriptResult({ records: [{ id: result.id, case_name: flow.name, result: result.result }], variables: summary }, options);
+    }
     progress.update(24, `\u6b63\u5728\u987a\u5e8f\u6267\u884c ${Math.max((flow.caseIds || []).length, 1)} \u4e2a\u63a5\u53e3\u7528\u4f8b...`);    const payload = {      case_ids: flow.caseIds,      variables,    };    if (flow.envId) payload.env_id = Number(flow.envId);    const result = await api("/api/api-cases/batch-execute", { method: "POST", body: payload });    progress.success("\u811a\u672c\u6267\u884c\u5b8c\u6210\uff0c\u6b63\u5728\u5c55\u793a\u7ed3\u679c...");    return presentScriptResult(result, options);  } catch (error) {    progress.fail(`\u6267\u884c\u5931\u8d25\uff1a${error.message}`);    showToast(error.message);    if (options.collectOnly) throw error;  }}function renderChineseSummary(summary) {  if (!summary || typeof summary !== 'object' || !Object.keys(summary).length) {    return `<div class="empty">暂无执行汇总数据</div>`;  }  const LABEL_MAP = {    keyword: "搜索关键词",    expected_total: "期望添加商品数",    available_expected_total: "可用期望商品数",    added_total: "实际添加商品数",    shop_types: "商品来源",    skipped_shop_types: "跳过的来源",    failed_shop_types: "失败的来源",    strict_shop_count: "严格店铺数",    reason: "失败原因",    ready_shops: "已就绪店铺数",    target_shops: "目标店铺数",    per_shop: "每店商品数",    api_added_total: "API添加数",    verified_added_total: "验证通过数",    cart_selection: "购物车选择",    payment_type: "付款类型",    order_sn: "订单号",
     inquiry_sn: "询价单号",
     porder_sn: "配送单号",    pay_amount: "付款金额",    payment_passed: "付款是否成功",    serial_number: "流水号",    porder_matched: "配送单匹配",    purchase_no: "交易号",    selected_count: "选中商品数",    purchase_ids: "采购ID列表",    grid_id: "货位ID",    grid_number: "货位编号",    storage_count: "入库数量",    storage_passed: "入库是否成功",    customer_count: "客户总数",    executed_customers: "已执行客户数",    skipped_customers: "跳过的客户",    sn_count: "单号数量",    customers: "客户明细",    passed: "成功数",    failed: "失败数",    total: "总计",    material_generation_name: "辅料名称",    material_generation_count: "请求生成数",    created_count: "已创建数",    skipped_count: "已跳过数",    created_list: "已创建列表",    skipped_list: "已跳过列表",    completed: "已完成",    shop_type: "商品来源",    order_item_count: "每店商品数",    order_item_num: "每个商品数量",    logistics_id: "物流方式",    submit_order: "是否提交订单",    run_backend_flow: "是否执行后台流程",    send_num: "每番提出数量",    warehouse_sku_count: "请求番数",    actual_warehouse_sku_count: "实际番数",    total_send_num: "总提出数量",    selected_sku_ids: "选中SKU",    selected_warehouse_items: "选中仓库明细",    order_detail_ids: "仓库明细ID",    porder_detail_ids: "配送单明细ID",    porder_logistics_id: "配送物流ID",    warning: "提示",    error: "错误信息",    customer_id: "客户ID",    duration_ms: "耗时(ms)",    screenshot: "截图",    current_url: "当前URL",    total_box_item_num: "装箱商品总数",    requested_box_count: "请求箱数",    kept_box_count: "实际保留箱数",    box_ids: "箱ID列表",    box_item_counts: "每箱商品数",    box_allocations: "箱分配明细",    direct_box_passed: "直接装箱是否成功",    deleted_box_ids: "已删除箱ID",    unfinished_box_ids: "未完成箱ID",  };  const BOOL_TRUE_TEXT = { true: "是", false: "否", "true": "是", "false": "否" };  const entries = Object.entries(summary).filter(([key]) => key !== 'customers' && !Array.isArray(summary[key]) && typeof summary[key] !== 'object');  const arrayEntries = Object.entries(summary).filter(([key, val]) => key !== 'customers' && Array.isArray(val) && val.length);  const objectEntries = Object.entries(summary).filter(([key, val]) => key === 'customers' && Array.isArray(val) && val.length);  const html = [];  if (entries.length) {    html.push(`<table class="summary-table"><tbody>${entries.map(([key, val]) => {      const label = LABEL_MAP[key] || key;      const display = typeof val === 'boolean' || val === true || val === false ? (BOOL_TRUE_TEXT[String(val)] || String(val)) : String(val ?? '');      return `<tr><td class="summary-label">${escapeHtml(label)}</td><td class="summary-value">${escapeHtml(display)}</td></tr>`;    }).join('')}</tbody></table>`);  }  if (arrayEntries.length) {    arrayEntries.forEach(([key, val]) => {      const label = LABEL_MAP[key] || key;      const display = val.map((item) => typeof item === "object" && item !== null ? JSON.stringify(item, null, 2) : String(item)).join('\n');      html.push(`<details class="summary-detail"><summary>${escapeHtml(label)}（${val.length}项）</summary><pre class="log-view">${escapeHtml(display)}</pre></details>`);    });  }  if (objectEntries.length) {    objectEntries.forEach(([key, val]) => {      html.push(`<details class="summary-detail" open><summary>${escapeHtml(LABEL_MAP[key] || key)}（${val.length}条）</summary><table class="summary-table"><tbody>${val.map((item) => {        const itemEntries = Object.entries(item || {});        return itemEntries.map(([k, v]) => {          const label = LABEL_MAP[k] || k;          const display = typeof v === 'boolean' || v === true || v === false ? (BOOL_TRUE_TEXT[String(v)] || String(v)) : String(v ?? '');          return `<tr><td class="summary-label">${escapeHtml(label)}</td><td class="summary-value">${escapeHtml(display)}</td></tr>`;        }).join('');      }).join('<tr><td colspan="2" style="border-bottom:2px solid var(--border)"></td></tr>')}</tbody></table></details>`);    });  }  const unknownKeys = Object.keys(summary).filter((key) => !LABEL_MAP[key]);  if (unknownKeys.length) {    html.push(`<details class="summary-detail"><summary>其他原始数据</summary><pre class="log-view">${escapeHtml(JSON.stringify(summary, null, 2))}</pre></details>`);  }  return html.join('');}
@@ -732,6 +755,36 @@ function ensureOemFullInquiryFlowScript(flows, projects, envs) {
       large_freight: "11.00", large_delivery_time: 15, large_deposit_rate: "100",
       real_samples_price: "10.00", real_large_price: "10.00",
     }, null, 2),
+  };
+  const next = [...flows, nextFlow];
+  writeFlows(next);
+  return next;
+}
+
+function ensureOemSampleAdminFlowScript(flows, projects, envs) {
+  if (isBuiltinDeleted("oem_sample_admin_flow_builtin")) return flows;
+  const oemProject = projects.find((p) => p.name === "oem-测试");
+  if (!oemProject) return flows;
+  const env = (envs || []).find((e) => String(e.project_id) === String(oemProject.id));
+  if (!env) return flows;
+  const projectId = oemProject.id;
+  const envId = env.id;
+  const existingIndex = flows.findIndex((flow) => flow.id === "oem_sample_admin_flow_builtin");
+  if (existingIndex >= 0) {
+    const next = flows.map((flow) =>
+      flow.id === "oem_sample_admin_flow_builtin" ? { ...flow, projectId: String(projectId), envId: String(envId), name: "OEM样品单后台流程" } : flow,
+    );
+    writeFlows(next);
+    return next;
+  }
+  const nextFlow = {
+    id: "oem_sample_admin_flow_builtin",
+    name: "OEM样品单后台流程",
+    scriptType: "oem_sample_admin_flow",
+    projectId: String(projectId),
+    envId: String(envId),
+    caseIds: [],
+    variables: JSON.stringify({ order_sn: "", warehouse_city: 2 }, null, 2),
   };
   const next = [...flows, nextFlow];
   writeFlows(next);
@@ -1126,7 +1179,7 @@ function openOemFullInquiryFlowRunForm(flow) {
 }
 
 function openRunScriptForm(flow) {
-  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery", "porder_balance_payment", "porder_bank_payment", "material_generation", "balance_recharge", "oem_new_inquiry", "oem_sample_order", "oem_full_inquiry_flow"];
+  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery", "porder_balance_payment", "porder_bank_payment", "material_generation", "balance_recharge", "oem_new_inquiry", "oem_sample_order", "oem_full_inquiry_flow", "oem_sample_admin_flow"];
   if (!flow || (!builtInTypes.includes(flow.scriptType) && !(flow.caseIds || []).length)) {
     showToast("脚本没有配置步骤");
     return;
