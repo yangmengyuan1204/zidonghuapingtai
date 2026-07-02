@@ -1289,30 +1289,31 @@ function openOemSampleFullFlowRunForm(flow) {
   let variables = {};
   try { variables = parseJsonText(flow.variables || "{}", {}); } catch { showToast("脚本变量不是合法 JSON"); return; }
   const fields = (SCRIPT_PARAM_SCHEMAS.oem_sample_full_flow || []);
-  const formFields = fields.filter((f) => f.type !== "section");
+  const formFields = fields.filter((f) => f.type !== "section" && f.name !== "check_report_images");
   variables = sanitizeScriptVariables(flow.scriptType, variables, flow);
   const values = { ...paramFormValues(formFields, variables), __save_defaults: false };
-  // 按 section 分组（去掉第一个 order_sn 让它不放在分组里）
+  // 按 section 分组
   const groups = [];
   let current = null;
   for (const f of fields) {
     if (f.type === "section") {
       if (current) groups.push(current);
       current = { label: f.label, fields: [] };
-    } else if (current && f.name !== "order_sn") {
+    } else if (current && f.name !== "check_report_images") {
       current.fields.push(f);
     }
   }
   if (current) groups.push(current);
-  // 管理员阶段 HTML
+
   let adminHtml = "";
   for (const g of groups) {
     if (!g.fields.length) continue;
-    adminHtml += `<details class="functional-requirement" ${!g.label.includes("提出") ? "" : "open"}><summary>${escapeHtml(g.label)}</summary><div class="form-grid">`;
+    // 确认和报价阶段默认展开，验货和上架阶段默认折叠
+    const isQuoteOrConfirm = g.label.includes("确认") || g.label.includes("报价");
+    adminHtml += `<details class="functional-requirement" ${isQuoteOrConfirm ? "open" : ""}><summary>${escapeHtml(g.label)}</summary><div class="form-grid">`;
     for (const f of g.fields) adminHtml += renderFormField(f, values[f.name]);
     adminHtml += `</div></details>`;
   }
-  adminHtml += renderFormField({ name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false }, false);
 
   modalEl.innerHTML = `
     <form id="oemSampleFullFlowForm">
@@ -1323,19 +1324,39 @@ function openOemSampleFullFlowRunForm(flow) {
       <div class="modal-body">
         <div class="form-grid">
           <div class="field">
-            <label>询价单号</label>
+            <label>询价单ID(或样品单号)</label>
             <div style="display:flex;gap:8px">
-              <input name="order_sn" id="ffOrderSn" placeholder="如 X20260615132111-15-OEM" required style="flex:1" />
+              <input name="order_sn" id="ffOrderSn" placeholder="输入询价单明细ID 或 Y开头的样品单号" required style="flex:1" />
               <button class="btn secondary" type="button" id="ffFetchBtn">查询 SKU</button>
             </div>
           </div>
         </div>
         <div id="ffSkuArea" style="margin-top:12px">
-          <div class="empty">输入询价单号后点击「查询 SKU」</div>
+          <div class="empty">输入询价单ID后点击「查询 SKU」获取商品列表</div>
         </div>
         <div id="ffAdminArea" style="margin-top:16px;display:none">
-          <div class="panel-title" style="margin-bottom:8px"><h4>后台管理参数</h4></div>
+          <div class="panel-title" style="margin-bottom:8px"><h4>后台流程参数</h4></div>
           ${adminHtml}
+          <details class="functional-requirement" id="checkImagesSection">
+            <summary>验货图片上传</summary>
+            <div class="form-grid">
+              <div class="field">
+                <label>验货图片</label>
+                <div class="upload-field">
+                  <input type="file" id="checkImageFileInput" accept="image/*" multiple style="display:none" />
+                  <input type="hidden" name="check_report_images" id="checkReportImages" value="" />
+                  <button class="btn secondary" type="button" id="checkImageSelectBtn">选择图片(可多选)</button>
+                </div>
+                <div id="checkImagePreview" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:8px"></div>
+                <div style="color:var(--muted);font-size:12px;margin-top:4px">支持多张图片，选择后自动上传</div>
+              </div>
+              <div class="field">
+                <label>验货备注</label>
+                <input name="check_report_remark" value="${escapeHtml(values.check_report_remark || '')}" placeholder="选填" />
+              </div>
+            </div>
+          </details>
+          ${renderFormField({ name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false }, false)}
         </div>
       </div>
       <div class="modal-foot">
@@ -1360,9 +1381,39 @@ function openOemSampleFullFlowRunForm(flow) {
     if (state.view === "dataScripts" && !state.factory.editing) { await renderDataScripts(); }
   });
 
+  // 多图片上传
+  document.querySelector("#checkImageSelectBtn").addEventListener("click", () => {
+    document.querySelector("#checkImageFileInput").click();
+  });
+  document.querySelector("#checkImageFileInput").addEventListener("change", async (event) => {
+    const files = event.target.files;
+    if (!files.length) return;
+    const progressEl = document.querySelector("#checkImagePreview");
+    const existing = (document.querySelector("#checkReportImages").value || "").split(",").filter(Boolean);
+    const btn = document.querySelector("#checkImageSelectBtn");
+    btn.disabled = true;
+    btn.textContent = "上传中...";
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append("file", file);
+      try {
+        const resp = await api("/api/oem/upload-image", { method: "POST", body: fd });
+        const url = resp.url || resp.data?.url || "";
+        if (url) {
+          existing.push(url);
+          progressEl.innerHTML += `<img src="${escapeHtml(url)}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--border)" />`;
+        }
+      } catch (e) { showToast(`上传失败: ${e.message}`); }
+    }
+    document.querySelector("#checkReportImages").value = existing.join(",");
+    btn.disabled = false;
+    btn.textContent = "选择图片(可多选)";
+    showToast(`已上传 ${files.length} 张图片`);
+  });
+
   fetchBtn.addEventListener("click", async () => {
     const orderSn = orderSnInput.value.trim();
-    if (!orderSn) { showToast("请输入询价单号"); return; }
+    if (!orderSn) { showToast("请输入询价单ID或样品单号"); return; }
     fetchBtn.disabled = true; fetchBtn.textContent = "查询中...";
     skuArea.innerHTML = `<div class="empty">正在查询报价详情...</div>`;
     try {
@@ -1374,9 +1425,17 @@ function openOemSampleFullFlowRunForm(flow) {
       const records = data.list || [];
       const first = records[0] || {};
       const rawList = first.sku_detail || first.sku_list || first.skuInfo || first.details || first.items || [];
-      if (!rawList.length) { skuArea.innerHTML = `<div class="alert warn">该询价单暂无 SKU 明细数据</div>`; submitBtn.disabled = true; return; }
+      if (!rawList.length) {
+        skuArea.innerHTML = `<div class="alert warn">该询价单暂无 SKU 明细数据</div>`;
+        // 如果没 SKU 但已存在样品单号（Y开头），仍允许执行后台流程
+        if (orderSn.startsWith("Y")) {
+          adminArea.style.display = "";
+          submitBtn.disabled = false;
+          skuArea.innerHTML = `<div class="alert info">已识别样品单号 ${escapeHtml(orderSn)}，直接执行后台流程</div>`;
+        }
+        return;
+      }
       fetchedDetailId = first.id || data.detail_id || "";
-      // 从 quoteDetail 合并字段
       const qd = first.quote_detail || data.quote_detail || {};
       const sm = {}, lm = {};
       for (const s of (qd.samples_info?.skus || [])) { if (s.sku) sm[s.sku] = s; }
@@ -1389,9 +1448,17 @@ function openOemSampleFullFlowRunForm(flow) {
           sku_id: item.goods_sku_id || item.sku_id || item.skuId || item.id || `SKU-${idx+1}`,
           sku_name: sn,
           num: item.num || item.quantity || 1,
-          sample_fee: ss.samples_price || item.samples_price || "-",
-          bulk_moq: ls.large_min_quantity || item.large_min_quantity || "-",
-          bulk_price: ls.large_price || item.large_price || "-",
+          sample_can: item.can_sample || item.can_make_sample || item.is_sample || "",
+          sample_fee: ss.samples_price || item.samples_price || item.sample_fee || "-",
+          sample_refund: item.sample_refund || item.sampleReturn || item.sample_return || "",
+          sample_shipping: item.sample_shipping || item.sampleShipping || item.sample_freight || "",
+          sample_lead_time: item.sample_lead_time || item.sampleLeadTime || item.sample_delivery || "",
+          bulk_moq: ls.large_min_quantity || item.large_min_quantity || item.moq || "-",
+          bulk_price: ls.large_price || item.large_price || item.bulk_price || "-",
+          bulk_other_fee: item.bulk_other_fee || item.bulkOtherFee || item.other_fee || "",
+          bulk_deposit_ratio: item.deposit_ratio || item.depositRatio || item.deposit || "",
+          bulk_shipping: item.bulk_shipping || item.bulkShipping || item.bulk_freight || "",
+          bulk_lead_time: item.bulk_lead_time || item.bulkLeadTime || item.delivery_time || "",
         };
       });
       renderSkuTable(first, data);
@@ -1399,13 +1466,43 @@ function openOemSampleFullFlowRunForm(flow) {
       adminArea.style.display = "";
       submitBtn.disabled = false;
       showToast(`已获取 ${skuItems.length} 个 SKU`);
-    } catch (error) { skuArea.innerHTML = `<div class="alert error">查询失败：${escapeHtml(error.message)}</div>`; }
-    finally { fetchBtn.textContent = "重新查询"; fetchBtn.disabled = false; }
+    } catch (error) {
+      skuArea.innerHTML = `<div class="alert error">查询失败：${escapeHtml(error.message)}</div>`;
+    } finally {
+      fetchBtn.textContent = "重新查询";
+      fetchBtn.disabled = false;
+    }
   });
 
   function renderSkuTable(first, data) {
-    const rows = skuItems.map((it) => `<tr><td style="padding:4px 6px"><input type="checkbox" data-ff-sku="${it._index}" ${it._checked?"checked":""} /></td><td style="padding:4px 6px">${escapeHtml(String(it.sku_id))}</td><td style="padding:4px 6px">${escapeHtml(it.sku_name)}</td><td style="padding:4px 6px"><input name="ff_num_${it._index}" type="number" min="1" value="${it.num}" style="width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:4px" /></td><td style="padding:4px 6px;text-align:right">${it.sample_fee}</td><td style="padding:4px 6px;text-align:center">${it.bulk_moq}</td><td style="padding:4px 6px;text-align:right">${it.bulk_price}</td></tr>`).join("");
-    skuArea.innerHTML = `<details class="functional-requirement" open><summary>SKU 明细（勾选=提出样品单）</summary><div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg-muted)"><th style="padding:4px 6px">选择</th><th style="padding:4px 6px">SKU ID</th><th style="padding:4px 6px">SKU</th><th style="padding:4px 6px">数量</th><th style="padding:4px 6px">打样费</th><th style="padding:4px 6px">起订量</th><th style="padding:4px 6px">大货单价</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+    const rows = skuItems.map((it) => `<tr>
+      <td style="padding:4px 6px"><input type="checkbox" data-ff-sku="${it._index}" ${it._checked?"checked":""} /></td>
+      <td style="padding:4px 6px;font-weight:600">${escapeHtml(String(it.sku_id))}</td>
+      <td style="padding:4px 6px">${escapeHtml(it.sku_name)}</td>
+      <td style="padding:4px 6px"><input name="ff_num_${it._index}" type="number" min="1" value="${it.num}" style="width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:4px" /></td>
+      <td style="padding:4px 6px;text-align:center">${it.sample_can || "-"}</td>
+      <td style="padding:4px 6px;text-align:right">${it.sample_fee || "-"}</td>
+      <td style="padding:4px 6px;text-align:center">${it.sample_refund || "-"}</td>
+      <td style="padding:4px 6px;text-align:right">${it.sample_shipping || "-"}</td>
+      <td style="padding:4px 6px;text-align:center">${it.sample_lead_time || "-"}</td>
+      <td style="padding:4px 6px;text-align:center">${it.bulk_moq || "-"}</td>
+      <td style="padding:4px 6px;text-align:right">${it.bulk_price || "-"}</td>
+      <td style="padding:4px 6px;text-align:right">${it.bulk_other_fee || "-"}</td>
+      <td style="padding:4px 6px;text-align:center">${it.bulk_deposit_ratio || "-"}</td>
+      <td style="padding:4px 6px;text-align:right">${it.bulk_shipping || "-"}</td>
+      <td style="padding:4px 6px;text-align:center">${it.bulk_lead_time || "-"}</td>
+    </tr>`).join("");
+
+    let infoHtml = "";
+    const infoFields = { goods_name: "商品名称", goodsName: "商品名称", status: "状态", create_time: "创建时间", createdAt: "创建时间", factory_url: "工厂链接", factoryUrl: "工厂链接" };
+    const parts = [];
+    for (const [key, label] of Object.entries(infoFields)) {
+      const v = first[key] || data[key];
+      if (v) parts.push(`<span>${label}: <strong>${escapeHtml(String(v))}</strong></span>`);
+    }
+    if (parts.length) infoHtml = `<div style="margin-bottom:8px;font-size:13px;display:flex;flex-wrap:wrap;gap:4px 16px">${parts.join("")}</div>`;
+
+    skuArea.innerHTML = `${infoHtml}<details class="functional-requirement" open><summary>SKU 明细（勾选=提出样品单）</summary><div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg-muted)"><th style="padding:4px 6px">选择</th><th style="padding:4px 6px">SKU ID</th><th style="padding:4px 6px">SKU</th><th style="padding:4px 6px">数量</th><th style="padding:4px 6px">能否打样</th><th style="padding:4px 6px">打样费</th><th style="padding:4px 6px">样费退还</th><th style="padding:4px 6px">样运费</th><th style="padding:4px 6px">打样货期</th><th style="padding:4px 6px">起订量</th><th style="padding:4px 6px">大货单价</th><th style="padding:4px 6px">大货其他费</th><th style="padding:4px 6px">定金比例</th><th style="padding:4px 6px">大货运费</th><th style="padding:4px 6px">大货货期</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
     document.querySelectorAll("[data-ff-sku]").forEach((cb) => {
       cb.addEventListener("change", () => { const idx = parseInt(cb.dataset.ffSku, 10); const item = skuItems.find((i) => i._index === idx); if (item) item._checked = cb.checked; });
     });
@@ -1416,15 +1513,21 @@ function openOemSampleFullFlowRunForm(flow) {
     const orderSn = orderSnInput.value.trim();
     if (!orderSn) { showToast("请先查询询价单"); return; }
     const checked = skuItems.filter((i) => i._checked);
-    if (!checked.length) { showToast("请至少勾选一个 SKU"); return; }
-    const skuList = checked.map((it) => {
-      const numEl = form.querySelector(`[name="ff_num_${it._index}"]`);
-      return { sku_id: parseInt(String(it.sku_id), 10) || it.sku_id, num: numEl ? parseInt(numEl.value, 10) || 1 : it.num };
-    });
+    // 如果没有勾选 SKU 但直接给了 Y 开头的样品单号，则直接走后台流程
+    let skuList = [];
+    if (checked.length) {
+      skuList = checked.map((it) => {
+        const numEl = form.querySelector(`[name="ff_num_${it._index}"]`);
+        return { sku_id: parseInt(String(it.sku_id), 10) || it.sku_id, num: numEl ? parseInt(numEl.value, 10) || 1 : it.num };
+      });
+    }
     const data = readForm(form);
-    const merged = mergeParamValues(variables, formFields, { ...data, sku_list: JSON.stringify(skuList) });
+    const merged = mergeParamValues(variables, formFields, { ...data, sku_list: skuList.length ? JSON.stringify(skuList) : undefined });
     merged.order_sn = orderSn;
     if (fetchedDetailId) merged.inquiry_detail_id = fetchedDetailId;
+    // 收集图片 URL
+    const imageUrls = (document.querySelector("#checkReportImages").value || "").split(",").filter(Boolean);
+    if (imageUrls.length) merged.check_report_images = imageUrls.join("\n");
     const runtimeVariables = sanitizeScriptVariables(flow.scriptType, merged, flow);
     if (data.__save_defaults) saveFlowVariables(flow, runtimeVariables);
     showToast("正在执行OEM样品单全流程...");
