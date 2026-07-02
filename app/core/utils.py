@@ -869,6 +869,18 @@ OEM_DATA_SCRIPT_API_CASES: List[Dict[str, Any]] = [
         "extract": {"data": "json.data"},
     },
     {
+        # 后台接口：翻译审核完成→提交给采购。翻译提交审核后调用此接口推进状态。
+        "key": "oem_inquiry_translate_audit",
+        "case_name": "OEM-翻译审核提交采购",
+        "url": "/admin/inquiryTranslateAudit",
+        "method": "POST",
+        "headers": {"Authorization": "Bearer {{adminToken}}"},
+        "body": {
+            "order_sn": "{{order_sn}}",
+        },
+        "extract": {"data": "json.data"},
+    },
+    {
         # 后台接口：询价单流程节点提交（翻译完成/开始询价等，需后台 admin Bearer token）。
         # point_name 取值：translation=翻译提交采购，inquiry=进行询价提交。
         "key": "oem_inquiry_submit",

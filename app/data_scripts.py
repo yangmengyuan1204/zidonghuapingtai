@@ -9021,7 +9021,7 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
               {"inquiry_id": detail.get("id"), "detail_count": len(detail.get("detail_list") or []),
                "sku_count": len(detail.get("sku_info") or [])})
 
-        # ─── 阶段2：翻译阶段（保存翻译 + 提交采购） ───────────────
+        # ─── 阶段2：翻译阶段（提交审核 + 审核完成提交采购） ───────────────
         if not variables.get("skip_translate"):
             translate_body: Dict[str, Any] = {
                 "is_temp": False,
@@ -9045,13 +9045,7 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                 return _finish_named(OEM_FULL_INQUIRY_SCRIPT_NAME, log, False,
                                      {"reason": f"翻译保存失败: {tp.get('msg')}", "order_sn": order_sn})
 
-            np = _oem_submit_node(session, base_url, admin_token, order_sn, "translation", False, timeout, variables)
-            _step(log, "translate_submit", {"order_sn": order_sn, "point_name": "translation"},
-                  {"url": "/admin/inquiryDetail", "method": "POST"}, {"success": np.get("success"), "msg": np.get("msg")})
-            if not np.get("success") and np.get("code") not in (0, "0", None):
-                return _finish_named(OEM_FULL_INQUIRY_SCRIPT_NAME, log, False,
-                                     {"reason": f"翻译提交采购失败: {np.get('msg')}", "order_sn": order_sn})
-            # 翻译审核（新需求：翻译提交后需审核通过，状态才会推进到可询价）
+            # 提交给采购（审核完成后推进状态到可询价）
             ap = _oem_post_json(session, base_url, "/admin/inquiryTranslateAudit", {"order_sn": order_sn}, timeout,
                                 token=admin_token, is_admin=True, variables=variables)
             _step(log, "translate_audit", {"order_sn": order_sn}, {"url": "/admin/inquiryTranslateAudit", "method": "POST"},
@@ -9079,14 +9073,6 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
             if not sip.get("success") and sip.get("code") not in (0, "0", None):
                 return _finish_named(OEM_FULL_INQUIRY_SCRIPT_NAME, log, False,
                                      {"reason": f"开始询价失败: {sip.get('msg')}", "order_sn": order_sn})
-
-            # 进行询价提交
-            iip = _oem_submit_node(session, base_url, admin_token, order_sn, "inquiry", False, timeout, variables)
-            _step(log, "inquiry_submit", {"order_sn": order_sn, "point_name": "inquiry"},
-                  {"url": "/admin/inquiryDetail", "method": "POST"}, {"success": iip.get("success"), "msg": iip.get("msg")})
-            if not iip.get("success") and iip.get("code") not in (0, "0", None):
-                return _finish_named(OEM_FULL_INQUIRY_SCRIPT_NAME, log, False,
-                                     {"reason": f"进行询价提交失败: {iip.get('msg')}", "order_sn": order_sn})
 
             # 重新查询详情，拿到 detail_list 的 id
             detail = _oem_query_inquiry_detail(session, base_url, admin_token, order_sn, timeout, variables)
@@ -9125,15 +9111,17 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                 _step(log, f"factory_edit_{idx+1}", edit_body, {"url": "/admin/factoryEdit", "method": "POST"},
                       {"detail_id": detail_id, "success": ep.get("success"), "msg": ep.get("msg")})
 
-                # 工厂报价（基于 detail 原有字段 + 报价参数）
+                # 工厂报价（基于 detail 原有字段 + 报价参数覆盖）
                 sku_detail = d_item.get("sku_detail") or []
                 for sku in sku_detail:
                     sku["samples_price"] = samples_price
                     sku["large_price"] = large_price
                     sku["real_samples_price"] = variables.get("real_samples_price") or "10.00"
                     sku["real_large_price"] = variables.get("real_large_price") or "10.00"
-                quote_body: Dict[str, Any] = {
-                    "id": detail_id, "order_sn": order_sn, "status": 0, "g_cant_quote": 0, "is_read": 1,
+                # 以 d_item 为基底，只覆盖报价相关字段，避免漏字段导致"参数错误"
+                quote_body = dict(d_item)
+                quote_body.update({
+                    "status": 0, "g_cant_quote": 0, "is_read": 1,
                     "factory_type": d_item.get("factory_type") or 1,
                     "factory_submit_info": factory_submit_info,
                     "factory_iid": factory_iid, "factory_name": factory_name,
@@ -9155,7 +9143,7 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                     "quote_admin": 0, "is_special_quote": False,
                     "sku_detail": sku_detail, "salesman": salesman, "salesman_phone": salesman_phone,
                     "is_temporarily": False, "detail_id": detail_id,
-                }
+                })
                 qp = _oem_post_json(session, base_url, "/admin/factoryQuote", quote_body, timeout,
                                     token=admin_token, is_admin=True, variables=variables)
                 _step(log, f"factory_quote_{idx+1}", {"detail_id": detail_id}, {"url": "/admin/factoryQuote", "method": "POST"},
@@ -9179,20 +9167,37 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
         else:
             _step(log, "skip_inquiry", {}, {"note": "跳过询价阶段"}, {"skipped": True})
 
-        # ─── 阶段4：报价阶段（报价给用户 + 询价单报价完成） ─────────
+        # ─── 阶段4：报价阶段（开始报价 → 报价给用户 → 询价单报价完成） ─────────
         if not variables.get("skip_quote"):
             detail = _oem_query_inquiry_detail(session, base_url, admin_token, order_sn, timeout, variables)
             detail_list = detail.get("detail_list") or []
             quote_admin = int(detail.get("g_id") or 19)
             factory_salesman_id = 236
+
+            # 开始报价（必须先调用，否则后续 inquiryQuoteComplate 报"当前状态无法操作"）
+            sq = _oem_post_json(session, base_url, "/admin/inquiryStartQuote",
+                                {"order_sn": order_sn}, timeout,
+                                token=admin_token, is_admin=True, variables=variables)
+            _step(log, "start_quote", {"order_sn": order_sn},
+                  {"url": "/admin/inquiryStartQuote", "method": "POST"},
+                  {"success": sq.get("success"), "msg": sq.get("msg")})
+            if not sq.get("success") and sq.get("code") not in (0, "0", None):
+                return _finish_named(OEM_FULL_INQUIRY_SCRIPT_NAME, log, False,
+                                     {"reason": f"开始报价失败: {sq.get('msg')}", "order_sn": order_sn})
+
             for idx, d_item in enumerate(detail_list):
                 detail_id = d_item.get("id")
-                # 报价给用户：status=1, quote_admin/factory_salesman_id 已填充
-                d_item["status"] = 1
-                d_item["is_read"] = 0
-                d_item["factory_salesman_id"] = factory_salesman_id
-                d_item["quote_admin"] = quote_admin
-                qp2 = _oem_post_json(session, base_url, "/admin/factoryQuoteToUser", d_item, timeout,
+                # 报价给用户：基于 d_item 覆盖报价相关字段
+                quote_to_user_body = dict(d_item)
+                quote_to_user_body.update({
+                    "status": 1, "is_read": 0,
+                    "factory_salesman_id": factory_salesman_id,
+                    "quote_admin": quote_admin,
+                    "is_special_quote": False,
+                    "is_temporarily": False,
+                    "detail_id": detail_id,
+                })
+                qp2 = _oem_post_json(session, base_url, "/admin/factoryQuoteToUser", quote_to_user_body, timeout,
                                      token=admin_token, is_admin=True, variables=variables)
                 _step(log, f"quote_to_user_{idx+1}", {"detail_id": detail_id},
                       {"url": "/admin/factoryQuoteToUser", "method": "POST"},
@@ -9201,13 +9206,14 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                     return _finish_named(OEM_FULL_INQUIRY_SCRIPT_NAME, log, False,
                                          {"reason": f"工厂{idx+1}报价给用户失败: {qp2.get('msg')}", "order_sn": order_sn})
 
-            # 询价单报价完成（detail_list 各 status=2）
+            # 重新查询详情，拿到最新状态后设置 status=2
+            detail = _oem_query_inquiry_detail(session, base_url, admin_token, order_sn, timeout, variables)
+            detail_list = detail.get("detail_list") or []
             for d_item in detail_list:
                 d_item["status"] = 2
             detail["detail_list"] = detail_list
-            detail["user_status"] = 3
-            detail["y_admin_status"] = 3
-            detail["g_admin_status"] = 3
+
+            # 询价单报价完成（发送完整 detail body）
             qcp = _oem_post_json(session, base_url, "/admin/inquiryQuoteComplate", detail, timeout,
                                  token=admin_token, is_admin=True, variables=variables)
             _step(log, "quote_complete", {"order_sn": order_sn}, {"url": "/admin/inquiryQuoteComplate", "method": "POST"},
@@ -9215,11 +9221,6 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
             if not qcp.get("success") and qcp.get("code") not in (0, "0", None):
                 return _finish_named(OEM_FULL_INQUIRY_SCRIPT_NAME, log, False,
                                      {"reason": f"询价单报价完成失败: {qcp.get('msg')}", "order_sn": order_sn})
-
-            # 报价节点提交
-            qnp = _oem_submit_node(session, base_url, admin_token, order_sn, "quotation", True, timeout, variables)
-            _step(log, "quote_submit", {"order_sn": order_sn, "point_name": "quotation", "is_quote": True},
-                  {"url": "/admin/inquiryDetail", "method": "POST"}, {"success": qnp.get("success"), "msg": qnp.get("msg")})
         else:
             _step(log, "skip_quote", {}, {"note": "跳过报价阶段"}, {"skipped": True})
 
