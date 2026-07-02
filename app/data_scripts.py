@@ -9662,48 +9662,15 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
                         {"order_sn": sample_order_sn},
                         timeout, admin_token, variables, log, "samplesStartPurchase")
 
-        # ── 8. 财务付款 ──
-        purchase_no = str(variables.get("purchase_no") or sample_order_sn[-6:] or "000000")
-        fin_sku_info = _oem_build_sku_info_from_quote(sample_order_sn, session, base_url, timeout, admin_token, variables)
-        # 将 sku_info 转为财务付款格式
-        fin_skus = []
-        for s in (fin_sku_info if isinstance(fin_sku_info, list) else []):
-            fin_skus.append({
-                "id": s.get("id", 0),
-                "order_detail_sku_id": s.get("order_detail_sku_id") or s.get("id", 0),
-                "sku": s.get("sku", ""),
-                "sku_tr": s.get("sku_tr") or s.get("sku", ""),
-                "sku_image": s.get("sku_image", ""),
-                "num": s.get("num", 1),
-                "purchase_samples_price": str(s.get("purchase_samples_price") or variables.get("purchase_samples_price", "300.00")),
-                "purchase_samples_price_return": str(s.get("purchase_samples_price_return") or variables.get("purchase_samples_price_return", "1")),
-                "quote_samples_price": str(s.get("quote_samples_price") or variables.get("quote_samples_price", "360.00")),
-                "quote_samples_price_return": str(s.get("quote_samples_price_return") or variables.get("quote_samples_price_return", "0.00")),
-                "real_samples_price_return": str(s.get("real_samples_price_return") or variables.get("real_samples_price_return", "0.00")),
-            })
-        purchase_info = {
-            "purchase_id": int(variables.get("purchase_id") or 0),
-            "quote_other_fee": str(variables.get("fin_quote_other_fee", "1.00")),
-            "quote_freight": str(variables.get("fin_quote_freight", "1.00")),
-            "purchase_other_fee": str(variables.get("purchase_other_fee", "1.00")),
-            "purchase_freight": str(variables.get("purchase_freight", "1.00")),
-            "purchase_no": purchase_no,
-            "contract": str(variables.get("contract", "")),
-            "type": int(variables.get("fin_type", 1)),
-            "sku_info": fin_skus,
-            "contract_name": str(variables.get("contract_name", "")),
-            "number_or_contract": purchase_no,
-        }
-        _call_admin_api(session, base_url, "/admin/samplesFinancialPayments",
-                        {"order_sn": sample_order_sn, "purchase_info": purchase_info},
-                        timeout, admin_token, variables, log, "samplesFinancialPayments")
+        # ── 8. 采购提交物流号 ──
+        _call_admin_api(session, base_url, "/admin/samplesDispatch", {
+            "order_sn": sample_order_sn,
+            "express_id": int(variables.get("express_id") or 1039),
+            "express_no": str(variables.get("express_no") or sample_order_sn[-6:] or "000000"),
+            "express_remark": str(variables.get("express_remark") or ""),
+        }, timeout, admin_token, variables, log, "samplesDispatch")
 
-        # ── 9. 采购提交给财务 ──
-        _call_admin_api(session, base_url, "/admin/samplesPurchaseCompleted",
-                        {"order_sn": sample_order_sn, "purchase_info": purchase_info},
-                        timeout, admin_token, variables, log, "samplesPurchaseCompleted")
-
-        summary = {"order_sn": sample_order_sn, "serial_number": serial_number, "purchase_no": purchase_no, "reason": "样品单全流程执行成功"}
+        summary = {"order_sn": sample_order_sn, "serial_number": serial_number, "reason": "样品单全流程执行成功"}
         return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, True, summary)
 
     except Exception as exc:
