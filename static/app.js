@@ -1393,12 +1393,15 @@ function openOemSampleFullFlowRunForm(flow) {
     const btn = document.querySelector("#checkImageSelectBtn");
     btn.disabled = true;
     btn.textContent = "上传中...";
+    const token = localStorage.getItem("token");
     for (const file of files) {
       const fd = new FormData();
       fd.append("file", file);
       try {
-        const resp = await api("/api/oem/upload-image", { method: "POST", body: fd });
-        const url = resp.url || resp.data?.url || "";
+        const resp = await fetch("/api/oem/upload-image", { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || "上传失败");
+        const url = data.url || "";
         if (url) {
           existing.push(url);
           progressEl.innerHTML += `<img src="${escapeHtml(url)}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--border)" />`;
