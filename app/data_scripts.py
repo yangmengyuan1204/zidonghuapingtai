@@ -9187,12 +9187,17 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
             factory_img = variables.get("factory_img") or ""
             salesman = variables.get("salesman") or "测试业务员"
             salesman_phone = variables.get("salesman_phone") or "13800000000"
-            samples_price = variables.get("samples_price") or "12.00"
-            large_price = variables.get("large_price") or "11.00"
-            large_other_fee = variables.get("large_other_fee") or "12.00"
-            large_freight = variables.get("large_freight") or "11.00"
-            large_delivery_time = int(variables.get("large_delivery_time") or 15)
-            large_deposit_rate = variables.get("large_deposit_rate") or "100"
+            # 全局默认值（向后兼容：无 factory_quotes 时所有工厂共用这组）
+            samples_price_default = variables.get("samples_price") or "12.00"
+            large_price_default = variables.get("large_price") or "11.00"
+            large_other_fee_default = variables.get("large_other_fee") or "12.00"
+            large_freight_default = variables.get("large_freight") or "11.00"
+            large_delivery_time_default = int(variables.get("large_delivery_time") or 15)
+            large_deposit_rate_default = variables.get("large_deposit_rate") or "100"
+            real_samples_price_default = variables.get("real_samples_price") or "10.00"
+            real_large_price_default = variables.get("real_large_price") or "10.00"
+            # 每工厂差异化报价（前端按 factory_urls 行数展开多组）
+            factory_quotes = variables.get("factory_quotes") or []
 
             for idx, d_item in enumerate(detail_list):
                 detail_id = d_item.get("id")
@@ -9200,6 +9205,16 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                 factory_submit_info = d_item.get("factory_submit_info") or factory_url
                 factory_iid = d_item.get("factory_iid") or ""
                 factory_name = d_item.get("factory_name") or "测试工厂"
+                # 按工厂 idx 取该工厂的报价字段，缺失时用全局默认
+                fq = factory_quotes[idx] if idx < len(factory_quotes) and isinstance(factory_quotes[idx], dict) else {}
+                samples_price = fq.get("samples_price") or samples_price_default
+                large_price = fq.get("large_price") or large_price_default
+                large_other_fee = fq.get("large_other_fee") or large_other_fee_default
+                large_freight = fq.get("large_freight") or large_freight_default
+                large_delivery_time = int(fq.get("large_delivery_time") or large_delivery_time_default)
+                large_deposit_rate = fq.get("large_deposit_rate") or large_deposit_rate_default
+                real_samples_price = fq.get("real_samples_price") or real_samples_price_default
+                real_large_price = fq.get("real_large_price") or real_large_price_default
                 # 编辑工厂
                 edit_body: Dict[str, Any] = {
                     "detail_id": detail_id,
@@ -9223,8 +9238,8 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                 for sku in sku_detail:
                     sku["samples_price"] = samples_price
                     sku["large_price"] = large_price
-                    sku["real_samples_price"] = variables.get("real_samples_price") or "10.00"
-                    sku["real_large_price"] = variables.get("real_large_price") or "10.00"
+                    sku["real_samples_price"] = real_samples_price
+                    sku["real_large_price"] = real_large_price
                 # 以 d_item 为基底，只覆盖报价相关字段，避免漏字段导致"参数错误"
                 quote_body = dict(d_item)
                 quote_body.update({

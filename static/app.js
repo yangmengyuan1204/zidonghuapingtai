@@ -1234,22 +1234,63 @@ function openOemFullInquiryFlowRunForm(flow) {
   const formFields = fields.filter((f) => f.type !== "section");
   variables = sanitizeScriptVariables(flow.scriptType, variables, flow);
   const values = { ...paramFormValues(formFields, variables), __save_defaults: false };
+
+  // 报价阶段按 factory_urls 行数动态展开多组（每工厂独立 8 个金额字段）
+  const QUOTE_SECTION_LABEL = "报价阶段";
+  const QUOTE_FIELD_NAMES = ["samples_price","large_price","large_other_fee","large_freight",
+    "large_delivery_time","large_deposit_rate","real_samples_price","real_large_price"];
+  const quoteFieldDefs = fields.filter((f) => QUOTE_FIELD_NAMES.includes(f.name));
+  const factoryQuotesStored = Array.isArray(variables.factory_quotes) ? variables.factory_quotes : [];
+
+  // 分组：报价阶段标记 isQuote，其下 8 个金额字段不直接渲染（改为按工厂展开）
   const groups = [];
-  let current = { label: "基础参数", fields: [] };
+  let current = { label: "基础参数", fields: [], isQuote: false };
   for (const f of fields) {
     if (f.type === "section") {
-      if (current.fields.length) groups.push(current);
-      current = { label: f.label, fields: [] };
+      if (current.fields.length || current.isQuote) groups.push(current);
+      current = { label: f.label, fields: [], isQuote: f.label === QUOTE_SECTION_LABEL };
     } else {
+      if (current.isQuote && QUOTE_FIELD_NAMES.includes(f.name)) continue;
       current.fields.push(f);
     }
   }
-  if (current.fields.length) groups.push(current);
+  if (current.fields.length || current.isQuote) groups.push(current);
+
+  // 缓存每工厂已填值（重渲染时保留）
+  let fqCache = {};
+  for (let i = 0; i < factoryQuotesStored.length; i++) {
+    if (factoryQuotesStored[i] && typeof factoryQuotesStored[i] === "object") {
+      fqCache[i] = { ...factoryQuotesStored[i] };
+    }
+  }
+
+  function renderQuoteGroups(factoryCount) {
+    if (!factoryCount) return `<div class="empty">请先在「询价单提出」中填写工厂链接</div>`;
+    let html = "";
+    for (let i = 0; i < factoryCount; i++) {
+      const cached = fqCache[i] || {};
+      html += `<details open class="factory-quote-group"><summary>工厂${i + 1}报价</summary><div class="form-grid">`;
+      for (const fdef of quoteFieldDefs) {
+        const fieldDef = { ...fdef, name: `__fq_${i}__${fdef.name}` };
+        const val = cached[fdef.name] ?? values[fdef.name] ?? fdef.default ?? "";
+        html += renderFormField(fieldDef, val);
+      }
+      html += `</div></details>`;
+    }
+    return html;
+  }
+
   let bodyHtml = "";
   for (const g of groups) {
-    bodyHtml += `<details class="functional-requirement"><summary>${escapeHtml(g.label)}</summary><div class="form-grid">`;
-    for (const f of g.fields) bodyHtml += renderFormField(f, values[f.name]);
-    bodyHtml += `</div></details>`;
+    bodyHtml += `<details class="functional-requirement" ${g.isQuote ? "open" : ""}><summary>${escapeHtml(g.label)}</summary>`;
+    if (g.isQuote) {
+      bodyHtml += `<div class="factory-quote-container" id="factoryQuoteContainer">__FACTORY_QUOTE_PLACEHOLDER__</div>`;
+    } else {
+      bodyHtml += `<div class="form-grid">`;
+      for (const f of g.fields) bodyHtml += renderFormField(f, values[f.name]);
+      bodyHtml += `</div>`;
+    }
+    bodyHtml += `</details>`;
   }
   bodyHtml += renderFormField({ name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false }, false);
   modalEl.innerHTML = `
@@ -1265,6 +1306,44 @@ function openOemFullInquiryFlowRunForm(flow) {
   modalEl.showModal();
   bindUploadButtons();
   const form = document.querySelector("#oemFullInquiryFlowForm");
+
+  // 刷新报价阶段子块：读 factory_urls 行数 + 保留已填值
+  function refreshQuoteGroups() {
+    const urlsInput = form.querySelector('[name="factory_urls"]');
+    const urls = urlsInput ? urlsInput.value : "";
+    const factoryCount = splitParamList(urls).length;
+    // 读取当前 form 已填的 __fq_* 值
+    const newCache = {};
+    for (let i = 0; i < factoryCount; i++) {
+      const entry = {};
+      for (const fn of QUOTE_FIELD_NAMES) {
+        const input = form.querySelector(`[name="__fq_${i}__${fn}"]`);
+        if (input && input.value !== "" && input.value !== null && input.value !== undefined) {
+          entry[fn] = input.value;
+        }
+      }
+      newCache[i] = entry;
+    }
+    // 合并：已填 > 旧缓存 > 存储的 factory_quotes
+    for (let i = 0; i < factoryCount; i++) {
+      fqCache[i] = { ...(factoryQuotesStored[i] || {}), ...(fqCache[i] || {}), ...newCache[i] };
+    }
+    // 清理超出范围的缓存
+    Object.keys(fqCache).forEach((k) => {
+      if (Number(k) >= factoryCount) delete fqCache[k];
+    });
+    const container = document.querySelector("#factoryQuoteContainer");
+    if (container) container.innerHTML = renderQuoteGroups(factoryCount);
+  }
+
+  refreshQuoteGroups();
+
+  // 监听 factory_urls 变化重渲染
+  const factoryUrlsInput = form.querySelector('[name="factory_urls"]');
+  if (factoryUrlsInput) {
+    factoryUrlsInput.addEventListener("input", () => refreshQuoteGroups());
+  }
+
   document.querySelector("#closeModal").addEventListener("click", async () => {
     modalEl.close();
     if (state.view === "dataScripts" && !state.factory.editing) {
@@ -1275,7 +1354,25 @@ function openOemFullInquiryFlowRunForm(flow) {
     event.preventDefault();
     try {
       const data = readForm(form);
-      const runtimeVariables = sanitizeScriptVariables(flow.scriptType, mergeParamValues(variables, formFields, data), flow);
+      // 聚合 __fq_{idx}__{field} → factory_quotes 数组
+      const urls = data.factory_urls || "";
+      const factoryCount = splitParamList(urls).length;
+      const fqList = [];
+      for (let i = 0; i < factoryCount; i++) {
+        const entry = {};
+        for (const fn of QUOTE_FIELD_NAMES) {
+          const k = `__fq_${i}__${fn}`;
+          const v = data[k];
+          if (v !== undefined && v !== null && v !== "") {
+            entry[fn] = fn === "large_delivery_time" ? Number(v) : String(v);
+          }
+        }
+        fqList.push(entry);
+      }
+      const merged = mergeParamValues(variables, formFields, data);
+      if (fqList.length) merged.factory_quotes = fqList;
+      else delete merged.factory_quotes;
+      const runtimeVariables = sanitizeScriptVariables(flow.scriptType, merged, flow);
       if (data.__save_defaults) saveFlowVariables(flow, runtimeVariables);
       showToast("正在执行OEM询价单全流程...");
       await runSavedFlow(flow, runtimeVariables);
