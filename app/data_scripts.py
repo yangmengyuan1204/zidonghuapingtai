@@ -8691,6 +8691,32 @@ def run_oem_new_inquiry_script(env: Env, variables: Dict[str, Any] | None = None
 OEM_SAMPLE_ORDER_SCRIPT_NAME = "OEM提出样品单"
 
 
+# OEM 后端常见日文错误信息 → 中文翻译
+_OEM_MSG_TRANSLATIONS = {
+    "操作に失敗しました": "操作失败",
+    "操作成功": "操作成功",
+    "SKU形式が正しくありません": "SKU 格式不正确",
+    "パラメータエラー": "参数错误",
+    "システムエラー": "系统错误",
+    "ログインに失敗しました": "登录失败",
+    "権限がありません": "无权限",
+    "データが存在しません": "数据不存在",
+    "注文情報が存在しません": "订单信息不存在",
+    "在庫が不足しています": "库存不足",
+}
+
+
+def _translate_oem_msg(msg: Any) -> str:
+    """翻译 OEM 后端日文 msg 为中文，未命中则原样返回。"""
+    text = str(msg or "").strip()
+    if not text:
+        return ""
+    for jp, cn in _OEM_MSG_TRANSLATIONS.items():
+        if jp in text:
+            return text.replace(jp, cn)
+    return text
+
+
 def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
     """OEM 样品单提出脚本：前台登录 -> 创建样品单，返回 order_sn。
 
@@ -8803,12 +8829,28 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
             raise RuntimeError(f"创建样品单请求失败: {last_error}")
 
         if not payload.get("success") or payload.get("code") not in (0, "0", None):
-            _step(log, "new_sample_order", payload, {"url": "/api/newOrder", "method": "POST"})
+            raw_msg = payload.get("msg")
+            raw_data = payload.get("data")
+            translated_msg = _translate_oem_msg(raw_msg)
+            # data 含 "Line:" 通常是后端业务校验失败（询价单已被转过样品单/状态已变更）
+            hint = ""
+            if isinstance(raw_data, str) and "Line:" in raw_data:
+                hint = "（可能原因：该询价单已被转过样品单或状态已变更，请确认询价单可用性）"
+            _step(
+                log,
+                "new_sample_order",
+                payload,
+                {"url": "/api/newOrder", "method": "POST", "body": body},
+            )
             return _finish_named(
                 OEM_SAMPLE_ORDER_SCRIPT_NAME,
                 log,
                 False,
-                {"reason": f"创建样品单失败: {payload.get('msg')}", "error": payload.get("msg"), "payload": payload},
+                {
+                    "reason": f"创建样品单失败: {translated_msg}{hint}",
+                    "error": translated_msg,
+                    "payload": payload,
+                },
             )
 
         order_sn_out = str(payload.get("data") or "")
@@ -8816,7 +8858,7 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
             log,
             "new_sample_order",
             payload,
-            {"url": "/api/newOrder", "method": "POST"},
+            {"url": "/api/newOrder", "method": "POST", "body": body},
             {"order_sn": order_sn_out, "success": True},
         )
 
