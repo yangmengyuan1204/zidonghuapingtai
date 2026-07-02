@@ -1303,6 +1303,7 @@ function openOemSampleFullFlowRunForm(flow) {
   const adminArea = document.querySelector("#ffAdminArea");
   const submitBtn = document.querySelector("#ffSubmitBtn");
   let skuItems = [];
+  let fetchedDetailId = "";
 
   document.querySelector("#closeModal").addEventListener("click", async () => {
     modalEl.close();
@@ -1324,6 +1325,7 @@ function openOemSampleFullFlowRunForm(flow) {
       const first = records[0] || {};
       const rawList = first.sku_detail || first.sku_list || first.skuInfo || first.details || first.items || [];
       if (!rawList.length) { skuArea.innerHTML = `<div class="alert warn">该询价单暂无 SKU 明细数据</div>`; submitBtn.disabled = true; return; }
+      fetchedDetailId = first.id || data.detail_id || "";
       // 从 quoteDetail 合并字段
       const qd = first.quote_detail || data.quote_detail || {};
       const sm = {}, lm = {};
@@ -1372,6 +1374,7 @@ function openOemSampleFullFlowRunForm(flow) {
     const data = readForm(form);
     const merged = mergeParamValues(variables, formFields, { ...data, sku_list: JSON.stringify(skuList) });
     merged.order_sn = orderSn;
+    if (fetchedDetailId) merged.inquiry_detail_id = fetchedDetailId;
     const runtimeVariables = sanitizeScriptVariables(flow.scriptType, merged, flow);
     if (data.__save_defaults) saveFlowVariables(flow, runtimeVariables);
     showToast("正在执行OEM样品单全流程...");
