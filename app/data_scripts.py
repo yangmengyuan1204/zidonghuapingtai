@@ -9680,6 +9680,21 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
                         {"order_sn": sample_order_sn},
                         timeout, admin_token, variables, log, "checkStart")
 
+        # ── 11. 提交验货报告 ──
+        report_images_raw = variables.get("check_report_images", "")
+        report_images = [u.strip() for u in report_images_raw.replace("\n", ",").split(",") if u.strip()]
+        if report_images:
+            check_body = {
+                "order_sn": sample_order_sn,
+                "samples_report_video": [],
+                "samples_report_image": [],
+                "video": [],
+                "image": report_images,
+                "remark": str(variables.get("check_report_remark", "")),
+            }
+            _call_admin_api(session, base_url, "/admin/checkReport",
+                            check_body, timeout, admin_token, variables, log, "checkReport")
+
         summary = {"order_sn": sample_order_sn, "serial_number": serial_number, "reason": "样品单全流程执行成功"}
         return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, True, summary)
 
