@@ -9452,3 +9452,148 @@ def run_oem_sample_admin_flow_script(env: Env, variables: Dict[str, Any] | None 
         log["error"] = str(exc)
         return _finish_named(OEM_SAMPLE_ADMIN_SCRIPT_NAME, log, False, {"reason": str(exc), "error": str(exc)})
 
+
+# ─── OEM 样品单全流程（提出 + 后台管理）─────────────────────────────
+
+OEM_SAMPLE_FULL_FLOW_NAME = "OEM样品单全流程"
+
+
+def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    """OEM 样品单全流程：提出样品单 → 翻译提交 → 确认 → 报价给客户。
+
+    阶段：
+      1. 提出样品单（前台登录 → 创建样品单）
+      2. 翻译提交（后台登录 → samplesSubmitPurchase）
+      3. 开始确认（samplesStartConfirm）
+      4. 采购确认（samplesConfirmed → samplesStartQuote → samplesQuoteToUser）
+    """
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+    base_url = (env.base_url or OEM_DEFAULT_BASE_URL).rstrip("/")
+    warehouse_city = int(variables.get("warehouse_city") or 2)
+    inquiry_order_sn = str(variables.get("order_sn") or variables.get("inquiry_order_sn") or "").strip()
+    sku_list_raw = variables.get("sku_list")
+    sample_order_sn = str(variables.get("sample_order_sn") or "").strip()
+
+    log: Dict[str, Any] = {
+        "script": OEM_SAMPLE_FULL_FLOW_NAME,
+        "mode": "oem_sample_full_flow",
+        "base_url": base_url,
+        "started_at": datetime.now(),
+        "steps": [],
+    }
+
+    try:
+        session = requests.Session()
+
+        # ── 阶段 1：提出样品单 ──
+        if not sample_order_sn and inquiry_order_sn:
+            client_token = _oem_client_login(session, base_url, variables, timeout)
+            _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
+                  {"url": "/client/userLogin", "method": "POST"},
+                  {"token": client_token[:16] + "..."})
+
+            # 解析 SKU 列表
+            sku_list = sku_list_raw
+            if isinstance(sku_list, str):
+                try:
+                    sku_list = json.loads(sku_list) if sku_list.strip().startswith("[") else []
+                except (json.JSONDecodeError, TypeError):
+                    sku_list = []
+            if not isinstance(sku_list, list):
+                sku_list = []
+            for item in sku_list:
+                if isinstance(item, dict) and "option" not in item:
+                    item["option"] = []
+
+            body = {
+                "order_sn": inquiry_order_sn,
+                "inquiry_detail_id": variables.get("inquiry_detail_id") or "",
+                "type": 1,
+                "sku_list": sku_list if sku_list else [{"sku_id": 1993, "num": 1, "option": []}],
+                "remark": "",
+                "warehouse_city": warehouse_city,
+            }
+            headers = {
+                "Content-Type": "application/json", "Accept": "application/json, text/plain, */*",
+                "Authorization": f"Bearer {client_token}",
+                "Origin": variables.get("frontend_origin", OEM_DEFAULT_FRONTEND_ORIGIN),
+                "Referer": variables.get("frontend_origin", OEM_DEFAULT_FRONTEND_ORIGIN).rstrip("/") + "/",
+            }
+            url = urljoin(base_url.rstrip("/") + "/", "/api/newOrder")
+            payload = {}
+            for attempt in range(3):
+                try:
+                    resp = session.post(url, json=body, headers=headers, timeout=timeout)
+                    payload = resp.json()
+                    break
+                except (requests.ConnectionError, requests.Timeout, ValueError):
+                    if attempt < 2:
+                        time.sleep(0.8 * (attempt + 1))
+            else:
+                raise RuntimeError("创建样品单请求失败")
+            if not payload.get("success") or payload.get("code") not in (0, "0", None):
+                raise RuntimeError(f"创建样品单失败: {_translate_oem_msg(payload.get('msg'))}")
+            sample_order_sn = str(payload.get("data") or "")
+            _step(log, "new_sample_order", payload, {"url": "/api/newOrder", "method": "POST"},
+                  {"order_sn": sample_order_sn, "success": True})
+            log["sample_order_sn"] = sample_order_sn
+        else:
+            log["sample_order_sn"] = sample_order_sn or inquiry_order_sn
+
+        if not sample_order_sn:
+            sample_order_sn = inquiry_order_sn
+        log["order_sn"] = sample_order_sn
+
+        # ── 阶段 2-5：后台管理流程 ──
+        admin_token = _oem_admin_login(session, base_url, variables, timeout)
+        _step(log, "admin_login", {}, {"url": "/admin/login", "method": "POST"}, {"token_prefix": admin_token[:10] + "..."})
+
+        # 翻译提交
+        _call_admin_api(session, base_url, "/admin/samplesSubmitPurchase",
+                        {"order_sn": sample_order_sn, "warehouse_city": warehouse_city},
+                        timeout, admin_token, variables, log, "samplesSubmitPurchase")
+
+        # 开始确认
+        _call_admin_api(session, base_url, "/admin/samplesStartConfirm",
+                        {"order_sn": sample_order_sn},
+                        timeout, admin_token, variables, log, "samplesStartConfirm")
+
+        # 采购确认→业务
+        sku_info = _oem_build_sku_info_from_quote(sample_order_sn, session, base_url, timeout, admin_token, variables)
+        quote_info = {
+            "inquiry_other_fee": str(variables.get("inquiry_other_fee", "0.00")),
+            "inquiry_freight": str(variables.get("inquiry_freight", "0.00")),
+            "inquiry_delivery_time": int(variables.get("inquiry_delivery_time", 0)),
+            "quote_other_fee": str(variables.get("quote_other_fee", "7")),
+            "quote_freight": str(variables.get("quote_freight", "8")),
+            "quote_delivery_time": str(variables.get("quote_delivery_time", "9")),
+            "real_other_fee": str(variables.get("real_other_fee", "7")),
+            "real_freight": str(variables.get("real_freight", "8")),
+            "sku_info": sku_info,
+        }
+        _call_admin_api(session, base_url, "/admin/samplesConfirmed", {
+            "order_sn": sample_order_sn, "warehouse_city": warehouse_city,
+            "is_special_quote": bool(variables.get("is_special_quote", True)),
+            "y_response": str(variables.get("y_response", "")),
+            "quote_info": quote_info,
+        }, timeout, admin_token, variables, log, "samplesConfirmed")
+
+        # 业务开始报价
+        _call_admin_api(session, base_url, "/admin/samplesStartQuote",
+                        {"order_sn": sample_order_sn},
+                        timeout, admin_token, variables, log, "samplesStartQuote")
+
+        # 报价给客户
+        _call_admin_api(session, base_url, "/admin/samplesQuoteToUser",
+                        {"order_sn": sample_order_sn, "warehouse_city": warehouse_city},
+                        timeout, admin_token, variables, log, "samplesQuoteToUser")
+
+        summary = {"order_sn": sample_order_sn, "reason": "样品单全流程执行成功"}
+        return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, True, summary)
+
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, False, {"reason": str(exc), "error": str(exc)})
+
