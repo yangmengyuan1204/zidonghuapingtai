@@ -1370,7 +1370,9 @@ function openOemSampleFullFlowRunForm(flow) {
       return { sku_id: parseInt(String(it.sku_id), 10) || it.sku_id, num: numEl ? parseInt(numEl.value, 10) || 1 : it.num };
     });
     const data = readForm(form);
-    const runtimeVariables = sanitizeScriptVariables(flow.scriptType, mergeParamValues(variables, formFields, { ...data, order_sn: orderSn, sku_list: JSON.stringify(skuList) }), flow);
+    const merged = mergeParamValues(variables, formFields, { ...data, sku_list: JSON.stringify(skuList) });
+    merged.order_sn = orderSn;
+    const runtimeVariables = sanitizeScriptVariables(flow.scriptType, merged, flow);
     if (data.__save_defaults) saveFlowVariables(flow, runtimeVariables);
     showToast("正在执行OEM样品单全流程...");
     await runSavedFlow(flow, runtimeVariables);
