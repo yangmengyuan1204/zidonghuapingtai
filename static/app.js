@@ -65,6 +65,8 @@ let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _
     { name: "__section_check", type: "section", label: "\u9a8c\u8d27\u9636\u6bb5" },
     { name: "check_report_images", label: "\u9a8c\u8d27\u56fe\u7247URL(\u6bcf\u884c\u4e00\u4e2a)", type: "textarea", rows: 4 },
     { name: "check_report_remark", label: "\u9a8c\u8d27\u5907\u6ce8" },
+    { name: "keep_sample_num", label: "\u7559\u6837\u6570\u91cf", type: "number", default: 0 },
+    { name: "keep_sample_possible_num", label: "\u53ef\u7559\u6837\u6570\u91cf", type: "number", default: 0 },
   ],
   oem_balance_pay: [
     { name: "order_sn", label: "\u6837\u54c1\u5355\u53f7", required: true },

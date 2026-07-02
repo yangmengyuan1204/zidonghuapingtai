@@ -9695,6 +9695,54 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
             _call_admin_api(session, base_url, "/admin/checkReport",
                             check_body, timeout, admin_token, variables, log, "checkReport")
 
+        # ── 12. 获取验货明细 ──
+        try:
+            check_detail_resp = _call_admin_api(session, base_url, "/admin/checkDetail",
+                                                {"order_sn": sample_order_sn},
+                                                timeout, admin_token, variables, log, "checkDetail")
+        except RuntimeError:
+            check_detail_resp = {"data": None}
+        check_detail_data = check_detail_resp.get("data") if isinstance(check_detail_resp, dict) else None
+
+        # ── 13. 验货完成提交 ──
+        check_list = []
+        if check_detail_data and isinstance(check_detail_data, list):
+            for item in check_detail_data:
+                check_list.append({
+                    "id": item.get("id", 0),
+                    "check_id": item.get("check_id", 0),
+                    "sku_tr": str(item.get("sku_tr", "")),
+                    "sku": str(item.get("sku", "")),
+                    "sku_image": str(item.get("sku_image", "")),
+                    "num": item.get("num", 1),
+                    "price": str(item.get("price", "0.00")),
+                    "option": item.get("option", []),
+                    "check_num": str(item.get("num", 1)),
+                    "weight": str(item.get("weight", "1")),
+                    "size": str(item.get("size", "0")),
+                    "length": item.get("length", 1),
+                    "width": item.get("width", 1),
+                    "height": item.get("height", 1),
+                    "possible_num": item.get("num", 1),
+                    "storage_num": 0,
+                    "shelves_num": 0,
+                    "wait_inspect_num": item.get("num", 1),
+                    "inspect_num": item.get("num", 1),
+                    "bad_num": 0,
+                    "good_num": item.get("num", 1),
+                    "keep_sample_num": int(variables.get("keep_sample_num", 0)),
+                    "keep_sample_possible_num": int(variables.get("keep_sample_possible_num", 0)),
+                    "keep_sample_shelves_num": 0,
+                    "warehouse_shelves": [],
+                    "after_sale_num": 0,
+                    "shelve_num": item.get("num", 1),
+                    "checked_listing": True,
+                })
+        if check_list:
+            _call_admin_api(session, base_url, "/admin/checkComplete",
+                            {"order_sn": sample_order_sn, "check_list": check_list},
+                            timeout, admin_token, variables, log, "checkComplete")
+
         summary = {"order_sn": sample_order_sn, "serial_number": serial_number, "reason": "样品单全流程执行成功"}
         return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, True, summary)
 
