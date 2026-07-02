@@ -9698,6 +9698,11 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
                         {"order_sn": sample_order_sn, "purchase_info": purchase_info},
                         timeout, admin_token, variables, log, "samplesFinancialPayments")
 
+        # ── 9. 采购提交给财务 ──
+        _call_admin_api(session, base_url, "/admin/samplesPurchaseCompleted",
+                        {"order_sn": sample_order_sn, "purchase_info": purchase_info},
+                        timeout, admin_token, variables, log, "samplesPurchaseCompleted")
+
         summary = {"order_sn": sample_order_sn, "serial_number": serial_number, "purchase_no": purchase_no, "reason": "样品单全流程执行成功"}
         return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, True, summary)
 
