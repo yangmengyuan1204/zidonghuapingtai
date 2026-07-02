@@ -9058,6 +9058,15 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                     {"sku": variables.get("sku2") or "sku2", "num": int(variables.get("sku2_num") or 2)},
                     {"sku": variables.get("sku3") or "sku3", "num": int(variables.get("sku3_num") or 3)},
                 ]
+            # 创建询价单前校验工厂链接：缺 factory_urls 会导致后端不生成 detail_list，
+            # 后续询价阶段无法工厂报价，inquiryComplete 会报"请报价至少一条数据后点击"
+            factory_urls_for_create = _oem_parse_factory_urls(variables)
+            if not factory_urls_for_create:
+                _step(log, "new_inquiry", {"order_sn": ""},
+                      {"url": "/api/newInquiry", "method": "POST"},
+                      {"success": False, "msg": "缺少 factory_urls，无法走通询价全流程"})
+                return _finish_named(OEM_FULL_INQUIRY_SCRIPT_NAME, log, False,
+                                     {"reason": "创建询价单失败: 缺少 factory_urls，请在前端配置工厂链接后再执行"})
             create_body: Dict[str, Any] = {
                 "goods_name": variables.get("goods_name") or "测试商品",
                 "hope_min_price": variables.get("hope_min_price") or "1",
@@ -9170,6 +9179,11 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
             # 重新查询详情，拿到 detail_list 的 id
             detail = _oem_query_inquiry_detail(session, base_url, admin_token, order_sn, timeout, variables)
             detail_list = detail.get("detail_list") or []
+            # 兜底校验：detail_list 为空说明后端未生成工厂明细，直接报错而非空跑循环
+            if not detail_list:
+                return _finish_named(OEM_FULL_INQUIRY_SCRIPT_NAME, log, False,
+                                     {"reason": f"询价单 {order_sn} 无工厂明细 detail_list（可能创建时未传 factory_urls），无法进行工厂报价",
+                                      "order_sn": order_sn})
             factory_img = variables.get("factory_img") or ""
             salesman = variables.get("salesman") or "测试业务员"
             salesman_phone = variables.get("salesman_phone") or "13800000000"
