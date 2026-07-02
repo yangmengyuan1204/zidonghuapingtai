@@ -9398,6 +9398,11 @@ def run_oem_sample_admin_flow_script(env: Env, variables: Dict[str, Any] | None 
                         {"order_sn": order_sn},
                         timeout, admin_token, variables, log, "samplesStartQuote")
 
+        # 5. 报价给客户
+        _call_admin_api(session, base_url, "/admin/samplesQuoteToUser",
+                        {"order_sn": order_sn, "warehouse_city": int(variables.get("warehouse_city") or 2)},
+                        timeout, admin_token, variables, log, "samplesQuoteToUser")
+
         summary = {"order_sn": order_sn, "reason": "样品单后台流程执行成功"}
         return _finish_named(OEM_SAMPLE_ADMIN_SCRIPT_NAME, log, True, summary)
 
