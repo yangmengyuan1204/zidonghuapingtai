@@ -8488,11 +8488,12 @@ def _oem_admin_login(session: requests.Session, base_url: str, variables: Dict[s
     return str(token)
 
 
-def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[str, Any], timeout: int) -> str:
-    """OEM 前台登录，返回 access_token。
+def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[str, Any], timeout: int) -> tuple[str, str]:
+    """OEM 前台登录，返回 (access_token, user_id)。
 
     站点接口为 POST /api/login，请求体 {"account","password"}，
     返回 {"code":0,"msg":"操作成功","data":{"access_token":"..."}}，无 success 字段。
+    user_id 需调 /api/userInfo 获取（登录响应不含 id）。
     """
     fields = {
         "account": variables.get("account") or "12345678990",
@@ -8503,7 +8504,16 @@ def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[
     token = data.get("access_token") or data.get("userToken") or data.get("token")
     if not token:
         raise RuntimeError(f"OEM 前台登录失败: code={payload.get('code')} msg={payload.get('msg')}")
-    return str(token)
+
+    # 调 /api/userInfo 获取账号 id（样品单号需要）
+    user_id = ""
+    try:
+        info_payload = _oem_post_json(session, base_url, "/api/userInfo", {}, timeout, is_admin=False, variables=variables)
+        info_data = info_payload.get("data") if isinstance(info_payload.get("data"), dict) else {}
+        user_id = str(info_data.get("id") or "")
+    except Exception:
+        pass
+    return str(token), user_id
 
 
 def _oem_get_upload_token(session: requests.Session, base_url: str, client_token: str, timeout: int) -> Dict[str, Any]:
@@ -8598,7 +8608,7 @@ def run_oem_new_inquiry_script(env: Env, variables: Dict[str, Any] | None = None
     try:
         session = requests.Session()
         # 前台登录
-        client_token = _oem_client_login(session, base_url, variables, timeout)
+        client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
         _step(
             log,
             "client_login",
@@ -8717,6 +8727,44 @@ def _translate_oem_msg(msg: Any) -> str:
     return text
 
 
+# OEM 单子属性映射：body.type 值 → 单号后缀
+_OEM_ORDER_TYPE_LABELS = {
+    1: "OEM",
+    2: "ODM",
+    3: "FL",
+}
+
+
+def _oem_order_type_label(order_type, variables=None) -> str:
+    """根据 body.type 返回单子属性标签（OEM/ODM/FL）。"""
+    if variables and str(variables.get("order_type_label") or "").strip():
+        return str(variables["order_type_label"]).strip()
+    try:
+        t = int(order_type or 1)
+    except (TypeError, ValueError):
+        t = 1
+    label = _OEM_ORDER_TYPE_LABELS.get(t)
+    if not label:
+        label = "OEM"
+    return label
+
+
+def _oem_generate_sample_order_sn(variables=None, user_id="", order_type=1) -> str:
+    """生成 OEM 样品单号：Y + 14位时间戳 + - + 账号id + - + 单子属性。
+
+    规则：Y{YYYYMMDDHHMMSS}-{user_id}-{OEM|ODM|FL}
+    - user_id: 账号 id（从 /api/userInfo 获取）
+    - order_type: 1=OEM, 2=ODM, 3=FL
+    允许通过 variables["sample_order_sn"] 自定义覆盖。
+    """
+    if variables and str(variables.get("sample_order_sn") or "").strip():
+        return str(variables["sample_order_sn"]).strip()
+    ts = datetime.now().strftime("%Y%m%d%H%M%S")
+    uid = str(user_id or (variables.get("user_id") if variables else "") or "").strip()
+    label = _oem_order_type_label(order_type, variables)
+    return f"Y{ts}-{uid}-{label}"
+
+
 def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
     """OEM 样品单提出脚本：前台登录 -> 创建样品单，返回 order_sn。
 
@@ -8745,7 +8793,8 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
         "script": OEM_SAMPLE_ORDER_SCRIPT_NAME,
         "mode": "oem_sample_order",
         "base_url": base_url,
-        "order_sn": order_sn,
+        "inquiry_order_sn": order_sn,
+        "sample_order_sn": "",
         "started_at": datetime.now(),
         "steps": [],
     }
@@ -8753,7 +8802,7 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
     try:
         session = requests.Session()
         # 前台登录
-        client_token = _oem_client_login(session, base_url, variables, timeout)
+        client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
         _step(
             log,
             "client_login",
@@ -8796,8 +8845,10 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
                 if isinstance(item, dict) and "option" not in item:
                     item["option"] = []
 
+        sample_order_sn = _oem_generate_sample_order_sn(variables, user_id, 1)
+        log["sample_order_sn"] = sample_order_sn
         body: Dict[str, Any] = {
-            "order_sn": order_sn,
+            "order_sn": sample_order_sn,
             "inquiry_detail_id": variables.get("inquiry_detail_id") or str(variables.get("id") or ""),
             "type": 1,
             "sku_list": sku_list if sku_list else [{"sku_id": 1993, "num": 1, "option": []}],
@@ -8862,7 +8913,7 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
             {"order_sn": order_sn_out, "success": True},
         )
 
-        summary = {"order_sn": order_sn_out, "reason": "创建样品单成功"}
+        summary = {"order_sn": order_sn_out, "inquiry_order_sn": order_sn, "sample_order_sn": sample_order_sn, "reason": "创建样品单成功"}
         return _finish_named(OEM_SAMPLE_ORDER_SCRIPT_NAME, log, True, summary)
 
     except Exception as exc:
@@ -8884,7 +8935,7 @@ def fetch_oem_full_quote(order_sn: str, variables: Dict[str, Any] | None = None)
 
     try:
         session = requests.Session()
-        client_token = _oem_client_login(session, base_url, variables, timeout)
+        client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
 
         # 1. 查询询价单基本信息，获取 detail_id
         inquiry_payload = _oem_post_json(
@@ -8996,7 +9047,7 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
 
         # ─── 阶段1：询价单提出（前台登录 + 创建询价单） ─────────────
         if not variables.get("skip_create") and not order_sn:
-            client_token = _oem_client_login(session, base_url, variables, timeout)
+            client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
             _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
                   {"url": "/api/login", "method": "POST"}, {"token": client_token[:16] + "..."})
 
@@ -9489,7 +9540,7 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
 
         # ── 阶段 1：提出样品单 ──
         if not sample_order_sn and inquiry_order_sn:
-            client_token = _oem_client_login(session, base_url, variables, timeout)
+            client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
             _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
                   {"url": "/client/userLogin", "method": "POST"},
                   {"token": client_token[:16] + "..."})
@@ -9507,8 +9558,10 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
                 if isinstance(item, dict) and "option" not in item:
                     item["option"] = []
 
+            gen_sample_sn = _oem_generate_sample_order_sn(variables, user_id, 1)
+            log["generated_sample_order_sn"] = gen_sample_sn
             body = {
-                "order_sn": inquiry_order_sn,
+                "order_sn": gen_sample_sn,
                 "inquiry_detail_id": variables.get("inquiry_detail_id") or "",
                 "type": 1,
                 "sku_list": sku_list if sku_list else [{"sku_id": 1993, "num": 1, "option": []}],
@@ -9590,10 +9643,75 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
                         {"order_sn": sample_order_sn, "warehouse_city": warehouse_city},
                         timeout, admin_token, variables, log, "samplesQuoteToUser")
 
-        summary = {"order_sn": sample_order_sn, "reason": "样品单全流程执行成功"}
+        # ── 6. 客户余额支付 ──
+        client_token2 = _oem_client_login(session, base_url, variables, timeout)
+        pay_payload = _oem_post_json(
+            session, base_url, "/api/balancePayOrder",
+            {"order_sn": sample_order_sn, "coupon_id": str(variables.get("coupon_id") or "")},
+            timeout, token=client_token2, is_admin=False, variables=variables,
+        )
+        if not pay_payload.get("success") or pay_payload.get("code") not in (0, "0", None):
+            _step(log, "balancePayOrder", pay_payload, {"url": "/api/balancePayOrder", "method": "POST"})
+            raise RuntimeError(f"余额支付失败: {_translate_oem_msg(pay_payload.get('msg'))}")
+        serial_number = str((pay_payload.get("data") or {}).get("serial_number") or "")
+        _step(log, "balancePayOrder", pay_payload, {"url": "/api/balancePayOrder", "method": "POST"},
+              {"serial_number": serial_number, "success": True})
+
+        summary = {"order_sn": sample_order_sn, "serial_number": serial_number, "reason": "样品单全流程执行成功"}
         return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, True, summary)
 
     except Exception as exc:
         log["error"] = str(exc)
         return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, False, {"reason": str(exc), "error": str(exc)})
+
+
+# ─── OEM 样品单余额支付 ────────────────────────────────────────────
+
+OEM_BALANCE_PAY_NAME = "OEM样品单余额支付"
+
+
+def run_oem_sample_balance_pay_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    """OEM 样品单余额支付：前台登录 → 余额支付。
+
+    接口 POST /api/balancePayOrder
+    可配置变量：
+        - order_sn: 样品单号（必填）
+        - coupon_id: 优惠券ID（可选）
+    """
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+    base_url = (env.base_url or OEM_DEFAULT_BASE_URL).rstrip("/")
+    order_sn = str(variables.get("order_sn") or "").strip()
+    if not order_sn:
+        return _finish_named(OEM_BALANCE_PAY_NAME, {}, False, {"reason": "缺少必填参数：order_sn"})
+
+    log: Dict[str, Any] = {
+        "script": OEM_BALANCE_PAY_NAME, "mode": "oem_balance_pay",
+        "base_url": base_url, "order_sn": order_sn, "started_at": datetime.now(), "steps": [],
+    }
+    try:
+        session = requests.Session()
+        client_token = _oem_client_login(session, base_url, variables, timeout)
+        _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
+              {"url": "/client/userLogin", "method": "POST"}, {"token": client_token[:16] + "..."})
+
+        payload = _oem_post_json(session, base_url, "/api/balancePayOrder",
+                                 {"order_sn": order_sn, "coupon_id": str(variables.get("coupon_id") or "")},
+                                 timeout, token=client_token, is_admin=False, variables=variables)
+        if not payload.get("success") or payload.get("code") not in (0, "0", None):
+            _step(log, "balancePayOrder", payload, {"url": "/api/balancePayOrder", "method": "POST"})
+            return _finish_named(OEM_BALANCE_PAY_NAME, log, False,
+                                 {"reason": f"余额支付失败: {_translate_oem_msg(payload.get('msg'))}", "error": payload.get("msg")})
+
+        data = payload.get("data") or {}
+        serial_number = str(data.get("serial_number") or "")
+        _step(log, "balancePayOrder", payload, {"url": "/api/balancePayOrder", "method": "POST"},
+              {"serial_number": serial_number, "success": True})
+        summary = {"order_sn": order_sn, "serial_number": serial_number, "reason": "余额支付成功"}
+        return _finish_named(OEM_BALANCE_PAY_NAME, log, True, summary)
+
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _finish_named(OEM_BALANCE_PAY_NAME, log, False, {"reason": str(exc), "error": str(exc)})
 
