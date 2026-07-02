@@ -9644,7 +9644,7 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
                         timeout, admin_token, variables, log, "samplesQuoteToUser")
 
         # ── 6. 客户余额支付 ──
-        client_token2 = _oem_client_login(session, base_url, variables, timeout)
+        client_token2, _ = _oem_client_login(session, base_url, variables, timeout)
         pay_payload = _oem_post_json(
             session, base_url, "/api/balancePayOrder",
             {"order_sn": sample_order_sn, "coupon_id": str(variables.get("coupon_id") or "")},
@@ -9831,7 +9831,7 @@ def run_oem_sample_balance_pay_script(env: Env, variables: Dict[str, Any] | None
     }
     try:
         session = requests.Session()
-        client_token = _oem_client_login(session, base_url, variables, timeout)
+        client_token, _ = _oem_client_login(session, base_url, variables, timeout)
         _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
               {"url": "/client/userLogin", "method": "POST"}, {"token": client_token[:16] + "..."})
 
