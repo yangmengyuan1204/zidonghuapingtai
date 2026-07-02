@@ -20,8 +20,13 @@ let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _
     { name: "hope_max_price", label: "期望最高价", default: "100" },
     { name: "hope_futures", label: "期望交期", default: "10" },
     { name: "goods_type", label: "商品类型", type: "number", default: 1 },
-    { name: "factory_type", label: "工厂类型", type: "number", default: 3 },
-    { name: "factory_urls", label: "工厂链接（每行一个）", type: "textarea", rows: 4 },
+    { name: "factory_type", label: "工厂类型", type: "select", default: "3",
+      options: [
+        { value: "1", label: "严选工厂" },
+        { value: "2", label: "普通工厂" },
+        { value: "3", label: "交易工厂" },
+      ] },
+    { name: "factory_urls", label: "工厂链接", type: "factory-urls-dynamic" },
     { name: "goods_img", label: "商品主图", type: "upload" },
     { name: "sku1", label: "SKU1名称", default: "sku1" },
     { name: "sku1_num", label: "SKU1数量", type: "number", default: 1 },
@@ -1231,9 +1236,9 @@ function openOemFullInquiryFlowRunForm(flow) {
   let variables = {};
   try { variables = parseJsonText(flow.variables || "{}", {}); } catch { showToast("脚本变量不是合法 JSON"); return; }
   const fields = (SCRIPT_PARAM_SCHEMAS.oem_full_inquiry_flow || []);
-  const formFields = fields.filter((f) => f.type !== "section");
+  const formFields = fields.filter((f) => f.type !== "section" && f.type !== "factory-urls-dynamic");
   variables = sanitizeScriptVariables(flow.scriptType, variables, flow);
-  const values = { ...paramFormValues(formFields, variables), __save_defaults: false };
+  const values = { ...paramFormValues(formFields, variables), factory_urls: variables.factory_urls || "", __save_defaults: false };
 
   // 报价阶段按 factory_urls 行数动态展开多组（每工厂独立 8 个金额字段）
   const QUOTE_SECTION_LABEL = "报价阶段";
@@ -1265,7 +1270,7 @@ function openOemFullInquiryFlowRunForm(flow) {
   }
 
   function renderQuoteGroups(factoryCount) {
-    if (!factoryCount) return `<div class="empty">请先在「询价单提出」中填写工厂链接</div>`;
+    if (!factoryCount) return `<div class="empty">请先添加工厂链接</div>`;
     let html = "";
     for (let i = 0; i < factoryCount; i++) {
       const cached = fqCache[i] || {};
@@ -1280,6 +1285,25 @@ function openOemFullInquiryFlowRunForm(flow) {
     return html;
   }
 
+  // 工厂链接动态行渲染
+  function renderFactoryUrlRow(idx, value, canDelete) {
+    return `<div class="factory-url-row" data-idx="${idx}">
+      <input name="factory_url_${idx}" type="text" value="${escapeHtml(value)}" placeholder="https://..." />
+      ${canDelete ? `<button class="btn secondary delete-factory-url" type="button" data-idx="${idx}">-</button>` : ""}
+    </div>`;
+  }
+
+  function renderFactoryUrlsDynamic() {
+    const urls = splitParamList(values.factory_urls || "");
+    const rows = urls.length ? urls : [""];
+    let html = `<div class="field"><label>工厂链接</label><div id="factoryUrlsContainer">`;
+    for (let i = 0; i < rows.length; i++) {
+      html += renderFactoryUrlRow(i, rows[i], i > 0);
+    }
+    html += `</div><button class="btn secondary" type="button" id="addFactoryUrlBtn">+ 添加工厂链接</button></div>`;
+    return html;
+  }
+
   let bodyHtml = "";
   for (const g of groups) {
     bodyHtml += `<details class="functional-requirement" ${g.isQuote ? "open" : ""}><summary>${escapeHtml(g.label)}</summary>`;
@@ -1287,7 +1311,13 @@ function openOemFullInquiryFlowRunForm(flow) {
       bodyHtml += `<div class="factory-quote-container" id="factoryQuoteContainer">__FACTORY_QUOTE_PLACEHOLDER__</div>`;
     } else {
       bodyHtml += `<div class="form-grid">`;
-      for (const f of g.fields) bodyHtml += renderFormField(f, values[f.name]);
+      for (const f of g.fields) {
+        if (f.type === "factory-urls-dynamic") {
+          bodyHtml += renderFactoryUrlsDynamic();
+        } else {
+          bodyHtml += renderFormField(f, values[f.name]);
+        }
+      }
       bodyHtml += `</div>`;
     }
     bodyHtml += `</details>`;
@@ -1307,12 +1337,67 @@ function openOemFullInquiryFlowRunForm(flow) {
   bindUploadButtons();
   const form = document.querySelector("#oemFullInquiryFlowForm");
 
-  // 刷新报价阶段子块：读 factory_urls 行数 + 保留已填值
+  // 同步动态行输入到隐藏的 factory_urls 字段（保持字符串格式）
+  function syncFactoryUrlsToHidden() {
+    const inputs = form.querySelectorAll("#factoryUrlsContainer input[name^='factory_url_']");
+    const urls = [];
+    inputs.forEach((inp) => {
+      const v = String(inp.value || "").trim();
+      if (v) urls.push(v);
+    });
+    let hidden = form.querySelector('[name="factory_urls"]');
+    if (!hidden) {
+      hidden = document.createElement("input");
+      hidden.type = "hidden";
+      hidden.name = "factory_urls";
+      form.appendChild(hidden);
+    }
+    hidden.value = urls.join("\n");
+  }
+
+  // 重新编号所有工厂链接行（删除后索引前移）
+  function renumberFactoryUrlRows() {
+    const rows = form.querySelectorAll("#factoryUrlsContainer .factory-url-row");
+    rows.forEach((row, i) => {
+      row.dataset.idx = i;
+      const input = row.querySelector("input");
+      if (input) input.name = `factory_url_${i}`;
+      const delBtn = row.querySelector(".delete-factory-url");
+      if (delBtn) {
+        delBtn.dataset.idx = i;
+        delBtn.style.display = i === 0 ? "none" : "";
+      } else if (i > 0) {
+        // 第 0 行原本无删除按钮，重编号后若 i>0 需补按钮
+        const btn = document.createElement("button");
+        btn.className = "btn secondary delete-factory-url";
+        btn.type = "button";
+        btn.dataset.idx = i;
+        btn.textContent = "-";
+        btn.addEventListener("click", () => onDeleteFactoryUrl(i));
+        row.appendChild(btn);
+      }
+    });
+  }
+
+  // 删除指定索引的工厂链接行：fqCache 前移一位
+  function onDeleteFactoryUrl(idx) {
+    const maxIdx = Object.keys(fqCache).reduce((m, k) => Math.max(m, Number(k)), -1);
+    for (let i = idx; i < maxIdx; i++) {
+      fqCache[i] = fqCache[i + 1] ? { ...fqCache[i + 1] } : {};
+    }
+    delete fqCache[maxIdx];
+    const row = form.querySelector(`#factoryUrlsContainer .factory-url-row[data-idx="${idx}"]`);
+    if (row) row.remove();
+    renumberFactoryUrlRows();
+    syncFactoryUrlsToHidden();
+    refreshQuoteGroups();
+  }
+
+  // 刷新报价阶段子块：读隐藏 factory_urls + 保留已填值
   function refreshQuoteGroups() {
-    const urlsInput = form.querySelector('[name="factory_urls"]');
-    const urls = urlsInput ? urlsInput.value : "";
+    const hidden = form.querySelector('[name="factory_urls"]');
+    const urls = hidden ? hidden.value : "";
     const factoryCount = splitParamList(urls).length;
-    // 读取当前 form 已填的 __fq_* 值
     const newCache = {};
     for (let i = 0; i < factoryCount; i++) {
       const entry = {};
@@ -1324,11 +1409,9 @@ function openOemFullInquiryFlowRunForm(flow) {
       }
       newCache[i] = entry;
     }
-    // 合并：已填 > 旧缓存 > 存储的 factory_quotes
     for (let i = 0; i < factoryCount; i++) {
       fqCache[i] = { ...(factoryQuotesStored[i] || {}), ...(fqCache[i] || {}), ...newCache[i] };
     }
-    // 清理超出范围的缓存
     Object.keys(fqCache).forEach((k) => {
       if (Number(k) >= factoryCount) delete fqCache[k];
     });
@@ -1336,13 +1419,37 @@ function openOemFullInquiryFlowRunForm(flow) {
     if (container) container.innerHTML = renderQuoteGroups(factoryCount);
   }
 
+  // 初始化：同步隐藏字段 + 刷新报价组
+  syncFactoryUrlsToHidden();
   refreshQuoteGroups();
 
-  // 监听 factory_urls 变化重渲染
-  const factoryUrlsInput = form.querySelector('[name="factory_urls"]');
-  if (factoryUrlsInput) {
-    factoryUrlsInput.addEventListener("input", () => refreshQuoteGroups());
+  // 添加工厂链接按钮
+  const addBtn = form.querySelector("#addFactoryUrlBtn");
+  if (addBtn) {
+    addBtn.addEventListener("click", () => {
+      const container = form.querySelector("#factoryUrlsContainer");
+      const rows = container.querySelectorAll(".factory-url-row");
+      const newIdx = rows.length;
+      container.insertAdjacentHTML("beforeend", renderFactoryUrlRow(newIdx, "", true));
+      syncFactoryUrlsToHidden();
+      refreshQuoteGroups();
+      const newDelBtn = container.querySelector(`.factory-url-row[data-idx="${newIdx}"] .delete-factory-url`);
+      if (newDelBtn) newDelBtn.addEventListener("click", () => onDeleteFactoryUrl(newIdx));
+    });
   }
+
+  // 绑定已有删除按钮
+  form.querySelectorAll(".delete-factory-url").forEach((btn) => {
+    btn.addEventListener("click", () => onDeleteFactoryUrl(Number(btn.dataset.idx)));
+  });
+
+  // 监听工厂链接输入变化：同步隐藏字段 + 刷新报价组
+  form.addEventListener("input", (e) => {
+    if (e.target.name && e.target.name.startsWith("factory_url_")) {
+      syncFactoryUrlsToHidden();
+      refreshQuoteGroups();
+    }
+  });
 
   document.querySelector("#closeModal").addEventListener("click", async () => {
     modalEl.close();
@@ -1354,7 +1461,6 @@ function openOemFullInquiryFlowRunForm(flow) {
     event.preventDefault();
     try {
       const data = readForm(form);
-      // 聚合 __fq_{idx}__{field} → factory_quotes 数组
       const urls = data.factory_urls || "";
       const factoryCount = splitParamList(urls).length;
       const fqList = [];
@@ -1370,6 +1476,7 @@ function openOemFullInquiryFlowRunForm(flow) {
         fqList.push(entry);
       }
       const merged = mergeParamValues(variables, formFields, data);
+      merged.factory_urls = urls;
       if (fqList.length) merged.factory_quotes = fqList;
       else delete merged.factory_quotes;
       const runtimeVariables = sanitizeScriptVariables(flow.scriptType, merged, flow);
