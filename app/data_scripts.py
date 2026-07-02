@@ -9657,6 +9657,11 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
         _step(log, "balancePayOrder", pay_payload, {"url": "/api/balancePayOrder", "method": "POST"},
               {"serial_number": serial_number, "success": True})
 
+        # ── 7. 后台开始采购 ──
+        _call_admin_api(session, base_url, "/admin/samplesStartPurchase",
+                        {"order_sn": sample_order_sn},
+                        timeout, admin_token, variables, log, "samplesStartPurchase")
+
         summary = {"order_sn": sample_order_sn, "serial_number": serial_number, "reason": "样品单全流程执行成功"}
         return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, True, summary)
 
