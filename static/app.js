@@ -67,6 +67,9 @@ let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _
     { name: "check_report_remark", label: "\u9a8c\u8d27\u5907\u6ce8" },
     { name: "keep_sample_num", label: "\u7559\u6837\u6570\u91cf", type: "number", default: 0 },
     { name: "keep_sample_possible_num", label: "\u53ef\u7559\u6837\u6570\u91cf", type: "number", default: 0 },
+    { name: "__section_shelve", type: "section", label: "\u4e0a\u67b6\u9636\u6bb5" },
+    { name: "warehouse_city", label: "\u4ed3\u5e93\u57ce\u5e02", type: "select",
+      options: [{ value: "2", label: "\u5e7f\u5dde\u4ed3" }, { value: "1", label: "\u4e49\u4e4c\u4ed3" }], default: "2" },
   ],
   oem_balance_pay: [
     { name: "order_sn", label: "\u6837\u54c1\u5355\u53f7", required: true },

@@ -9748,6 +9748,54 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
                         {"order_sn": sample_order_sn},
                         timeout, admin_token, variables, log, "samplesCheckRaise")
 
+        # ── 15. 核查上架 ──
+        try:
+            shelve_detail_resp = _call_admin_api(session, base_url, "/admin/checkDetail",
+                                                 {"order_sn": sample_order_sn},
+                                                 timeout, admin_token, variables, log, "checkDetail-shelve")
+        except RuntimeError:
+            shelve_detail_resp = {"data": None}
+        shelve_data = shelve_detail_resp.get("data") if isinstance(shelve_detail_resp, dict) else None
+        shelve_info = []
+        if shelve_data and isinstance(shelve_data, list):
+            for item in shelve_data:
+                shelve_info.append({
+                    "id": item.get("id", 0),
+                    "check_id": item.get("check_id", 0),
+                    "sku_tr": str(item.get("sku_tr", "")),
+                    "sku": str(item.get("sku", "")),
+                    "sku_image": str(item.get("sku_image", "")),
+                    "num": item.get("num", 1),
+                    "price": str(item.get("price", "0.00")),
+                    "option": item.get("option", []),
+                    "check_num": item.get("num", 1),
+                    "weight": item.get("weight", 1),
+                    "size": "1*1*1",
+                    "length": 1,
+                    "width": 1,
+                    "height": 1,
+                    "possible_num": item.get("num", 1),
+                    "storage_num": 0,
+                    "shelves_num": 0,
+                    "wait_inspect_num": item.get("num", 1),
+                    "inspect_num": item.get("num", 1),
+                    "bad_num": 0,
+                    "good_num": item.get("num", 1),
+                    "keep_sample_num": int(variables.get("keep_sample_num", 0)),
+                    "keep_sample_possible_num": int(variables.get("keep_sample_possible_num", 0)),
+                    "keep_sample_shelves_num": 0,
+                    "warehouse_shelves": [],
+                    "after_sale_num": 0,
+                    "shelve_num": item.get("num", 1),
+                    "checked_listing": True,
+                })
+        if shelve_info:
+            _call_admin_api(session, base_url, "/admin/orderShelve", {
+                "order_sn": sample_order_sn,
+                "shelve_info": shelve_info,
+                "warehouse_city": warehouse_city,
+            }, timeout, admin_token, variables, log, "orderShelve")
+
         summary = {"order_sn": sample_order_sn, "serial_number": serial_number, "reason": "样品单全流程执行成功"}
         return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, True, summary)
 
