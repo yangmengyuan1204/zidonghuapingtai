@@ -9900,12 +9900,124 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
 OEM_BULK_ORDER_NAME = "OEM大货单下单"
 
 
+def _oem_query_option_list(
+    session: requests.Session, base_url: str, token: str, timeout: int, variables: Dict[str, Any]
+) -> list:
+    """查询 OEM 大货单可选 option 列表（POST /common/common/optionList，空 body）。"""
+    payload = _oem_post_json(
+        session, base_url, "/common/common/optionList", {}, timeout,
+        token=token, is_admin=False, variables=variables,
+    )
+    data = payload.get("data")
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        # 兼容 {list: [...]} 结构
+        inner = data.get("list") or data.get("option_list") or []
+        if isinstance(inner, list):
+            return inner
+    return []
+
+
+def _oem_order_preview(
+    session: requests.Session, base_url: str, token: str,
+    detail_id: str, timeout: int, variables: Dict[str, Any], large_order_sn: str = "",
+) -> Dict[str, Any]:
+    """大货单订单预览（POST /api/orderPreviews，type=2）。"""
+    body = {"detail_id": str(detail_id), "type": 2, "large_order_sn": large_order_sn or ""}
+    payload = _oem_post_json(
+        session, base_url, "/api/orderPreviews", body, timeout,
+        token=token, is_admin=False, variables=variables,
+    )
+    return payload.get("data") if isinstance(payload.get("data"), dict) else {}
+
+
+def _oem_edit_sku_image(
+    session: requests.Session, base_url: str, token: str,
+    goods_sku_id: int, sku_image: str, timeout: int, variables: Dict[str, Any],
+) -> Dict[str, Any]:
+    """编辑 SKU 图片（POST /api/editSkuImage）。"""
+    body = {"goods_sku_id": int(goods_sku_id), "sku_image": sku_image}
+    payload = _oem_post_json(
+        session, base_url, "/api/editSkuImage", body, timeout,
+        token=token, is_admin=False, variables=variables,
+    )
+    return payload
+
+
+def _oem_create_new_order(
+    session: requests.Session, base_url: str, token: str,
+    body: Dict[str, Any], timeout: int, variables: Dict[str, Any],
+) -> Dict[str, Any]:
+    """创建大货单（POST /api/newOrder，type=2）。返回响应 data。"""
+    payload = _oem_post_json(
+        session, base_url, "/api/newOrder", body, timeout,
+        token=token, is_admin=False, variables=variables,
+    )
+    if not payload.get("success") and payload.get("code") not in (0, "0", None):
+        raise RuntimeError(f"创建大货单失败: code={payload.get('code')} msg={payload.get('msg')}")
+    return payload.get("data") if isinstance(payload.get("data"), dict) else (payload or {})
+
+
+def _oem_build_option_for_sku(
+    option_template: list, num: int,
+) -> list:
+    """根据 option 模板和购买数量，生成该 SKU 的 option 数组。
+    全部 option 默认 checked=true；num 跟随 SKU 数量（拍照类 price_type=0 固定 1）。
+    """
+    result = []
+    for opt in option_template:
+        if not isinstance(opt, dict):
+            continue
+        item = dict(opt)
+        # 拍照类 option（id=9 或 name 含"拍照"）固定数量为 1
+        opt_id = item.get("id")
+        opt_name = str(item.get("name") or "")
+        opt_num = 1 if (opt_id == 9 or "拍照" in opt_name) else num
+        item["num"] = opt_num
+        item["checked"] = True
+        # 确保 large_price 字段存在
+        if "large_price" not in item:
+            item["large_price"] = item.get("price") or "0.00"
+        # price_range 默认空数组
+        if "price_range" not in item:
+            item["price_range"] = []
+        result.append(item)
+    return result
+
+
+def _oem_build_warehouse_for_sku(
+    sku_index: int, variables: Dict[str, Any], bulk_images: list,
+) -> list:
+    """根据变量和图片列表构造 warehouse 数组。
+    默认 warehouse_type=1（FBA），FNSKU/ASIN 从变量取，image 取 bulk_images 对应索引。
+    """
+    warehouse_city = _as_int(variables.get("warehouse_city"), 1)
+    # 仓库类型默认 1=FBA，可通过 warehouse_type_N 指定每个 SKU
+    warehouse_type = _as_int(variables.get(f"warehouse_type_{sku_index}"), 1)
+    fnsku = str(variables.get(f"fnsku_{sku_index}") or variables.get("fnsku") or "").strip()
+    asin = str(variables.get(f"asin_{sku_index}") or variables.get("asin") or "").strip()
+    image = ""
+    if sku_index < len(bulk_images):
+        image = bulk_images[sku_index]
+    return [{
+        "warehouse_type": warehouse_type,
+        "FNSKU": fnsku,
+        "ASIN": asin,
+        "image": image,
+    }]
+
+
 def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
-    """OEM 大货单下单脚本：输入询价单号 → 查询报价信息 → 创建大货单。
+    """OEM 大货单下单脚本：输入询价单号 → 查询报价 → 获取 option → 上传图片 → 创建大货单。
 
     阶段：
-      1. 查询报价（fetch_oem_full_quote: /api/inquiryDetail + /api/quoteDetail）
-      2. 创建大货单（接口待用户提供，当前为 placeholder）
+      1. 前台登录获取 token
+      2. 查询报价详情（fetch_oem_full_quote）
+      3. 查询 option 列表（/common/common/optionList）
+      4. 订单预览（/api/orderPreviews，type=2）
+      5. 上传图片到 OSS 并调用 editSkuImage（如提供 bulk_images）
+      6. 创建大货单（POST /api/newOrder，type=2）
     """
     ensure_report_dirs()
     variables = dict(variables or {})
@@ -9927,52 +10039,147 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
                              {"reason": "缺少必填参数：询价单号 order_sn 不能为空"})
 
     try:
-        # ── 阶段 1：查询报价信息 ──
+        session = requests.Session()
+
+        # ── 阶段 1：前台登录 ──
+        client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
+        _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
+              {"url": "/api/login + /api/userInfo", "method": "POST"},
+              {"user_id": user_id, "has_token": bool(client_token)})
+
+        # ── 阶段 2：查询报价详情 ──
         quote_data = fetch_oem_full_quote(order_sn, variables)
         if not quote_data:
             return _finish_named(OEM_BULK_ORDER_NAME, log, False,
                                  {"reason": f"询价单 {order_sn} 无报价数据或接口返回异常"})
+        detail_id = str(quote_data.get("detail_id") or variables.get("inquiry_detail_id") or "").strip()
+        if not detail_id:
+            records = quote_data.get("list") or []
+            if records and isinstance(records[0], dict):
+                detail_id = str(records[0].get("id") or "").strip()
+        if not detail_id:
+            return _finish_named(OEM_BULK_ORDER_NAME, log, False,
+                                 {"reason": "未能从询价单解析出 detail_id"})
 
         quote_detail = quote_data.get("quote_detail") or {}
         large_info = quote_detail.get("large_info") or {}
-        detail_list = quote_data.get("detail_list") or quote_data.get("list") or []
-        detail_id = quote_data.get("detail_id") or ""
+        detail_list = quote_data.get("list") or []
+        goods_name = (detail_list[0] if detail_list and isinstance(detail_list[0], dict) else {}).get("goods_name") or ""
 
         _step(log, "query_quote", {"order_sn": order_sn},
               {"url": "/api/inquiryDetail + /api/quoteDetail", "method": "POST"},
-              {"detail_id": detail_id,
-               "factory_count": len(detail_list),
-               "has_large": bool(large_info)})
+              {"detail_id": detail_id, "factory_count": len(detail_list),
+               "has_large": bool(large_info), "goods_name": goods_name})
 
-        # ── 阶段 2：创建大货单（placeholder，待用户提供接口后补充） ──
-        # 解析 SKU 列表
-        sku_list = variables.get("sku_list")
-        if isinstance(sku_list, str) and sku_list.strip().startswith("["):
+        # ── 阶段 3：查询 option 列表 ──
+        option_list = _oem_query_option_list(session, base_url, client_token, timeout, variables)
+        _step(log, "query_option_list", {"detail_id": detail_id},
+              {"url": "/common/common/optionList", "method": "POST"},
+              {"option_count": len(option_list)})
+
+        # ── 阶段 4：订单预览（type=2 大货单） ──
+        preview_data = _oem_order_preview(session, base_url, client_token, detail_id, timeout, variables)
+        _step(log, "order_preview", {"detail_id": detail_id, "type": 2},
+              {"url": "/api/orderPreviews", "method": "POST"},
+              {"has_preview": bool(preview_data)})
+
+        # ── 阶段 5：解析 SKU 列表 + 上传图片 + editSkuImage ──
+        sku_list_raw = variables.get("sku_list")
+        if isinstance(sku_list_raw, str) and sku_list_raw.strip().startswith("["):
             try:
-                sku_list = json.loads(sku_list)
+                sku_list_raw = json.loads(sku_list_raw)
             except (json.JSONDecodeError, TypeError):
-                sku_list = []
-        elif not isinstance(sku_list, list):
-            sku_list = []
-        if isinstance(sku_list, list):
-            for item in sku_list:
-                if isinstance(item, dict) and "option" not in item:
-                    item["option"] = []
+                sku_list_raw = []
+        elif not isinstance(sku_list_raw, list):
+            sku_list_raw = []
+        if not sku_list_raw:
+            return _finish_named(OEM_BULK_ORDER_NAME, log, False,
+                                 {"reason": "sku_list 为空，请先在前端勾选要下单的 SKU"})
 
-        # TODO: 待用户提供大货单创建接口后补充实际调用
-        # 预期接口类似 POST /api/newOrder (type=2) 或专用大货单接口
-        _step(log, "create_bulk_order", {"order_sn": order_sn, "sku_count": len(sku_list)},
-              {"url": "(待提供)", "method": "POST"},
-              {"status": "pending_api", "detail_id": detail_id, "sku_count": len(sku_list)})
+        # bulk_images 已是 OSS URL 列表（前端通过 /api/oem/upload-image 上传完成）
+        bulk_images_raw = variables.get("bulk_images") or ""
+        if isinstance(bulk_images_raw, list):
+            bulk_images = [u for u in bulk_images_raw if u]
+        else:
+            bulk_images = [line.strip() for line in str(bulk_images_raw).splitlines() if line.strip()]
+
+        # 为每个 SKU 构造 option + warehouse，并按需调用 editSkuImage
+        sku_list_body = []
+        for idx, item in enumerate(sku_list_raw):
+            if not isinstance(item, dict):
+                continue
+            sku_id = item.get("sku_id") or item.get("goods_sku_id") or item.get("id")
+            if sku_id is None:
+                continue
+            try:
+                sku_id_int = int(sku_id)
+            except (TypeError, ValueError):
+                sku_id_int = sku_id
+            num = _as_int(item.get("num"), 1)
+            # option：优先用前端传入的，否则用模板生成
+            opt_input = item.get("option")
+            if isinstance(opt_input, list) and opt_input:
+                options = opt_input
+            else:
+                options = _oem_build_option_for_sku(option_list, num)
+            # warehouse：从变量+图片列表构造
+            warehouses = _oem_build_warehouse_for_sku(idx, variables, bulk_images)
+            # 若该 SKU 有对应图片，调用 editSkuImage
+            sku_image_url = warehouses[0].get("image") if warehouses else ""
+            if sku_image_url and isinstance(sku_id_int, int):
+                try:
+                    _oem_edit_sku_image(session, base_url, client_token, sku_id_int, sku_image_url, timeout, variables)
+                    _step(log, "edit_sku_image", {"sku_id": sku_id_int, "sku_image": sku_image_url},
+                          {"url": "/api/editSkuImage", "method": "POST"},
+                          {"status": "ok"})
+                except Exception as e:
+                    _step(log, "edit_sku_image", {"sku_id": sku_id_int, "sku_image": sku_image_url},
+                          {"url": "/api/editSkuImage", "method": "POST"},
+                          {"status": "failed", "error": str(e)})
+            sku_list_body.append({
+                "sku_id": sku_id_int,
+                "num": num,
+                "option": options,
+                "warehouse": warehouses,
+            })
+
+        if not sku_list_body:
+            return _finish_named(OEM_BULK_ORDER_NAME, log, False,
+                                 {"reason": "构造 SKU 下单列表失败，sku_list_body 为空"})
+
+        # ── 阶段 6：创建大货单 ──
+        remark = str(variables.get("remark") or "").strip()
+        warehouse_city = _as_int(variables.get("warehouse_city"), 1)
+        new_order_body = {
+            "order_sn": order_sn,
+            "inquiry_detail_id": detail_id,
+            "type": 2,
+            "sku_list": sku_list_body,
+            "remark": remark,
+            "warehouse_city": warehouse_city,
+        }
+        order_result = _oem_create_new_order(session, base_url, client_token, new_order_body, timeout, variables)
+        new_order_sn = ""
+        if isinstance(order_result, dict):
+            new_order_sn = str(order_result.get("order_sn") or order_result.get("large_order_sn") or order_result.get("sn") or "")
+
+        _step(log, "create_bulk_order",
+              {"order_sn": order_sn, "detail_id": detail_id, "sku_count": len(sku_list_body)},
+              {"url": "/api/newOrder", "method": "POST", "type": 2},
+              {"new_order_sn": new_order_sn, "sku_count": len(sku_list_body), "resp_keys": list(order_result.keys()) if isinstance(order_result, dict) else []})
 
         summary = {
             "order_sn": order_sn,
+            "new_order_sn": new_order_sn,
             "detail_id": detail_id,
-            "goods_name": quote_data.get("goods_name") or "",
+            "goods_name": goods_name,
             "factory_count": len(detail_list),
-            "large_info": large_info,
-            "sku_list": sku_list,
-            "reason": "查询报价成功，大货单创建接口待接入",
+            "sku_count": len(sku_list_body),
+            "option_count": len(option_list),
+            "has_large": bool(large_info),
+            "bulk_images_count": len(bulk_images),
+            "warehouse_city": warehouse_city,
+            "remark": remark,
         }
         return _finish_named(OEM_BULK_ORDER_NAME, log, True, summary)
     except Exception as exc:
