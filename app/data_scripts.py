@@ -9286,8 +9286,10 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
 
                 # 工厂报价（基于 detail 原有字段 + 报价参数覆盖）
                 sku_detail = d_item.get("sku_detail") or []
+                samples_price_return = variables.get("samples_price_return") or "0.00"
                 for sku in sku_detail:
                     sku["samples_price"] = samples_price
+                    sku["samples_price_return"] = samples_price_return
                     sku["large_price"] = large_price
                     sku["real_samples_price"] = real_samples_price
                     sku["real_large_price"] = real_large_price
@@ -9302,9 +9304,9 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                     "factory_city": d_item.get("factory_city") or "杭州市",
                     "factory_url": factory_url, "factory_img": factory_img,
                     "goods_url": d_item.get("goods_url") or "",
-                    "samples_other_fee": d_item.get("samples_other_fee") or "0.00",
-                    "samples_freight": d_item.get("samples_freight") or "0.00",
-                    "samples_delivery_time": d_item.get("samples_delivery_time") or 0,
+                    "samples_other_fee": variables.get("samples_other_fee") or d_item.get("samples_other_fee") or "0.00",
+                    "samples_freight": variables.get("samples_freight") or d_item.get("samples_freight") or "0.00",
+                    "samples_delivery_time": variables.get("samples_delivery_time") if variables.get("samples_delivery_time") not in (None, "") else (d_item.get("samples_delivery_time") or 0),
                     "real_samples_other_fee": d_item.get("real_samples_other_fee") or "0.00",
                     "real_samples_freight": d_item.get("real_samples_freight") or "0.00",
                     "large_other_fee": large_other_fee, "large_freight": large_freight,
