@@ -8596,13 +8596,14 @@ def _oem_extract_factory_iid(factory_url: str) -> str:
     支持格式：
     - https://sale.1688.com/factory/card.html?...&memberId=b2b-2216921663537497f8&...
     - https://detail.1688.com/offer/xxx.html?memberId=b2b-xxx
-    - 其他含 memberId= 参数的 URL
+    - 兼容小写 memberid (1688 不同页面参数写法不同)
 
     若 URL 不含 memberId 参数，返回空字符串。
     """
     if not factory_url:
         return ""
-    m = re.search(r'[?&]memberId=([^&#\s]+)', factory_url)
+    # 不区分大小写：兼容 memberId / memberid / MEMBERID 等写法
+    m = re.search(r'[?&]memberid=([^&#\s]+)', factory_url, re.IGNORECASE)
     return m.group(1) if m else ""
 
 
@@ -9247,7 +9248,7 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                 ep = _oem_post_json(session, base_url, "/admin/factoryEdit", edit_body, timeout,
                                     token=admin_token, is_admin=True, variables=variables)
                 _step(log, f"factory_edit_{idx+1}", edit_body, {"url": "/admin/factoryEdit", "method": "POST"},
-                      {"detail_id": detail_id, "success": ep.get("success"), "msg": ep.get("msg")})
+                      {"detail_id": detail_id, "factory_iid": factory_iid, "factory_url": factory_url, "success": ep.get("success"), "msg": ep.get("msg")})
 
                 # 工厂报价（基于 detail 原有字段 + 报价参数覆盖）
                 sku_detail = d_item.get("sku_detail") or []
@@ -9847,6 +9848,72 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
     except Exception as exc:
         log["error"] = str(exc)
         return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, False, {"reason": str(exc), "error": str(exc)})
+
+
+# ─── OEM 大货单查询报价 ────────────────────────────────────────────
+
+OEM_BULK_ORDER_QUERY_NAME = "OEM大货单查询报价"
+
+
+def run_oem_bulk_order_query_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    """OEM 大货单查询报价脚本：输入询价单号 → 查询完整报价信息。
+
+    两步查询：
+      1. POST /api/inquiryDetail → 获取 detail_id 及工厂信息
+      2. POST /api/quoteDetail  → 获取完整报价明细（样品/大货/SKU）
+    """
+    ensure_report_dirs()
+    variables = dict(variables or {})
+    timeout = _as_int(variables.get("timeout"), env.timeout or 25)
+    base_url = (env.base_url or OEM_DEFAULT_BASE_URL).rstrip("/")
+    order_sn = str(variables.get("order_sn") or "").strip()
+
+    log: Dict[str, Any] = {
+        "script": OEM_BULK_ORDER_QUERY_NAME,
+        "mode": "oem_bulk_order_query",
+        "base_url": base_url,
+        "order_sn": order_sn,
+        "started_at": datetime.now(),
+        "steps": [],
+    }
+
+    if not order_sn:
+        return _finish_named(OEM_BULK_ORDER_QUERY_NAME, log, False,
+                             {"reason": "缺少必填参数：询价单号 order_sn 不能为空"})
+
+    try:
+        quote_data = fetch_oem_full_quote(order_sn, variables)
+        if not quote_data:
+            return _finish_named(OEM_BULK_ORDER_QUERY_NAME, log, False,
+                                 {"reason": f"查询报价失败：询价单 {order_sn} 无报价数据或接口返回异常"})
+
+        quote_detail = quote_data.get("quote_detail") or {}
+        samples_info = quote_detail.get("samples_info") or {}
+        large_info = quote_detail.get("large_info") or {}
+        detail_list = quote_data.get("detail_list") or quote_data.get("list") or []
+
+        _step(log, "query_quote", {"order_sn": order_sn},
+              {"url": "/api/inquiryDetail + /api/quoteDetail", "method": "POST"},
+              {"detail_id": quote_data.get("detail_id"),
+               "factory_count": len(detail_list),
+               "has_samples": bool(samples_info),
+               "has_large": bool(large_info)})
+
+        summary = {
+            "order_sn": order_sn,
+            "detail_id": quote_data.get("detail_id"),
+            "goods_name": quote_data.get("goods_name") or "",
+            "factory_count": len(detail_list),
+            "samples_info": samples_info,
+            "large_info": large_info,
+            "quote_data": quote_data,
+            "reason": "查询报价成功",
+        }
+        return _finish_named(OEM_BULK_ORDER_QUERY_NAME, log, True, summary)
+    except Exception as exc:
+        log["error"] = str(exc)
+        return _finish_named(OEM_BULK_ORDER_QUERY_NAME, log, False,
+                             {"reason": str(exc), "error": str(exc)})
 
 
 # ─── OEM 样品单余额支付 ────────────────────────────────────────────
