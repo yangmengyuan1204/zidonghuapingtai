@@ -8590,6 +8590,22 @@ def _oem_parse_factory_urls(variables: Dict[str, Any]) -> list:
     return [old] if old else []
 
 
+def _oem_extract_factory_iid(factory_url: str) -> str:
+    """从 1688 工厂链接解析 memberId 作为 factory_iid。
+
+    支持格式：
+    - https://sale.1688.com/factory/card.html?...&memberId=b2b-2216921663537497f8&...
+    - https://detail.1688.com/offer/xxx.html?memberId=b2b-xxx
+    - 其他含 memberId= 参数的 URL
+
+    若 URL 不含 memberId 参数，返回空字符串。
+    """
+    if not factory_url:
+        return ""
+    m = re.search(r'[?&]memberId=([^&#\s]+)', factory_url)
+    return m.group(1) if m else ""
+
+
 def run_oem_new_inquiry_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
     """OEM 创建询价单脚本：前台登录 -> 创建询价单，返回 inquiry_sn。"""
     ensure_report_dirs()
@@ -9203,7 +9219,7 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                 detail_id = d_item.get("id")
                 factory_url = d_item.get("factory_url") or ""
                 factory_submit_info = d_item.get("factory_submit_info") or factory_url
-                factory_iid = d_item.get("factory_iid") or ""
+                factory_iid = d_item.get("factory_iid") or _oem_extract_factory_iid(factory_url)
                 factory_name = d_item.get("factory_name") or "测试工厂"
                 # 按工厂 idx 取该工厂的报价字段，缺失时用全局默认
                 fq = factory_quotes[idx] if idx < len(factory_quotes) and isinstance(factory_quotes[idx], dict) else {}
