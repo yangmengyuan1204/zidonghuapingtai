@@ -1148,6 +1148,14 @@ OEM_DATA_SCRIPT_API_CASES: List[Dict[str, Any]] = [
         "body": {"order_sn": "{{order_sn}}"},
         "extract": {"data": "json.data"},
     },
+    {
+        # 前台接口：大货单查询报价（需前台 Bearer token）。
+        # 两步：/api/inquiryDetail → /api/quoteDetail
+        "key": "oem_bulk_order_query",
+        "case_name": "OEM-大货单查询报价",
+        "url": "/api/inquiryDetail",
+        "body": {"order_sn": "{{order_sn}}"},
+    },
 ]
 
 
