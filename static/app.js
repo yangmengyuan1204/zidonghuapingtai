@@ -236,6 +236,9 @@ function openForm(title, fields, values, onSubmit, submitLabel = "保存") {  co
     projects,
     allEnvs,
     allCases,
+  ),
+    projects,
+    allEnvs,
   );
   if (latestOrder?.order_sn) {
     flows = flows.map((flow) =>
