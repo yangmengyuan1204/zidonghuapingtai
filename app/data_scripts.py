@@ -8941,6 +8941,37 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
         return _finish_named(OEM_SAMPLE_ORDER_SCRIPT_NAME, log, False, {"reason": str(exc), "error": str(exc)})
 
 
+def fetch_oem_goods_class_list(variables: Dict[str, Any] | None = None) -> list:
+    """获取 OEM 商品分类列表（POST /admin/goodsClassList）。
+
+    返回展平后的列表 [{id, class_name, parent_name}, ...]，便于前端下拉渲染。
+    """
+    variables = dict(variables or {})
+    timeout = _as_int(variables.get("timeout"), 30)
+    base_url = (variables.get("base_url") or OEM_DEFAULT_BASE_URL).rstrip("/")
+    session = requests.Session()
+    admin_token = _oem_admin_login(session, base_url, variables, timeout)
+    payload = _oem_post_json(session, base_url, "/admin/goodsClassList", {}, timeout,
+                             token=admin_token, is_admin=True, variables=variables)
+    if not payload.get("success"):
+        return []
+    tree = payload.get("data")
+    if not isinstance(tree, list):
+        return []
+    flat: list = []
+
+    def _flatten(items, parent_name=""):
+        for item in items:
+            name = item.get("class_name") or ""
+            flat.append({"id": item.get("id"), "class_name": name, "parent_name": parent_name})
+            childs = item.get("childs") or []
+            if childs:
+                _flatten(childs, name)
+
+    _flatten(tree)
+    return flat
+
+
 def fetch_oem_full_quote(order_sn: str, variables: Dict[str, Any] | None = None) -> Dict[str, Any]:
     """根据询价单号查询 OEM 完整报价详情。
 

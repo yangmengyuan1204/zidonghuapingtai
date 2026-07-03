@@ -14,13 +14,12 @@ let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _
     { name: "sku_list", label: "SKU \u5217\u8868", type: "textarea", rows: 6, placeholder: "[{\"sku_id\": 1993, \"num\": 1}, {\"sku_id\": 1994, \"num\": 2}]" },
   ],
   oem_full_inquiry_flow: [
-    { name: "order_sn", label: "询价单号(留空则自动创建)" },
     { name: "__section_create", type: "section", label: "询价单提出" },
     { name: "goods_name", label: "商品名称", default: "测试商品" },
     { name: "hope_min_price", label: "期望最低价", default: "1" },
     { name: "hope_max_price", label: "期望最高价", default: "100" },
     { name: "hope_futures", label: "期望交期", default: "10" },
-    { name: "goods_type", label: "商品类型", type: "number", default: 1 },
+    { name: "goods_class", label: "商品类型", type: "goods-class-select", default: 110 },
     { name: "factory_type", label: "工厂类型", type: "select", default: "3",
       options: [
         { value: "1", label: "严选工厂" },
@@ -29,12 +28,7 @@ let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _
       ] },
     { name: "factory_urls", label: "工厂链接", type: "factory-urls-dynamic" },
     { name: "goods_img", label: "商品主图", type: "upload" },
-    { name: "sku1", label: "SKU1名称", default: "sku1" },
-    { name: "sku1_num", label: "SKU1数量", type: "number", default: 1 },
-    { name: "sku2", label: "SKU2名称", default: "sku2" },
-    { name: "sku2_num", label: "SKU2数量", type: "number", default: 2 },
-    { name: "sku3", label: "SKU3名称", default: "sku3" },
-    { name: "sku3_num", label: "SKU3数量", type: "number", default: 3 },
+    { name: "sku_info", label: "SKU列表", type: "sku-dynamic" },
     { name: "__section_translate", type: "section", label: "翻译阶段" },
     { name: "goods_name_tr", label: "商品名称翻译(留空用原名)" },
     { name: "material_tr", label: "材质翻译" },
@@ -830,8 +824,8 @@ function ensureOemFullInquiryFlowScript(flows, projects, envs) {
     caseIds: [],
     variables: JSON.stringify({
       goods_name: "测试商品", hope_min_price: "1", hope_max_price: "100", hope_futures: "10",
-      goods_type: 1, factory_type: 3, factory_urls: "", goods_img: "",
-      sku1: "sku1", sku1_num: 1, sku2: "sku2", sku2_num: 2, sku3: "sku3", sku3_num: 3,
+      goods_class: 110, factory_type: 3, factory_urls: "", goods_img: "",
+      sku_info: [{ sku: "sku1", num: 1 }],
       factory_img: "", salesman: "测试业务员", salesman_phone: "13800000000",
       samples_price: "12.00", large_price: "11.00", large_other_fee: "12.00",
       large_freight: "11.00", large_delivery_time: 15, large_deposit_rate: "100",
@@ -1280,7 +1274,7 @@ function openOemFullInquiryFlowRunForm(flow) {
   let variables = {};
   try { variables = parseJsonText(flow.variables || "{}", {}); } catch { showToast("脚本变量不是合法 JSON"); return; }
   const fields = (SCRIPT_PARAM_SCHEMAS.oem_full_inquiry_flow || []);
-  const formFields = fields.filter((f) => f.type !== "section" && f.type !== "factory-urls-dynamic");
+  const formFields = fields.filter((f) => f.type !== "section" && f.type !== "factory-urls-dynamic" && f.type !== "sku-dynamic" && f.type !== "goods-class-select");
   variables = sanitizeScriptVariables(flow.scriptType, variables, flow);
   const values = { ...paramFormValues(formFields, variables), factory_urls: variables.factory_urls || "", __save_defaults: false };
 
@@ -1348,6 +1342,67 @@ function openOemFullInquiryFlowRunForm(flow) {
     return html;
   }
 
+  // SKU 动态行渲染
+  function renderSkuRow(idx, skuName, skuNum, canDelete) {
+    return `<div class="factory-url-row sku-row" data-idx="${idx}">
+      <input name="sku_name_${idx}" type="text" value="${escapeHtml(skuName)}" placeholder="SKU名称" />
+      <input name="sku_num_${idx}" type="number" value="${escapeHtml(String(skuNum ?? ""))}" placeholder="数量" style="width:80px" />
+      ${canDelete ? `<button class="btn secondary delete-sku-row" type="button" data-idx="${idx}">-</button>` : ""}
+    </div>`;
+  }
+
+  function renderSkuDynamic() {
+    let skuList = [];
+    const raw = values.sku_info;
+    if (Array.isArray(raw)) {
+      skuList = raw;
+    } else if (typeof raw === "string" && raw.trim()) {
+      try { skuList = JSON.parse(raw); } catch { skuList = []; }
+    }
+    if (!skuList.length) skuList = [{ sku: "sku1", num: 1 }];
+    let html = `<div class="field"><label>SKU列表</label><div id="skuContainer">`;
+    for (let i = 0; i < skuList.length; i++) {
+      const item = skuList[i] || {};
+      html += renderSkuRow(i, item.sku || "", item.num ?? "", i > 0);
+    }
+    html += `</div><button class="btn secondary" type="button" id="addSkuBtn">+ 添加SKU</button></div>`;
+    return html;
+  }
+
+  // 商品类型下拉（从后端 /api/oem/goods-class-list 拉取选项）
+  let goodsClassCache = null;
+  async function loadGoodsClassList() {
+    if (goodsClassCache) return goodsClassCache;
+    try {
+      const res = await api("/api/oem/goods-class-list");
+      if (res && res.success && Array.isArray(res.data)) {
+        goodsClassCache = res.data;
+        return goodsClassCache;
+      }
+    } catch (e) { /* ignore */ }
+    goodsClassCache = [];
+    return goodsClassCache;
+  }
+
+  function renderGoodsClassSelect(field, value) {
+    const v = String(value ?? field.default ?? "");
+    return `<div class="field"><label>${escapeHtml(field.label)}</label><select name="${escapeHtml(field.name)}" data-goods-class-select><option value="${escapeHtml(v)}" selected>加载中...</option></select></div>`;
+  }
+
+  async function fillGoodsClassSelects() {
+    const list = await loadGoodsClassList();
+    form.querySelectorAll("[data-goods-class-select]").forEach((sel) => {
+      const currentVal = String(sel.value || "");
+      const optHtml = list.map((item) => {
+        const label = item.parent_name ? `${item.parent_name} / ${item.class_name}` : item.class_name;
+        const val = String(item.id);
+        const selected = val === currentVal ? "selected" : "";
+        return `<option value="${escapeHtml(val)}" ${selected}>${escapeHtml(label)}</option>`;
+      }).join("");
+      sel.innerHTML = optHtml || `<option value="">无分类数据</option>`;
+    });
+  }
+
   let bodyHtml = "";
   for (const g of groups) {
     bodyHtml += `<details class="functional-requirement" ${g.isQuote ? "open" : ""}><summary>${escapeHtml(g.label)}</summary>`;
@@ -1358,6 +1413,10 @@ function openOemFullInquiryFlowRunForm(flow) {
       for (const f of g.fields) {
         if (f.type === "factory-urls-dynamic") {
           bodyHtml += renderFactoryUrlsDynamic();
+        } else if (f.type === "sku-dynamic") {
+          bodyHtml += renderSkuDynamic();
+        } else if (f.type === "goods-class-select") {
+          bodyHtml += renderGoodsClassSelect(f, values[f.name] ?? f.default ?? "");
         } else {
           bodyHtml += renderFormField(f, values[f.name]);
         }
@@ -1379,7 +1438,60 @@ function openOemFullInquiryFlowRunForm(flow) {
   `;
   modalEl.showModal();
   bindUploadButtons();
+  fillGoodsClassSelects();
   const form = document.querySelector("#oemFullInquiryFlowForm");
+
+  // 同步 SKU 动态行到隐藏的 sku_info 字段（JSON 字符串）
+  function syncSkuToHidden() {
+    const inputs = form.querySelectorAll("#skuContainer .sku-row");
+    const skuList = [];
+    inputs.forEach((row) => {
+      const nameInput = row.querySelector('input[name^="sku_name_"]');
+      const numInput = row.querySelector('input[name^="sku_num_"]');
+      const sku = String(nameInput?.value || "").trim();
+      const num = Number(numInput?.value || 0);
+      if (sku) skuList.push({ sku, num });
+    });
+    let hidden = form.querySelector('[name="sku_info"]');
+    if (!hidden) {
+      hidden = document.createElement("input");
+      hidden.type = "hidden";
+      hidden.name = "sku_info";
+      form.appendChild(hidden);
+    }
+    hidden.value = JSON.stringify(skuList);
+  }
+
+  function renumberSkuRows() {
+    const rows = form.querySelectorAll("#skuContainer .sku-row");
+    rows.forEach((row, i) => {
+      row.dataset.idx = i;
+      const nameInput = row.querySelector('input[name^="sku_name_"]');
+      const numInput = row.querySelector('input[name^="sku_num_"]');
+      if (nameInput) nameInput.name = `sku_name_${i}`;
+      if (numInput) numInput.name = `sku_num_${i}`;
+      const delBtn = row.querySelector(".delete-sku-row");
+      if (delBtn) {
+        delBtn.dataset.idx = i;
+        delBtn.style.display = i === 0 ? "none" : "";
+      } else if (i > 0) {
+        const btn = document.createElement("button");
+        btn.className = "btn secondary delete-sku-row";
+        btn.type = "button";
+        btn.dataset.idx = i;
+        btn.textContent = "-";
+        btn.addEventListener("click", () => onDeleteSku(i));
+        row.appendChild(btn);
+      }
+    });
+  }
+
+  function onDeleteSku(idx) {
+    const row = form.querySelector(`#skuContainer .sku-row[data-idx="${idx}"]`);
+    if (row) row.remove();
+    renumberSkuRows();
+    syncSkuToHidden();
+  }
 
   // 同步动态行输入到隐藏的 factory_urls 字段（保持字符串格式）
   function syncFactoryUrlsToHidden() {
@@ -1493,6 +1605,28 @@ function openOemFullInquiryFlowRunForm(flow) {
       syncFactoryUrlsToHidden();
       refreshQuoteGroups();
     }
+    if (e.target.name && (e.target.name.startsWith("sku_name_") || e.target.name.startsWith("sku_num_"))) {
+      syncSkuToHidden();
+    }
+  });
+
+  // 添加 SKU 按钮
+  const addSkuBtn = form.querySelector("#addSkuBtn");
+  if (addSkuBtn) {
+    addSkuBtn.addEventListener("click", () => {
+      const container = form.querySelector("#skuContainer");
+      const rows = container.querySelectorAll(".sku-row");
+      const newIdx = rows.length;
+      container.insertAdjacentHTML("beforeend", renderSkuRow(newIdx, "", 1, true));
+      syncSkuToHidden();
+      const newDelBtn = container.querySelector(`.sku-row[data-idx="${newIdx}"] .delete-sku-row`);
+      if (newDelBtn) newDelBtn.addEventListener("click", () => onDeleteSku(newIdx));
+    });
+  }
+
+  // 绑定已有 SKU 删除按钮
+  form.querySelectorAll(".delete-sku-row").forEach((btn) => {
+    btn.addEventListener("click", () => onDeleteSku(Number(btn.dataset.idx)));
   });
 
   document.querySelector("#closeModal").addEventListener("click", async () => {
@@ -1519,8 +1653,19 @@ function openOemFullInquiryFlowRunForm(flow) {
         }
         fqList.push(entry);
       }
+      syncSkuToHidden();
       const merged = mergeParamValues(variables, formFields, data);
       merged.factory_urls = urls;
+      // sku_info: 从隐藏字段 JSON 解析为数组
+      if (data.sku_info) {
+        try {
+          const skuArr = JSON.parse(data.sku_info);
+          if (Array.isArray(skuArr) && skuArr.length) merged.sku_info = skuArr;
+        } catch { /* ignore */ }
+      }
+      // 清理旧 SKU 字段残留
+      delete merged.sku1; delete merged.sku2; delete merged.sku3;
+      delete merged.sku1_num; delete merged.sku2_num; delete merged.sku3_num;
       if (fqList.length) merged.factory_quotes = fqList;
       else delete merged.factory_quotes;
       const runtimeVariables = sanitizeScriptVariables(flow.scriptType, merged, flow);
