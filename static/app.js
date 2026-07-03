@@ -2115,13 +2115,18 @@ function openOemBulkOrderRunForm(flow) {
     </tr>`).join("");
 
     let infoHtml = "";
+    const OEM_INQUIRY_STATUS_MAP = { 0: "待翻译", 1: "待审核", 2: "待询价", 3: "询价中", 4: "待报价", 5: "报价中", 6: "已完成", 7: "已取消" };
+    const oemInquiryStatusLabel = (v) => { const n = Number(v); if (!isNaN(n) && OEM_INQUIRY_STATUS_MAP[n]) return `${OEM_INQUIRY_STATUS_MAP[n]}(${n})`; return v != null ? String(v) : "-"; };
     const infoFields = { goods_name: "商品名称", goodsName: "商品名称", status: "状态", create_time: "创建时间", createdAt: "创建时间", factory_url: "工厂链接", factoryUrl: "工厂链接" };
     const parts = [];
     for (const [key, label] of Object.entries(infoFields)) {
       const v = first[key] || data[key];
-      if (v) parts.push(`<span>${label}: <strong>${escapeHtml(String(v))}</strong></span>`);
+      if (v != null && v !== "") {
+        const display = key === "status" ? oemInquiryStatusLabel(v) : escapeHtml(String(v));
+        parts.push(`<span style="word-break:break-all;overflow-wrap:anywhere">${label}: <strong>${display}</strong></span>`);
+      }
     }
-    if (parts.length) infoHtml = `<div style="margin-bottom:8px;font-size:13px;display:flex;flex-wrap:wrap;gap:4px 16px">${parts.join("")}</div>`;
+    if (parts.length) infoHtml = `<div style="margin-bottom:8px;font-size:13px;display:flex;flex-wrap:wrap;gap:4px 16px;word-break:break-all;overflow-wrap:anywhere">${parts.join("")}</div>`;
 
     skuArea.innerHTML = `${infoHtml}<details class="functional-requirement" open><summary>SKU 明细（勾选=下大货单）</summary><div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg-muted)"><th style="padding:4px 6px">选择</th><th style="padding:4px 6px">SKU ID</th><th style="padding:4px 6px">SKU</th><th style="padding:4px 6px">购买数量</th><th style="padding:4px 6px">起订量</th><th style="padding:4px 6px">大货单价</th><th style="padding:4px 6px">大货其他费</th><th style="padding:4px 6px">定金比例</th><th style="padding:4px 6px">大货运费</th><th style="padding:4px 6px">大货货期</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
     document.querySelectorAll("[data-ff-sku]").forEach((cb) => {
