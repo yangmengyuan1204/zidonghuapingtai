@@ -1294,7 +1294,7 @@ function openOemFullInquiryFlowRunForm(flow) {
   }
 
   function renderFactoryUrlsDynamic() {
-    const urls = splitParamList(values.factory_urls || "");
+    const urls = (values.factory_urls || "").split("\n").map(s => s.trim()).filter(Boolean);
     const rows = urls.length ? urls : [""];
     let html = `<div class="field"><label>工厂链接</label><div id="factoryUrlsContainer">`;
     for (let i = 0; i < rows.length; i++) {
@@ -1397,7 +1397,7 @@ function openOemFullInquiryFlowRunForm(flow) {
   function refreshQuoteGroups() {
     const hidden = form.querySelector('[name="factory_urls"]');
     const urls = hidden ? hidden.value : "";
-    const factoryCount = splitParamList(urls).length;
+    const factoryCount = urls.split("\n").map(s => s.trim()).filter(Boolean).length;
     const newCache = {};
     for (let i = 0; i < factoryCount; i++) {
       const entry = {};
@@ -1462,7 +1462,7 @@ function openOemFullInquiryFlowRunForm(flow) {
     try {
       const data = readForm(form);
       const urls = data.factory_urls || "";
-      const factoryCount = splitParamList(urls).length;
+      const factoryCount = urls.split("\n").map(s => s.trim()).filter(Boolean).length;
       const fqList = [];
       for (let i = 0; i < factoryCount; i++) {
         const entry = {};
