@@ -9397,7 +9397,18 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
         else:
             _step(log, "skip_quote", {}, {"note": "跳过报价阶段"}, {"skipped": True})
 
-        summary = {"order_sn": order_sn, "reason": "OEM 询价单全流程执行成功"}
+        final_detail = detail_list[0] if detail_list else {}
+        final_sku_list = final_detail.get("sku_detail") or []
+        final_sku = final_sku_list[0] if final_sku_list else {}
+        summary = {
+            "order_sn": order_sn,
+            "reason": "OEM 询价单全流程执行成功",
+            "samples_price_return": final_sku.get("samples_price_return") or "0.00",
+            "samples_other_fee": final_detail.get("samples_other_fee") or "0.00",
+            "samples_freight": final_detail.get("samples_freight") or "0.00",
+            "samples_delivery_time": final_detail.get("samples_delivery_time") or 0,
+            "factory_img": final_detail.get("factory_img") or "",
+        }
         return _finish_named(OEM_FULL_INQUIRY_SCRIPT_NAME, log, True, summary)
 
     except Exception as exc:
