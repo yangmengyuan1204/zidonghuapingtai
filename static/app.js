@@ -919,6 +919,64 @@ function ensureOemBulkOrderQueryFlowScript(flows, projects, envs) {
   return next;
 }
 
+function openOemBulkOrderQueryRunForm(flow) {
+  let variables = {};
+  try { variables = parseJsonText(flow.variables || "{}", {}); } catch { showToast("脚本变量不是合法 JSON"); return; }
+  const fields = (SCRIPT_PARAM_SCHEMAS.oem_bulk_order_query || []);
+  variables = sanitizeScriptVariables(flow.scriptType, variables, flow);
+  const values = { ...paramFormValues(fields, variables) };
+  const groups = [];
+  let current = null;
+  for (const f of fields) {
+    if (f.type === "section") {
+      if (current) groups.push(current);
+      current = { label: f.label, fields: [] };
+    } else if (current) {
+      current.fields.push(f);
+    }
+  }
+  if (current) groups.push(current);
+
+  let bodyHtml = "";
+  for (const g of groups) {
+    if (!g.fields.length) continue;
+    bodyHtml += `<details class="functional-requirement" open><summary>${escapeHtml(g.label)}</summary><div class="form-grid">`;
+    for (const f of g.fields) bodyHtml += renderFormField(f, values[f.name]);
+    bodyHtml += `</div></details>`;
+  }
+
+  modalEl.innerHTML = `
+    <form id="oemBulkOrderQueryForm">
+      <div class="modal-head">
+        <h3>${escapeHtml(`执行 ${flow.name || "OEM大货单查询报价"}`)}</h3>
+        <button class="btn secondary" value="cancel" formmethod="dialog" type="button" id="closeModal">关闭</button>
+      </div>
+      <div class="modal-body">${bodyHtml}</div>
+      <div class="modal-foot"><span></span><button class="btn" type="submit">执行</button></div>
+    </form>
+  `;
+  modalEl.showModal();
+  document.querySelector("#closeModal").addEventListener("click", async () => {
+    modalEl.close();
+    if (state.view === "dataScripts" && !state.factory.editing) { await renderDataScripts(); }
+  });
+  document.querySelector("#oemBulkOrderQueryForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = readForm(event.currentTarget);
+    const runtimeVariables = mergeParamValues(variables, fields, data);
+    try {
+      const btn = event.currentTarget.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = "查询中...";
+      await runSavedFlow(flow, runtimeVariables);
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      const btn = document.querySelector('#oemBulkOrderQueryForm button[type="submit"]');
+      if (btn) { btn.disabled = false; btn.textContent = "执行"; }
+    }
+  });
+}
+
 function ensureOemBalancePayScript(flows, projects, envs) {
   if (isBuiltinDeleted("oem_balance_pay_builtin")) return flows;
   const oemProject = projects.find((p) => p.name === "oem-测试");
@@ -1952,6 +2010,7 @@ function openRunScriptForm(flow) {
   }
   if (flow.scriptType === "oem_full_inquiry_flow") { openOemFullInquiryFlowRunForm(flow); return; }
   if (flow.scriptType === "oem_sample_full_flow") { openOemSampleFullFlowRunForm(flow); return; }
+  if (flow.scriptType === "oem_bulk_order_query") { openOemBulkOrderQueryRunForm(flow); return; }
   let variables = {};
   try {
     variables = parseJsonText(flow.variables || "{}", {});
