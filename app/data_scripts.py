@@ -9204,8 +9204,8 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                 return _finish_named(OEM_FULL_INQUIRY_SCRIPT_NAME, log, False,
                                      {"reason": f"询价单 {order_sn} 无工厂明细 detail_list（可能创建时未传 factory_urls），无法进行工厂报价",
                                       "order_sn": order_sn})
-            factory_img = variables.get("factory_img") or ""
-            salesman = variables.get("salesman") or "   "
+            factory_img = variables.get("factory_img") or "https://img.alicdn.com/placeholder.jpg"
+            salesman = variables.get("salesman") or "测试业务员"
             salesman_phone = variables.get("salesman_phone") or "13800000000"
             # 全局默认值（向后兼容：无 factory_quotes 时所有工厂共用这组）
             samples_price_default = variables.get("samples_price") or "12.00"
@@ -9224,7 +9224,7 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                 factory_url = d_item.get("factory_url") or ""
                 factory_submit_info = d_item.get("factory_submit_info") or factory_url
                 factory_iid = d_item.get("factory_iid") or _oem_extract_factory_iid(factory_url)
-                factory_name = d_item.get("factory_name") or "   "
+                factory_name = d_item.get("factory_name") or "测试工厂"
                 # 按工厂 idx 取该工厂的报价字段，缺失时用全局默认
                 fq = factory_quotes[idx] if idx < len(factory_quotes) and isinstance(factory_quotes[idx], dict) else {}
                 samples_price = fq.get("samples_price") or samples_price_default
