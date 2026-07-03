@@ -187,6 +187,59 @@ ORDER_OPTION_NAME_FALLBACKS = {
     "换货普检收费": "换货普检收费", "再検品（簡易）": "换货普检收费",
 }
 
+# order.optionList admin 接口返回的 37 个 option 完整数据，作为静态补充 catalog
+# 当 client 接口 /client/order.optionList 返回的 option 不足时，用此列表补充显示与执行
+# client 接口返回的 option 优先（price 可能更新），静态列表仅补充 client 缺失的
+ORDER_OPTION_STATIC_CATALOG: list[Dict[str, Any]] = [
+    {"id": 1, "type": "0", "name": "FBA贴标", "name_translate": "商品ラベル貼り付け", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 0, "auto_calculate": 1, "remark": "FBA贴标"},
+    {"id": 78, "type": "4", "name": "详细检品", "name_translate": "詳細検品", "price": 4, "price_type": 1, "unit": "%", "is_overstep": 1, "auto_calculate": 1, "remark": "详细检品"},
+    {"id": 79, "type": "4", "name": "针检", "name_translate": "通常検針サービス", "price": "0.80", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "针检"},
+    {"id": 3, "type": "0", "name": "更换OPP袋子", "name_translate": "通常OPP袋入れ替え", "price": "0.50", "price_type": 0, "unit": "元", "is_overstep": 0, "auto_calculate": 1, "remark": "更换OPP袋子"},
+    {"id": 80, "type": "4", "name": "X线针检", "name_translate": "X線検針サービス", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "X线针检"},
+    {"id": 81, "type": "4", "name": "X线针检往返运费", "name_translate": "X線検針会社までの国内往復送料", "price": "0.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": "X线针检往返运费"},
+    {"id": 82, "type": "4", "name": "做布标", "name_translate": "織りネーム作成", "price": "0.40", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "做布标"},
+    {"id": 83, "type": "4", "name": "取布标", "name_translate": "織りネーム外し", "price": 0.8, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "取布标"},
+    {"id": 7, "type": "0", "name": "取吊牌", "name_translate": "下げ札取り外し", "price": "0.00", "price_type": 0, "unit": "元", "is_overstep": 0, "auto_calculate": 1, "remark": "取吊牌"},
+    {"id": 84, "type": "4", "name": "缝布标", "name_translate": "織りネーム縫い付け", "price": 1, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "缝布标"},
+    {"id": 8, "type": "0", "name": "配套", "name_translate": "商品セット化作業", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": "配套"},
+    {"id": 85, "type": "4", "name": "做水洗标", "name_translate": "洗濯タグ作成", "price": "0.16", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "做水洗标"},
+    {"id": 9, "type": "0", "name": "拍照", "name_translate": "写真撮影", "price": "12.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": "拍照"},
+    {"id": 86, "type": "4", "name": "取水洗标", "name_translate": "洗濯タグ外し", "price": "0.80", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "取水洗标"},
+    {"id": 10, "type": "0", "name": "单面印刷", "name_translate": "チラシ/感謝手紙など作成", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "单面印刷"},
+    {"id": 87, "type": "4", "name": "缝水洗标", "name_translate": "洗濯タグ縫付け", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "缝水洗标"},
+    {"id": 45, "type": "0", "name": "气泡膜", "name_translate": "プチプチ梱包", "price": "2.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "气泡膜"},
+    {"id": 88, "type": "4", "name": "做吊牌", "name_translate": "下げ札作成", "price": "0.12", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "做吊牌"},
+    {"id": 48, "type": "0", "name": "熨烫", "name_translate": "アイロン掛け", "price": "5.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "熨烫"},
+    {"id": 89, "type": "4", "name": "挂吊牌", "name_translate": "下げ札取り付け", "price": 0.5, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "挂吊牌"},
+    {"id": 51, "type": "0", "name": "更换定制包装", "name_translate": "別注折りたたみパッケージへの入替", "price": "2.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "更换成客户定制的折叠包装盒"},
+    {"id": 90, "type": "4", "name": "做贴纸", "name_translate": "LOGOシール作成", "price": "0.27", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "做贴纸"},
+    {"id": 54, "type": "0", "name": "水晶棉包装", "name_translate": "クッション包装", "price": "2.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "水晶棉包装"},
+    {"id": 91, "type": "4", "name": "贴贴纸", "name_translate": "LOGOシール貼り付け", "price": "0.50", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "贴贴纸"},
+    {"id": 57, "type": "0", "name": "opp袋子四角包装", "name_translate": "角折りopp梱包", "price": "2.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "把opp袋子的四角都粘好的包装"},
+    {"id": 92, "type": "4", "name": "压缩包装操作费", "name_translate": "圧縮包装*圧縮袋別途費用", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "压缩包装操作费"},
+    {"id": 60, "type": "0", "name": "放感谢信/卡片(限一张)", "name_translate": "チラシ、感謝手紙など印刷物入れ(1種類のみ)", "price": "0.50", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "放感谢信/卡片(限一张)"},
+    {"id": 93, "type": "4", "name": "压缩袋费用", "name_translate": "圧縮袋", "price": "0.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": "压缩袋费用"},
+    {"id": 17, "type": "0", "name": "磁性针检（大型包）", "name_translate": "検針サービス（大型バッグ）", "price": 0.8, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "磁性针检（大型包）"},
+    {"id": 18, "type": "0", "name": "磁性针检（小型包）", "name_translate": "検針サービス（小型バッグ）", "price": "0.30", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "磁性针检（小型包）"},
+    {"id": 69, "type": "0", "name": "塑封", "name_translate": "シュリンク包装", "price": "0.80", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "热塑机塑封"},
+    {"id": 72, "type": "0", "name": "真空压缩", "name_translate": "圧縮包装（袋別途費用）", "price": 1, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "真空压缩，真空袋需要客户另外购买"},
+    {"id": 75, "type": "0", "name": "通电检品", "name_translate": "通電検査", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "通电检品"},
+    {"name": "made in China", "name_translate": "made in China", "type": "1", "price": 0, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": ""},
+    {"name": "制作水洗标", "name_translate": "洗濯表示タグ製作", "type": "1", "price": 0, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": ""},
+    {"name": "贴尺码标", "name_translate": "サイズシールの貼り付け", "type": "1", "price": 0, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": ""},
+    {"name": "换货普检收费", "name_translate": "再検品（簡易）", "type": "1", "price": 0, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": ""},
+]
+
+
+def _merge_static_order_options(catalog: OrderedDict[str, Dict[str, Any]]) -> OrderedDict[str, Dict[str, Any]]:
+    """将静态 option catalog 合并到 client 接口返回的 catalog 后面，client 优先，去重。"""
+    for option in ORDER_OPTION_STATIC_CATALOG:
+        key = _order_option_key(option)
+        if not key or key in catalog:
+            continue
+        _add_order_option_to_catalog(catalog, option)
+    return catalog
+
 
 class DataScriptRuntime:
     def __init__(self) -> None:
@@ -1459,6 +1512,7 @@ def _collect_order_option_catalog(items: list[Dict[str, Any]]) -> OrderedDict[st
     for item in items:
         for option in _order_option_items(item.get("option")):
             _add_order_option_to_catalog(catalog, option)
+    _merge_static_order_options(catalog)
     return catalog
 
 
@@ -1482,6 +1536,7 @@ def _fetch_order_option_catalog(client: Any, variables: Dict[str, Any]) -> tuple
     catalog = _order_option_catalog_from_options(options)
     if not catalog:
         raise RuntimeError("读取订单 option 失败：接口未返回可用 option")
+    _merge_static_order_options(catalog)
     return catalog, payload, path
 
 
