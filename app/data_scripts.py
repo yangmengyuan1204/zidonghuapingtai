@@ -101,144 +101,21 @@ MAX_LOG_BODY = 1200
 REQUEST_RETRIES = 2
 REQUEST_RETRY_DELAY = 0.8
 ORDER_OPTION_NAME_FALLBACKS = {
-    # 兼容旧英文 key 及旧 id
+    "1": "FBA贴标",
+    "3": "更换OPP袋子",
+    "4": "取布标",
+    "5": "缝布标",
     "fba_label": "FBA贴标",
     "detail_inspection": "详细检品(单价)",
     "opp_bag": "更换OPP袋子",
     "remove_cloth_label": "取布标",
     "sew_cloth_label": "缝布标",
-    "4": "取布标",
-    "5": "缝布标",
+    "FBA贴标": "FBA贴标",
     "详细检品(单价)": "详细检品(单价)",
-    # order.optionList 接口返回的 37 个 option（id + 中文名 + 日文名 name_translate 三类 key 全覆盖，去重）
-    # 1. id=1 FBA贴标
-    "1": "FBA贴标", "FBA贴标": "FBA贴标", "商品ラベル貼り付け": "FBA贴标",
-    # 2. id=78 详细检品
-    "78": "详细检品", "详细检品": "详细检品", "詳細検品": "详细检品",
-    # 3. id=79 针检
-    "79": "针检", "针检": "针检", "通常検針サービス": "针检",
-    # 4. id=3 更换OPP袋子
-    "3": "更换OPP袋子", "更换OPP袋子": "更换OPP袋子", "通常OPP袋入れ替え": "更换OPP袋子",
-    # 5. id=80 X线针检
-    "80": "X线针检", "X线针检": "X线针检", "X線検針サービス": "X线针检",
-    # 6. id=81 X线针检往返运费
-    "81": "X线针检往返运费", "X线针检往返运费": "X线针检往返运费", "X線検針会社までの国内往復送料": "X线针检往返运费",
-    # 7. id=82 做布标
-    "82": "做布标", "做布标": "做布标", "織りネーム作成": "做布标",
-    # 8. id=83 取布标
-    "83": "取布标", "取布标": "取布标", "織りネーム外し": "取布标",
-    # 9. id=7 取吊牌
-    "7": "取吊牌", "取吊牌": "取吊牌", "下げ札取り外し": "取吊牌",
-    # 10. id=84 缝布标
-    "84": "缝布标", "缝布标": "缝布标", "織りネーム縫い付け": "缝布标",
-    # 11. id=8 配套
-    "8": "配套", "配套": "配套", "商品セット化作業": "配套",
-    # 12. id=85 做水洗标
-    "85": "做水洗标", "做水洗标": "做水洗标", "洗濯タグ作成": "做水洗标",
-    # 13. id=9 拍照
-    "9": "拍照", "拍照": "拍照", "写真撮影": "拍照",
-    # 14. id=86 取水洗标
-    "86": "取水洗标", "取水洗标": "取水洗标", "洗濯タグ外し": "取水洗标",
-    # 15. id=10 单面印刷
-    "10": "单面印刷", "单面印刷": "单面印刷", "チラシ/感謝手紙など作成": "单面印刷",
-    # 16. id=87 缝水洗标
-    "87": "缝水洗标", "缝水洗标": "缝水洗标", "洗濯タグ縫付け": "缝水洗标",
-    # 17. id=45 气泡膜
-    "45": "气泡膜", "气泡膜": "气泡膜", "プチプチ梱包": "气泡膜",
-    # 18. id=88 做吊牌
-    "88": "做吊牌", "做吊牌": "做吊牌", "下げ札作成": "做吊牌",
-    # 19. id=48 熨烫
-    "48": "熨烫", "熨烫": "熨烫", "アイロン掛け": "熨烫",
-    # 20. id=89 挂吊牌
-    "89": "挂吊牌", "挂吊牌": "挂吊牌", "下げ札取り付け": "挂吊牌",
-    # 21. id=51 更换定制包装
-    "51": "更换定制包装", "更换定制包装": "更换定制包装", "別注折りたたみパッケージへの入替": "更换定制包装",
-    # 22. id=90 做贴纸
-    "90": "做贴纸", "做贴纸": "做贴纸", "LOGOシール作成": "做贴纸",
-    # 23. id=54 水晶棉包装
-    "54": "水晶棉包装", "水晶棉包装": "水晶棉包装", "クッション包装": "水晶棉包装",
-    # 24. id=91 贴贴纸
-    "91": "贴贴纸", "贴贴纸": "贴贴纸", "LOGOシール貼り付け": "贴贴纸",
-    # 25. id=57 opp袋子四角包装
-    "57": "opp袋子四角包装", "opp袋子四角包装": "opp袋子四角包装", "角折りopp梱包": "opp袋子四角包装",
-    # 26. id=92 压缩包装操作费
-    "92": "压缩包装操作费", "压缩包装操作费": "压缩包装操作费", "圧縮包装*圧縮袋別途費用": "压缩包装操作费",
-    # 27. id=60 放感谢信/卡片(限一张)
-    "60": "放感谢信/卡片(限一张)", "放感谢信/卡片(限一张)": "放感谢信/卡片(限一张)", "チラシ、感謝手紙など印刷物入れ(1種類のみ)": "放感谢信/卡片(限一张)",
-    # 28. id=93 压缩袋费用
-    "93": "压缩袋费用", "压缩袋费用": "压缩袋费用", "圧縮袋": "压缩袋费用",
-    # 29. id=17 磁性针检（大型包）
-    "17": "磁性针检（大型包）", "磁性针检（大型包）": "磁性针检（大型包）", "検針サービス（大型バッグ）": "磁性针检（大型包）",
-    # 30. id=18 磁性针检（小型包）
-    "18": "磁性针检（小型包）", "磁性针检（小型包）": "磁性针检（小型包）", "検針サービス（小型バッグ）": "磁性针检（小型包）",
-    # 31. id=69 塑封
-    "69": "塑封", "塑封": "塑封", "シュリンク包装": "塑封",
-    # 32. id=72 真空压缩
-    "72": "真空压缩", "真空压缩": "真空压缩", "圧縮包装（袋別途費用）": "真空压缩",
-    # 33. id=75 通电检品
-    "75": "通电检品", "通电检品": "通电检品", "通電検査": "通电检品",
-    # 34. 无id made in China
-    "made in China": "made in China",
-    # 35. 无id 制作水洗标
-    "制作水洗标": "制作水洗标", "洗濯表示タグ製作": "制作水洗标",
-    # 36. 无id 贴尺码标
-    "贴尺码标": "贴尺码标", "サイズシールの貼り付け": "贴尺码标",
-    # 37. 无id 换货普检收费
-    "换货普检收费": "换货普检收费", "再検品（簡易）": "换货普检收费",
+    "更换OPP袋子": "更换OPP袋子",
+    "取布标": "取布标",
+    "缝布标": "缝布标",
 }
-
-# order.optionList admin 接口返回的 37 个 option 完整数据，作为静态补充 catalog
-# 当 client 接口 /client/order.optionList 返回的 option 不足时，用此列表补充显示与执行
-# client 接口返回的 option 优先（price 可能更新），静态列表仅补充 client 缺失的
-ORDER_OPTION_STATIC_CATALOG: list[Dict[str, Any]] = [
-    {"id": 1, "type": "0", "name": "FBA贴标", "name_translate": "商品ラベル貼り付け", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 0, "auto_calculate": 1, "remark": "FBA贴标"},
-    {"id": 78, "type": "4", "name": "详细检品", "name_translate": "詳細検品", "price": 4, "price_type": 1, "unit": "%", "is_overstep": 1, "auto_calculate": 1, "remark": "详细检品"},
-    {"id": 79, "type": "4", "name": "针检", "name_translate": "通常検針サービス", "price": "0.80", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "针检"},
-    {"id": 3, "type": "0", "name": "更换OPP袋子", "name_translate": "通常OPP袋入れ替え", "price": "0.50", "price_type": 0, "unit": "元", "is_overstep": 0, "auto_calculate": 1, "remark": "更换OPP袋子"},
-    {"id": 80, "type": "4", "name": "X线针检", "name_translate": "X線検針サービス", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "X线针检"},
-    {"id": 81, "type": "4", "name": "X线针检往返运费", "name_translate": "X線検針会社までの国内往復送料", "price": "0.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": "X线针检往返运费"},
-    {"id": 82, "type": "4", "name": "做布标", "name_translate": "織りネーム作成", "price": "0.40", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "做布标"},
-    {"id": 83, "type": "4", "name": "取布标", "name_translate": "織りネーム外し", "price": 0.8, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "取布标"},
-    {"id": 7, "type": "0", "name": "取吊牌", "name_translate": "下げ札取り外し", "price": "0.00", "price_type": 0, "unit": "元", "is_overstep": 0, "auto_calculate": 1, "remark": "取吊牌"},
-    {"id": 84, "type": "4", "name": "缝布标", "name_translate": "織りネーム縫い付け", "price": 1, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "缝布标"},
-    {"id": 8, "type": "0", "name": "配套", "name_translate": "商品セット化作業", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": "配套"},
-    {"id": 85, "type": "4", "name": "做水洗标", "name_translate": "洗濯タグ作成", "price": "0.16", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "做水洗标"},
-    {"id": 9, "type": "0", "name": "拍照", "name_translate": "写真撮影", "price": "12.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": "拍照"},
-    {"id": 86, "type": "4", "name": "取水洗标", "name_translate": "洗濯タグ外し", "price": "0.80", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "取水洗标"},
-    {"id": 10, "type": "0", "name": "单面印刷", "name_translate": "チラシ/感謝手紙など作成", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "单面印刷"},
-    {"id": 87, "type": "4", "name": "缝水洗标", "name_translate": "洗濯タグ縫付け", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "缝水洗标"},
-    {"id": 45, "type": "0", "name": "气泡膜", "name_translate": "プチプチ梱包", "price": "2.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "气泡膜"},
-    {"id": 88, "type": "4", "name": "做吊牌", "name_translate": "下げ札作成", "price": "0.12", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "做吊牌"},
-    {"id": 48, "type": "0", "name": "熨烫", "name_translate": "アイロン掛け", "price": "5.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "熨烫"},
-    {"id": 89, "type": "4", "name": "挂吊牌", "name_translate": "下げ札取り付け", "price": 0.5, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "挂吊牌"},
-    {"id": 51, "type": "0", "name": "更换定制包装", "name_translate": "別注折りたたみパッケージへの入替", "price": "2.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "更换成客户定制的折叠包装盒"},
-    {"id": 90, "type": "4", "name": "做贴纸", "name_translate": "LOGOシール作成", "price": "0.27", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "做贴纸"},
-    {"id": 54, "type": "0", "name": "水晶棉包装", "name_translate": "クッション包装", "price": "2.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "水晶棉包装"},
-    {"id": 91, "type": "4", "name": "贴贴纸", "name_translate": "LOGOシール貼り付け", "price": "0.50", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "贴贴纸"},
-    {"id": 57, "type": "0", "name": "opp袋子四角包装", "name_translate": "角折りopp梱包", "price": "2.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "把opp袋子的四角都粘好的包装"},
-    {"id": 92, "type": "4", "name": "压缩包装操作费", "name_translate": "圧縮包装*圧縮袋別途費用", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "压缩包装操作费"},
-    {"id": 60, "type": "0", "name": "放感谢信/卡片(限一张)", "name_translate": "チラシ、感謝手紙など印刷物入れ(1種類のみ)", "price": "0.50", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "放感谢信/卡片(限一张)"},
-    {"id": 93, "type": "4", "name": "压缩袋费用", "name_translate": "圧縮袋", "price": "0.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": "压缩袋费用"},
-    {"id": 17, "type": "0", "name": "磁性针检（大型包）", "name_translate": "検針サービス（大型バッグ）", "price": 0.8, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "磁性针检（大型包）"},
-    {"id": 18, "type": "0", "name": "磁性针检（小型包）", "name_translate": "検針サービス（小型バッグ）", "price": "0.30", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "磁性针检（小型包）"},
-    {"id": 69, "type": "0", "name": "塑封", "name_translate": "シュリンク包装", "price": "0.80", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "热塑机塑封"},
-    {"id": 72, "type": "0", "name": "真空压缩", "name_translate": "圧縮包装（袋別途費用）", "price": 1, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "真空压缩，真空袋需要客户另外购买"},
-    {"id": 75, "type": "0", "name": "通电检品", "name_translate": "通電検査", "price": "1.00", "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 1, "remark": "通电检品"},
-    {"name": "made in China", "name_translate": "made in China", "type": "1", "price": 0, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": ""},
-    {"name": "制作水洗标", "name_translate": "洗濯表示タグ製作", "type": "1", "price": 0, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": ""},
-    {"name": "贴尺码标", "name_translate": "サイズシールの貼り付け", "type": "1", "price": 0, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": ""},
-    {"name": "换货普检收费", "name_translate": "再検品（簡易）", "type": "1", "price": 0, "price_type": 0, "unit": "元", "is_overstep": 1, "auto_calculate": 0, "remark": ""},
-]
-
-
-def _merge_static_order_options(catalog: OrderedDict[str, Dict[str, Any]]) -> OrderedDict[str, Dict[str, Any]]:
-    """将静态 option catalog 合并到 client 接口返回的 catalog 后面，client 优先，去重。"""
-    for option in ORDER_OPTION_STATIC_CATALOG:
-        key = _order_option_key(option)
-        if not key or key in catalog:
-            continue
-        _add_order_option_to_catalog(catalog, option)
-    return catalog
 
 
 class DataScriptRuntime:
@@ -1512,7 +1389,6 @@ def _collect_order_option_catalog(items: list[Dict[str, Any]]) -> OrderedDict[st
     for item in items:
         for option in _order_option_items(item.get("option")):
             _add_order_option_to_catalog(catalog, option)
-    _merge_static_order_options(catalog)
     return catalog
 
 
@@ -1536,7 +1412,6 @@ def _fetch_order_option_catalog(client: Any, variables: Dict[str, Any]) -> tuple
     catalog = _order_option_catalog_from_options(options)
     if not catalog:
         raise RuntimeError("读取订单 option 失败：接口未返回可用 option")
-    _merge_static_order_options(catalog)
     return catalog, payload, path
 
 
@@ -9411,10 +9286,8 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
 
                 # 工厂报价（基于 detail 原有字段 + 报价参数覆盖）
                 sku_detail = d_item.get("sku_detail") or []
-                samples_price_return = variables.get("samples_price_return") or "0.00"
                 for sku in sku_detail:
                     sku["samples_price"] = samples_price
-                    sku["samples_price_return"] = samples_price_return
                     sku["large_price"] = large_price
                     sku["real_samples_price"] = real_samples_price
                     sku["real_large_price"] = real_large_price
@@ -9429,9 +9302,9 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
                     "factory_city": d_item.get("factory_city") or "杭州市",
                     "factory_url": factory_url, "factory_img": factory_img,
                     "goods_url": d_item.get("goods_url") or "",
-                    "samples_other_fee": variables.get("samples_other_fee") or d_item.get("samples_other_fee") or "0.00",
-                    "samples_freight": variables.get("samples_freight") or d_item.get("samples_freight") or "0.00",
-                    "samples_delivery_time": variables.get("samples_delivery_time") if variables.get("samples_delivery_time") not in (None, "") else (d_item.get("samples_delivery_time") or 0),
+                    "samples_other_fee": d_item.get("samples_other_fee") or "0.00",
+                    "samples_freight": d_item.get("samples_freight") or "0.00",
+                    "samples_delivery_time": d_item.get("samples_delivery_time") or 0,
                     "real_samples_other_fee": d_item.get("real_samples_other_fee") or "0.00",
                     "real_samples_freight": d_item.get("real_samples_freight") or "0.00",
                     "large_other_fee": large_other_fee, "large_freight": large_freight,
@@ -10022,17 +9895,17 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
         return _finish_named(OEM_SAMPLE_FULL_FLOW_NAME, log, False, {"reason": str(exc), "error": str(exc)})
 
 
-# ─── OEM 大货单查询报价 ────────────────────────────────────────────
+# ─── OEM 大货单下单 ────────────────────────────────────────────
 
-OEM_BULK_ORDER_QUERY_NAME = "OEM大货单查询报价"
+OEM_BULK_ORDER_NAME = "OEM大货单下单"
 
 
-def run_oem_bulk_order_query_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
-    """OEM 大货单查询报价脚本：输入询价单号 → 查询完整报价信息。
+def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+    """OEM 大货单下单脚本：输入询价单号 → 查询报价信息 → 创建大货单。
 
-    两步查询：
-      1. POST /api/inquiryDetail → 获取 detail_id 及工厂信息
-      2. POST /api/quoteDetail  → 获取完整报价明细（样品/大货/SKU）
+    阶段：
+      1. 查询报价（fetch_oem_full_quote: /api/inquiryDetail + /api/quoteDetail）
+      2. 创建大货单（接口待用户提供，当前为 placeholder）
     """
     ensure_report_dirs()
     variables = dict(variables or {})
@@ -10041,8 +9914,8 @@ def run_oem_bulk_order_query_script(env: Env, variables: Dict[str, Any] | None =
     order_sn = str(variables.get("order_sn") or "").strip()
 
     log: Dict[str, Any] = {
-        "script": OEM_BULK_ORDER_QUERY_NAME,
-        "mode": "oem_bulk_order_query",
+        "script": OEM_BULK_ORDER_NAME,
+        "mode": "oem_bulk_order",
         "base_url": base_url,
         "order_sn": order_sn,
         "started_at": datetime.now(),
@@ -10050,41 +9923,61 @@ def run_oem_bulk_order_query_script(env: Env, variables: Dict[str, Any] | None =
     }
 
     if not order_sn:
-        return _finish_named(OEM_BULK_ORDER_QUERY_NAME, log, False,
+        return _finish_named(OEM_BULK_ORDER_NAME, log, False,
                              {"reason": "缺少必填参数：询价单号 order_sn 不能为空"})
 
     try:
+        # ── 阶段 1：查询报价信息 ──
         quote_data = fetch_oem_full_quote(order_sn, variables)
         if not quote_data:
-            return _finish_named(OEM_BULK_ORDER_QUERY_NAME, log, False,
-                                 {"reason": f"查询报价失败：询价单 {order_sn} 无报价数据或接口返回异常"})
+            return _finish_named(OEM_BULK_ORDER_NAME, log, False,
+                                 {"reason": f"询价单 {order_sn} 无报价数据或接口返回异常"})
 
         quote_detail = quote_data.get("quote_detail") or {}
-        samples_info = quote_detail.get("samples_info") or {}
         large_info = quote_detail.get("large_info") or {}
         detail_list = quote_data.get("detail_list") or quote_data.get("list") or []
+        detail_id = quote_data.get("detail_id") or ""
 
         _step(log, "query_quote", {"order_sn": order_sn},
               {"url": "/api/inquiryDetail + /api/quoteDetail", "method": "POST"},
-              {"detail_id": quote_data.get("detail_id"),
+              {"detail_id": detail_id,
                "factory_count": len(detail_list),
-               "has_samples": bool(samples_info),
                "has_large": bool(large_info)})
+
+        # ── 阶段 2：创建大货单（placeholder，待用户提供接口后补充） ──
+        # 解析 SKU 列表
+        sku_list = variables.get("sku_list")
+        if isinstance(sku_list, str) and sku_list.strip().startswith("["):
+            try:
+                sku_list = json.loads(sku_list)
+            except (json.JSONDecodeError, TypeError):
+                sku_list = []
+        elif not isinstance(sku_list, list):
+            sku_list = []
+        if isinstance(sku_list, list):
+            for item in sku_list:
+                if isinstance(item, dict) and "option" not in item:
+                    item["option"] = []
+
+        # TODO: 待用户提供大货单创建接口后补充实际调用
+        # 预期接口类似 POST /api/newOrder (type=2) 或专用大货单接口
+        _step(log, "create_bulk_order", {"order_sn": order_sn, "sku_count": len(sku_list)},
+              {"url": "(待提供)", "method": "POST"},
+              {"status": "pending_api", "detail_id": detail_id, "sku_count": len(sku_list)})
 
         summary = {
             "order_sn": order_sn,
-            "detail_id": quote_data.get("detail_id"),
+            "detail_id": detail_id,
             "goods_name": quote_data.get("goods_name") or "",
             "factory_count": len(detail_list),
-            "samples_info": samples_info,
             "large_info": large_info,
-            "quote_data": quote_data,
-            "reason": "查询报价成功",
+            "sku_list": sku_list,
+            "reason": "查询报价成功，大货单创建接口待接入",
         }
-        return _finish_named(OEM_BULK_ORDER_QUERY_NAME, log, True, summary)
+        return _finish_named(OEM_BULK_ORDER_NAME, log, True, summary)
     except Exception as exc:
         log["error"] = str(exc)
-        return _finish_named(OEM_BULK_ORDER_QUERY_NAME, log, False,
+        return _finish_named(OEM_BULK_ORDER_NAME, log, False,
                              {"reason": str(exc), "error": str(exc)})
 
 
