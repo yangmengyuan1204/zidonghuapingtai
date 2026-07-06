@@ -1,4 +1,4 @@
-import copy
+﻿import copy
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import OrderedDict
@@ -16,6 +16,8 @@ import requests
 from .executors import ensure_report_dirs, write_allure_result
 from .models import Env
 from .vendor import piliangtianjiagouwuche as bulk_cart
+from .oem_scripts.material_order import run_material_order_script  # noqa: E402
+
 
 
 SCRIPT_NAME = "\u5546\u54c1\u8d2d\u7269\u8f66"
@@ -6490,6 +6492,8 @@ def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) ->
 
 
 MATERIAL_GENERATION_SCRIPT_NAME = "辅料生成"
+MATERIAL_ORDER_SCRIPT_NAME = "辅料单"
+
 
 
 def run_material_generation_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
@@ -6905,6 +6909,11 @@ SCRIPT_REGISTRY: Dict[str, Any] = {
         "func": None,
         "chain": True,
     },
+    "material_order": {
+        "name": MATERIAL_ORDER_SCRIPT_NAME,
+        "func": run_material_order_script,
+    },
+
     "material_generation": {
         "name": MATERIAL_GENERATION_SCRIPT_NAME,
         "func": run_material_generation_script,
