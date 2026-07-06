@@ -9964,8 +9964,15 @@ def _oem_create_new_order(
         session, base_url, "/api/newOrder", body, timeout,
         token=token, is_admin=False, variables=variables,
     )
-    if not payload.get("success") and payload.get("code") not in (0, "0", None):
-        raise RuntimeError(f"创建大货单失败: code={payload.get('code')} msg={payload.get('msg')}")
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"创建大货单失败: 接口返回非 JSON 响应")
+    # 兼容两种成功判定：有 success=true，或 code=0/"0"
+    is_success = payload.get("success") is True or payload.get("code") in (0, "0")
+    if not is_success:
+        raise RuntimeError(
+            f"创建大货单失败: code={payload.get('code')} msg={payload.get('msg')} "
+            f"data={json.dumps(payload.get('data'), ensure_ascii=False)[:500] if payload.get('data') else 'null'}"
+        )
     return payload.get("data") if isinstance(payload.get("data"), dict) else (payload or {})
 
 
@@ -10168,7 +10175,12 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
             "remark": remark,
             "warehouse_city": warehouse_city,
         }
-        order_result = _oem_create_new_order(session, base_url, client_token, new_order_body, timeout, variables)
+        try:
+            order_result = _oem_create_new_order(session, base_url, client_token, new_order_body, timeout, variables)
+        except Exception as exc:
+            # 将请求体附加到错误日志，方便排查
+            log["new_order_request"] = new_order_body
+            raise
         new_order_sn = ""
         if isinstance(order_result, dict):
             new_order_sn = str(order_result.get("order_sn") or order_result.get("large_order_sn") or order_result.get("sn") or "")
