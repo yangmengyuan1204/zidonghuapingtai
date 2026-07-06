@@ -9929,6 +9929,19 @@ def _oem_query_option_list(
     return []
 
 
+def _oem_generate_large_order_sn(order_sn: str, user_id: str) -> str:
+    """按 OEM 前端规则生成大货单号：D{timestamp}-{user_id}-{type}
+    其中 type 从询价单号后缀提取（如 OEM、ODM），无法提取时默认为 OEM。
+    """
+    ts = datetime.now().strftime("%Y%m%d%H%M%S")
+    type_suffix = "OEM"
+    parts = str(order_sn).strip().rsplit("-", 1)
+    if len(parts) == 2 and parts[1]:
+        type_suffix = parts[1].upper()
+    uid = str(user_id) if user_id else "0"
+    return f"D{ts}-{uid}-{type_suffix}"
+
+
 def _oem_order_preview(
     session: requests.Session, base_url: str, token: str,
     detail_id: str, timeout: int, variables: Dict[str, Any], large_order_sn: str = "",

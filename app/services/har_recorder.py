@@ -158,18 +158,20 @@ def _value_not_empty(value) -> bool:
     return value is not None and value != ""
 
 
-def _ensure_field(fields: dict, name: str) -> None:
-    """确保字段在 schema 中（已存在则跳过）。sku_list 用 textarea。"""
+def _ensure_field(fields: dict, name: str, original_value=None) -> None:
+    """确保字段在 schema 中（已存在则跳过）。sku_list 用 textarea。placeholder 用原值作提示。"""
     if name in fields:
         return
     field_type = "textarea" if name == "sku_list" else "input"
+    label = FIELD_LABEL_CN.get(name, name)
+    placeholder = f"请输入{label}（原值：{original_value}）" if original_value not in (None, "") else f"请输入{label}"
     fields[name] = {
         "name": name,
-        "label": FIELD_LABEL_CN.get(name, name),
+        "label": label,
         "type": field_type,
         "required": True,
         "default": "",
-        "placeholder": "请输入" + FIELD_LABEL_CN.get(name, name),
+        "placeholder": placeholder,
     }
 
 
@@ -179,7 +181,7 @@ def _replace_dynamic(value, fields: dict):
         result = {}
         for key, val in value.items():
             if key in DYNAMIC_FIELD_NAMES and _value_not_empty(val):
-                _ensure_field(fields, key)
+                _ensure_field(fields, key, val)
                 result[key] = "{{" + key + "}}"
             else:
                 result[key] = _replace_dynamic(val, fields)
