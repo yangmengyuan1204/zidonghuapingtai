@@ -11,21 +11,27 @@ build/
 node_modules/
 package-lock.json
 
-# IDE
+# IDE / Agent 工具
 .vscode/
 .idea/
 *.swp
 *.swo
+.agent-browser/
+.trae/
+.reasonix/
+.codegraph/
+.playwright-cli/
 
 # Large binaries / runtime deps
 .ocr_cache/
 ms-playwright/
-.playwright-cli/
-.codegraph/
 *.exe
 *.zip
 *.rp
 python-3.14.5-amd64.exe
+cloudflared.exe
+cpolar.exe
+ngrok.exe
 
 # Database
 *.db
@@ -36,21 +42,29 @@ python-3.14.5-amd64.exe
 logs/
 *.log
 server*.log
+server*.err.log
 uvicorn*.log
+uvicorn*.err.log
+uvicorn*.out.log
+debug.log
 
 # Test reports (large, regenerable)
+reports/
 reports/screenshots/
 reports/allure-results/
 reports/functional/
 
-# Temp files
+# HAR 抓包（含敏感请求/cookie，禁止入库）
+*.har
+
+# Temp / debug scripts
 _*.js
+_*.py
 -*
 $null
-CC_Switch/
+fix_*.js
 fix_route_script.py
-public-access.bat
-reasonix.toml
+axure_to_cases.py
 
 # OS
 Thumbs.db
@@ -58,3 +72,7 @@ Thumbs.db
 
 # Secret
 .secret_key
+
+# 配置
+public-access.bat
+reasonix.toml

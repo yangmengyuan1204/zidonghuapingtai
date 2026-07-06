@@ -2093,27 +2093,49 @@ function openOemBulkOrderRunForm(flow) {
       return;
     }
     optionArea.style.display = "";
-    optionListEl.innerHTML = globalOptionTemplate.map((opt, i) => {
+    optionListEl.innerHTML = `<div class="oem-opt-grid">` + globalOptionTemplate.map((opt, i) => {
       if (!typeof opt === "object" || opt === null) return "";
-      const oid = opt.id || i;
       const name = opt.name || opt.label || "";
       const price = opt.large_price || opt.price || "0.00";
       const remark = opt.remark ? ` (${opt.remark})` : "";
-      return `<label class="check-field" style="display:flex;align-items:center;gap:6px;font-size:13px">
-        <input type="checkbox" class="global-opt" data-opt-idx="${i}" checked />
-        <span>${escapeHtml(name)}${escapeHtml(remark)} — <strong>${escapeHtml(String(price))}</strong> 元</span>
+      const isPhoto = opt.id === 9 || String(opt.name || "").includes("拍照");
+      const defaultNum = isPhoto ? 1 : "";
+      const numDisabled = isPhoto ? "disabled" : 'disabled title="勾选后可输入数量"';
+      return `<label class="oem-opt-item">
+        <input type="checkbox" class="global-opt" data-opt-idx="${i}" />
+        <span class="oem-opt-name">${escapeHtml(name)}${escapeHtml(remark)} — <strong>${escapeHtml(String(price))}</strong> 元</span>
+        <input type="number" class="oem-opt-num global-opt-num" data-opt-idx="${i}"
+               min="0" value="${defaultNum}" placeholder="跟随SKU" ${numDisabled} />
       </label>`;
-    }).join("");
+    }).join("") + `</div>`;
+
+    // 勾选时启用对应的数量输入框；拍照类保持禁用（固定 1）
+    optionListEl.querySelectorAll(".global-opt").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const idx = cb.dataset.optIdx;
+        const opt = globalOptionTemplate[idx];
+        const isPhoto = opt && (opt.id === 9 || String(opt.name || "").includes("拍照"));
+        const numInput = optionListEl.querySelector(`.global-opt-num[data-opt-idx="${idx}"]`);
+        if (numInput && !isPhoto) numInput.disabled = !cb.checked;
+      });
+    });
   }
 
-  function getSelectedGlobalOptionIds() {
-    const ids = new Set();
+  function getSelectedGlobalOptions() {
+    const result = [];
     optionListEl.querySelectorAll(".global-opt:checked").forEach((cb) => {
       const idx = parseInt(cb.dataset.optIdx, 10);
       const opt = globalOptionTemplate[idx];
-      if (opt && opt.id != null) ids.add(opt.id);
+      if (!opt) return;
+      const numInput = optionListEl.querySelector(`.global-opt-num[data-opt-idx="${idx}"]`);
+      const numVal = numInput ? parseInt(numInput.value, 10) : NaN;
+      const isPhoto = opt.id === 9 || String(opt.name || "").includes("拍照");
+      result.push({
+        ...opt,
+        _num: isPhoto ? 1 : (isNaN(numVal) || numVal < 0 ? null : numVal),
+      });
     });
-    return ids;
+    return result;
   }
 
   function renderSkuTable(first, data) {

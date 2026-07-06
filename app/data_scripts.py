@@ -10165,9 +10165,9 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
             num = _as_int(item.get("num"), 1)
             # 获取该 SKU 的大货单价（来自 sku_detail.large_price）
             sku_large_price = sku_large_price_map.get(str(sku_id_int)) or ""
-            # option：优先用前端传入的，否则用模板生成
+            # option：优先用前端传入的（允许空列表，表示用户未勾选任何 option），否则用模板生成
             opt_input = item.get("option")
-            if isinstance(opt_input, list) and opt_input:
+            if isinstance(opt_input, list):
                 options = opt_input
                 # 用 SKU 级别大货单价覆盖每个 option 的 large_price
                 if sku_large_price:
