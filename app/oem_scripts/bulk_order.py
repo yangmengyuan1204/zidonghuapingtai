@@ -27,7 +27,7 @@ class OemBulkOrderScript(BaseScript):
         try:
             self.validate_params()
             # 阶段1：前台登录
-            client_token, user_id = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
+            client_token, user_id, _ = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
             
             # 阶段2：查询报价详情
             quote_data = fetch_oem_full_quote(self.variables["order_sn"], self.variables)

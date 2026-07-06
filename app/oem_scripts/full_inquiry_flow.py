@@ -27,7 +27,7 @@ class OemFullInquiryFlowScript(BaseScript):
                     raise BusinessException(2008, "创建询价单失败: 缺少 factory_urls，请配置工厂链接")
                 
                 # 前台登录
-                client_token, user_id = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
+                client_token, user_id, _ = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
                 # 构造SKU信息
                 sku_info = self.variables.get("sku_info")
                 if not isinstance(sku_info, list):

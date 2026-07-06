@@ -15,7 +15,7 @@ class OemNewInquiryScript(BaseScript):
         """执行询价单创建流程"""
         try:
             # 前台登录
-            client_token, user_id = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
+            client_token, user_id, _ = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
             
             # 构造SKU信息
             sku_info = self.variables.get("sku_info")

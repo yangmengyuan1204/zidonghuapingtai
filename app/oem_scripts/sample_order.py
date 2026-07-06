@@ -56,7 +56,7 @@ class OemSampleOrderScript(BaseScript):
         try:
             self.validate_params()
             # 前台登录
-            client_token, user_id = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
+            client_token, user_id, _ = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
             # 解析SKU列表
             sku_list = self._parse_sku_list(self.variables.get("sku_list"))
             # 生成样品单号

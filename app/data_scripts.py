@@ -9004,7 +9004,7 @@ def fetch_oem_full_quote(order_sn: str, variables: Dict[str, Any] | None = None)
 
     try:
         session = requests.Session()
-        client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
+        client_token, user_id, _ = _oem_client_login(session, base_url, variables, timeout)
 
         # 1. 查询询价单基本信息，获取 detail_id
         inquiry_payload = _oem_post_json(
@@ -9116,7 +9116,7 @@ def run_oem_full_inquiry_flow_script(env: Env, variables: Dict[str, Any] | None 
 
         # ─── 阶段1：询价单提出（前台登录 + 创建询价单） ─────────────
         if not variables.get("skip_create") and not order_sn:
-            client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
+            client_token, user_id, _ = _oem_client_login(session, base_url, variables, timeout)
             _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
                   {"url": "/api/login", "method": "POST"}, {"token": client_token[:16] + "..."})
 
@@ -9649,7 +9649,7 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
 
         # ── 阶段 1：提出样品单 ──
         if not sample_order_sn and inquiry_order_sn:
-            client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
+            client_token, user_id, _ = _oem_client_login(session, base_url, variables, timeout)
             _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
                   {"url": "/client/userLogin", "method": "POST"},
                   {"token": client_token[:16] + "..."})
@@ -9753,7 +9753,7 @@ def run_oem_sample_full_flow_script(env: Env, variables: Dict[str, Any] | None =
                         timeout, admin_token, variables, log, "samplesQuoteToUser")
 
         # ── 6. 客户余额支付 ──
-        client_token2, _ = _oem_client_login(session, base_url, variables, timeout)
+        client_token2, _, _ = _oem_client_login(session, base_url, variables, timeout)
         pay_payload = _oem_post_json(
             session, base_url, "/api/balancePayOrder",
             {"order_sn": sample_order_sn, "coupon_id": str(variables.get("coupon_id") or "")},
@@ -10311,7 +10311,7 @@ def run_oem_sample_balance_pay_script(env: Env, variables: Dict[str, Any] | None
     }
     try:
         session = requests.Session()
-        client_token, _ = _oem_client_login(session, base_url, variables, timeout)
+        client_token, _, _ = _oem_client_login(session, base_url, variables, timeout)
         _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
               {"url": "/client/userLogin", "method": "POST"}, {"token": client_token[:16] + "..."})
 

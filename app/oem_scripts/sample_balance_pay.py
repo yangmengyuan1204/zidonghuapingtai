@@ -19,7 +19,7 @@ class OemSampleBalancePayScript(BaseScript):
             self.validate_params()
             # 前台登录
             from app.data_scripts import _oem_client_login, _oem_post_json, _translate_oem_msg, _step
-            client_token, _ = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
+            client_token, _, _ = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
             # 调用支付接口
             payload = _oem_post_json(
                 self.session, self.base_url, "/api/balancePayOrder",

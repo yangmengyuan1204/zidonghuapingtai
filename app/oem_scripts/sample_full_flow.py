@@ -24,7 +24,7 @@ class OemSampleFullFlowScript(BaseScript):
             # 阶段1：提出样品单
             if not sample_order_sn and inquiry_order_sn:
                 # 前台登录
-                client_token, user_id = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
+                client_token, user_id, _ = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
                 # 解析SKU列表
                 sku_list = sku_list_raw
                 if isinstance(sku_list, str):
@@ -131,7 +131,7 @@ class OemSampleFullFlowScript(BaseScript):
             )
             
             # 阶段6：客户余额支付
-            client_token2, _ = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
+            client_token2, _, _ = _oem_client_login(self.session, self.base_url, self.variables, self.default_timeout)
             pay_payload = _oem_post_json(
                 self.session, self.base_url, "/api/balancePayOrder",
                 {"order_sn": sample_order_sn, "coupon_id": str(self.variables.get("coupon_id") or "")},
