@@ -10081,6 +10081,9 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
               {"url": "/api/login + /api/userInfo", "method": "POST"},
               {"user_id": user_id, "has_token": bool(client_token)})
 
+        # 按 OEM 前端规则生成大货单号（D{timestamp}-{user_id}-{type}）
+        generated_large_order_sn = _oem_generate_large_order_sn(order_sn, user_id)
+
         # ── 阶段 2：查询报价详情 ──
         quote_data = fetch_oem_full_quote(order_sn, variables)
         if not quote_data:
@@ -10128,7 +10131,10 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
               {"option_count": len(option_list)})
 
         # ── 阶段 4：订单预览（type=2 大货单） ──
-        preview_data = _oem_order_preview(session, base_url, client_token, detail_id, timeout, variables)
+        preview_data = _oem_order_preview(
+            session, base_url, client_token, detail_id, timeout, variables,
+            large_order_sn=generated_large_order_sn,
+        )
         _step(log, "order_preview", {"detail_id": detail_id, "type": 2},
               {"url": "/api/orderPreviews", "method": "POST"},
               {"has_preview": bool(preview_data)})
@@ -10139,9 +10145,8 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
                            f"可能尚未完成报价或报价已过期。large_info 为空，无法创建大货单。"}
             )
 
-        # orderPreviews 返回的 order_sn 是系统预分配的大货单号
-        # newOrder 必须用该预分配大货单号，而非询价单号，否则 OEM 后端返回 code=10000
-        large_order_sn = str(preview_data.get("order_sn") or order_sn)
+        # 使用 OEM 前端规则生成的大货单号（而非 orderPreviews 预分配的）
+        large_order_sn = generated_large_order_sn
 
         # ── 阶段 5：解析 SKU 列表 + 上传图片 + editSkuImage ──
         sku_list_raw = variables.get("sku_list")
