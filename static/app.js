@@ -2244,32 +2244,56 @@ function openOemBulkOrderRunForm(flow) {
           // Render per-SKU option customization
           const tr = skuArea.querySelector(`tr[data-sku-idx="${idx}"]`);
           tr.style.background = "hsl(45 80% 95%)";
-          skuItems.find((i) => i._index === idx)._customOption = true;
-          const existing = skuCustomOptions[idx] || globalOptionTemplate;
-          area.innerHTML = `<div style="padding:8px;background:hsl(45 80% 97%);border-radius:4px">
-            <div style="font-size:12px;font-weight:600;margin-bottom:6px">自定义 option（覆盖全局）</div>
-            <div style="display:flex;flex-direction:column;gap:3px">${globalOptionTemplate.map((opt, oi) => {
+          const skuItem = skuItems.find((i) => i._index === idx);
+          if (skuItem) skuItem._customOption = true;
+          const skuNum = skuItem ? skuItem.num : 1;
+          // 初始化自定义 option 状态（首次展开时默认不勾选）
+          if (!skuCustomOptions[idx]) {
+            skuCustomOptions[idx] = globalOptionTemplate.map((o) => ({
+              ...o, checked: false, _num: null,
+            }));
+          }
+          area.innerHTML = `<div class="oem-sku-custom-panel">
+            <div class="oem-sku-custom-title">自定义 option（覆盖全局，默认不勾选）</div>
+            <div class="oem-opt-grid oem-opt-grid-compact">${globalOptionTemplate.map((opt, oi) => {
               if (!opt || typeof opt !== "object") return "";
-              const oid = opt.id != null ? opt.id : "";
               const name = opt.name || opt.label || "";
               const price = opt.large_price || opt.price || "0.00";
-              const isChecked = existing.some((o) => o.id === opt.id && o.checked !== false);
-              return `<label class="check-field" style="display:flex;align-items:center;gap:6px;font-size:12px">
+              const isPhoto = opt.id === 9 || String(opt.name || "").includes("拍照");
+              const defaultNum = isPhoto ? 1 : skuNum;
+              const existingOpt = skuCustomOptions[idx].find((o) => o.id === opt.id);
+              const isChecked = existingOpt && existingOpt.checked === true;
+              const savedNum = existingOpt && existingOpt._num != null ? existingOpt._num : defaultNum;
+              const numDisabled = isPhoto ? "disabled" : (isChecked ? "" : "disabled");
+              return `<label class="oem-opt-item">
                 <input type="checkbox" class="custom-opt-cb" data-sku-idx="${idx}" data-opt-idx="${oi}" ${isChecked ? "checked" : ""} />
-                <span>${escapeHtml(name)} — <strong>${escapeHtml(String(price))}</strong> 元</span>
+                <span class="oem-opt-name">${escapeHtml(name)} — <strong>${escapeHtml(String(price))}</strong> 元</span>
+                <input type="number" class="oem-opt-num custom-opt-num" data-sku-idx="${idx}" data-opt-idx="${oi}"
+                       min="0" value="${savedNum}" ${numDisabled} />
               </label>`;
             }).join("")}</div>
           </div>`;
           area.querySelectorAll(".custom-opt-cb").forEach((cb) => {
             cb.addEventListener("change", () => {
-              // Save custom option state
               const skuIdx = parseInt(cb.dataset.skuIdx, 10);
               const optIdx = parseInt(cb.dataset.optIdx, 10);
               const opt = globalOptionTemplate[optIdx];
               if (!opt) return;
-              if (!skuCustomOptions[skuIdx]) skuCustomOptions[skuIdx] = globalOptionTemplate.map((o) => ({ ...o }));
+              const isPhoto = opt.id === 9 || String(opt.name || "").includes("拍照");
               const existing = skuCustomOptions[skuIdx].find((o) => o.id === opt.id);
               if (existing) existing.checked = cb.checked;
+              const numInput = area.querySelector(`.custom-opt-num[data-sku-idx="${skuIdx}"][data-opt-idx="${optIdx}"]`);
+              if (numInput && !isPhoto) numInput.disabled = !cb.checked;
+            });
+          });
+          area.querySelectorAll(".custom-opt-num").forEach((input) => {
+            input.addEventListener("change", () => {
+              const skuIdx = parseInt(input.dataset.skuIdx, 10);
+              const optIdx = parseInt(input.dataset.optIdx, 10);
+              const opt = globalOptionTemplate[optIdx];
+              if (!opt) return;
+              const existing = skuCustomOptions[skuIdx].find((o) => o.id === opt.id);
+              if (existing) existing._num = parseInt(input.value, 10) || 0;
             });
           });
         } else {
@@ -2284,19 +2308,30 @@ function openOemBulkOrderRunForm(flow) {
 
   function buildSkuListBody() {
     const checked = skuItems.filter((i) => i._checked);
-    const globalSelected = getSelectedGlobalOptionIds();
+    const globalSelected = getSelectedGlobalOptions();
     return checked.map((it) => {
       const numInput = skuArea.querySelector(`[name="ff_num_${it._index}"]`);
-      const num = numInput ? (parseInt(numInput.value, 10) || 1) : it.num;
+      const skuNum = numInput ? (parseInt(numInput.value, 10) || 1) : it.num;
       let skuOpts;
       if (skuCustomOptions[it._index]) {
-        skuOpts = skuCustomOptions[it._index].filter((o) => o.checked !== false);
+        // 单 SKU 自定义：只取勾选的 option
+        skuOpts = skuCustomOptions[it._index].filter((o) => o.checked === true);
       } else {
-        skuOpts = globalOptionTemplate.filter((o) => globalSelected.has(o.id));
+        // 全局勾选的 option
+        skuOpts = globalSelected;
       }
       const options = skuOpts.map((opt) => {
         if (!opt || typeof opt !== "object") return null;
         const isPhoto = opt.id === 9 || String(opt.name || "").includes("拍照");
+        // num 优先级：option 独立输入 > SKU num（拍照类固定 1）
+        let optNum;
+        if (isPhoto) {
+          optNum = 1;
+        } else if (opt._num != null) {
+          optNum = opt._num;
+        } else {
+          optNum = skuNum;
+        }
         return {
           id: opt.id,
           name: opt.name || "",
@@ -2307,14 +2342,14 @@ function openOemBulkOrderRunForm(flow) {
           unit: opt.unit || "元",
           sort: opt.sort != null ? opt.sort : 0,
           price_range: Array.isArray(opt.price_range) ? opt.price_range : [],
-          num: isPhoto ? 1 : num,
+          num: optNum,
           checked: true,
           large_price: String(opt.large_price || opt.price || "0.00"),
         };
       }).filter(Boolean);
       return {
         sku_id: parseInt(String(it.sku_id), 10) || it.sku_id,
-        num: num,
+        num: skuNum,
         option: options,
         warehouse: [{
           warehouse_type: it.warehouse_type || 1,

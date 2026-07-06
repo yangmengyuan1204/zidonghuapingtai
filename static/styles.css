@@ -1038,3 +1038,67 @@ thead::after {
   box-shadow: 0 0 0 2px var(--surface-solid), 0 0 12px var(--accent-glow);
   opacity: 1;
 }
+
+/* ===== OEM 大货单 option 网格布局 ===== */
+.oem-opt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.oem-opt-grid-compact {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+}
+.oem-opt-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-solid);
+  font-size: 12px;
+  min-height: 34px;
+}
+.oem-opt-item input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  min-height: 0;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.oem-opt-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.oem-opt-num {
+  width: 56px;
+  min-height: 28px;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.oem-opt-num:disabled {
+  background: #f3f4f6;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.oem-sku-custom-panel {
+  padding: 8px 10px;
+  background: hsl(45 80% 97%);
+  border-radius: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.oem-sku-custom-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
