@@ -10099,6 +10099,12 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
         _step(log, "order_preview", {"detail_id": detail_id, "type": 2},
               {"url": "/api/orderPreviews", "method": "POST"},
               {"has_preview": bool(preview_data)})
+        if not preview_data:
+            return _finish_named(
+                OEM_BULK_ORDER_NAME, log, False,
+                {"reason": f"询价单 {order_sn}（detail_id={detail_id}）无大货报价信息，"
+                           f"可能尚未完成报价或报价已过期。large_info 为空，无法创建大货单。"}
+            )
 
         # ── 阶段 5：解析 SKU 列表 + 上传图片 + editSkuImage ──
         sku_list_raw = variables.get("sku_list")
