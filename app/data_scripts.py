@@ -8488,12 +8488,13 @@ def _oem_admin_login(session: requests.Session, base_url: str, variables: Dict[s
     return str(token)
 
 
-def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[str, Any], timeout: int) -> tuple[str, str]:
-    """OEM 前台登录，返回 (access_token, user_id)。
+def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[str, Any], timeout: int) -> tuple[str, str, str]:
+    """OEM 前台登录，返回 (access_token, user_id, user_info_error)。
 
     站点接口为 POST /api/login，请求体 {"account","password"}，
     返回 {"code":0,"msg":"操作成功","data":{"access_token":"..."}}，无 success 字段。
     user_id 需调 /api/userInfo 获取（登录响应不含 id）。
+    user_info_error 为获取 user_id 时的错误信息（空字符串表示无错误）。
     """
     fields = {
         "account": variables.get("account") or "12345678990",
@@ -8507,6 +8508,7 @@ def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[
 
     # 调 /api/userInfo 获取账号 id（样品单号需要，必须带 token）
     user_id = ""
+    user_info_error = ""
     try:
         info_payload = _oem_post_json(
             session, base_url, "/api/userInfo", {}, timeout,
@@ -8514,9 +8516,12 @@ def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[
         )
         info_data = info_payload.get("data") if isinstance(info_payload.get("data"), dict) else {}
         user_id = str(info_data.get("id") or info_data.get("user_id") or info_data.get("uid") or "")
-    except Exception:
-        pass
-    return str(token), user_id
+        if not user_id:
+            # 记录完整响应便于排查字段名差异
+            user_info_error = f"userInfo 响应无 id 字段, payload={json.dumps(info_payload, ensure_ascii=False)[:300]}"
+    except Exception as exc:
+        user_info_error = f"调用 /api/userInfo 失败: {exc}"
+    return str(token), user_id, user_info_error
 
 
 def _oem_get_upload_token(session: requests.Session, base_url: str, client_token: str, timeout: int) -> Dict[str, Any]:
@@ -8631,7 +8636,7 @@ def run_oem_new_inquiry_script(env: Env, variables: Dict[str, Any] | None = None
     try:
         session = requests.Session()
         # 前台登录
-        client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
+        client_token, user_id, _ = _oem_client_login(session, base_url, variables, timeout)
         _step(
             log,
             "client_login",
@@ -8825,7 +8830,7 @@ def run_oem_sample_order_script(env: Env, variables: Dict[str, Any] | None = Non
     try:
         session = requests.Session()
         # 前台登录
-        client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
+        client_token, user_id, _ = _oem_client_login(session, base_url, variables, timeout)
         _step(
             log,
             "client_login",
@@ -8981,7 +8986,7 @@ def fetch_oem_option_list(variables: Dict[str, Any] | None = None) -> list:
     timeout = _as_int(variables.get("timeout"), 30)
     base_url = (variables.get("base_url") or OEM_DEFAULT_BASE_URL).rstrip("/")
     session = requests.Session()
-    client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
+    client_token, user_id, _ = _oem_client_login(session, base_url, variables, timeout)
     return _oem_query_option_list(session, base_url, client_token, timeout, variables)
 
 
@@ -10079,7 +10084,7 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
         session = requests.Session()
 
         # ── 阶段 1：前台登录 ──
-        client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
+        client_token, user_id, user_info_error = _oem_client_login(session, base_url, variables, timeout)
 
         # 按 OEM 前端规则生成大货单号（D{timestamp}-{user_id}-{type}）
         generated_large_order_sn = _oem_generate_large_order_sn(order_sn, user_id)
@@ -10087,7 +10092,8 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
         _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
               {"url": "/api/login + /api/userInfo", "method": "POST"},
               {"user_id": user_id, "has_token": bool(client_token),
-               "generated_large_order_sn": generated_large_order_sn})
+               "generated_large_order_sn": generated_large_order_sn,
+               "user_info_error": user_info_error})
 
         # ── 阶段 2：查询报价详情 ──
         quote_data = fetch_oem_full_quote(order_sn, variables)
