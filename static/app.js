@@ -77,6 +77,10 @@ let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _
     { name: "password", label: "前台密码", default: "123456" },
     { name: "__section_query", type: "section", label: "查询参数" },
     { name: "order_sn", label: "询价单号", required: true },
+    { name: "sku_list", type: "hidden" },
+    { name: "warehouse_city", type: "hidden" },
+    { name: "remark", type: "hidden" },
+    { name: "inquiry_detail_id", type: "hidden" },
   ],
   oem_balance_pay: [
     { name: "order_sn", label: "\u6837\u54c1\u5355\u53f7", required: true },

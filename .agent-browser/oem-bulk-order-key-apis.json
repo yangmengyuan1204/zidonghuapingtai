@@ -1,0 +1,274 @@
+﻿[
+    {
+        "url":  "https://oemapi.rakumart.cn/api/quoteDetail",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:52:59.113682944Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/api/quoteDetail",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"detail_id\":\"1002\"}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:52:59.112673024Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/api/quoteDetail",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:26.337560064Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/api/quoteDetail",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"detail_id\":\"1002\"}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:26.336340992Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/optionList",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:29.23073408Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/optionList",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:29.229661952Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/api/orderPreviews",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"detail_id\":\"1002\",\"type\":2,\"large_order_sn\":\"\"}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:30.709620992Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/api/orderPreviews",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:30.71039104Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"goods_price\":12,\"goods_type\":1,\"is_buy_back\":false,\"user_id\":15,\"order_type\":2}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:31.644859904Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:31.646374912Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getUploadToken",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:36.91417088Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getUploadToken",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:36.915363072Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/api/editSkuImage",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"goods_sku_id\":1491,\"sku_image\":\"https://rakumart-oem.oss-ap-northeast-1.aliyuncs.com/dest/202607/662610/O1CN01sLVlVW25ABa5bQubA_!!1870557485.jpg\"}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:40.581042176Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/api/editSkuImage",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:40.583166976Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/optionList",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:41.53268096Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/optionList",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:41.531922176Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/api/orderPreviews",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"detail_id\":\"1002\",\"type\":2,\"large_order_sn\":\"\"}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:42.930264832Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/api/orderPreviews",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:42.931072Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"goods_price\":12,\"goods_type\":1,\"is_buy_back\":false,\"user_id\":15,\"order_type\":2}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:43.676544Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:43.677670912Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:45.805059072Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"goods_price\":30,\"goods_type\":1,\"is_buy_back\":false,\"user_id\":15,\"order_type\":2}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:45.804064Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:46.715486976Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"goods_price\":66,\"goods_type\":1,\"is_buy_back\":false,\"user_id\":15,\"order_type\":2}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:46.714380032Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:47.778166016Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"goods_price\":120,\"goods_type\":1,\"is_buy_back\":false,\"user_id\":15,\"order_type\":2}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:53:47.777255168Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getUploadToken",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:54:23.969337856Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getUploadToken",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:54:23.972094976Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"goods_price\":0,\"goods_type\":1,\"is_buy_back\":false,\"user_id\":15,\"order_type\":2}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:55:09.355088896Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:55:09.3565632Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"goods_price\":120,\"goods_type\":1,\"is_buy_back\":false,\"user_id\":15,\"order_type\":2}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:55:14.258366208Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:55:14.259212032Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/api/newOrder",
+        "method":  "OPTIONS",
+        "status":  204,
+        "reqBody":  null,
+        "respBody":  null,
+        "started":  "2026-07-03T09:55:15.395416064Z"
+    },
+    {
+        "url":  "https://oemapi.rakumart.cn/api/newOrder",
+        "method":  "POST",
+        "status":  200,
+        "reqBody":  "{\"order_sn\":\"D20260703175344-15-OEM\",\"inquiry_detail_id\":\"1002\",\"type\":2,\"sku_list\":[{\"sku_id\":2166,\"num\":10,\"option\":[{\"id\":10,\"name\":\"单面印刷\",\"name_translate\":\"チラシ/感謝手紙など作成\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"单面印刷\",\"unit\":\"元\",\"sort\":0,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":1,\"name\":\"FBA贴标\",\"name_translate\":\"商品ラベル貼り付け\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"FBA贴标\",\"unit\":\"元\",\"sort\":1,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":6,\"name\":\"挂吊牌\",\"name_translate\":\"下げ札取り付け\",\"price\":\"0.50\",\"price_type\":0,\"remark\":\"挂吊牌\",\"unit\":\"元\",\"sort\":2,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":9,\"name\":\"拍照\",\"name_translate\":\"写真撮影\",\"price\":12,\"price_type\":0,\"remark\":\"拍照\",\"unit\":\"元\",\"sort\":3,\"price_range\":[],\"num\":1,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":7,\"name\":\"取吊牌\",\"name_translate\":\"下げ札取り外し\",\"price\":\"0.00\",\"price_type\":0,\"remark\":\"取吊牌\",\"unit\":\"元\",\"sort\":4,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":3,\"name\":\"更换OPP袋子\",\"name_translate\":\"通常OPP袋入れ替え\",\"price\":\"0.50\",\"price_type\":0,\"remark\":\"更换OPP袋子\",\"unit\":\"元\",\"sort\":6,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":5,\"name\":\"缝布标\",\"name_translate\":\"織りネーム・洗濯タグ縫い付け\",\"price\":\"1.50\",\"price_type\":0,\"remark\":\"缝布标\",\"unit\":\"元\",\"sort\":8,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":8,\"name\":\"配套\",\"name_translate\":\"商品セット化作業\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"配套\",\"unit\":\"元\",\"sort\":9,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":71,\"name\":\"贴各种标\",\"name_translate\":\"各種ラベル貼付\",\"price\":\"0.30\",\"price_type\":0,\"remark\":\"\",\"unit\":\"元\",\"sort\":9,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":4,\"name\":\"取布标\",\"name_translate\":\"織りネーム・洗濯タグ取り外し\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"取布标\",\"unit\":\"元\",\"sort\":10,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":45,\"name\":\"气泡膜\",\"name_translate\":\"プチプチ梱包\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"气泡膜\",\"unit\":\"元\",\"sort\":11,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":48,\"name\":\"熨烫\",\"name_translate\":\"アイロン掛け\",\"price\":\"5.00\",\"price_type\":0,\"remark\":\"熨烫\",\"unit\":\"元\",\"sort\":11,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":51,\"name\":\"更换定制包装\",\"name_translate\":\"別注折りたたみパッケージへの入替\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"更换成自己定制的包装\",\"unit\":\"元\",\"sort\":13,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":54,\"name\":\"水晶棉包装\",\"name_translate\":\"クッション包装\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"水晶棉包装\",\"unit\":\"元\",\"sort\":14,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":60,\"name\":\"放感谢信/卡片(限一张)\",\"name_translate\":\"チラシ、感謝手紙など印刷物入れ(1種類のみ)\",\"price\":\"0.50\",\"price_type\":0,\"remark\":\"放感谢信/卡片(限一张)\",\"unit\":\"元\",\"sort\":15,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":57,\"name\":\"opp袋子四角包装\",\"name_translate\":\"角折りopp梱包\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"把opp袋子的四角都粘好的包装\",\"unit\":\"元\",\"sort\":16,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":68,\"name\":\"塑封包装\",\"name_translate\":\"シユリンク包装\",\"price\":\"0.80\",\"price_type\":0,\"remark\":\"塑封包装\",\"unit\":\"元\",\"sort\":17,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":72,\"name\":\"真空包装\",\"name_translate\":\"圧縮包装（袋別途費用）\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"\",\"unit\":\"元\",\"sort\":18,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":73,\"name\":\"更换客户自己的定制袋子\",\"name_translate\":\"別注OPP袋入替\",\"price\":\"0.30\",\"price_type\":0,\"remark\":\"客户有自己袋子的话，更换其需要收费0.3元\",\"unit\":\"元\",\"sort\":19,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":76,\"name\":\"别途相谈中文\",\"name_translate\":\"别途相谈日文\",\"price\":\"0.00\",\"price_type\":2,\"remark\":\"\",\"unit\":\"元\",\"sort\":19,\"price_range\":[],\"num\":10,\"checked\":true,\"large_price\":\"2.00\"}],\"warehouse\":[{\"warehouse_type\":1,\"FNSKU\":\"1\",\"ASIN\":\"2\",\"image\":\"https://rakumart-oem.oss-ap-northeast-1.aliyuncs.com/dest/202607/798033/O1CN01nklPMm2KqWS7HYtvi_!!2248919608.jpg\"}]},{\"sku_id\":2167,\"num\":20,\"option\":[{\"id\":10,\"name\":\"单面印刷\",\"name_translate\":\"チラシ/感謝手紙など作成\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"单面印刷\",\"unit\":\"元\",\"sort\":0,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":1,\"name\":\"FBA贴标\",\"name_translate\":\"商品ラベル貼り付け\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"FBA贴标\",\"unit\":\"元\",\"sort\":1,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":6,\"name\":\"挂吊牌\",\"name_translate\":\"下げ札取り付け\",\"price\":\"0.50\",\"price_type\":0,\"remark\":\"挂吊牌\",\"unit\":\"元\",\"sort\":2,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":9,\"name\":\"拍照\",\"name_translate\":\"写真撮影\",\"price\":12,\"price_type\":0,\"remark\":\"拍照\",\"unit\":\"元\",\"sort\":3,\"price_range\":[],\"num\":1,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":7,\"name\":\"取吊牌\",\"name_translate\":\"下げ札取り外し\",\"price\":\"0.00\",\"price_type\":0,\"remark\":\"取吊牌\",\"unit\":\"元\",\"sort\":4,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":3,\"name\":\"更换OPP袋子\",\"name_translate\":\"通常OPP袋入れ替え\",\"price\":\"0.50\",\"price_type\":0,\"remark\":\"更换OPP袋子\",\"unit\":\"元\",\"sort\":6,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":5,\"name\":\"缝布标\",\"name_translate\":\"織りネーム・洗濯タグ縫い付け\",\"price\":\"1.50\",\"price_type\":0,\"remark\":\"缝布标\",\"unit\":\"元\",\"sort\":8,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":8,\"name\":\"配套\",\"name_translate\":\"商品セット化作業\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"配套\",\"unit\":\"元\",\"sort\":9,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":71,\"name\":\"贴各种标\",\"name_translate\":\"各種ラベル貼付\",\"price\":\"0.30\",\"price_type\":0,\"remark\":\"\",\"unit\":\"元\",\"sort\":9,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":4,\"name\":\"取布标\",\"name_translate\":\"織りネーム・洗濯タグ取り外し\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"取布标\",\"unit\":\"元\",\"sort\":10,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":45,\"name\":\"气泡膜\",\"name_translate\":\"プチプチ梱包\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"气泡膜\",\"unit\":\"元\",\"sort\":11,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":48,\"name\":\"熨烫\",\"name_translate\":\"アイロン掛け\",\"price\":\"5.00\",\"price_type\":0,\"remark\":\"熨烫\",\"unit\":\"元\",\"sort\":11,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":51,\"name\":\"更换定制包装\",\"name_translate\":\"別注折りたたみパッケージへの入替\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"更换成自己定制的包装\",\"unit\":\"元\",\"sort\":13,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":54,\"name\":\"水晶棉包装\",\"name_translate\":\"クッション包装\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"水晶棉包装\",\"unit\":\"元\",\"sort\":14,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":60,\"name\":\"放感谢信/卡片(限一张)\",\"name_translate\":\"チラシ、感謝手紙など印刷物入れ(1種類のみ)\",\"price\":\"0.50\",\"price_type\":0,\"remark\":\"放感谢信/卡片(限一张)\",\"unit\":\"元\",\"sort\":15,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":57,\"name\":\"opp袋子四角包装\",\"name_translate\":\"角折りopp梱包\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"把opp袋子的四角都粘好的包装\",\"unit\":\"元\",\"sort\":16,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":68,\"name\":\"塑封包装\",\"name_translate\":\"シユリンク包装\",\"price\":\"0.80\",\"price_type\":0,\"remark\":\"塑封包装\",\"unit\":\"元\",\"sort\":17,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":72,\"name\":\"真空包装\",\"name_translate\":\"圧縮包装（袋別途費用）\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"\",\"unit\":\"元\",\"sort\":18,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":73,\"name\":\"更换客户自己的定制袋子\",\"name_translate\":\"別注OPP袋入替\",\"price\":\"0.30\",\"price_type\":0,\"remark\":\"客户有自己袋子的话，更换其需要收费0.3元\",\"unit\":\"元\",\"sort\":19,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":76,\"name\":\"别途相谈中文\",\"name_translate\":\"别途相谈日文\",\"price\":\"0.00\",\"price_type\":2,\"remark\":\"\",\"unit\":\"元\",\"sort\":19,\"price_range\":[],\"num\":20,\"checked\":true,\"large_price\":\"2.00\"}],\"warehouse\":[{\"warehouse_type\":1,\"FNSKU\":\"1\",\"ASIN\":\"2\",\"image\":\"\"}]},{\"sku_id\":2168,\"num\":30,\"option\":[{\"id\":10,\"name\":\"单面印刷\",\"name_translate\":\"チラシ/感謝手紙など作成\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"单面印刷\",\"unit\":\"元\",\"sort\":0,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":1,\"name\":\"FBA贴标\",\"name_translate\":\"商品ラベル貼り付け\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"FBA贴标\",\"unit\":\"元\",\"sort\":1,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":6,\"name\":\"挂吊牌\",\"name_translate\":\"下げ札取り付け\",\"price\":\"0.50\",\"price_type\":0,\"remark\":\"挂吊牌\",\"unit\":\"元\",\"sort\":2,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":9,\"name\":\"拍照\",\"name_translate\":\"写真撮影\",\"price\":12,\"price_type\":0,\"remark\":\"拍照\",\"unit\":\"元\",\"sort\":3,\"price_range\":[],\"num\":1,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":7,\"name\":\"取吊牌\",\"name_translate\":\"下げ札取り外し\",\"price\":\"0.00\",\"price_type\":0,\"remark\":\"取吊牌\",\"unit\":\"元\",\"sort\":4,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":3,\"name\":\"更换OPP袋子\",\"name_translate\":\"通常OPP袋入れ替え\",\"price\":\"0.50\",\"price_type\":0,\"remark\":\"更换OPP袋子\",\"unit\":\"元\",\"sort\":6,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":5,\"name\":\"缝布标\",\"name_translate\":\"織りネーム・洗濯タグ縫い付け\",\"price\":\"1.50\",\"price_type\":0,\"remark\":\"缝布标\",\"unit\":\"元\",\"sort\":8,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":8,\"name\":\"配套\",\"name_translate\":\"商品セット化作業\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"配套\",\"unit\":\"元\",\"sort\":9,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":71,\"name\":\"贴各种标\",\"name_translate\":\"各種ラベル貼付\",\"price\":\"0.30\",\"price_type\":0,\"remark\":\"\",\"unit\":\"元\",\"sort\":9,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":4,\"name\":\"取布标\",\"name_translate\":\"織りネーム・洗濯タグ取り外し\",\"price\":\"1.00\",\"price_type\":0,\"remark\":\"取布标\",\"unit\":\"元\",\"sort\":10,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":45,\"name\":\"气泡膜\",\"name_translate\":\"プチプチ梱包\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"气泡膜\",\"unit\":\"元\",\"sort\":11,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":48,\"name\":\"熨烫\",\"name_translate\":\"アイロン掛け\",\"price\":\"5.00\",\"price_type\":0,\"remark\":\"熨烫\",\"unit\":\"元\",\"sort\":11,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":51,\"name\":\"更换定制包装\",\"name_translate\":\"別注折りたたみパッケージへの入替\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"更换成自己定制的包装\",\"unit\":\"元\",\"sort\":13,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":54,\"name\":\"水晶棉包装\",\"name_translate\":\"クッション包装\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"水晶棉包装\",\"unit\":\"元\",\"sort\":14,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":60,\"name\":\"放感谢信/卡片(限一张)\",\"name_translate\":\"チラシ、感謝手紙など印刷物入れ(1種類のみ)\",\"price\":\"0.50\",\"price_type\":0,\"remark\":\"放感谢信/卡片(限一张)\",\"unit\":\"元\",\"sort\":15,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":57,\"name\":\"opp袋子四角包装\",\"name_translate\":\"角折りopp梱包\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"把opp袋子的四角都粘好的包装\",\"unit\":\"元\",\"sort\":16,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":68,\"name\":\"塑封包装\",\"name_translate\":\"シユリンク包装\",\"price\":\"0.80\",\"price_type\":0,\"remark\":\"塑封包装\",\"unit\":\"元\",\"sort\":17,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":72,\"name\":\"真空包装\",\"name_translate\":\"圧縮包装（袋別途費用）\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"\",\"unit\":\"元\",\"sort\":18,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":73,\"name\":\"更换客户自己的定制袋子\",\"name_translate\":\"別注OPP袋入替\",\"price\":\"0.30\",\"price_type\":0,\"remark\":\"客户有自己袋子的话，更换其需要收费0.3元\",\"unit\":\"元\",\"sort\":19,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"},{\"id\":76,\"name\":\"别途相谈中文\",\"name_translate\":\"别途相谈日文\",\"price\":\"0.00\",\"price_type\":2,\"remark\":\"\",\"unit\":\"元\",\"sort\":19,\"price_range\":[],\"num\":30,\"checked\":true,\"large_price\":\"2.00\"}],\"warehouse\":[{\"warehouse_type\":4,\"FNSKU\":\"3\",\"ASIN\":\"4\",\"image\":\"\"}]}],\"remark\":\"这是备注\",\"warehouse_city\":1}",
+        "respBody":  null,
+        "started":  "2026-07-03T09:55:15.394185984Z"
+    }
+]
