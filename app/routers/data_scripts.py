@@ -22,6 +22,7 @@ from ..core.utils import (
 from ..data_scripts import (
     fetch_oem_full_quote,
     fetch_oem_goods_class_list,
+    fetch_oem_option_list,
     preview_order_quote_options,
     run_balance_payment_script,
     run_balance_recharge_script,
@@ -497,6 +498,30 @@ def get_oem_goods_class_list(
         except (json.JSONDecodeError, TypeError):
             pass
     data = fetch_oem_goods_class_list(variables)
+    return {"success": True, "data": data}
+
+
+@router.get("/oem/option-list")
+def get_oem_option_list(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """获取 OEM 大货单可选 option 列表（/common/common/optionList）。"""
+    project = find_oem_data_script_project(db)
+    if not project:
+        return {"success": False, "data": [], "message": "未找到 OEM 项目"}
+    env = db.query(Env).filter(Env.project_id == project.id).order_by(Env.id.asc()).first()
+    if not env:
+        return {"success": False, "data": [], "message": "未找到 OEM 环境"}
+    variables: Dict[str, Any] = {"base_url": env.base_url}
+    if env.global_vars:
+        try:
+            global_vars = json.loads(env.global_vars)
+            if isinstance(global_vars, dict):
+                variables.update(global_vars)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    data = fetch_oem_option_list(variables)
     return {"success": True, "data": data}
 
 

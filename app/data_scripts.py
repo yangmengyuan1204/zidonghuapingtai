@@ -8972,6 +8972,16 @@ def fetch_oem_goods_class_list(variables: Dict[str, Any] | None = None) -> list:
     return flat
 
 
+def fetch_oem_option_list(variables: Dict[str, Any] | None = None) -> list:
+    """获取 OEM 大货单可选 option 列表（POST /common/common/optionList，空 body）。"""
+    variables = dict(variables or {})
+    timeout = _as_int(variables.get("timeout"), 30)
+    base_url = (variables.get("base_url") or OEM_DEFAULT_BASE_URL).rstrip("/")
+    session = requests.Session()
+    client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
+    return _oem_query_option_list(session, base_url, client_token, timeout, variables)
+
+
 def fetch_oem_full_quote(order_sn: str, variables: Dict[str, Any] | None = None) -> Dict[str, Any]:
     """根据询价单号查询 OEM 完整报价详情。
 

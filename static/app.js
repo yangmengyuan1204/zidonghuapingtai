@@ -1955,6 +1955,11 @@ function openOemBulkOrderRunForm(flow) {
             </div>
           </div>
         </div>
+        <div id="ffInfoArea" style="margin-top:12px;display:none"></div>
+        <div id="ffOptionArea" style="margin-top:12px;display:none">
+          <div class="panel-title" style="margin-bottom:8px"><h4>全局附加服务（默认全选，可单 SKU 自定义覆盖）</h4></div>
+          <div id="ffOptionList" style="display:flex;flex-direction:column;gap:4px"></div>
+        </div>
         <div id="ffSkuArea" style="margin-top:12px">
           <div class="empty">输入询价单号后点击「查询报价」获取商品列表</div>
         </div>
@@ -1962,35 +1967,17 @@ function openOemBulkOrderRunForm(flow) {
           <div class="panel-title" style="margin-bottom:8px"><h4>大货单参数</h4></div>
           <div class="form-grid">
             <div class="field">
-              <label>仓库标识</label>
-              <input name="warehouse_city" value="${escapeHtml(values.warehouse_city || '2')}" placeholder="如: 2" />
+              <label>仓库城市</label>
+              <select name="warehouse_city">
+                <option value="2" ${values.warehouse_city === "2" ? "selected" : ""}>广州仓</option>
+                <option value="1" ${values.warehouse_city === "1" ? "selected" : ""}>义乌仓</option>
+              </select>
             </div>
             <div class="field">
               <label>备注</label>
               <input name="remark" value="${escapeHtml(values.remark || '')}" placeholder="选填" />
             </div>
           </div>
-          <div class="form-grid">
-            <div class="field">
-              <label>附加服务</label>
-              <input name="additional_service" value="${escapeHtml(values.additional_service || '')}" placeholder="选填" />
-            </div>
-          </div>
-          <details class="functional-requirement">
-            <summary>图片上传</summary>
-            <div class="form-grid">
-              <div class="field">
-                <label>大货单图片</label>
-                <div class="upload-field">
-                  <input type="file" id="bulkImageFileInput" accept="image/*" multiple style="display:none" />
-                  <input type="hidden" name="bulk_images" id="bulkImages" value="" />
-                  <button class="btn secondary" type="button" id="bulkImageSelectBtn">选择图片(可多选)</button>
-                </div>
-                <div id="bulkImagePreview" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:8px"></div>
-                <div style="color:var(--muted);font-size:12px;margin-top:4px">支持多张图片，选择后自动上传</div>
-              </div>
-            </div>
-          </details>
           ${renderFormField({ name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false }, false)}
         </div>
       </div>
@@ -2005,48 +1992,20 @@ function openOemBulkOrderRunForm(flow) {
   const form = document.querySelector("#oemBulkOrderForm");
   const orderSnInput = document.querySelector("#ffOrderSn");
   const fetchBtn = document.querySelector("#ffFetchBtn");
+  const infoArea = document.querySelector("#ffInfoArea");
+  const optionArea = document.querySelector("#ffOptionArea");
+  const optionListEl = document.querySelector("#ffOptionList");
   const skuArea = document.querySelector("#ffSkuArea");
   const paramArea = document.querySelector("#ffParamArea");
   const submitBtn = document.querySelector("#ffSubmitBtn");
   let skuItems = [];
   let fetchedDetailId = "";
+  let globalOptionTemplate = []; // 从 API 拉取的 option 模板
+  const skuCustomOptions = {};   // { skuIndex: [option, option, ...] } 单 SKU 覆盖
 
   document.querySelector("#closeModal").addEventListener("click", async () => {
     modalEl.close();
     if (state.view === "dataScripts" && !state.factory.editing) { await renderDataScripts(); }
-  });
-
-  // 多图片上传
-  document.querySelector("#bulkImageSelectBtn").addEventListener("click", () => {
-    document.querySelector("#bulkImageFileInput").click();
-  });
-  document.querySelector("#bulkImageFileInput").addEventListener("change", async (event) => {
-    const files = event.target.files;
-    if (!files.length) return;
-    const progressEl = document.querySelector("#bulkImagePreview");
-    const existing = (document.querySelector("#bulkImages").value || "").split(",").filter(Boolean);
-    const btn = document.querySelector("#bulkImageSelectBtn");
-    btn.disabled = true;
-    btn.textContent = "上传中...";
-    const token = localStorage.getItem("token");
-    for (const file of files) {
-      const fd = new FormData();
-      fd.append("file", file);
-      try {
-        const resp = await fetch("/api/oem/upload-image", { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.detail || "上传失败");
-        const url = data.url || "";
-        if (url) {
-          existing.push(url);
-          progressEl.innerHTML += `<img src="${escapeHtml(url)}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--border)" />`;
-        }
-      } catch (e) { showToast(`上传失败: ${e.message}`); }
-    }
-    document.querySelector("#bulkImages").value = existing.join(",");
-    btn.disabled = false;
-    btn.textContent = "选择图片(可多选)";
-    showToast(`已上传 ${files.length} 张图片`);
   });
 
   fetchBtn.addEventListener("click", async () => {
@@ -2064,34 +2023,58 @@ function openOemBulkOrderRunForm(flow) {
       const first = records[0] || {};
       const rawList = first.sku_detail || first.sku_list || first.skuInfo || first.details || first.items || [];
       if (!rawList.length) {
-        skuArea.innerHTML = `<div class="alert warn">该询价单暂无 SKU 明细数据</div>`;
+        skuArea.innerHTML = `<div class="alert warn">该询价单暂无 SKU 数据</div>`;
         return;
       }
       fetchedDetailId = first.id || data.detail_id || "";
       const qd = first.quote_detail || data.quote_detail || {};
       const lm = {};
       for (const s of (qd.large_info?.skus || [])) { if (s.sku) lm[s.sku] = s; }
+      const OEM_INQUIRY_STATUS_MAP = { 0: "待翻译", 1: "待审核", 2: "待询价", 3: "询价中", 4: "待报价", 5: "报价中", 6: "已完成", 7: "已取消" };
+      const statusLabel = (v) => { const n = Number(v); return (!isNaN(n) && OEM_INQUIRY_STATUS_MAP[n]) ? `${OEM_INQUIRY_STATUS_MAP[n]}(${n})` : (v != null ? String(v) : "-"); };
+      const infoFields = { goods_name: "商品名称", status: "状态", create_time: "创建时间", factory_url: "工厂链接" };
+      const parts = [];
+      for (const [key, label] of Object.entries(infoFields)) {
+        const v = first[key] || data[key];
+        if (v != null && v !== "") {
+          const display = key === "status" ? statusLabel(v) : escapeHtml(String(v));
+          parts.push(`<span style="word-break:break-all;overflow-wrap:anywhere">${label}: <strong>${display}</strong></span>`);
+        }
+      }
+      infoArea.innerHTML = parts.length ? `<div style="margin-bottom:8px;font-size:13px;display:flex;flex-wrap:wrap;gap:4px 16px;word-break:break-all;overflow-wrap:anywhere">${parts.join("")}</div>` : "";
+      infoArea.style.display = "";
+
       skuItems = rawList.map((item, idx) => {
         const sn = item.sku || "";
         const ls = lm[sn] || {};
+        const num = ls.large_min_quantity || item.large_min_quantity || item.moq || 1;
         return {
           _index: idx, _checked: true,
           sku_id: item.goods_sku_id || item.sku_id || item.skuId || item.id || `SKU-${idx+1}`,
           sku_name: sn,
-          num: ls.large_min_quantity || item.large_min_quantity || item.moq || 1,
-          bulk_moq: ls.large_min_quantity || item.large_min_quantity || item.moq || "-",
-          bulk_price: ls.large_price || item.large_price || item.bulk_price || "-",
-          bulk_other_fee: ls.large_other_fee || item.bulk_other_fee || item.other_fee || "-",
-          bulk_deposit_ratio: ls.deposit_ratio || item.deposit_ratio || item.deposit || "-",
-          bulk_shipping: ls.large_shipping || item.bulk_shipping || item.bulk_freight || "-",
-          bulk_lead_time: ls.large_lead_time || item.bulk_lead_time || item.delivery_time || "-",
+          num: num,
+          _customOption: false,
+          warehouse_type: 1,
+          fnsku: "",
+          asin: "",
+          image: "",
         };
       });
-      renderSkuTable(first, data);
+
+      // 拉取全局 option 模板
+      try {
+        const optResp = await api(`/api/oem/option-list`);
+        globalOptionTemplate = Array.isArray(optResp.data) ? optResp.data : [];
+      } catch (e) {
+        globalOptionTemplate = [];
+      }
+      renderGlobalOptions();
+
       orderSnInput.readOnly = true;
+      renderSkuTable(first, data);
       paramArea.style.display = "";
       submitBtn.disabled = false;
-      showToast(`已获取 ${skuItems.length} 个 SKU`);
+      showToast(`已获取 ${skuItems.length} 个 SKU + ${globalOptionTemplate.length} 个附加服务`);
     } catch (error) {
       skuArea.innerHTML = `<div class="alert error">查询失败：${escapeHtml(error.message)}</div>`;
     } finally {
@@ -2100,37 +2083,220 @@ function openOemBulkOrderRunForm(flow) {
     }
   });
 
-  function renderSkuTable(first, data) {
-    const rows = skuItems.map((it) => `<tr>
-      <td style="padding:4px 6px"><input type="checkbox" data-ff-sku="${it._index}" ${it._checked?"checked":""} /></td>
-      <td style="padding:4px 6px;font-weight:600">${escapeHtml(String(it.sku_id))}</td>
-      <td style="padding:4px 6px">${escapeHtml(it.sku_name)}</td>
-      <td style="padding:4px 6px"><input name="ff_num_${it._index}" type="number" min="1" value="${it.num}" style="width:70px;padding:2px 4px;border:1px solid var(--border);border-radius:4px" /></td>
-      <td style="padding:4px 6px;text-align:center">${it.bulk_moq || "-"}</td>
-      <td style="padding:4px 6px;text-align:right">${it.bulk_price || "-"}</td>
-      <td style="padding:4px 6px;text-align:right">${it.bulk_other_fee || "-"}</td>
-      <td style="padding:4px 6px;text-align:center">${it.bulk_deposit_ratio || "-"}</td>
-      <td style="padding:4px 6px;text-align:right">${it.bulk_shipping || "-"}</td>
-      <td style="padding:4px 6px;text-align:center">${it.bulk_lead_time || "-"}</td>
-    </tr>`).join("");
-
-    let infoHtml = "";
-    const OEM_INQUIRY_STATUS_MAP = { 0: "待翻译", 1: "待审核", 2: "待询价", 3: "询价中", 4: "待报价", 5: "报价中", 6: "已完成", 7: "已取消" };
-    const oemInquiryStatusLabel = (v) => { const n = Number(v); if (!isNaN(n) && OEM_INQUIRY_STATUS_MAP[n]) return `${OEM_INQUIRY_STATUS_MAP[n]}(${n})`; return v != null ? String(v) : "-"; };
-    const infoFields = { goods_name: "商品名称", goodsName: "商品名称", status: "状态", create_time: "创建时间", createdAt: "创建时间", factory_url: "工厂链接", factoryUrl: "工厂链接" };
-    const parts = [];
-    for (const [key, label] of Object.entries(infoFields)) {
-      const v = first[key] || data[key];
-      if (v != null && v !== "") {
-        const display = key === "status" ? oemInquiryStatusLabel(v) : escapeHtml(String(v));
-        parts.push(`<span style="word-break:break-all;overflow-wrap:anywhere">${label}: <strong>${display}</strong></span>`);
-      }
+  function renderGlobalOptions() {
+    if (!globalOptionTemplate.length) {
+      optionArea.style.display = "none";
+      return;
     }
-    if (parts.length) infoHtml = `<div style="margin-bottom:8px;font-size:13px;display:flex;flex-wrap:wrap;gap:4px 16px;word-break:break-all;overflow-wrap:anywhere">${parts.join("")}</div>`;
+    optionArea.style.display = "";
+    optionListEl.innerHTML = globalOptionTemplate.map((opt, i) => {
+      if (!typeof opt === "object" || opt === null) return "";
+      const oid = opt.id || i;
+      const name = opt.name || opt.label || "";
+      const price = opt.large_price || opt.price || "0.00";
+      const remark = opt.remark ? ` (${opt.remark})` : "";
+      return `<label class="check-field" style="display:flex;align-items:center;gap:6px;font-size:13px">
+        <input type="checkbox" class="global-opt" data-opt-idx="${i}" checked />
+        <span>${escapeHtml(name)}${escapeHtml(remark)} — <strong>${escapeHtml(String(price))}</strong> 元</span>
+      </label>`;
+    }).join("");
+  }
 
-    skuArea.innerHTML = `${infoHtml}<details class="functional-requirement" open><summary>SKU 明细（勾选=下大货单）</summary><div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg-muted)"><th style="padding:4px 6px">选择</th><th style="padding:4px 6px">SKU ID</th><th style="padding:4px 6px">SKU</th><th style="padding:4px 6px">购买数量</th><th style="padding:4px 6px">起订量</th><th style="padding:4px 6px">大货单价</th><th style="padding:4px 6px">大货其他费</th><th style="padding:4px 6px">定金比例</th><th style="padding:4px 6px">大货运费</th><th style="padding:4px 6px">大货货期</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
-    document.querySelectorAll("[data-ff-sku]").forEach((cb) => {
+  function getSelectedGlobalOptionIds() {
+    const ids = new Set();
+    optionListEl.querySelectorAll(".global-opt:checked").forEach((cb) => {
+      const idx = parseInt(cb.dataset.optIdx, 10);
+      const opt = globalOptionTemplate[idx];
+      if (opt && opt.id != null) ids.add(opt.id);
+    });
+    return ids;
+  }
+
+  function renderSkuTable(first, data) {
+    const OEM_INQUIRY_STATUS_MAP = { 0: "待翻译", 1: "待审核", 2: "待询价", 3: "询价中", 4: "待报价", 5: "报价中", 6: "已完成", 7: "已取消" };
+    const statusLabel = (v) => { const n = Number(v); return (!isNaN(n) && OEM_INQUIRY_STATUS_MAP[n]) ? `${OEM_INQUIRY_STATUS_MAP[n]}(${n})` : (v != null ? String(v) : "-"); };
+    const rows = skuItems.map((it) => {
+      const qd = (first.quote_detail || data.quote_detail || {});
+      const ls = (qd.large_info?.skus || []).find((s) => s.sku === it.sku_name) || {};
+      const bulkPrice = ls.large_price || "-";
+      const bulkOtherFee = ls.large_other_fee || "-";
+      const bulkDeposit = ls.deposit_ratio || "-";
+      const bulkShipping = ls.large_shipping || "-";
+      const bulkLeadTime = ls.large_lead_time || "-";
+      const trClass = it._customOption ? ' style="background:hsl(45 80% 95%)"' : '';
+      return `<tr data-sku-idx="${it._index}"${trClass}>
+        <td style="padding:4px 6px"><input type="checkbox" data-ff-sku="${it._index}" ${it._checked?"checked":""} /></td>
+        <td style="padding:4px 6px;font-weight:600">${escapeHtml(String(it.sku_id))}</td>
+        <td style="padding:4px 6px;font-size:12px;word-break:break-all">${escapeHtml(it.sku_name)}</td>
+        <td style="padding:4px 6px"><input name="ff_num_${it._index}" type="number" min="1" value="${it.num}" style="width:60px" class="sku-num-input" /></td>
+        <td style="padding:4px 6px;text-align:center">${escapeHtml(String(ls.large_min_quantity || it.num))}</td>
+        <td style="padding:4px 6px;text-align:right">${escapeHtml(String(bulkPrice))}</td>
+        <td style="padding:4px 6px;text-align:right">${escapeHtml(String(bulkOtherFee))}</td>
+        <td style="padding:4px 6px;text-align:center">${escapeHtml(String(bulkDeposit))}</td>
+        <td style="padding:4px 6px;text-align:right">${escapeHtml(String(bulkShipping))}</td>
+        <td style="padding:4px 6px;text-align:center">${escapeHtml(String(bulkLeadTime))}</td>
+        <td style="padding:4px 6px">
+          <select class="sku-wh-type" data-sku-idx="${it._index}" style="width:70px">
+            <option value="1" ${it.warehouse_type === 1 ? "selected" : ""}>FBA</option>
+            <option value="4" ${it.warehouse_type === 4 ? "selected" : ""}>其他</option>
+          </select>
+        </td>
+        <td style="padding:4px 6px"><input class="sku-fnsku" data-sku-idx="${it._index}" value="${escapeHtml(it.fnsku)}" placeholder="FNSKU" style="width:90px" /></td>
+        <td style="padding:4px 6px"><input class="sku-asin" data-sku-idx="${it._index}" value="${escapeHtml(it.asin)}" placeholder="ASIN" style="width:90px" /></td>
+        <td style="padding:4px 6px">
+          <input type="file" class="sku-img-file" data-sku-idx="${it._index}" accept="image/*" style="display:none" />
+          <button type="button" class="btn secondary sku-img-btn" data-sku-idx="${it._index}" style="font-size:11px;padding:2px 6px">上传图片</button>
+          <div class="sku-img-preview" data-sku-idx="${it._index}" style="margin-top:2px;min-height:20px"></div>
+        </td>
+        <td style="padding:4px 6px">
+          <a href="#" class="sku-custom-opt" data-sku-idx="${it._index}" style="font-size:12px;color:var(--primary)">自定义 option</a>
+        </td>
+        <td class="sku-custom-area" data-sku-idx="${it._index}" style="padding:6px;display:none" colspan="15"></td>
+      </tr>`;
+    }).join("");
+
+    skuArea.innerHTML = `<details class="functional-requirement" open><summary>SKU 明细（勾选=下大货单）</summary>
+      <div style="overflow-x:auto;margin-top:8px">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--bg-muted)">
+            <th style="padding:4px 6px">选择</th><th style="padding:4px 6px">SKU ID</th><th style="padding:4px 6px">SKU</th>
+            <th style="padding:4px 6px">购买数量</th><th style="padding:4px 6px">起订量</th><th style="padding:4px 6px">大货单价</th>
+            <th style="padding:4px 6px">其他费</th><th style="padding:4px 6px">定金比例</th><th style="padding:4px 6px">运费</th>
+            <th style="padding:4px 6px">货期</th><th style="padding:4px 6px">仓库类型</th><th style="padding:4px 6px">FNSKU</th>
+            <th style="padding:4px 6px">ASIN</th><th style="padding:4px 6px">标签图片</th><th style="padding:4px 6px">操作</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </details>`;
+
+    // Bind events
+    skuArea.querySelectorAll("[data-ff-sku]").forEach((cb) => {
       cb.addEventListener("change", () => { const idx = parseInt(cb.dataset.ffSku, 10); const item = skuItems.find((i) => i._index === idx); if (item) item._checked = cb.checked; });
+    });
+    skuArea.querySelectorAll(".sku-wh-type").forEach((sel) => {
+      sel.addEventListener("change", () => { const idx = parseInt(sel.dataset.skuIdx, 10); const item = skuItems.find((i) => i._index === idx); if (item) item.warehouse_type = parseInt(sel.value, 10); });
+    });
+    skuArea.querySelectorAll(".sku-fnsku").forEach((inp) => {
+      inp.addEventListener("input", () => { const idx = parseInt(inp.dataset.skuIdx, 10); const item = skuItems.find((i) => i._index === idx); if (item) item.fnsku = inp.value.trim(); });
+    });
+    skuArea.querySelectorAll(".sku-asin").forEach((inp) => {
+      inp.addEventListener("input", () => { const idx = parseInt(inp.dataset.skuIdx, 10); const item = skuItems.find((i) => i._index === idx); if (item) item.asin = inp.value.trim(); });
+    });
+    skuArea.querySelectorAll(".sku-img-btn").forEach((btn) => {
+      btn.addEventListener("click", () => { skuArea.querySelector(`.sku-img-file[data-sku-idx="${btn.dataset.skuIdx}"]`).click(); });
+    });
+    skuArea.querySelectorAll(".sku-img-file").forEach((fileInput) => {
+      fileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        const idx = parseInt(fileInput.dataset.skuIdx, 10);
+        const btn = skuArea.querySelector(`.sku-img-btn[data-sku-idx="${idx}"]`);
+        const preview = skuArea.querySelector(`.sku-img-preview[data-sku-idx="${idx}"]`);
+        btn.disabled = true; btn.textContent = "上传中...";
+        const token = localStorage.getItem("token");
+        const fd = new FormData(); fd.append("file", file);
+        try {
+          const resp = await fetch("/api/oem/upload-image", { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd });
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data.detail || "上传失败");
+          const item = skuItems.find((i) => i._index === idx);
+          if (item) item.image = data.url || "";
+          preview.innerHTML = `<img src="${escapeHtml(item.image)}" style="width:60px;height:60px;object-fit:cover;border-radius:4px" />`;
+          showToast("图片上传成功");
+        } catch (err) { showToast(`上传失败: ${err.message}`); }
+        btn.disabled = false; btn.textContent = "上传图片";
+      });
+    });
+    skuArea.querySelectorAll(".sku-custom-opt").forEach((link) => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        const idx = parseInt(link.dataset.skuIdx, 10);
+        const area = skuArea.querySelector(`.sku-custom-area[data-sku-idx="${idx}"]`);
+        const isVisible = area.style.display !== "none";
+        area.style.display = isVisible ? "none" : "";
+        if (!isVisible) {
+          // Render per-SKU option customization
+          const tr = skuArea.querySelector(`tr[data-sku-idx="${idx}"]`);
+          tr.style.background = "hsl(45 80% 95%)";
+          skuItems.find((i) => i._index === idx)._customOption = true;
+          const existing = skuCustomOptions[idx] || globalOptionTemplate;
+          area.innerHTML = `<div style="padding:8px;background:hsl(45 80% 97%);border-radius:4px">
+            <div style="font-size:12px;font-weight:600;margin-bottom:6px">自定义 option（覆盖全局）</div>
+            <div style="display:flex;flex-direction:column;gap:3px">${globalOptionTemplate.map((opt, oi) => {
+              if (!opt || typeof opt !== "object") return "";
+              const oid = opt.id != null ? opt.id : "";
+              const name = opt.name || opt.label || "";
+              const price = opt.large_price || opt.price || "0.00";
+              const isChecked = existing.some((o) => o.id === opt.id && o.checked !== false);
+              return `<label class="check-field" style="display:flex;align-items:center;gap:6px;font-size:12px">
+                <input type="checkbox" class="custom-opt-cb" data-sku-idx="${idx}" data-opt-idx="${oi}" ${isChecked ? "checked" : ""} />
+                <span>${escapeHtml(name)} — <strong>${escapeHtml(String(price))}</strong> 元</span>
+              </label>`;
+            }).join("")}</div>
+          </div>`;
+          area.querySelectorAll(".custom-opt-cb").forEach((cb) => {
+            cb.addEventListener("change", () => {
+              // Save custom option state
+              const skuIdx = parseInt(cb.dataset.skuIdx, 10);
+              const optIdx = parseInt(cb.dataset.optIdx, 10);
+              const opt = globalOptionTemplate[optIdx];
+              if (!opt) return;
+              if (!skuCustomOptions[skuIdx]) skuCustomOptions[skuIdx] = globalOptionTemplate.map((o) => ({ ...o }));
+              const existing = skuCustomOptions[skuIdx].find((o) => o.id === opt.id);
+              if (existing) existing.checked = cb.checked;
+            });
+          });
+        } else {
+          const tr = skuArea.querySelector(`tr[data-sku-idx="${idx}"]`);
+          tr.style.background = "";
+          const item = skuItems.find((i) => i._index === idx);
+          if (item) item._customOption = false;
+        }
+      });
+    });
+  }
+
+  function buildSkuListBody() {
+    const checked = skuItems.filter((i) => i._checked);
+    const globalSelected = getSelectedGlobalOptionIds();
+    return checked.map((it) => {
+      const numInput = skuArea.querySelector(`[name="ff_num_${it._index}"]`);
+      const num = numInput ? (parseInt(numInput.value, 10) || 1) : it.num;
+      let skuOpts;
+      if (skuCustomOptions[it._index]) {
+        skuOpts = skuCustomOptions[it._index].filter((o) => o.checked !== false);
+      } else {
+        skuOpts = globalOptionTemplate.filter((o) => globalSelected.has(o.id));
+      }
+      const options = skuOpts.map((opt) => {
+        if (!opt || typeof opt !== "object") return null;
+        const isPhoto = opt.id === 9 || String(opt.name || "").includes("拍照");
+        return {
+          id: opt.id,
+          name: opt.name || "",
+          name_translate: opt.name_translate || "",
+          price: String(opt.price || "0.00"),
+          price_type: opt.price_type != null ? opt.price_type : 0,
+          remark: opt.remark || "",
+          unit: opt.unit || "元",
+          sort: opt.sort != null ? opt.sort : 0,
+          price_range: Array.isArray(opt.price_range) ? opt.price_range : [],
+          num: isPhoto ? 1 : num,
+          checked: true,
+          large_price: String(opt.large_price || opt.price || "0.00"),
+        };
+      }).filter(Boolean);
+      return {
+        sku_id: parseInt(String(it.sku_id), 10) || it.sku_id,
+        num: num,
+        option: options,
+        warehouse: [{
+          warehouse_type: it.warehouse_type || 1,
+          FNSKU: it.fnsku || "",
+          ASIN: it.asin || "",
+          image: it.image || "",
+        }],
+      };
     });
   }
 
@@ -2138,23 +2304,17 @@ function openOemBulkOrderRunForm(flow) {
     event.preventDefault();
     const orderSn = orderSnInput.value.trim();
     if (!orderSn) { showToast("请先查询询价单"); return; }
-    const checked = skuItems.filter((i) => i._checked);
-    if (!checked.length) { showToast("请至少勾选一个 SKU"); return; }
-    const skuList = checked.map((it) => {
-      const numEl = form.querySelector(`[name="ff_num_${it._index}"]`);
-      return { sku_id: parseInt(String(it.sku_id), 10) || it.sku_id, num: numEl ? parseInt(numEl.value, 10) || 1 : it.num, option: [] };
-    });
-    const data = readForm(form);
-    const imageUrls = (document.querySelector("#bulkImages").value || "").split(",").filter(Boolean);
+    const skuList = buildSkuListBody();
+    if (!skuList.length) { showToast("请至少勾选一个 SKU"); return; }
+    const formData = Object.fromEntries(new FormData(form));
     const merged = mergeParamValues(variables, formFields, {
-      ...data,
+      ...formData,
       sku_list: JSON.stringify(skuList),
-      bulk_images: imageUrls.length ? imageUrls.join("\n") : undefined,
     });
     merged.order_sn = orderSn;
     if (fetchedDetailId) merged.inquiry_detail_id = fetchedDetailId;
     const runtimeVariables = sanitizeScriptVariables(flow.scriptType, merged, flow);
-    if (data.__save_defaults) saveFlowVariables(flow, runtimeVariables);
+    if (formData.__save_defaults === "on") saveFlowVariables(flow, runtimeVariables);
     showToast("正在执行OEM大货单下单...");
     await runSavedFlow(flow, runtimeVariables);
   });
