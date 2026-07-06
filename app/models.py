@@ -1,4 +1,7 @@
-from sqlalchemy import Column, DateTime, Float, Index, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 from .database import Base
 
@@ -374,4 +377,34 @@ class LocatorHealHistory(Base):
     success_count = Column(Integer, nullable=False, default=0)
     last_used = Column(DateTime, nullable=True)
     create_time = Column(DateTime, nullable=False)
+
+
+class RecordedFlow(Base):
+    """录制流程：浏览器操作录制的接口序列（如样品单支付→后台处理）。"""
+    __tablename__ = "recorded_flow"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+
+    steps = relationship("RecordedFlowStep", back_populates="flow", cascade="all, delete-orphan")
+
+
+class RecordedFlowStep(Base):
+    """录制流程步骤：单条接口请求信息，body 中动态值以 {{var}} 占位。"""
+    __tablename__ = "recorded_flow_step"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    flow_id = Column(Integer, ForeignKey("recorded_flow.id", ondelete="CASCADE"), nullable=False, index=True)
+    step_index = Column(Integer, nullable=False)
+    method = Column(String(10), nullable=False)
+    path = Column(String(500), nullable=False)
+    headers_json = Column(Text, nullable=True)
+    body_template = Column(Text, nullable=True)
+    field_schema_json = Column(Text, nullable=True)
+    response_extraction_json = Column(Text, nullable=True)
+
+    flow = relationship("RecordedFlow", back_populates="steps")
 
