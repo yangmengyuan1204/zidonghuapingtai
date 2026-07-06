@@ -9977,10 +9977,12 @@ def _oem_create_new_order(
 
 
 def _oem_build_option_for_sku(
-    option_template: list, num: int,
+    option_template: list, num: int, large_price: str = "",
 ) -> list:
     """根据 option 模板和购买数量，生成该 SKU 的 option 数组。
     全部 option 默认 checked=true；num 跟随 SKU 数量（拍照类 price_type=0 固定 1）。
+    large_price 为 SKU 级别大货单价（来自 inquiryDetail.sku_detail.large_price），
+    OEM 后端要求 option.large_price 必须为该 SKU 的大货单价，而非 option 自身的 price。
     """
     result = []
     for opt in option_template:
@@ -9993,8 +9995,10 @@ def _oem_build_option_for_sku(
         opt_num = 1 if (opt_id == 9 or "拍照" in opt_name) else num
         item["num"] = opt_num
         item["checked"] = True
-        # 确保 large_price 字段存在
-        if "large_price" not in item:
+        # large_price 优先用传入的 SKU 级别大货单价，否则回退到 option 自身 price
+        if large_price:
+            item["large_price"] = large_price
+        elif "large_price" not in item:
             item["large_price"] = item.get("price") or "0.00"
         # price_range 默认空数组
         if "price_range" not in item:
@@ -10088,6 +10092,22 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
               {"detail_id": detail_id, "factory_count": len(detail_list),
                "has_large": bool(large_info), "goods_name": goods_name})
 
+        # 从当前 detail_id 对应的 record 中提取每个 SKU 的大货单价
+        # OEM 后端要求 option.large_price 必须为该 SKU 的大货单价（来自 sku_detail.large_price），
+        # 而非 option 自身的 price，否则创建大货单会返回 code=10000
+        sku_large_price_map: Dict[str, str] = {}
+        for rec in detail_list:
+            if not isinstance(rec, dict) or str(rec.get("id")) != str(detail_id):
+                continue
+            for sd in (rec.get("sku_detail") or []):
+                if not isinstance(sd, dict):
+                    continue
+                gsid = sd.get("goods_sku_id") or sd.get("sku_id")
+                lp = sd.get("large_price")
+                if gsid is not None and lp is not None:
+                    sku_large_price_map[str(gsid)] = str(lp)
+            break
+
         # ── 阶段 3：查询 option 列表 ──
         option_list = _oem_query_option_list(session, base_url, client_token, timeout, variables)
         _step(log, "query_option_list", {"detail_id": detail_id},
@@ -10105,6 +10125,10 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
                 {"reason": f"询价单 {order_sn}（detail_id={detail_id}）无大货报价信息，"
                            f"可能尚未完成报价或报价已过期。large_info 为空，无法创建大货单。"}
             )
+
+        # orderPreviews 返回的 order_sn 是系统预分配的大货单号
+        # newOrder 必须用该预分配大货单号，而非询价单号，否则 OEM 后端返回 code=10000
+        large_order_sn = str(preview_data.get("order_sn") or order_sn)
 
         # ── 阶段 5：解析 SKU 列表 + 上传图片 + editSkuImage ──
         sku_list_raw = variables.get("sku_list")
@@ -10139,12 +10163,19 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
             except (TypeError, ValueError):
                 sku_id_int = sku_id
             num = _as_int(item.get("num"), 1)
+            # 获取该 SKU 的大货单价（来自 sku_detail.large_price）
+            sku_large_price = sku_large_price_map.get(str(sku_id_int)) or ""
             # option：优先用前端传入的，否则用模板生成
             opt_input = item.get("option")
             if isinstance(opt_input, list) and opt_input:
                 options = opt_input
+                # 用 SKU 级别大货单价覆盖每个 option 的 large_price
+                if sku_large_price:
+                    for opt in options:
+                        if isinstance(opt, dict):
+                            opt["large_price"] = sku_large_price
             else:
-                options = _oem_build_option_for_sku(option_list, num)
+                options = _oem_build_option_for_sku(option_list, num, large_price=sku_large_price)
             # warehouse：从变量+图片列表构造
             warehouses = _oem_build_warehouse_for_sku(idx, variables, bulk_images)
             # 若该 SKU 有对应图片，调用 editSkuImage
@@ -10174,7 +10205,7 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
         remark = str(variables.get("remark") or "").strip()
         warehouse_city = _as_int(variables.get("warehouse_city"), 1)
         new_order_body = {
-            "order_sn": order_sn,
+            "order_sn": large_order_sn,
             "inquiry_detail_id": detail_id,
             "type": 2,
             "sku_list": sku_list_body,
@@ -10190,9 +10221,11 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
         new_order_sn = ""
         if isinstance(order_result, dict):
             new_order_sn = str(order_result.get("order_sn") or order_result.get("large_order_sn") or order_result.get("sn") or "")
+        elif isinstance(order_result, str):
+            new_order_sn = order_result
 
         _step(log, "create_bulk_order",
-              {"order_sn": order_sn, "detail_id": detail_id, "sku_count": len(sku_list_body)},
+              {"order_sn": large_order_sn, "inquiry_sn": order_sn, "detail_id": detail_id, "sku_count": len(sku_list_body)},
               {"url": "/api/newOrder", "method": "POST", "type": 2},
               {"new_order_sn": new_order_sn, "sku_count": len(sku_list_body), "resp_keys": list(order_result.keys()) if isinstance(order_result, dict) else []})
 
