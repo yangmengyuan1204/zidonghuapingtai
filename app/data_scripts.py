@@ -8505,12 +8505,15 @@ def _oem_client_login(session: requests.Session, base_url: str, variables: Dict[
     if not token:
         raise RuntimeError(f"OEM 前台登录失败: code={payload.get('code')} msg={payload.get('msg')}")
 
-    # 调 /api/userInfo 获取账号 id（样品单号需要）
+    # 调 /api/userInfo 获取账号 id（样品单号需要，必须带 token）
     user_id = ""
     try:
-        info_payload = _oem_post_json(session, base_url, "/api/userInfo", {}, timeout, is_admin=False, variables=variables)
+        info_payload = _oem_post_json(
+            session, base_url, "/api/userInfo", {}, timeout,
+            token=token, is_admin=False, variables=variables,
+        )
         info_data = info_payload.get("data") if isinstance(info_payload.get("data"), dict) else {}
-        user_id = str(info_data.get("id") or "")
+        user_id = str(info_data.get("id") or info_data.get("user_id") or info_data.get("uid") or "")
     except Exception:
         pass
     return str(token), user_id
@@ -10077,12 +10080,14 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
 
         # ── 阶段 1：前台登录 ──
         client_token, user_id = _oem_client_login(session, base_url, variables, timeout)
-        _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
-              {"url": "/api/login + /api/userInfo", "method": "POST"},
-              {"user_id": user_id, "has_token": bool(client_token)})
 
         # 按 OEM 前端规则生成大货单号（D{timestamp}-{user_id}-{type}）
         generated_large_order_sn = _oem_generate_large_order_sn(order_sn, user_id)
+
+        _step(log, "client_login", {"account": variables.get("account") or "12345678990"},
+              {"url": "/api/login + /api/userInfo", "method": "POST"},
+              {"user_id": user_id, "has_token": bool(client_token),
+               "generated_large_order_sn": generated_large_order_sn})
 
         # ── 阶段 2：查询报价详情 ──
         quote_data = fetch_oem_full_quote(order_sn, variables)
@@ -10238,14 +10243,20 @@ def run_oem_bulk_order_script(env: Env, variables: Dict[str, Any] | None = None)
             raise
         new_order_sn = ""
         if isinstance(order_result, dict):
-            new_order_sn = str(order_result.get("order_sn") or order_result.get("large_order_sn") or order_result.get("sn") or "")
+            new_order_sn = str(order_result.get("order_sn") or order_result.get("large_order_sn") or order_result.get("sn") or order_result.get("orderSn") or "")
         elif isinstance(order_result, str):
             new_order_sn = order_result
 
+        # 记录完整响应数据，便于排查 new_order_sn 为空的情况
+        resp_detail = {}
+        if isinstance(order_result, dict):
+            resp_detail = {k: v for k, v in order_result.items() if k not in ("sku_list",)}
         _step(log, "create_bulk_order",
               {"order_sn": large_order_sn, "inquiry_sn": order_sn, "detail_id": detail_id, "sku_count": len(sku_list_body)},
               {"url": "/api/newOrder", "method": "POST", "type": 2},
-              {"new_order_sn": new_order_sn, "sku_count": len(sku_list_body), "resp_keys": list(order_result.keys()) if isinstance(order_result, dict) else []})
+              {"new_order_sn": new_order_sn, "sku_count": len(sku_list_body),
+               "resp_keys": list(order_result.keys()) if isinstance(order_result, dict) else [],
+               "resp_data": resp_detail})
 
         summary = {
             "order_sn": order_sn,
