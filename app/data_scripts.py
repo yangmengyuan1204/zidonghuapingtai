@@ -8006,8 +8006,8 @@ def _full_flow_prepare_warehouse_counts(variables: Dict[str, Any]) -> Dict[str, 
     order_per_shop = _as_int(variables.get("order_per_shop") or variables.get("order_item_count"), 2)
     if order_shop_count * order_per_shop < warehouse_sku_count:
         order_per_shop = max(order_per_shop, (warehouse_sku_count + order_shop_count - 1) // order_shop_count)
-    target_shops = max(_as_int(variables.get("target_shops") or variables.get("shop_count"), 4), order_shop_count)
-    per_shop = max(_as_int(variables.get("per_shop"), 5), order_per_shop)
+    target_shops = max(_as_int(variables.get("target_shops") or variables.get("shop_count"), order_shop_count), order_shop_count)
+    per_shop = max(_as_int(variables.get("per_shop"), order_per_shop), order_per_shop)
 
     variables["warehouse_sku_count"] = warehouse_sku_count
     variables["order_shop_count"] = order_shop_count
@@ -8035,6 +8035,7 @@ def run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> T
     variables.setdefault("sleep", 0)
     variables.setdefault("cart_verify_mode", "final")
     variables.setdefault("cart_edit_workers", 4)
+    variables.setdefault("auto_fill_cart_on_shortage", True)
     variables.setdefault("purchase_transition_delay", 0)
     variables.setdefault("inspection_transition_delay", 0)
     variables.setdefault("after_box_submit_delay", 0.2)
@@ -8062,21 +8063,83 @@ def run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> T
     }
 
     try:
-        cart_passed, cart_log, cart_report, cart_summary = run_shopping_cart_script(env, variables)
-        _full_flow_record_step(log, "shopping_cart", SCRIPT_NAME, cart_passed, cart_summary, cart_report)
-        if not cart_passed:
-            return _full_flow_finish(log, False, "shopping_cart", reason=str(cart_summary.get("reason") or cart_summary.get("error") or "\u5546\u54c1\u52a0\u8d2d\u5931\u8d25"))
         if _full_flow_stop_reached(variables, "shopping_cart"):
+            cart_passed, cart_log, cart_report, cart_summary = run_shopping_cart_script(env, variables)
+            cart_summary = dict(cart_summary or {})
+            _full_flow_record_step(log, "shopping_cart", SCRIPT_NAME, cart_passed, cart_summary, cart_report)
+            if not cart_passed:
+                return _full_flow_finish(log, False, "shopping_cart", reason=str(cart_summary.get("reason") or cart_summary.get("error") or "\u5546\u54c1\u52a0\u8d2d\u5931\u8d25"))
             return _full_flow_finish(log, True, "shopping_cart", paused=True)
 
-        quote_vars = dict(variables)
-        quote_vars.pop("order_sn", None)
-        quote_vars.pop("last_order_sn", None)
-        quote_vars["skip_create_order"] = False
-        quote_vars["backend_only"] = False
-        quote_vars["submit_order"] = True
-        quote_vars["run_backend_flow"] = True
-        quote_passed, quote_log, quote_report, quote_summary = run_order_quote_script(env, quote_vars)
+        log["cart_autofill"] = {
+            "mode": "on_shortage",
+            "skipped_initial_cart": True,
+            "triggered": False,
+        }
+
+        def run_quote_attempt(retry_after_autofill: bool = False) -> tuple[bool, str, str, Dict[str, Any]]:
+            quote_vars = dict(variables)
+            quote_vars.pop("order_sn", None)
+            quote_vars.pop("last_order_sn", None)
+            quote_vars["skip_create_order"] = False
+            quote_vars["backend_only"] = False
+            quote_vars["submit_order"] = True
+            quote_vars["run_backend_flow"] = True
+            if retry_after_autofill:
+                quote_vars["auto_fill_cart_on_shortage"] = False
+            return run_order_quote_script(env, quote_vars)
+
+        quote_passed, quote_log, quote_report, quote_summary = run_quote_attempt()
+        quote_summary = dict(quote_summary or {})
+        if (
+            not quote_passed
+            and quote_summary.get("reason_code") == "cart_items_shortage"
+            and _as_bool(variables.get("auto_fill_cart_on_shortage"), True)
+        ):
+            shortage_before = {
+                key: quote_summary.get(key)
+                for key in [
+                    "selected_count",
+                    "expected_count",
+                    "shortage_count",
+                    "expected_shop_count",
+                    "expected_per_shop",
+                    "available_shop_count",
+                    "ready_shop_count",
+                    "selected_shop_count",
+                ]
+                if key in quote_summary
+            }
+            log["cart_autofill"].update(
+                {
+                    "triggered": True,
+                    "reason_code": "cart_items_shortage",
+                    "shortage_before": shortage_before,
+                    "initial_quote_report_path": quote_report,
+                }
+            )
+            cart_vars = dict(variables)
+            cart_vars.pop("order_sn", None)
+            cart_vars.pop("last_order_sn", None)
+            cart_passed, cart_log, cart_report, cart_summary = run_shopping_cart_script(env, cart_vars)
+            cart_summary = dict(cart_summary or {})
+            log["cart_autofill"]["cart_summary"] = {
+                "passed": cart_passed,
+                "target_shops": cart_summary.get("target_shops"),
+                "per_shop": cart_summary.get("per_shop"),
+                "added_total": cart_summary.get("added_total"),
+                "reason": cart_summary.get("reason") or cart_summary.get("error"),
+                "duration_ms": cart_summary.get("duration_ms"),
+            }
+            _full_flow_record_step(log, "shopping_cart", SCRIPT_NAME, cart_passed, cart_summary, cart_report)
+            if not cart_passed:
+                return _full_flow_finish(log, False, "shopping_cart", reason=str(cart_summary.get("reason") or cart_summary.get("error") or "\u5546\u54c1\u52a0\u8d2d\u5931\u8d25"))
+            quote_passed, quote_log, quote_report, quote_summary = run_quote_attempt(retry_after_autofill=True)
+            quote_summary = dict(quote_summary or {})
+            log["cart_autofill"]["retry_quote_report_path"] = quote_report
+        elif not quote_passed:
+            log["cart_autofill"]["reason"] = str(quote_summary.get("reason") or quote_summary.get("error") or "")
+
         _full_flow_record_step(log, "order_offered", ORDER_SCRIPT_NAME, quote_passed, quote_summary, quote_report)
         if not quote_passed:
             return _full_flow_finish(log, False, str(quote_summary.get("current_node") or "order_offered"), reason=str(quote_summary.get("reason") or quote_summary.get("error") or "\u8ba2\u5355\u62a5\u4ef7\u5931\u8d25"))

@@ -79,9 +79,9 @@ if (!window.__fullFlowDataScriptLoaded) {
     { name: "porder_sn", label: "配送单号（继续执行，优先）" },
     { name: "keyword", label: "关键词", default: "衣服" },
     { name: "shop_type", label: "商品来源", type: "select", options: SHOP_TYPE_OPTIONS, default: "1688" },
-    { name: "target_shops", label: "加购目标店铺数", type: "number", default: 4 },
-    { name: "per_shop", label: "加购每店商品数", type: "number", default: 5 },
-    { name: "quantities", label: "加购商品数量", default: "2,3,5" },
+    { name: "target_shops", label: "补货目标店铺数", type: "number", default: 1 },
+    { name: "per_shop", label: "补货每店商品数", type: "number", default: 2 },
+    { name: "quantities", label: "补货商品数量", default: "2,3,5" },
     { name: "order_shop_count", label: "订单店铺数", type: "number", default: 1 },
     { name: "order_per_shop", label: "订单每店商品数", type: "number", default: 2 },
     { name: "order_item_num", label: "订单商品数量", type: "number", default: 10 },
@@ -332,8 +332,6 @@ if (!window.__fullFlowDataScriptLoaded) {
     const shopType = String(next.shop_type || splitParamList(next.shop_types)[0] || "1688").trim() || "1688";
     next.shop_type = shopType;
     next.shop_types = [shopType];
-    next.target_shops = normalizePositiveInt(next.target_shops || next.shop_count, 4);
-    next.per_shop = normalizePositiveInt(next.per_shop, 5);
     next.warehouse_sku_count = normalizePositiveInt(next.warehouse_sku_count || next.porder_sku_count || next.sku_count, 1);
     next.order_shop_count = normalizePositiveInt(next.order_shop_count, 1);
     next.order_per_shop = normalizePositiveInt(next.order_per_shop || next.order_item_count, 2);
@@ -341,6 +339,8 @@ if (!window.__fullFlowDataScriptLoaded) {
       next.order_per_shop = Math.ceil(next.warehouse_sku_count / next.order_shop_count);
     }
     next.order_item_count = next.order_per_shop;
+    next.target_shops = normalizePositiveInt(next.target_shops || next.shop_count, next.order_shop_count);
+    next.per_shop = normalizePositiveInt(next.per_shop, next.order_per_shop);
     next.target_shops = Math.max(next.target_shops, next.order_shop_count);
     next.per_shop = Math.max(next.per_shop, next.order_per_shop);
     next.order_item_num = normalizePositiveInt(next.order_item_num, 10);
@@ -424,8 +424,8 @@ if (!window.__fullFlowDataScriptLoaded) {
       random_keyword: true,
       shop_type: "1688",
       shop_types: ["1688"],
-      target_shops: 4,
-      per_shop: 5,
+      target_shops: 1,
+      per_shop: 2,
       quantities: "2,3,5",
       order_shop_count: 1,
       order_per_shop: 2,
@@ -462,11 +462,22 @@ if (!window.__fullFlowDataScriptLoaded) {
       backend_system: "1",
       backend_code: "wnm666",
     };
-    const mergedVariables = sanitizeScriptVariables("full_flow", { ...defaultVariables, ...existingVariables }, existingFlow);
-    mergedVariables.keywords = uniqueList([...listValue(existingVariables.keywords), ...defaultVariables.keywords]);
-    mergedVariables.preferred_keywords = uniqueList([...listValue(existingVariables.preferred_keywords), ...defaultVariables.preferred_keywords]);
-    mergedVariables.boost_keywords = uniqueList([...listValue(existingVariables.boost_keywords), ...defaultVariables.boost_keywords]);
-    if (existingVariables.order_option_counts) mergedVariables.order_option_counts = existingVariables.order_option_counts;
+    const migratedExistingVariables = { ...existingVariables };
+    if (
+      existingFlow?.id === "full_flow_builtin" &&
+      String(migratedExistingVariables.target_shops ?? "") === "4" &&
+      String(migratedExistingVariables.per_shop ?? "") === "5" &&
+      normalizePositiveInt(migratedExistingVariables.order_shop_count, 1) === 1 &&
+      normalizePositiveInt(migratedExistingVariables.order_per_shop || migratedExistingVariables.order_item_count, 2) === 2
+    ) {
+      migratedExistingVariables.target_shops = 1;
+      migratedExistingVariables.per_shop = 2;
+    }
+    const mergedVariables = sanitizeScriptVariables("full_flow", { ...defaultVariables, ...migratedExistingVariables }, existingFlow);
+    mergedVariables.keywords = uniqueList([...listValue(migratedExistingVariables.keywords), ...defaultVariables.keywords]);
+    mergedVariables.preferred_keywords = uniqueList([...listValue(migratedExistingVariables.preferred_keywords), ...defaultVariables.preferred_keywords]);
+    mergedVariables.boost_keywords = uniqueList([...listValue(migratedExistingVariables.boost_keywords), ...defaultVariables.boost_keywords]);
+    if (migratedExistingVariables.order_option_counts) mergedVariables.order_option_counts = migratedExistingVariables.order_option_counts;
     const caseIds = [login, search, detail, cart].filter(Boolean).map((item) => item.id);
     const nextFlow = {
       ...existingFlow,

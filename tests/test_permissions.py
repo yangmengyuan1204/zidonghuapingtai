@@ -1425,21 +1425,12 @@ def test_full_flow_runs_nodes_in_order_and_passes_shared_numbers(monkeypatch):
     patch_full_flow_report(monkeypatch)
     calls = []
 
-    def cart(env, variables):
-        calls.append("shopping_cart")
-        assert variables["stop_after_node"] == "full_complete"
+    def quote(env, variables):
+        calls.append("order_quote")
         assert isinstance(variables["_runtime"], data_scripts.DataScriptRuntime)
         assert variables["sleep"] == 0
         assert variables["cart_verify_mode"] == "final"
         assert variables["cart_edit_workers"] == 4
-        assert variables["order_shop_count"] == 1
-        assert variables["order_per_shop"] == 3
-        assert variables["order_item_count"] == 3
-        assert variables["per_shop"] >= 3
-        return True, "cart-log", "cart-report", {"added_total": 2}
-
-    def quote(env, variables):
-        calls.append("order_quote")
         assert variables["submit_order"] is True
         assert variables["run_backend_flow"] is True
         assert variables["order_shop_count"] == 1
@@ -1484,7 +1475,7 @@ def test_full_flow_runs_nodes_in_order_and_passes_shared_numbers(monkeypatch):
         assert variables["run_backend_porder_flow"] is False
         return True, "porder-pay-log", "porder-pay-report", {"payment_type": "balance", "porder_sn": "PORDER-1"}
 
-    monkeypatch.setattr(data_scripts, "run_shopping_cart_script", cart)
+    monkeypatch.setattr(data_scripts, "run_shopping_cart_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("shopping cart should be skipped when cart has enough items")))
     monkeypatch.setattr(data_scripts, "run_order_quote_script", quote)
     monkeypatch.setattr(data_scripts, "run_balance_payment_script", balance)
     monkeypatch.setattr(data_scripts, "run_bank_payment_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("bank fallback not expected")))
@@ -1496,7 +1487,7 @@ def test_full_flow_runs_nodes_in_order_and_passes_shared_numbers(monkeypatch):
     passed, _, _, summary = data_scripts.run_full_flow_script(full_flow_env(), {"stop_after_node": "full_complete", "warehouse_sku_count": 3})
 
     assert passed is True
-    assert calls == ["shopping_cart", "order_quote", "order_balance", "purchase_to_shelf", "warehouse_delivery", "porder_balance"]
+    assert calls == ["order_quote", "order_balance", "purchase_to_shelf", "warehouse_delivery", "porder_balance"]
     assert summary["current_node"] == "full_complete"
     assert summary["order_sn"] == "ORDER-1"
     assert summary["purchase_no"] == "PNO-1"
@@ -1508,11 +1499,99 @@ def test_full_flow_runs_nodes_in_order_and_passes_shared_numbers(monkeypatch):
     assert all(item["status"] == "completed" for item in summary["node_results"])
 
 
+def test_full_flow_autofills_cart_once_on_shortage(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    calls = []
+    quote_calls = {"count": 0}
+
+    def quote(env, variables):
+        calls.append("order_quote")
+        quote_calls["count"] += 1
+        if quote_calls["count"] == 1:
+            return False, "shortage-log", "shortage-report", {
+                "reason_code": "cart_items_shortage",
+                "selected_count": 0,
+                "expected_count": 2,
+                "shortage_count": 2,
+                "reason": "购物车可提单商品不足",
+            }
+        assert variables["auto_fill_cart_on_shortage"] is False
+        return True, "quote-log", "quote-report", {"order_sn": "ORDER-FILL", "backend_passed": True}
+
+    def cart(env, variables):
+        calls.append("shopping_cart")
+        assert variables["target_shops"] == 1
+        assert variables["per_shop"] == 2
+        return True, "cart-log", "cart-report", {"target_shops": 1, "per_shop": 2, "added_total": 2}
+
+    monkeypatch.setattr(data_scripts, "run_order_quote_script", quote)
+    monkeypatch.setattr(data_scripts, "run_shopping_cart_script", cart)
+    monkeypatch.setattr(data_scripts, "run_balance_payment_script", lambda env, variables: (calls.append("order_balance") or (True, "", "", {"payment_type": "balance", "order_sn": "ORDER-FILL"})))
+    monkeypatch.setattr(data_scripts, "run_bank_payment_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("bank fallback not expected")))
+    monkeypatch.setattr(data_scripts, "run_purchase_to_shelf_script", lambda env, variables: (calls.append("purchase_to_shelf") or (True, "", "", {"order_detail_id": "DETAIL-FILL"})))
+    monkeypatch.setattr(data_scripts, "run_warehouse_delivery_script", lambda env, variables: (calls.append("warehouse_delivery") or (True, "", "", {"porder_sn": "PORDER-FILL"})))
+    monkeypatch.setattr(data_scripts, "run_porder_balance_payment_script", lambda env, variables: (calls.append("porder_balance") or (True, "", "", {"payment_type": "balance", "porder_sn": "PORDER-FILL"})))
+    monkeypatch.setattr(data_scripts, "run_porder_bank_payment_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("porder bank fallback not expected")))
+
+    passed, log_text, _, summary = data_scripts.run_full_flow_script(full_flow_env(), {})
+
+    log = json.loads(log_text)
+    assert passed is True
+    assert calls == ["order_quote", "shopping_cart", "order_quote", "order_balance", "purchase_to_shelf", "warehouse_delivery", "porder_balance"]
+    assert log["cart_autofill"]["triggered"] is True
+    assert log["cart_autofill"]["shortage_before"]["shortage_count"] == 2
+    assert summary["order_sn"] == "ORDER-FILL"
+
+
+def test_full_flow_fails_at_shopping_cart_when_autofill_fails(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    calls = []
+
+    monkeypatch.setattr(
+        data_scripts,
+        "run_order_quote_script",
+        lambda env, variables: (calls.append("order_quote") or (False, "", "shortage-report", {"reason_code": "cart_items_shortage", "reason": "购物车可提单商品不足"})),
+    )
+    monkeypatch.setattr(
+        data_scripts,
+        "run_shopping_cart_script",
+        lambda env, variables: (calls.append("shopping_cart") or (False, "cart-log", "cart-report", {"reason": "未收集到可加购商品"})),
+    )
+
+    passed, log_text, _, summary = data_scripts.run_full_flow_script(full_flow_env(), {})
+
+    log = json.loads(log_text)
+    assert passed is False
+    assert calls == ["order_quote", "shopping_cart"]
+    assert summary["current_node"] == "shopping_cart"
+    assert summary["reason"] == "未收集到可加购商品"
+    assert log["cart_autofill"]["triggered"] is True
+
+
+def test_full_flow_stop_at_shopping_cart_keeps_legacy_cart_step(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    calls = []
+
+    monkeypatch.setattr(
+        data_scripts,
+        "run_shopping_cart_script",
+        lambda env, variables: (calls.append("shopping_cart") or (True, "cart-log", "cart-report", {"added_total": 2})),
+    )
+    monkeypatch.setattr(data_scripts, "run_order_quote_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("order quote should not run when paused at shopping_cart")))
+
+    passed, _, _, summary = data_scripts.run_full_flow_script(full_flow_env(), {"stop_after_node": "shopping_cart"})
+
+    assert passed is True
+    assert calls == ["shopping_cart"]
+    assert summary["paused"] is True
+    assert summary["current_node"] == "shopping_cart"
+
+
 def test_full_flow_pauses_at_pending_purchase(monkeypatch):
     patch_full_flow_report(monkeypatch)
     calls = []
 
-    monkeypatch.setattr(data_scripts, "run_shopping_cart_script", lambda env, variables: (calls.append("shopping_cart") or (True, "", "", {})))
+    monkeypatch.setattr(data_scripts, "run_shopping_cart_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("shopping cart should be skipped when cart has enough items")))
     monkeypatch.setattr(data_scripts, "run_order_quote_script", lambda env, variables: (calls.append("order_quote") or (True, "", "", {"order_sn": "ORDER-2"})))
     monkeypatch.setattr(
         data_scripts,
@@ -1532,7 +1611,7 @@ def test_full_flow_pauses_at_pending_purchase(monkeypatch):
     passed, _, _, summary = data_scripts.run_full_flow_script(full_flow_env(), {"stop_after_node": "pending_purchase"})
 
     assert passed is True
-    assert calls == ["shopping_cart", "order_quote", "order_balance", "purchase_to_shelf"]
+    assert calls == ["order_quote", "order_balance", "purchase_to_shelf"]
     assert summary["paused"] is True
     assert summary["current_node"] == "pending_purchase"
     node_status = {item["node"]: item["status"] for item in summary["node_results"]}
@@ -1545,7 +1624,7 @@ def test_full_flow_balance_insufficient_uses_bank_payment(monkeypatch):
     patch_full_flow_report(monkeypatch)
     calls = []
 
-    monkeypatch.setattr(data_scripts, "run_shopping_cart_script", lambda env, variables: (calls.append("shopping_cart") or (True, "", "", {})))
+    monkeypatch.setattr(data_scripts, "run_shopping_cart_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("shopping cart should be skipped when cart has enough items")))
     monkeypatch.setattr(data_scripts, "run_order_quote_script", lambda env, variables: (calls.append("order_quote") or (True, "", "", {"order_sn": "ORDER-3"})))
     monkeypatch.setattr(
         data_scripts,
@@ -1587,7 +1666,7 @@ def test_full_flow_non_balance_failure_does_not_use_bank_payment(monkeypatch):
     passed, _, _, summary = data_scripts.run_full_flow_script(full_flow_env(), {})
 
     assert passed is False
-    assert calls == ["shopping_cart", "order_quote", "order_balance"]
+    assert calls == ["order_quote", "order_balance"]
     assert summary["current_node"] == "order_paid"
     assert summary["reason"] == "接口超时"
 
