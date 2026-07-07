@@ -3,6 +3,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from playwright.async_api import async_playwright
@@ -37,6 +38,34 @@ RECORDING_SCRIPT = r"""
   const elementText = (el) => {
     if (!el) return "";
     return trimText(el.innerText || el.textContent || el.value || el.getAttribute("title") || "");
+  };
+  const isLikelyClickable = (el) => {
+    if (!el || el === document.body || el === document.documentElement) return false;
+    const text = elementText(el);
+    const className = String(el.getAttribute("class") || "");
+    const dataAction = el.getAttribute("data-action") || el.getAttribute("data-click");
+    if (dataAction) return true;
+    if (el.getAttribute("aria-haspopup") || el.getAttribute("tabindex")) return true;
+    if (/\b(btn|button|link|login|search|cart|submit|open|trigger|action)\b/i.test(className)) return true;
+    try {
+      if (window.getComputedStyle(el).cursor === "pointer" && text && text.length <= 100) return true;
+    } catch (error) {
+      return false;
+    }
+    return false;
+  };
+  const clickableElement = (start) => {
+    if (!start) return null;
+    const native = start.closest('a,button,[role="button"],input,textarea,select,label,summary,[onclick],[tabindex]');
+    if (native) return native;
+    let node = start;
+    let depth = 0;
+    while (node && node.nodeType === Node.ELEMENT_NODE && depth < 6) {
+      if (isLikelyClickable(node)) return node;
+      node = node.parentElement;
+      depth += 1;
+    }
+    return null;
   };
   const cssPath = (el) => {
     const parts = [];
@@ -128,7 +157,8 @@ RECORDING_SCRIPT = r"""
 
   document.addEventListener("click", (event) => {
     const start = targetElement(event.target);
-    const el = start && start.closest('a,button,[role="button"],input,textarea,select,label,summary,[onclick]');
+    const startText = elementText(start);
+    const el = clickableElement(start) || (startText && startText.length <= 100 ? start : null);
     if (!el) return;
     const tag = (el.tagName || "").toLowerCase();
     const type = (el.getAttribute("type") || "").toLowerCase();
@@ -278,6 +308,17 @@ def _event_to_step(event: dict[str, Any]) -> dict[str, Any] | None:
     return step
 
 
+def _significant_url_change(previous_url: str, next_url: str) -> bool:
+    if not next_url or next_url == previous_url:
+        return False
+    try:
+        prev = urlsplit(previous_url)
+        nxt = urlsplit(next_url)
+    except Exception:
+        return next_url != previous_url
+    return (prev.scheme, prev.netloc, prev.path, prev.query) != (nxt.scheme, nxt.netloc, nxt.path, nxt.query)
+
+
 def build_ui_steps(
     start_url: str,
     current_url: str = "",
@@ -289,12 +330,25 @@ def build_ui_steps(
     ]
     last_action_step: dict[str, Any] | None = None
     final_url = current_url or start_url
+    last_flow_url = start_url
+    pending_goto_url = ""
     for event in events or []:
         if event.get("url"):
             final_url = str(event["url"])
+        if str(event.get("action") or "").strip().lower() == "url_change":
+            next_url = str(event.get("value") or event.get("url") or "").strip()
+            if _significant_url_change(last_flow_url, next_url):
+                pending_goto_url = next_url
+                last_flow_url = next_url
+            continue
         step = _event_to_step(event)
         if not step:
             continue
+        if pending_goto_url and step.get("action") in {"input", "select", "check", "uncheck"}:
+            if steps[-1].get("action") != "goto" or steps[-1].get("value") != pending_goto_url:
+                steps.append({"name": "打开跳转页面", "action": "goto", "value": pending_goto_url})
+            pending_goto_url = ""
+            last_action_step = None
         if (
             step["action"] == "input"
             and last_action_step

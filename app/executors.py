@@ -1171,13 +1171,34 @@ def _perform_ui_action(page: Any, target: Any, action: str, value: Any, used_loc
         if _normalize_text(value) != _normalize_text(actual):
             raise AssertionError(f"assert_value failed: expected {value!r}, actual {actual!r}")
     elif action == "text_assert":
-        text_value = target.inner_text(timeout=timeout_ms)
-        if _normalize_text(value) not in _normalize_text(text_value):
-            raise AssertionError(f"text_assert failed: expected {value!r}, actual {text_value!r}")
+        _wait_text_contains(target, value, timeout_ms)
     elif action == "extract_text":
         target.inner_text(timeout=timeout_ms)
     elif action == "extract_value":
         target.input_value(timeout=timeout_ms)
+
+
+def _wait_text_contains(target: Any, expected: Any, timeout_ms: int) -> str:
+    deadline = time.time() + max(timeout_ms, 1000) / 1000
+    expected_text = _normalize_text(expected)
+    last_text = ""
+    last_error: Exception | None = None
+    while True:
+        remaining_ms = max(250, int((deadline - time.time()) * 1000))
+        try:
+            last_text = target.inner_text(timeout=min(1000, remaining_ms))
+            if expected_text in _normalize_text(last_text):
+                return last_text
+        except Exception as exc:
+            last_error = exc
+        if time.time() >= deadline:
+            if last_error and not last_text:
+                raise AssertionError(f"text_assert failed: expected {expected!r}, actual unavailable: {last_error}") from last_error
+            raise AssertionError(f"text_assert failed: expected {expected!r}, actual {last_text!r}")
+        try:
+            target.page.wait_for_timeout(300)
+        except Exception:
+            time.sleep(0.3)
 
 
 def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int, case_id: int = 0, db: Any = None) -> Dict[str, Any]:
@@ -1266,9 +1287,7 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                         if _normalize_text(value) != _normalize_text(actual):
                             raise AssertionError(f"assert_value failed: expected {value!r}, actual {actual!r}")
                     elif action == "text_assert":
-                        text_value = target.inner_text(timeout=timeout_ms)
-                        if _normalize_text(value) not in _normalize_text(text_value):
-                            raise AssertionError(f"text_assert failed: expected {value!r}, actual {text_value!r}")
+                        _wait_text_contains(target, value, timeout_ms)
                     elif action == "extract_text":
                         extracted_value = target.inner_text(timeout=timeout_ms)
                         extract_key = str(step.get("variable") or step.get("save_as") or step.get("key") or name or locator or "value")
@@ -1283,6 +1302,7 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                         detail["extracted"] = {extract_key: extracted_value}
                     else:
                         raise ValueError(f"Unsupported UI action: {action}")
+                    _wait_after_action(page, action)
                     if attempt > 1:
                         detail["retry_count"] = attempt - 1
                     break

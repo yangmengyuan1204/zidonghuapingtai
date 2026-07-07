@@ -52,7 +52,21 @@ def test_build_ui_steps_ignores_url_change_as_action_but_uses_final_url():
 
     steps = build_ui_steps("https://example.test", "", events)
 
-    assert [step["action"] for step in steps] == ["goto", "select", "check", "assert_url"]
-    assert steps[1]["value"] == "paid"
-    assert steps[2]["value"] == "yes"
+    assert [step["action"] for step in steps] == ["goto", "goto", "select", "check", "assert_url"]
+    assert steps[1]["value"] == "https://example.test/list"
+    assert steps[2]["value"] == "paid"
+    assert steps[3]["value"] == "yes"
     assert steps[-1]["value"] == "https://example.test/list?done=1"
+
+
+def test_build_ui_steps_keeps_full_navigation_before_form_input():
+    events = [
+        {"action": "click", "locator": 'text="Login"', "text": "Login", "url": "https://example.test/search"},
+        {"action": "url_change", "value": "https://example.test/login", "url": "https://example.test/login"},
+        {"action": "input", "locator": '[name="username"]', "value": "demo", "url": "https://example.test/login"},
+    ]
+
+    steps = build_ui_steps("https://example.test/search", "https://example.test/login", events)
+
+    assert [step["action"] for step in steps] == ["goto", "click", "goto", "input", "assert_url"]
+    assert steps[2] == {"name": "打开跳转页面", "action": "goto", "value": "https://example.test/login"}
