@@ -3315,6 +3315,7 @@ function openUiRecordStartDialog(projects) {
       const session = await api("/api/ui-record/sessions", { method: "POST", body: data });
       showToast("录制已开始");
       startUiRecordPolling(session);
+      return false;
     },
     "开始录制",
   );
