@@ -1,4 +1,4 @@
-import json
+﻿import json
 import sys
 from datetime import datetime
 from typing import Any, Dict
@@ -20,7 +20,7 @@ from ..core.utils import (
     split_customer_ids,
 )
 from ..data_scripts import (
-    fetch_oem_full_quote,
+    run_material_order_script,
     fetch_oem_goods_class_list,
     fetch_oem_option_list,
     preview_order_quote_options,
@@ -300,6 +300,26 @@ def run_material_generation_data_script(
     return data
 
 
+
+@router.post("/data-scripts/material-order")
+def run_material_order_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
+    passed, log_text, report_path, summary = _runtime_func("run_material_order_script", run_material_order_script)(env, variables)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+
+
+
+
 @router.post("/data-scripts/balance-recharge")
 def run_balance_recharge_data_script(
     payload: DataScriptExecuteRequest,
@@ -542,3 +562,8 @@ async def upload_oem_image_route(
         return {"url": url}
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"OEM 图片上传失败: {exc}") from exc
+
+
+
+
+

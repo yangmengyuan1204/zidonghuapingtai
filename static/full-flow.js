@@ -127,17 +127,6 @@ if (!window.__fullFlowDataScriptLoaded) {
       ],
     },
     {
-      title: "基础加购",
-      fields: [
-        CUSTOMER_ID_FIELD,
-        { name: "keyword", label: "关键词", default: "衣服" },
-        { name: "shop_type", label: "商品来源", type: "select", options: SHOP_TYPE_OPTIONS, default: "1688" },
-        { name: "target_shops", label: "加购目标店铺数", type: "number", default: 4 },
-        { name: "per_shop", label: "每店商品数", type: "number", default: 5 },
-        { name: "quantities", label: "加购商品数量循环", default: "2,3,5" },
-      ],
-    },
-    {
       title: "订单提单",
       fields: [
         { name: "order_shop_count", label: "订单店铺数", type: "number", default: 1 },
