@@ -117,11 +117,31 @@ def build_flow_definition(parsed_steps: list[dict], dynamic_schema: dict) -> dic
             "step_index": idx,
             "method": step.get("method", "GET"),
             "path": step.get("path", ""),
+            "full_url": step.get("url", ""),
             "headers_json": json.dumps(step.get("headers") or {}, ensure_ascii=False),
             "body_template": body_str,
             "field_schema_json": field_schema_json,
         })
-    return {"name": "", "description": "", "steps": steps_def}
+    base_url = _infer_base_url(parsed_steps)
+    return {"name": "", "description": "", "base_url": base_url, "steps": steps_def}
+
+
+def _infer_base_url(parsed_steps: list[dict]) -> str:
+    """从步骤的完整 url 或 headers 的 referer/origin 推断 API 基地址。"""
+    for step in parsed_steps:
+        url = step.get("url") or ""
+        if url:
+            parsed = urlsplit(url)
+            if parsed.scheme and parsed.netloc:
+                return f"{parsed.scheme}://{parsed.netloc}"
+        headers = step.get("headers") or {}
+        for key in ("origin", "referer"):
+            val = headers.get(key) or ""
+            if val:
+                parsed = urlsplit(val)
+                if parsed.scheme and parsed.netloc:
+                    return f"{parsed.scheme}://{parsed.netloc}"
+    return ""
 
 
 def _url_to_path(url: str) -> str:

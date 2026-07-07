@@ -121,6 +121,7 @@ def get_flow(flow_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
                 "step_index": step.step_index,
                 "method": step.method,
                 "path": step.path,
+                "full_url": step.full_url or "",
                 "headers_json": step.headers_json,
                 "body_template": step.body_template,
                 "field_schema_json": step.field_schema_json,
@@ -145,8 +146,9 @@ def delete_flow(flow_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
 
 @router.post("/{flow_id}/execute")
 def execute_flow(flow_id: int, payload: Dict[str, Any], db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """按步骤回放流程，失败即停止。"""
+    """按步骤回放流程，失败即停止或跳过。"""
     variables = payload.get("variables") or {}
     if not isinstance(variables, dict):
         variables = {}
-    return play_flow(flow_id, variables, db)
+    skip_on_failure = bool(payload.get("skip_on_failure") or False)
+    return play_flow(flow_id, variables, db, skip_on_failure=skip_on_failure)

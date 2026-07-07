@@ -1269,6 +1269,12 @@ def init_app() -> None:
                 "heal_enabled": "ALTER TABLE ai_config ADD COLUMN heal_enabled INTEGER DEFAULT 1",
                 "heal_confidence_threshold": "ALTER TABLE ai_config ADD COLUMN heal_confidence_threshold FLOAT DEFAULT 0.7",
             },
+            "recorded_flow": {
+                "base_url": "ALTER TABLE recorded_flow ADD COLUMN base_url VARCHAR(255)",
+            },
+            "recorded_flow_step": {
+                "full_url": "ALTER TABLE recorded_flow_step ADD COLUMN full_url VARCHAR(1000)",
+            },
         }
         with engine.begin() as conn:
             for table_name, table_migrations in migrations.items():

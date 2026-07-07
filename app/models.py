@@ -386,6 +386,7 @@ class RecordedFlow(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
+    base_url = Column(String(255), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
 
@@ -401,6 +402,7 @@ class RecordedFlowStep(Base):
     step_index = Column(Integer, nullable=False)
     method = Column(String(10), nullable=False)
     path = Column(String(500), nullable=False)
+    full_url = Column(String(1000), nullable=True)
     headers_json = Column(Text, nullable=True)
     body_template = Column(Text, nullable=True)
     field_schema_json = Column(Text, nullable=True)

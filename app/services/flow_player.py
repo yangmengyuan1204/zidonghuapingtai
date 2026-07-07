@@ -22,30 +22,39 @@ _STEP_REF_RE = re.compile(r"^step_(\d+)\.(.+)$")
 _BUSINESS_SUCCESS_CODES = {"0", "200", "success", "1"}
 
 
-def play_flow(flow_id: int, variables: Dict[str, Any], db: Session) -> Dict[str, Any]:
-    """回放指定流程：取流程与步骤 -> 顺序执行 -> 维护登录态 -> 失败即停。"""
+def play_flow(flow_id: int, variables: Dict[str, Any], db: Session, skip_on_failure: bool = False) -> Dict[str, Any]:
+    """回放指定流程：取流程与步骤 -> 顺序执行 -> 维护登录态 -> 失败即停或跳过。"""
     flow = db.query(RecordedFlow).filter(RecordedFlow.id == flow_id).first()
     if not flow:
         return {"success": False, "completed_steps": [], "failed_step": None, "error": "流程不存在"}
     steps = sorted(flow.steps or [], key=lambda s: s.step_index)
-    base_url = _resolve_base_url(variables, db)
+    base_url = _resolve_base_url(variables, db, flow)
     if not base_url:
         return {"success": False, "completed_steps": [], "failed_step": None, "error": "未配置 base_url"}
 
     session = requests.Session()
     token = ""
     step_results = []
+    skipped_steps = []
     for step in steps:
         body_str = _replace_placeholders(step.body_template or "", variables, step_results)
         headers = _parse_headers(step.headers_json)
         if token and not _has_auth_header(headers):
             headers["Authorization"] = f"Bearer {token}"
-        url = base_url.rstrip("/") + "/" + (step.path or "").lstrip("/")
+        # 优先用录制时记录的完整 URL，支持多域名回放
+        full_url = _replace_placeholders(step.full_url or "", variables, step_results) if step.full_url else ""
+        if full_url:
+            url = full_url
+        else:
+            url = base_url.rstrip("/") + "/" + (step.path or "").lstrip("/")
         method = (step.method or "GET").upper()
 
         try:
             response = _send_request(session, method, url, headers, body_str)
         except Exception as exc:
+            if skip_on_failure:
+                skipped_steps.append({"step_index": step.step_index, "method": method, "path": step.path, "error": f"请求异常: {exc}"})
+                continue
             return {
                 "success": False,
                 "completed_steps": step_results,
@@ -73,29 +82,31 @@ def play_flow(flow_id: int, variables: Dict[str, Any], db: Session) -> Dict[str,
         step_results.append(step_summary)
 
         # 失败判定
+        failed = None
         if status_code >= 400:
-            return {
-                "success": False,
-                "completed_steps": step_results,
-                "failed_step": step_summary,
-                "error": f"HTTP 状态码 {status_code}",
-            }
-        failed = _check_business_failure(response_body)
+            failed = f"HTTP 状态码 {status_code}"
+        else:
+            failed = _check_business_failure(response_body)
         if failed:
+            if skip_on_failure:
+                skipped_steps.append({"step_index": step.step_index, "method": method, "path": step.path, "error": failed})
+                continue
             return {
                 "success": False,
                 "completed_steps": step_results,
                 "failed_step": step_summary,
                 "error": failed,
             }
-    return {"success": True, "completed_steps": step_results, "failed_step": None, "error": ""}
+    return {"success": True, "completed_steps": step_results, "skipped_steps": skipped_steps, "failed_step": None, "error": ""}
 
 
-def _resolve_base_url(variables: Dict[str, Any], db: Session) -> str:
-    """优先用 variables.base_url，其次取最早的 Env。"""
+def _resolve_base_url(variables: Dict[str, Any], db: Session, flow: Optional[RecordedFlow] = None) -> str:
+    """优先用 variables.base_url，其次 flow.base_url，最后取最早的 Env。"""
     base = str(variables.get("base_url") or "").strip()
     if base:
         return base
+    if flow is not None and flow.base_url:
+        return flow.base_url.strip()
     env = db.query(Env).order_by(Env.id.asc()).first()
     return (env.base_url if env else "").strip()
 
