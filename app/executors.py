@@ -11,7 +11,7 @@ import string
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, Iterable, Tuple
+from typing import Any, Callable, Dict, Iterable, Tuple
 from urllib.parse import urljoin, urlparse, urlunparse
 from uuid import uuid4
 
@@ -495,10 +495,12 @@ UI_ACTION_LABELS = {
     "assert_url": "检查页面地址",
     "assert_value": "检查输入值",
     "text_assert": "检查页面文案",
+    "extract_text": "提取文本",
+    "extract_value": "提取输入值",
     "screenshot": "截图",
 }
 
-UI_LOCATOR_REQUIRED = {"input", "click", "wait_for_selector", "text_assert", "select", "check", "uncheck", "assert_visible", "assert_value"}
+UI_LOCATOR_REQUIRED = {"input", "click", "wait_for_selector", "text_assert", "select", "check", "uncheck", "assert_visible", "assert_value", "extract_text", "extract_value"}
 UI_VALUE_REQUIRED = {"goto", "input", "wait", "text_assert", "select", "assert_url", "assert_value"}
 BUILTIN_VAR_NAMES = {"timestamp", "datetime", "date", "uuid", "random_int", "random_str", "random_phone", "random_email"}
 LOGIN_URL_MARKERS = ("login", "signin")
@@ -1172,6 +1174,10 @@ def _perform_ui_action(page: Any, target: Any, action: str, value: Any, used_loc
         text_value = target.inner_text(timeout=timeout_ms)
         if _normalize_text(value) not in _normalize_text(text_value):
             raise AssertionError(f"text_assert failed: expected {value!r}, actual {text_value!r}")
+    elif action == "extract_text":
+        target.inner_text(timeout=timeout_ms)
+    elif action == "extract_value":
+        target.input_value(timeout=timeout_ms)
 
 
 def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int, case_id: int = 0, db: Any = None) -> Dict[str, Any]:
@@ -1263,6 +1269,18 @@ def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], defaul
                         text_value = target.inner_text(timeout=timeout_ms)
                         if _normalize_text(value) not in _normalize_text(text_value):
                             raise AssertionError(f"text_assert failed: expected {value!r}, actual {text_value!r}")
+                    elif action == "extract_text":
+                        extracted_value = target.inner_text(timeout=timeout_ms)
+                        extract_key = str(step.get("variable") or step.get("save_as") or step.get("key") or name or locator or "value")
+                        detail["extracted_key"] = extract_key
+                        detail["extracted_value"] = extracted_value
+                        detail["extracted"] = {extract_key: extracted_value}
+                    elif action == "extract_value":
+                        extracted_value = target.input_value(timeout=timeout_ms)
+                        extract_key = str(step.get("variable") or step.get("save_as") or step.get("key") or name or locator or "value")
+                        detail["extracted_key"] = extract_key
+                        detail["extracted_value"] = extracted_value
+                        detail["extracted"] = {extract_key: extracted_value}
                     else:
                         raise ValueError(f"Unsupported UI action: {action}")
                     if attempt > 1:
@@ -1387,6 +1405,7 @@ def execute_ui_case_in_page(
     execution_context: Dict[str, Any] | None = None,
     env: Env | None = None,
     db_session: Any = None,
+    progress_callback: Callable[[Dict[str, Any]], None] | None = None,
 ) -> Tuple[bool, str, str, str]:
     ensure_report_dirs()
     timeout = case.timeout or 30
@@ -1427,9 +1446,26 @@ def execute_ui_case_in_page(
     if login_trace:
         log_parts["auth_context"]["login_trace"] = login_trace
     screenshots: list[str] = []
+    extracted_vars: Dict[str, Any] = {}
     current_step_index = 0
     current_step: Dict[str, Any] | None = None
     failed_step_detail: Dict[str, Any] | None = None
+
+    def emit_progress(event: str, **data: Any) -> None:
+        if not progress_callback:
+            return
+        try:
+            progress_callback({"event": event, **data})
+        except Exception:
+            logger.debug("UI progress callback failed", exc_info=True)
+
+    emit_progress(
+        "started",
+        status="running",
+        case_name=case.case_name,
+        page_url=page_url,
+        total_steps=len(raw_steps) if isinstance(raw_steps, list) else 0,
+    )
 
     try:
         page.set_default_timeout(timeout * 1000)
@@ -1460,8 +1496,10 @@ def execute_ui_case_in_page(
                 "validation_issues": validation_issues,
                 "runtime_seed_variables": applied_variables,
                 "runtime_step_replacements": runtime_replacements,
+                "extracted_vars": extracted_vars,
             }
         )
+        emit_progress("prepared", status="running", steps=steps, validation_issues=validation_issues)
         log_parts["auth_context"]["removed_login_step_count"] = len(removed_login_steps)
         if any(item.get("severity") == "error" for item in validation_issues):
             log_parts.update(
@@ -1471,12 +1509,14 @@ def execute_ui_case_in_page(
                     "finished_at": datetime.now(),
                 }
             )
+            emit_progress("finished", status="failed", error=log_parts["error"], extracted_vars=extracted_vars)
             log_text = _json_dump_log(log_parts)
             report_path = write_allure_result(case.case_name, "ui", False, log_text)
             return False, log_text, "", report_path
         for index, step in enumerate(steps, start=1):
             current_step_index = index
             current_step = step if isinstance(step, dict) else {"raw": step}
+            emit_progress("step_start", status="running", index=index, step=current_step)
             # 智能等待：操作前等待页面稳定
             action = (current_step or {}).get("action", "")
             if action in ("click", "input", "select", "check", "uncheck"):
@@ -1486,6 +1526,11 @@ def execute_ui_case_in_page(
                 step_detail = _run_ui_step(page, current_step, screenshots, timeout, case_id=getattr(case, 'id', 0) or 0, db=db_session)
                 step_detail["index"] = index
                 log_parts["step_logs"].append(step_detail)
+                if isinstance(step_detail.get("extracted"), dict):
+                    extracted_vars.update(step_detail["extracted"])
+                    variables.update(step_detail["extracted"])
+                    log_parts["extracted_vars"] = extracted_vars
+                emit_progress("step_finish", status=step_detail.get("status", "passed"), index=index, step=current_step, detail=step_detail, extracted_vars=extracted_vars)
                 # 智能等待：操作后等待页面响应
                 _wait_after_action(page, action)
             except UiStepExecutionError as exc:
@@ -1500,6 +1545,10 @@ def execute_ui_case_in_page(
                             step_detail["index"] = index
                             step_detail["retry_attempt"] = attempt + 1
                             log_parts["step_logs"].append(step_detail)
+                            if isinstance(step_detail.get("extracted"), dict):
+                                extracted_vars.update(step_detail["extracted"])
+                                variables.update(step_detail["extracted"])
+                                log_parts["extracted_vars"] = extracted_vars
                             # 重试成功后截一张确认图，作为"步骤恢复"的证据
                             confirm_shot = SCREENSHOT_DIR / f"retry-confirm-{uuid4()}.png"
                             try:
@@ -1508,6 +1557,7 @@ def execute_ui_case_in_page(
                                 screenshots.append(str(confirm_shot))
                             except Exception:
                                 pass
+                            emit_progress("step_finish", status=step_detail.get("status", "passed"), index=index, step=current_step, detail=step_detail, extracted_vars=extracted_vars)
                             retried = True
                             break
                         except UiStepExecutionError:
@@ -1517,6 +1567,7 @@ def execute_ui_case_in_page(
                 failed_step_detail = exc.detail
                 failed_step_detail["index"] = index
                 log_parts["step_logs"].append(failed_step_detail)
+                emit_progress("step_finish", status="failed", index=index, step=current_step, detail=failed_step_detail, extracted_vars=extracted_vars)
                 raise
         # 最终验证：强制截图 + URL + 截图质量检查
         final_screenshot = SCREENSHOT_DIR / f"{uuid4()}.png"
@@ -1550,6 +1601,8 @@ def execute_ui_case_in_page(
                 "verification_screenshot": str(final_screenshot) if final_screenshot else "",
                 "warning": "所有步骤执行通过，但最终验证未通过：" + "; ".join(verification_issues),
             })
+            log_parts["extracted_vars"] = extracted_vars
+            emit_progress("finished", status="failed", screenshot=str(final_screenshot) if final_screenshot else "", verification_issues=verification_issues, extracted_vars=extracted_vars)
             log_text = _json_dump_log(log_parts)
             report_path = write_allure_result(case.case_name, "ui", False, log_text, str(final_screenshot) if final_screenshot else "")
             return False, log_text, str(final_screenshot) if final_screenshot else "", report_path
@@ -1561,6 +1614,8 @@ def execute_ui_case_in_page(
             "business_verification": business_evidence,
             "verification_screenshot": str(final_screenshot) if final_screenshot else "",
         })
+        log_parts["extracted_vars"] = extracted_vars
+        emit_progress("finished", status="passed", screenshot=str(final_screenshot) if final_screenshot else "", extracted_vars=extracted_vars)
         log_text = _json_dump_log(log_parts)
         report_path = write_allure_result(case.case_name, "ui", True, log_text, str(final_screenshot) if final_screenshot else screenshots[-1])
         return True, log_text, str(final_screenshot) if final_screenshot else screenshots[-1], report_path
@@ -1585,8 +1640,10 @@ def execute_ui_case_in_page(
                 "screenshot": screenshot,
                 "auth_context": {**log_parts.get("auth_context", {}), "login_trace": login_trace},
                 "finished_at": datetime.now(),
+                "extracted_vars": extracted_vars,
             }
         )
+        emit_progress("finished", status="failed", error=str(exc), screenshot=screenshot, failed_step_index=current_step_index or None, failed_step_detail=failed_step_detail, extracted_vars=extracted_vars)
         log_text = _json_dump_log(log_parts)
         report_path = write_allure_result(case.case_name, "ui", False, log_text, screenshot)
         return False, log_text, screenshot, report_path
@@ -1826,9 +1883,11 @@ def execute_ui_case(
     execution_context: Dict[str, Any] | None = None,
     env: Env | None = None,
     db_session: Any = None,
+    progress_callback: Callable[[Dict[str, Any]], None] | None = None,
 ) -> Tuple[bool, str, str, str]:
     ensure_report_dirs()
     timeout = case.timeout or 30
+    execution_context = dict(execution_context or {})
     if env:
         variables = merge_variables(env, runtime_vars)
     else:
@@ -1848,6 +1907,14 @@ def execute_ui_case(
         "step_logs": [],
         "started_at": datetime.now(),
     }
+    def emit_progress(event: str, **data: Any) -> None:
+        if not progress_callback:
+            return
+        try:
+            progress_callback({"event": event, **data})
+        except Exception:
+            logger.debug("UI progress callback failed", exc_info=True)
+
     if any(item.get("severity") == "error" for item in validation_issues):
         log_parts.update(
             {
@@ -1856,6 +1923,7 @@ def execute_ui_case(
                 "finished_at": datetime.now(),
             }
         )
+        emit_progress("finished", status="failed", error=log_parts["error"])
         log_text = _json_dump_log(log_parts)
         report_path = write_allure_result(case.case_name, "ui", False, log_text)
         return False, log_text, "", report_path
@@ -1875,6 +1943,7 @@ def execute_ui_case(
                 "finished_at": datetime.now(),
             }
         )
+        emit_progress("finished", status="failed", error=log_parts["error"])
         log_text = _json_dump_log(log_parts)
         report_path = write_allure_result(case.case_name, "ui", False, log_text)
         return False, log_text, "", report_path
@@ -1883,10 +1952,11 @@ def execute_ui_case(
     page = None
     try:
         with sync_playwright() as p:
-            browser = launch_chromium_browser(p, headless=True)
+            headed = bool(execution_context.get("headed") or execution_context.get("visual_browser"))
+            browser = launch_chromium_browser(p, headless=not headed)
             page = browser.new_page()
             try:
-                passed, log_text, screenshot_path, report_path = execute_ui_case_in_page(case, page, runtime_vars, execution_context, db_session=db_session)
+                passed, log_text, screenshot_path, report_path = execute_ui_case_in_page(case, page, runtime_vars, execution_context, db_session=db_session, progress_callback=progress_callback)
             except Exception as inner_exc:
                 # 在 with 块内捕获异常，此时 browser/page 仍存活
                 screenshot = ""
@@ -1917,6 +1987,7 @@ def execute_ui_case(
                         "finished_at": datetime.now(),
                     }
                 )
+                emit_progress("finished", status="failed", error=str(inner_exc), screenshot=screenshot)
                 log_text = _json_dump_log(log_parts)
                 report_path = write_allure_result(case.case_name, "ui", False, log_text, screenshot)
                 return False, log_text, screenshot, report_path
@@ -1967,6 +2038,7 @@ def execute_ui_case(
                 "finished_at": datetime.now(),
             }
         )
+        emit_progress("finished", status="failed", error=str(exc), screenshot=screenshot)
         log_text = _json_dump_log(log_parts)
         report_path = write_allure_result(case.case_name, "ui", False, log_text, screenshot)
         return False, log_text, screenshot, report_path

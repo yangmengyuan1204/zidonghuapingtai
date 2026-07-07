@@ -2925,6 +2925,217 @@ async function liveRecorderCancel() {
   modalEl.close();
 }
 
+const uiVisualExecutionState = { pollTimer: null, runId: "" };
+function stopUiVisualPolling() {
+  if (uiVisualExecutionState.pollTimer) {
+    window.clearInterval(uiVisualExecutionState.pollTimer);
+    uiVisualExecutionState.pollTimer = null;
+  }
+}
+function uiVisualShort(value, max = 140) {
+  const text = String(value ?? "");
+  return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+function uiVisualStatusText(status) {
+  return ({ queued: "排队中", running: "执行中", passed: "成功", failed: "失败", error: "失败" }[status] || status || "-");
+}
+function uiVisualProgressPercent(run) {
+  const steps = run.steps || [];
+  if (run.status === "passed" || run.status === "failed") return 100;
+  if (!steps.length) return run.status === "running" ? 20 : 5;
+  const done = steps.filter((item) => ["passed", "failed", "skipped"].includes(item.status)).length;
+  return Math.max(8, Math.min(95, Math.round((done / steps.length) * 100)));
+}
+function uiVisualExtractedHtml(run) {
+  const extracted = run.extracted_vars || {};
+  if (!extracted || !Object.keys(extracted).length) return `<div class="empty">暂无提取数据</div>`;
+  if (typeof renderChineseSummary === "function") return `<div class="summary-wrap">${renderChineseSummary(extracted)}</div>`;
+  return `<pre class="mini-log">${escapeHtml(JSON.stringify(extracted, null, 2))}</pre>`;
+}
+function renderUiVisualExecution(run, item) {
+  const steps = run.steps || [];
+  const percent = uiVisualProgressPercent(run);
+  const stepRows = steps.map((step) => ({
+    index: step.index,
+    name: step.name || step.action || "-",
+    action: step.action || "-",
+    locator: uiVisualShort(step.used_locator || step.locator || "-"),
+    status: uiVisualStatusText(step.status),
+    duration_ms: step.duration_ms ? `${step.duration_ms} ms` : "-",
+    result: step.error || step.reason || (step.extracted && Object.keys(step.extracted).length ? JSON.stringify(step.extracted) : ""),
+  }));
+  const screenshotHtml = run.latest_screenshot_url
+    ? `<details class="functional-requirement" open><summary>最新截图</summary><img src="${escapeHtml(run.latest_screenshot_url)}" alt="执行截图" style="width:100%;max-height:420px;object-fit:contain;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff" /></details>`
+    : `<div class="empty">等待截图生成...</div>`;
+  const finalBlocks = run.status === "passed" || run.status === "failed"
+    ? `
+      <div class="functional-execution-summary">
+        <div><span>执行结果</span><strong>${escapeHtml(uiVisualStatusText(run.status))}</strong></div>
+        <div><span>记录ID</span><strong>${escapeHtml(run.record_id || "-")}</strong></div>
+        <div><span>当前步骤</span><strong>${escapeHtml(run.current_step_index || 0)} / ${escapeHtml(steps.length || 0)}</strong></div>
+        <div><span>可见浏览器</span><strong>${run.headed ? "已开启" : "未开启"}</strong></div>
+      </div>
+      ${run.error ? `<div class="alert error">${escapeHtml(run.error)}</div>` : ""}
+      <details class="functional-requirement" open>
+        <summary>最终数据</summary>
+        ${uiVisualExtractedHtml(run)}
+      </details>
+    `
+    : "";
+  modalEl.innerHTML = `
+    <div class="modal-head">
+      <h3>可视化执行 ${escapeHtml(item?.case_name || run.case_name || "")}</h3>
+      <button class="btn secondary" type="button" id="closeModal">关闭</button>
+    </div>
+    <div class="modal-body">
+      <div class="progress-meta"><strong>${escapeHtml(uiVisualStatusText(run.status))}</strong><span>${percent}%</span></div>
+      <div class="progress-track"><div class="progress-fill ${run.status === "failed" ? "failed" : ""}" style="width:${percent}%"></div></div>
+      ${finalBlocks}
+      <div class="functional-two-col">
+        <div>
+          <div class="panel-title"><h3>步骤执行</h3></div>
+          ${renderTable(
+            [
+              { key: "index", label: "#" },
+              { key: "name", label: "步骤" },
+              { key: "action", label: "动作", render: (row) => badge(row.action) },
+              { key: "locator", label: "定位器" },
+              { key: "status", label: "状态", render: (row) => badge(row.status) },
+              { key: "duration_ms", label: "耗时" },
+              { key: "result", label: "结果" },
+            ],
+            stepRows,
+            false,
+          )}
+        </div>
+        <div>${screenshotHtml}</div>
+      </div>
+      <details class="summary-detail">
+        <summary>查看执行事件</summary>
+        <pre class="log-view">${escapeHtml(JSON.stringify(run.events || [], null, 2))}</pre>
+      </details>
+    </div>
+    <div class="modal-foot">
+      <span>${run.updated_at ? `更新时间：${escapeHtml(run.updated_at)}` : ""}</span>
+      <div class="actions">
+        ${run.record_id ? `<button class="btn secondary" type="button" id="uiVisualRecord">查看记录</button>` : ""}
+        <button class="btn secondary" type="button" id="uiVisualClose">关闭</button>
+      </div>
+    </div>
+  `;
+  if (!modalEl.open) modalEl.showModal();
+  document.querySelector("#closeModal")?.addEventListener("click", () => modalEl.close());
+  document.querySelector("#uiVisualClose")?.addEventListener("click", () => modalEl.close());
+  document.querySelector("#uiVisualRecord")?.addEventListener("click", async () => {
+    stopUiVisualPolling();
+    modalEl.close();
+    state.view = "records";
+    await renderShell();
+  });
+}
+async function pollUiVisualExecution(item) {
+  if (!uiVisualExecutionState.runId) return;
+  try {
+    const run = await api(`/api/ui-executions/${uiVisualExecutionState.runId}`);
+    renderUiVisualExecution(run, item);
+    if (run.status === "passed" || run.status === "failed") {
+      stopUiVisualPolling();
+      showToast(`执行完成：${run.status === "passed" ? "成功" : "失败"}`);
+    }
+  } catch (error) {
+    stopUiVisualPolling();
+    showToast(error.message || "执行状态查询失败");
+  }
+}
+function startUiVisualPolling(run, item) {
+  stopUiVisualPolling();
+  uiVisualExecutionState.runId = run.run_id || "";
+  renderUiVisualExecution(run, item);
+  modalEl.addEventListener("close", stopUiVisualPolling, { once: true });
+  uiVisualExecutionState.pollTimer = window.setInterval(() => pollUiVisualExecution(item), 1000);
+  pollUiVisualExecution(item);
+}
+openUiExecuteForm = function (item, accounts = [], projects = []) {
+  if (!item) return;
+  let steps = [];
+  try { steps = JSON.parse(item.steps || "[]"); } catch { steps = []; }
+  const text = JSON.stringify(steps);
+  const names = new Set();
+  text.replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_$]*)\s*\}\}/g, (_, name) => {
+    names.add(name.replace(/^\$/, ""));
+    return "";
+  });
+  ["username", "password", "code"].forEach((name) => names.add(name));
+  const runtimeFields = [...names]
+    .filter((name) => !["timestamp", "datetime", "date", "uuid", "random_int", "random_str", "random_phone", "random_email"].includes(name))
+    .map((name) => {
+      const meta = FUNCTIONAL_RUNTIME_FIELD_META[name] || {};
+      return { name, label: meta.label || name, type: meta.type || "text", placeholder: meta.placeholder || "" };
+    });
+  const variableFields = runtimeFields.filter((field) => !ACCOUNT_RUNTIME_KEYS.has(field.name));
+  const accountFields = runtimeFields.filter((field) => ACCOUNT_RUNTIME_KEYS.has(field.name));
+  modalEl.innerHTML = `
+    <form id="uiExecuteForm">
+      <div class="modal-head">
+        <h3>执行 ${escapeHtml(item.case_name)}</h3>
+        <button class="btn secondary" type="button" id="closeModal">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>账号来源</label>
+            <select name="account_mode" id="uiAccountMode">
+              <option value="default">使用默认账号（用例 > 项目）</option>
+              <option value="override">本次统一使用指定账号</option>
+              <option value="none">不使用账号档案</option>
+            </select>
+          </div>
+          <div class="field" id="uiAccountPicker" hidden>
+            <label>本次统一账号</label>
+            <select name="account_profile_id">${accountOptions(accounts, "", projects, "请选择测试账号")}</select>
+          </div>
+          <div class="field">
+            <label>当前默认</label>
+            <input type="text" value="${escapeHtml(item.account_profile_name || "按项目默认账号解析")}" disabled />
+          </div>
+          <label class="check-field"><input type="checkbox" name="headed" checked /> 弹出可见浏览器执行</label>
+        </div>
+        <details class="functional-requirement">
+          <summary>运行时变量</summary>
+          <div class="form-grid">${renderExecutionVariableFields(variableFields)}</div>
+        </details>
+        <details class="functional-requirement">
+          <summary>临时覆盖账号/验证码</summary>
+          <div class="form-grid">${renderExecutionVariableFields(accountFields)}</div>
+        </details>
+      </div>
+      <div class="modal-foot"><span></span><button class="btn" type="submit">可视化执行</button></div>
+    </form>
+  `;
+  if (!modalEl.open) modalEl.showModal();
+  const modeEl = document.querySelector("#uiAccountMode");
+  const pickerEl = document.querySelector("#uiAccountPicker");
+  const syncPicker = () => { pickerEl.hidden = modeEl.value !== "override"; };
+  modeEl.addEventListener("change", syncPicker);
+  syncPicker();
+  document.querySelector("#closeModal").addEventListener("click", () => modalEl.close());
+  document.querySelector("#uiExecuteForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submitButton = form.querySelector('button[type="submit"]');
+    try {
+      const payload = readFunctionalExecutionForm(form, variableFields, accountFields);
+      payload.headed = Boolean(form.querySelector('input[name="headed"]')?.checked);
+      if (submitButton) { submitButton.disabled = true; submitButton.textContent = "启动中..."; }
+      showToast("正在启动可视化执行");
+      const run = await api(`/api/ui-cases/${item.id}/visual-execute`, { method: "POST", body: payload });
+      startUiVisualPolling(run, item);
+    } catch (error) {
+      showToast(error.message);
+      if (submitButton) { submitButton.disabled = false; submitButton.textContent = "可视化执行"; }
+    }
+  });
+};
 async function bootstrap() {  if (!state.token) {    renderLogin();    return;  }  try {    await renderShell();  } catch {    renderLogin();  }}bootstrap();
 Promise.resolve().then(() => {
   if (typeof saveTestAccountBinding === "function") {
