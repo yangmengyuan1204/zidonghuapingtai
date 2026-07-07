@@ -94,6 +94,10 @@ PROTECTED_ENDPOINTS = [
     ("post", "/api/api-cases"),
     ("get", "/api/ui-cases"),
     ("post", "/api/ui-cases"),
+    ("post", "/api/ui-record/sessions"),
+    ("get", "/api/ui-record/sessions/missing/events"),
+    ("post", "/api/ui-record/sessions/missing/save"),
+    ("delete", "/api/ui-record/sessions/missing"),
     ("get", "/api/test-accounts"),
     ("post", "/api/test-accounts"),
     ("get", "/api/action-templates"),
@@ -110,6 +114,9 @@ ADMIN_ONLY_ENDPOINTS = [
     ("post", "/api/users"),
     ("post", "/api/envs"),
     ("post", "/api/projects"),
+    ("post", "/api/ui-record/sessions"),
+    ("post", "/api/ui-record/sessions/missing/save"),
+    ("delete", "/api/ui-record/sessions/missing"),
     ("get", "/api/users"),
 ]
 
@@ -121,6 +128,8 @@ def test_public_endpoints_accessible():
             r = client.get(path)
         elif method == "post":
             r = client.post(path, json={})
+        elif method == "delete":
+            r = client.delete(path)
         # 不应返回 404（路径必须存在）
         assert r.status_code != 404, f"{method.upper()} {path} 返回 404，路由不存在"
 
@@ -143,6 +152,8 @@ def test_admin_only_endpoints_block_normal_user():
             r = client.get(path, headers=_user_headers())
         elif method == "post":
             r = client.post(path, headers=_user_headers(), json={})
+        elif method == "delete":
+            r = client.delete(path, headers=_user_headers())
         assert r.status_code == 403, f"{method.upper()} {path} 普通用户应被拒绝，实际: {r.status_code}"
 
 

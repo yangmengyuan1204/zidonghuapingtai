@@ -326,6 +326,7 @@ from .routers.proxy import router as proxy_router
 from .routers.test_records import router as test_records_router
 from .routers.flow_recorder import router as flow_recorder_router
 from .routers.browser_record import router as browser_record_router
+from .routers.ui_record import router as ui_record_router
 
 app.include_router(functional_tasks_router)
 app.include_router(case_generation_router)
@@ -345,6 +346,7 @@ app.include_router(proxy_router)
 app.include_router(test_records_router)
 app.include_router(flow_recorder_router)
 app.include_router(browser_record_router)
+app.include_router(ui_record_router)
 
 
 # ═══════════════════════════════════════════════════════════

@@ -3136,6 +3136,245 @@ openUiExecuteForm = function (item, accounts = [], projects = []) {
     }
   });
 };
+const uiRecordState = { pollTimer: null, sessionId: "", latest: null };
+function stopUiRecordPolling() {
+  if (uiRecordState.pollTimer) {
+    window.clearInterval(uiRecordState.pollTimer);
+    uiRecordState.pollTimer = null;
+  }
+}
+function uiRecordShort(value, max = 120) {
+  const text = typeof value === "string" ? value : JSON.stringify(value ?? "");
+  return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+function uiRecordStepPreviewRows(steps) {
+  return (steps || []).map((step, index) => ({
+    index: index + 1,
+    name: step.name || step.action || "-",
+    action: step.action || "-",
+    locator: step.locator || "-",
+    value: step.value ?? "",
+  }));
+}
+function renderUiRecordPreview(data) {
+  const countEl = document.querySelector("#uiRecordCount");
+  const urlEl = document.querySelector("#uiRecordCurrentUrl");
+  const stepsEl = document.querySelector("#uiRecordSteps");
+  if (countEl) countEl.textContent = String(data?.count || 0);
+  if (urlEl) urlEl.textContent = data?.current_url || data?.start_url || "-";
+  if (stepsEl) {
+    const rows = uiRecordStepPreviewRows(data?.preview_steps || []);
+    stepsEl.innerHTML = renderTable(
+      [
+        { key: "index", label: "#" },
+        { key: "name", label: "步骤" },
+        { key: "action", label: "动作", render: (row) => badge(row.action) },
+        { key: "locator", label: "定位器", render: (row) => escapeHtml(uiRecordShort(row.locator)) },
+        { key: "value", label: "值", render: (row) => escapeHtml(uiRecordShort(row.value)) },
+      ],
+      rows,
+      false,
+    );
+  }
+}
+async function pollUiRecordSession() {
+  if (!uiRecordState.sessionId) return;
+  try {
+    const data = await api(`/api/ui-record/sessions/${uiRecordState.sessionId}/events`);
+    uiRecordState.latest = data;
+    renderUiRecordPreview(data);
+  } catch (error) {
+    stopUiRecordPolling();
+    showToast(error.message || "录制状态查询失败");
+  }
+}
+function startUiRecordPolling(session) {
+  stopUiRecordPolling();
+  uiRecordState.sessionId = session.session_id || "";
+  uiRecordState.latest = session;
+  renderUiRecordSessionDialog(session);
+  uiRecordState.pollTimer = window.setInterval(pollUiRecordSession, 1000);
+  pollUiRecordSession();
+}
+async function cancelUiRecordSession() {
+  const sessionId = uiRecordState.sessionId;
+  stopUiRecordPolling();
+  uiRecordState.sessionId = "";
+  uiRecordState.latest = null;
+  if (sessionId) {
+    try {
+      await api(`/api/ui-record/sessions/${sessionId}`, { method: "DELETE" });
+    } catch (error) {
+      showToast(error.message || "取消录制失败");
+    }
+  }
+  modalEl.close();
+}
+function openUiRecordSaveDialog() {
+  stopUiRecordPolling();
+  const latest = uiRecordState.latest || {};
+  modalEl.innerHTML = `
+    <form id="uiRecordSaveForm">
+      <div class="modal-head">
+        <h3>保存录制用例</h3>
+        <button class="btn secondary" type="button" id="uiRecordBack">返回录制</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>用例名称</label><input value="${escapeHtml(latest.case_name || "")}" disabled /></div>
+          <div class="field"><label>已捕获事件</label><input value="${escapeHtml(latest.count || 0)}" disabled /></div>
+          <div class="field"><label>最终URL</label><input value="${escapeHtml(latest.current_url || latest.start_url || "")}" disabled /></div>
+          <div class="field"><label>页面文案断言（可选）</label><input name="assertion_text" placeholder="例如：保存成功、登录成功" /></div>
+        </div>
+        <div id="uiRecordSteps">${renderTable(
+          [
+            { key: "index", label: "#" },
+            { key: "name", label: "步骤" },
+            { key: "action", label: "动作", render: (row) => badge(row.action) },
+            { key: "locator", label: "定位器", render: (row) => escapeHtml(uiRecordShort(row.locator)) },
+            { key: "value", label: "值", render: (row) => escapeHtml(uiRecordShort(row.value)) },
+          ],
+          uiRecordStepPreviewRows(latest.preview_steps || []),
+          false,
+        )}</div>
+      </div>
+      <div class="modal-foot">
+        <span>保存后会生成草稿 UI 用例，可直接点执行复跑</span>
+        <button class="btn" type="submit">保存用例</button>
+      </div>
+    </form>
+  `;
+  if (!modalEl.open) modalEl.showModal();
+  document.querySelector("#uiRecordBack")?.addEventListener("click", () => {
+    if (uiRecordState.sessionId) startUiRecordPolling(latest);
+  });
+  document.querySelector("#uiRecordSaveForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) { submitButton.disabled = true; submitButton.textContent = "保存中..."; }
+    try {
+      const data = readForm(form);
+      const result = await api(`/api/ui-record/sessions/${uiRecordState.sessionId}/save`, { method: "POST", body: data });
+      uiRecordState.sessionId = "";
+      uiRecordState.latest = null;
+      showToast(`已保存UI用例 #${result.case?.id || ""}`);
+      modalEl.close();
+      await renderUiCases();
+    } catch (error) {
+      showToast(error.message);
+      if (submitButton) { submitButton.disabled = false; submitButton.textContent = "保存用例"; }
+    }
+  });
+}
+function renderUiRecordSessionDialog(session) {
+  modalEl.innerHTML = `
+    <div class="modal-head">
+      <h3>录制UI用例：${escapeHtml(session.case_name || "")}</h3>
+      <button class="btn secondary" type="button" id="uiRecordCancelTop">取消</button>
+    </div>
+    <div class="modal-body">
+      <section class="diagnosis-summary">
+        <strong>${badge("running")} 请在弹出的浏览器中完成操作</strong>
+        <div><span>事件数：<b id="uiRecordCount">${escapeHtml(session.count || 0)}</b></span><span>当前URL：<b id="uiRecordCurrentUrl">${escapeHtml(session.current_url || session.start_url || "-")}</b></span></div>
+      </section>
+      <div class="panel-title"><h3>步骤预览</h3></div>
+      <div id="uiRecordSteps"><div class="empty">等待操作事件...</div></div>
+    </div>
+    <div class="modal-foot">
+      <span>第一版支持当前标签页内的点击、输入、选择、勾选和最终URL断言</span>
+      <div class="actions">
+        <button class="btn secondary" type="button" id="uiRecordCancel">取消录制</button>
+        <button class="btn" type="button" id="uiRecordSave">停止并保存</button>
+      </div>
+    </div>
+  `;
+  if (!modalEl.open) modalEl.showModal();
+  modalEl.addEventListener("close", stopUiRecordPolling, { once: true });
+  document.querySelector("#uiRecordCancelTop")?.addEventListener("click", cancelUiRecordSession);
+  document.querySelector("#uiRecordCancel")?.addEventListener("click", cancelUiRecordSession);
+  document.querySelector("#uiRecordSave")?.addEventListener("click", openUiRecordSaveDialog);
+  renderUiRecordPreview(session);
+}
+function openUiRecordStartDialog(projects) {
+  if (!projects.length) {
+    showToast("请先创建项目");
+    return;
+  }
+  const projectOptions = projects.map((item) => ({ value: item.id, label: item.name }));
+  openForm(
+    "录制UI用例",
+    [
+      { name: "project_id", label: "项目", type: "select", options: projectOptions, required: true },
+      { name: "case_name", label: "用例名称", required: true },
+      { name: "start_url", label: "起始URL", required: true },
+    ],
+    { project_id: state.filters.projectId || projects[0]?.id || "" },
+    async (data) => {
+      showToast("正在启动可视化浏览器");
+      const session = await api("/api/ui-record/sessions", { method: "POST", body: data });
+      showToast("录制已开始");
+      startUiRecordPolling(session);
+    },
+    "开始录制",
+  );
+}
+renderUiCases = async function () {
+  const projects = await getProjects();
+  const accounts = await api(`/api/test-accounts${queryString({ project_id: state.filters.projectId })}`);
+  const rows = await api(`/api/ui-cases${queryString({ project_id: state.filters.projectId })}`);
+  const projectName = (id) => (projects.find((item) => item.id === id) || {}).name || id;
+  contentEl().innerHTML = `
+    <div class="toolbar">
+      <div class="filters">
+        <div class="field compact"><label>项目</label><select id="uiProjectFilter">${optionList(projects, "id", "name", state.filters.projectId)}</select></div>
+      </div>
+      ${isAdmin() ? `<div class="actions"><button class="btn" id="recordUiCase">录制UI用例</button><button class="btn secondary" id="newUiCase">新增UI用例</button></div>` : ""}
+    </div>
+    ${renderTable(
+      [
+        { key: "id", label: "ID" },
+        { key: "project_id", label: "项目", render: (row) => escapeHtml(projectName(row.project_id)) },
+        { key: "case_name", label: "用例名称" },
+        { key: "page_url", label: "页面地址" },
+        { key: "timeout", label: "超时" },
+        { key: "account_profile_name", label: "测试账号", render: (row) => escapeHtml(row.account_profile_name || "跟随项目") },
+        { key: "status", label: "状态", render: (row) => badge(row.status) },
+        {
+          key: "actions",
+          label: "操作",
+          render: (row) => `
+            <div class="actions">
+              <button class="btn" data-run-ui="${row.id}">执行</button>
+              ${isAdmin() ? `<button class="btn secondary" data-edit-ui="${row.id}">编辑</button><button class="btn danger" data-del-ui="${row.id}">删除</button>` : ""}
+            </div>
+          `,
+        },
+      ],
+      rows,
+    )}
+  `;
+  document.querySelector("#uiProjectFilter").addEventListener("change", async (event) => {
+    state.filters.projectId = event.target.value;
+    localStorage.setItem("projectId", state.filters.projectId);
+    await renderUiCases();
+  });
+  document.querySelectorAll("[data-run-ui]").forEach((button) => {
+    const item = rows.find((row) => row.id === Number(button.dataset.runUi));
+    button.addEventListener("click", () => openUiExecuteForm(item, accounts, projects));
+  });
+  if (!isAdmin()) return;
+  const projectOptions = projects.map((item) => ({ value: item.id, label: item.name }));
+  document.querySelector("#recordUiCase")?.addEventListener("click", () => openUiRecordStartDialog(projects));
+  document.querySelector("#newUiCase")?.addEventListener("click", () => uiCaseForm(null, projectOptions, accounts, projects));
+  document.querySelectorAll("[data-edit-ui]").forEach((button) => {
+    const item = rows.find((row) => row.id === Number(button.dataset.editUi));
+    button.addEventListener("click", () => uiCaseForm(item, projectOptions, accounts, projects));
+  });
+  document.querySelectorAll("[data-del-ui]").forEach((button) => {
+    button.addEventListener("click", () => deleteItem(`/api/ui-cases/${button.dataset.delUi}`, renderUiCases));
+  });
+};
 async function bootstrap() {  if (!state.token) {    renderLogin();    return;  }  try {    await renderShell();  } catch {    renderLogin();  }}bootstrap();
 Promise.resolve().then(() => {
   if (typeof saveTestAccountBinding === "function") {
