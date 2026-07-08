@@ -2039,13 +2039,7 @@ def _order_part_pay_fee_timing(variables: Dict[str, Any]) -> Dict[str, str]:
 
 
 def _apply_order_part_pay_payload(prepared: Dict[str, Any], variables: Dict[str, Any]) -> None:
-    enabled = _order_part_pay_enabled(variables)
-    prepared["order_part_pay"] = 1 if enabled else 0
-    if not enabled:
-        return
-    prepared["order_part_pay_percent"] = _order_part_pay_percent(variables)
-    prepared["order_part_pay_tail_node"] = _order_part_pay_tail_node(variables)
-    prepared["order_part_pay_fee_timing"] = _order_part_pay_fee_timing(variables)
+    prepared["order_part_pay"] = 1 if _order_part_pay_enabled(variables) else 0
 
 
 def _order_part_pay_api_node(variables: Dict[str, Any]) -> int:
@@ -2882,8 +2876,28 @@ def _order_tail_payment_order_sn(variables: Dict[str, Any]) -> str:
     return ""
 
 
-def _order_tail_payment_path(variables: Dict[str, Any]) -> str:
-    return str(_api_paths(variables).get("client_order_tail_pay") or variables.get("client_order_tail_pay_path") or variables.get("order_tail_pay_path") or "").strip()
+def _order_tail_payment_mode(variables: Dict[str, Any]) -> str:
+    mode = str(
+        variables.get("order_tail_payment_mode")
+        or variables.get("order_payment_mode")
+        or variables.get("payment_mode")
+        or "balance"
+    ).strip().lower()
+    return "bank" if mode in {"bank", "bank_payment"} else "balance"
+
+
+def _order_tail_payment_path(variables: Dict[str, Any], payment_mode: str) -> str:
+    configured = str(
+        _api_paths(variables).get("client_order_tail_pay")
+        or variables.get("client_order_tail_pay_path")
+        or variables.get("order_tail_pay_path")
+        or ""
+    ).strip()
+    if configured:
+        return configured
+    if payment_mode == "bank":
+        return ""
+    return _api_path(variables, "client_balance_pay", "/client/order.balancePayOrder")
 
 
 def _run_order_tail_payment_if_needed(
@@ -2905,17 +2919,19 @@ def _run_order_tail_payment_if_needed(
         "order_sn": order_sn,
         "payment_stage": "tail",
     }
-    path = _order_tail_payment_path(variables)
+    payment_mode = _order_tail_payment_mode(variables)
+    path = _order_tail_payment_path(variables, payment_mode)
     if not path:
+        reason = "银行尾款支付接口未配置，等待后续接入" if payment_mode == "bank" else "尾款支付接口未配置，等待后续接入"
         summary.update(
             {
-                "skipped": True,
                 "interface_configured": False,
-                "reason": "尾款支付接口未配置，等待后续接入",
+                "payment_mode": payment_mode,
+                "reason": reason,
             }
         )
         log.setdefault("order_tail_payments", []).append(summary)
-        return True, summary
+        return False, summary
     if not order_sn:
         summary["reason"] = "执行尾款支付缺少订单号"
         log.setdefault("order_tail_payments", []).append(summary)
@@ -2926,16 +2942,13 @@ def _run_order_tail_payment_if_needed(
         client, base_url, _, _ = _login_client_for_payment(env, variables, payment_log)
         fields: OrderedDict[str, Any] = OrderedDict()
         fields["order_sn"] = order_sn
-        fields["payment_stage"] = "tail"
-        fields["pay_node"] = node
         fields["discounts_id"] = str(variables.get("discounts_id") or "")
-        amount = str(variables.get("order_tail_pay_amount") or variables.get("tail_pay_amount") or "").strip()
-        if amount:
-            fields["pay_amount"] = amount
-        payment_mode = str(variables.get("order_payment_mode") or variables.get("payment_mode") or "").strip()
-        if payment_mode:
-            fields["payment_mode"] = payment_mode
-        if payment_mode in {"bank", "bank_payment"}:
+        fields["merge_pay"] = str(variables.get("order_tail_merge_pay") or variables.get("merge_pay") or "0")
+        if _as_bool(variables.get("include_order_tail_pay_amount") or variables.get("include_tail_pay_amount"), False):
+            amount = str(variables.get("order_tail_pay_amount") or variables.get("tail_pay_amount") or "").strip()
+            if amount:
+                fields["pay_amount"] = amount
+        if payment_mode == "bank":
             fields["pay_bank_method"] = str(variables.get("pay_bank_method") or "1")
             fields["pay_name"] = str(variables.get("pay_name") or "自动化测试")
             fields["pay_remark"] = str(variables.get("pay_remark") or "自动化银行尾款")
@@ -2948,6 +2961,7 @@ def _run_order_tail_payment_if_needed(
                 "base_url": base_url,
                 "path": path,
                 "request": dict(fields),
+                "payment_mode": payment_mode,
                 "payment_passed": passed,
                 **_payload_brief(payment_payload),
             }
