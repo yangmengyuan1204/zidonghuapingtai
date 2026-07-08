@@ -1495,6 +1495,56 @@ def test_order_part_pay_plan_runs_only_with_full_flow_part_pay_flag(monkeypatch)
     assert summary["request"]["goods_amount"] == "2.00"
 
 
+def test_order_part_pay_plan_runs_before_submit_offer(monkeypatch):
+    calls = []
+    order_detail = {"id": "DETAIL-1", "goods_id": "GOODS-1", "num": 2}
+    detail_payload = {
+        "success": True,
+        "code": 0,
+        "data": {"order_sn": "ORDER-PART", "status": 22, "order_detail": [dict(order_detail)]},
+    }
+
+    monkeypatch.setattr(data_scripts, "_admin_login", lambda *args, **kwargs: ({"success": True, "code": 0}, "token"))
+
+    def order_detail_data(*args, **kwargs):
+        calls.append("detail")
+        return detail_payload, dict(detail_payload["data"])
+
+    def post_admin_form(_session, _base_url, path, _fields, _timeout):
+        if path.endswith("/order.submitOffer"):
+            calls.append("submit_offer")
+        else:
+            calls.append(path)
+        return {"success": True, "code": 0}
+
+    def post_admin_urlencoded(_session, _base_url, path, fields, _timeout):
+        calls.append("part_pay_plan")
+        assert path.endswith("/order.updateOrderPartPayPlan")
+        assert fields["order_sn"] == "ORDER-PART"
+        return {"success": True, "code": 0}
+
+    monkeypatch.setattr(data_scripts, "_order_detail_data", order_detail_data)
+    monkeypatch.setattr(data_scripts, "_post_admin_form", post_admin_form)
+    monkeypatch.setattr(data_scripts, "_post_admin_urlencoded", post_admin_urlencoded)
+
+    passed, summary = data_scripts._run_backend_order_flow(
+        "https://example.test",
+        30,
+        {
+            "_full_flow_part_pay_script": True,
+            "order_part_pay": True,
+            "order_part_pay_percent": 10,
+        },
+        "ORDER-PART",
+        2,
+        {},
+    )
+
+    assert passed is True
+    assert summary["backend_steps"] == ["login", "detail", "translate", "confirm", "part_pay_plan", "offer"]
+    assert calls.index("part_pay_plan") < calls.index("submit_offer")
+
+
 def test_order_tail_payment_skips_without_full_flow_part_pay_flag(monkeypatch):
     monkeypatch.setattr(data_scripts, "_login_client_for_payment", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("tail payment should not login")))
 
