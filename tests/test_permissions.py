@@ -1497,7 +1497,7 @@ def test_backend_order_flow_saves_part_pay_before_offer(monkeypatch):
     passed, summary = data_scripts._run_backend_order_flow(
         "https://example.test",
         30,
-        {"stop_after_node": "order_offered", "order_part_pay": True},
+        {"stop_after_node": "order_offered", "order_part_pay": True, "_allow_order_part_pay_plan": True},
         "ORDER-662",
         10,
         {},
@@ -1507,6 +1507,38 @@ def test_backend_order_flow_saves_part_pay_before_offer(monkeypatch):
     assert summary["current_node"] == "order_offered"
     assert calls.index("part_pay") < calls.index("offer")
     assert summary["backend_steps"] == ["login", "detail", "translate", "confirm", "part_pay_plan", "offer"]
+
+
+def test_backend_order_flow_skips_part_pay_without_full_flow_flag(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(data_scripts, "_admin_login", lambda *args, **kwargs: ({"success": True, "code": 0, "data": {"access_token": "token"}}, "token"))
+    monkeypatch.setattr(data_scripts, "_order_detail_data", lambda *args, **kwargs: (calls.append("detail") or ({"success": True, "code": 0}, backend_order_data(30 if "offer" in calls else 22 if "confirm" in calls else 20))))
+
+    def post_admin_form(_session, _base_url, path, _fields, _timeout):
+        if "submitTranslate" in path:
+            calls.append("translate")
+        elif "submitConfirm" in path:
+            calls.append("confirm")
+        elif "submitOffer" in path:
+            calls.append("offer")
+        return {"success": True, "code": 0}
+
+    monkeypatch.setattr(data_scripts, "_post_admin_form", post_admin_form)
+    monkeypatch.setattr(data_scripts, "_post_admin_urlencoded", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("part pay should not run outside full flow")))
+
+    passed, summary = data_scripts._run_backend_order_flow(
+        "https://example.test",
+        30,
+        {"stop_after_node": "order_offered", "order_part_pay": True},
+        "ORDER-662",
+        10,
+        {},
+    )
+
+    assert passed is True
+    assert summary["current_node"] == "order_offered"
+    assert "offer" in calls
 
 
 def test_backend_order_flow_resume_saves_part_pay_before_offer(monkeypatch):
@@ -1533,7 +1565,7 @@ def test_backend_order_flow_resume_saves_part_pay_before_offer(monkeypatch):
     passed, summary = data_scripts._run_backend_order_flow_resume(
         "https://example.test",
         30,
-        {"stop_after_node": "order_offered", "order_part_pay": True},
+        {"stop_after_node": "order_offered", "order_part_pay": True, "_allow_order_part_pay_plan": True},
         "ORDER-662",
         10,
         {},
@@ -1559,6 +1591,7 @@ def test_full_flow_runs_nodes_in_order_and_passes_shared_numbers(monkeypatch):
         assert variables["cart_edit_workers"] == 4
         assert variables["submit_order"] is True
         assert variables["run_backend_flow"] is True
+        assert variables["_allow_order_part_pay_plan"] is True
         assert variables["order_shop_count"] == 1
         assert variables["order_per_shop"] == 3
         return True, "quote-log", "quote-report", {"order_sn": "ORDER-1", "backend_passed": True}

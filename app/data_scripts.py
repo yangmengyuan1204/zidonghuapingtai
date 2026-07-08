@@ -2017,6 +2017,14 @@ def _order_part_pay_enabled(variables: Dict[str, Any]) -> bool:
     return _as_bool(variables.get("order_part_pay"), False) or str(variables.get("order_part_pay")).strip() == "1"
 
 
+def _order_part_pay_plan_allowed(variables: Dict[str, Any]) -> bool:
+    return _as_bool(variables.get("_allow_order_part_pay_plan"), False)
+
+
+def _order_part_pay_plan_enabled(variables: Dict[str, Any]) -> bool:
+    return _order_part_pay_enabled(variables) and _order_part_pay_plan_allowed(variables)
+
+
 def _order_part_pay_percent(variables: Dict[str, Any]) -> int:
     percent = _as_int(variables.get("order_part_pay_percent"), 10)
     percent = max(0, min(100, percent))
@@ -2039,7 +2047,7 @@ def _order_part_pay_fee_timing(variables: Dict[str, Any]) -> Dict[str, str]:
 
 
 def _apply_order_part_pay_payload(prepared: Dict[str, Any], variables: Dict[str, Any]) -> None:
-    prepared["order_part_pay"] = 1 if _order_part_pay_enabled(variables) else 0
+    prepared["order_part_pay"] = 1 if _order_part_pay_plan_enabled(variables) else 0
 
 
 def _order_part_pay_api_node(variables: Dict[str, Any]) -> int:
@@ -2102,6 +2110,8 @@ def _save_order_part_pay_plan_if_needed(
 ) -> tuple[bool, Dict[str, Any]]:
     if not _order_part_pay_enabled(variables):
         return True, {"skipped": True, "reason": "未启用分批付款"}
+    if not _order_part_pay_plan_allowed(variables):
+        return True, {"skipped": True, "reason": "分批付款方案仅全流程启用"}
     fields = _order_part_pay_plan_fields(order_sn, offer_data, variables)
     payload = _post_admin_urlencoded(
         session,
@@ -8701,6 +8711,7 @@ def run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> T
     variables.setdefault("inspection_transition_delay", 0)
     variables.setdefault("after_box_submit_delay", 0.2)
     variables.setdefault("after_complete_box_delay", 0.2)
+    variables["_allow_order_part_pay_plan"] = True
     resume_porder_sn = str(variables.get("porder_sn") or "").strip()
     resume_order_sn = str(variables.get("order_sn") or variables.get("last_order_sn") or "").strip()
     if resume_porder_sn:
