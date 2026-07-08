@@ -1421,6 +1421,132 @@ def patch_full_flow_report(monkeypatch):
     monkeypatch.setattr(data_scripts, "write_allure_result", lambda *args, **kwargs: "mock-report.json")
 
 
+def backend_order_data(status=20):
+    return {
+        "id": 1,
+        "order_sn": "ORDER-662",
+        "status": status,
+        "order_detail": [
+            {
+                "id": "DETAIL-1",
+                "goods_id": "GOODS-1",
+                "num": 10,
+                "confirm_num": 0,
+                "confirm_price": "0.00",
+            }
+        ],
+    }
+
+
+def test_backend_order_flow_pause_at_order_confirmed_does_not_submit_offer(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(data_scripts, "_admin_login", lambda *args, **kwargs: ({"success": True, "code": 0, "data": {"access_token": "token"}}, "token"))
+    monkeypatch.setattr(data_scripts, "_order_detail_data", lambda *args, **kwargs: (calls.append("detail") or ({"success": True, "code": 0}, backend_order_data(22 if "confirm" in calls else 20))))
+    monkeypatch.setattr(data_scripts, "_save_order_part_pay_plan_if_needed", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("part pay should not run")))
+
+    def post_admin_form(_session, _base_url, path, _fields, _timeout):
+        if "submitTranslate" in path:
+            calls.append("translate")
+        elif "submitConfirm" in path:
+            calls.append("confirm")
+        elif "submitOffer" in path:
+            raise AssertionError("offer should not run")
+        return {"success": True, "code": 0}
+
+    monkeypatch.setattr(data_scripts, "_post_admin_form", post_admin_form)
+
+    passed, summary = data_scripts._run_backend_order_flow(
+        "https://example.test",
+        30,
+        {"stop_after_node": "order_confirmed"},
+        "ORDER-662",
+        10,
+        {},
+    )
+
+    assert passed is True
+    assert summary["current_node"] == "order_confirmed"
+    assert summary["backend_steps"] == ["login", "detail", "translate", "confirm"]
+    assert "offer" not in calls
+
+
+def test_backend_order_flow_saves_part_pay_before_offer(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(data_scripts, "_admin_login", lambda *args, **kwargs: ({"success": True, "code": 0, "data": {"access_token": "token"}}, "token"))
+    monkeypatch.setattr(data_scripts, "_order_detail_data", lambda *args, **kwargs: (calls.append("detail") or ({"success": True, "code": 0}, backend_order_data(30 if "offer" in calls else 22 if "confirm" in calls else 20))))
+
+    def post_admin_form(_session, _base_url, path, _fields, _timeout):
+        if "submitTranslate" in path:
+            calls.append("translate")
+        elif "submitConfirm" in path:
+            calls.append("confirm")
+        elif "submitOffer" in path:
+            calls.append("offer")
+        return {"success": True, "code": 0}
+
+    def post_admin_urlencoded(_session, _base_url, path, _fields, _timeout):
+        assert "updateOrderPartPayPlan" in path
+        calls.append("part_pay")
+        return {"success": True, "code": 0}
+
+    monkeypatch.setattr(data_scripts, "_post_admin_form", post_admin_form)
+    monkeypatch.setattr(data_scripts, "_post_admin_urlencoded", post_admin_urlencoded)
+
+    passed, summary = data_scripts._run_backend_order_flow(
+        "https://example.test",
+        30,
+        {"stop_after_node": "order_offered", "order_part_pay": True},
+        "ORDER-662",
+        10,
+        {},
+    )
+
+    assert passed is True
+    assert summary["current_node"] == "order_offered"
+    assert calls.index("part_pay") < calls.index("offer")
+    assert summary["backend_steps"] == ["login", "detail", "translate", "confirm", "part_pay_plan", "offer"]
+
+
+def test_backend_order_flow_resume_saves_part_pay_before_offer(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(data_scripts, "_admin_login", lambda *args, **kwargs: ({"success": True, "code": 0, "data": {"access_token": "token"}}, "token"))
+    monkeypatch.setattr(data_scripts, "_order_detail_data", lambda *args, **kwargs: (calls.append("detail") or ({"success": True, "code": 0}, backend_order_data(30 if "offer" in calls else 21))))
+
+    def post_admin_form(_session, _base_url, path, _fields, _timeout):
+        if "submitConfirm" in path:
+            calls.append("confirm")
+        elif "submitOffer" in path:
+            calls.append("offer")
+        return {"success": True, "code": 0}
+
+    def post_admin_urlencoded(_session, _base_url, path, _fields, _timeout):
+        assert "updateOrderPartPayPlan" in path
+        calls.append("part_pay")
+        return {"success": True, "code": 0}
+
+    monkeypatch.setattr(data_scripts, "_post_admin_form", post_admin_form)
+    monkeypatch.setattr(data_scripts, "_post_admin_urlencoded", post_admin_urlencoded)
+
+    passed, summary = data_scripts._run_backend_order_flow_resume(
+        "https://example.test",
+        30,
+        {"stop_after_node": "order_offered", "order_part_pay": True},
+        "ORDER-662",
+        10,
+        {},
+        backend_order_data(21),
+    )
+
+    assert passed is True
+    assert summary["current_node"] == "order_offered"
+    assert "confirm" not in calls
+    assert calls.index("part_pay") < calls.index("offer")
+    assert summary["backend_steps"] == ["login", "detail", "part_pay_plan", "offer"]
+
+
 def test_full_flow_runs_nodes_in_order_and_passes_shared_numbers(monkeypatch):
     patch_full_flow_report(monkeypatch)
     calls = []

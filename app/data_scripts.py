@@ -2181,11 +2181,9 @@ def _run_backend_order_flow(
     if not _api_success(translate_payload):
         return False, {"backend_passed": False, "reason": "订单翻译提交失败", "translate": _payload_brief(translate_payload)}
 
-    # detail_after_translate：仅 order_translated 暂停点需要准确 status，非暂停路径跳过冗余查询
-    #（translate 不修改 order_detail 结构，confirm_source 直接用 translate_data 即可）
+    _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
+    backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
     if _checkpoint_requested(variables, "order_translated"):
-        _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
-        backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
         return True, _paused_summary(
             "order_translated",
             {
@@ -2195,44 +2193,9 @@ def _run_backend_order_flow(
                 "backend_status": after_translate.get("status") if after_translate else None,
             },
         )
-    backend_log["detail_after_translate"] = {**_admin_detail_brief(order_data), "cached_from": "detail_before"}
-    offer_source = translate_data
-    offer_data = _prepare_offer_data(offer_source, variables, item_quantity)
-    offer_payload = _post_admin_form(
-        session,
-        base_url,
-        _api_path(variables, "admin_order_offer", "/order.submitOffer"),
-        {"data": bulk_cart.json_text(offer_data), "is_temp": str(variables.get("offer_is_temp") or "0")},
-        timeout,
-    )
-    backend_log["offer"] = {
-        **_payload_brief(offer_payload),
-        "detail_count": len(offer_data.get("order_detail") or []),
-    }
-    if not _api_success(offer_payload):
-        return False, {"backend_passed": False, "reason": "业务报价提交失败", "offer": _payload_brief(offer_payload)}
 
-    part_pay_passed, part_pay_summary = _save_order_part_pay_plan_if_needed(session, base_url, variables, order_sn, offer_data, timeout)
-    backend_log["part_pay_plan"] = part_pay_summary
-    if not part_pay_passed:
-        return False, {"backend_passed": False, "reason": str(part_pay_summary.get("reason") or "分批付款方案保存失败"), "part_pay_plan": part_pay_summary}
-
-    _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
-    backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
-    if _checkpoint_requested(variables, "order_offered"):
-        return True, _paused_summary(
-            "order_offered",
-            {
-                "order_sn": order_sn,
-                "backend_passed": True,
-                "backend_steps": ["login", "detail", "translate", "offer", "part_pay_plan"],
-                "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
-                "backend_status": after_offer.get("status") if after_offer else None,
-            },
-        )
-
-    confirm_source = translate_data
-    confirm_data = _build_confirm_data(after_offer or confirm_source, variables, item_quantity)
+    confirm_source = after_translate or translate_data
+    confirm_data = _build_confirm_data(confirm_source, variables, item_quantity)
     confirm_payload = _post_admin_form(
         session,
         base_url,
@@ -2259,16 +2222,51 @@ def _run_backend_order_flow(
             {
                 "order_sn": order_sn,
                 "backend_passed": True,
-                "backend_steps": ["login", "detail", "translate", "offer", "part_pay_plan", "confirm"],
+                "backend_steps": ["login", "detail", "translate", "confirm"],
                 "backend_status": after_confirm.get("status") if after_confirm else None,
+            },
+        )
+
+    offer_source = after_confirm or confirm_source
+    offer_data = _prepare_offer_data(offer_source, variables, item_quantity)
+    part_pay_passed, part_pay_summary = _save_order_part_pay_plan_if_needed(session, base_url, variables, order_sn, offer_data, timeout)
+    backend_log["part_pay_plan"] = part_pay_summary
+    if not part_pay_passed:
+        return False, {"backend_passed": False, "reason": str(part_pay_summary.get("reason") or "分批付款方案保存失败"), "part_pay_plan": part_pay_summary}
+
+    offer_payload = _post_admin_form(
+        session,
+        base_url,
+        _api_path(variables, "admin_order_offer", "/order.submitOffer"),
+        {"data": bulk_cart.json_text(offer_data), "is_temp": str(variables.get("offer_is_temp") or "0")},
+        timeout,
+    )
+    backend_log["offer"] = {
+        **_payload_brief(offer_payload),
+        "detail_count": len(offer_data.get("order_detail") or []),
+    }
+    if not _api_success(offer_payload):
+        return False, {"backend_passed": False, "reason": "业务报价提交失败", "offer": _payload_brief(offer_payload)}
+
+    _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
+    backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
+    if _checkpoint_requested(variables, "order_offered"):
+        return True, _paused_summary(
+            "order_offered",
+            {
+                "order_sn": order_sn,
+                "backend_passed": True,
+                "backend_steps": ["login", "detail", "translate", "confirm", "part_pay_plan", "offer"],
+                "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
+                "backend_status": after_offer.get("status") if after_offer else None,
             },
         )
 
     return True, {
         "backend_passed": True,
-        "backend_steps": ["login", "detail", "translate", "offer", "part_pay_plan", "confirm"],
+        "backend_steps": ["login", "detail", "translate", "confirm", "part_pay_plan", "offer"],
         "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
-        "backend_status": after_confirm.get("status") if after_confirm else None,
+        "backend_status": after_offer.get("status") if after_offer else None,
     }
 
 
@@ -2450,11 +2448,11 @@ def _run_backend_order_flow_resume(
     status = _order_status_code(current_data)
     if status is None:
         return False, {"backend_passed": False, "reason": "\u672a\u8bc6\u522b\u8ba2\u5355\u72b6\u6001"}
-    if status == 30:
+    if status in (22, 30):
         return True, {
             "order_sn": order_sn,
             "backend_passed": True,
-            "backend_steps": ["login", "detail", "skip_completed_order_backend"],
+            "backend_steps": ["login", "detail", "skip_offered_order_backend"],
             "backend_status": status,
             "already_order_offered": True,
         }
@@ -2478,6 +2476,7 @@ def _run_backend_order_flow_resume(
         _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
         backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
         current_data = after_translate or translate_data
+        status = _order_status_code(current_data) or status
         if _checkpoint_requested(variables, "order_translated"):
             return True, _paused_summary(
                 "order_translated",
@@ -2489,43 +2488,7 @@ def _run_backend_order_flow_resume(
                 },
             )
 
-    if status <= 21:
-        offer_data = _prepare_offer_data(current_data, variables, item_quantity)
-        offer_payload = _post_admin_form(
-            session,
-            base_url,
-            _api_path(variables, "admin_order_offer", "/order.submitOffer"),
-            {"data": bulk_cart.json_text(offer_data), "is_temp": str(variables.get("offer_is_temp") or "0")},
-            timeout,
-        )
-        backend_log["offer"] = {
-            **_payload_brief(offer_payload),
-            "detail_count": len(offer_data.get("order_detail") or []),
-        }
-        if not _api_success(offer_payload):
-            return False, {"backend_passed": False, "reason": "\u4e1a\u52a1\u62a5\u4ef7\u63d0\u4ea4\u5931\u8d25", "offer": _payload_brief(offer_payload)}
-        backend_steps.append("offer")
-        part_pay_passed, part_pay_summary = _save_order_part_pay_plan_if_needed(session, base_url, variables, order_sn, offer_data, timeout)
-        backend_log["part_pay_plan"] = part_pay_summary
-        if not part_pay_passed:
-            return False, {"backend_passed": False, "reason": str(part_pay_summary.get("reason") or "分批付款方案保存失败"), "part_pay_plan": part_pay_summary}
-        backend_steps.append("part_pay_plan")
-        _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
-        backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
-        current_data = after_offer or current_data
-        if _checkpoint_requested(variables, "order_offered"):
-            return True, _paused_summary(
-                "order_offered",
-                {
-                    "order_sn": order_sn,
-                    "backend_passed": True,
-                    "backend_steps": backend_steps,
-                    "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
-                    "backend_status": current_data.get("status") if current_data else None,
-                },
-            )
-
-    if status <= 22:
+    if status <= 20:
         confirm_data = _build_confirm_data(current_data, variables, item_quantity)
         confirm_payload = _post_admin_form(
             session,
@@ -2543,11 +2506,12 @@ def _run_backend_order_flow_resume(
             "detail_count": len(confirm_data.get("order_detail") or []),
         }
         if not _api_success(confirm_payload):
-            return False, {"backend_passed": False, "reason": "\u8ba2\u5355\u91c7\u8d2d\u8c03\u67e5\u63d0\u4ea4\u5931\u8d25", "confirm": _payload_brief(confirm_payload)}
+            return False, {"backend_passed": False, "reason": "订单采购调查提交失败", "confirm": _payload_brief(confirm_payload)}
         backend_steps.append("confirm")
         _, after_confirm = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
         backend_log["detail_after_confirm"] = _admin_detail_brief(after_confirm)
         current_data = after_confirm or current_data
+        status = _order_status_code(current_data) or status
         if _checkpoint_requested(variables, "order_confirmed"):
             return True, _paused_summary(
                 "order_confirmed",
@@ -2555,6 +2519,56 @@ def _run_backend_order_flow_resume(
                     "order_sn": order_sn,
                     "backend_passed": True,
                     "backend_steps": backend_steps,
+                    "backend_status": current_data.get("status") if current_data else None,
+                },
+            )
+    elif status == 21:
+        backend_log["confirm"] = {"skipped": True, "reason": "订单已完成采购调查"}
+        if _checkpoint_requested(variables, "order_confirmed"):
+            return True, _paused_summary(
+                "order_confirmed",
+                {
+                    "order_sn": order_sn,
+                    "backend_passed": True,
+                    "backend_steps": backend_steps,
+                    "backend_status": current_data.get("status") if current_data else None,
+                },
+            )
+
+    if status <= 21:
+        offer_data = _prepare_offer_data(current_data, variables, item_quantity)
+        part_pay_passed, part_pay_summary = _save_order_part_pay_plan_if_needed(session, base_url, variables, order_sn, offer_data, timeout)
+        backend_log["part_pay_plan"] = part_pay_summary
+        if not part_pay_passed:
+            return False, {"backend_passed": False, "reason": str(part_pay_summary.get("reason") or "分批付款方案保存失败"), "part_pay_plan": part_pay_summary}
+        backend_steps.append("part_pay_plan")
+
+        offer_payload = _post_admin_form(
+            session,
+            base_url,
+            _api_path(variables, "admin_order_offer", "/order.submitOffer"),
+            {"data": bulk_cart.json_text(offer_data), "is_temp": str(variables.get("offer_is_temp") or "0")},
+            timeout,
+        )
+        backend_log["offer"] = {
+            **_payload_brief(offer_payload),
+            "detail_count": len(offer_data.get("order_detail") or []),
+        }
+        if not _api_success(offer_payload):
+            return False, {"backend_passed": False, "reason": "\u4e1a\u52a1\u62a5\u4ef7\u63d0\u4ea4\u5931\u8d25", "offer": _payload_brief(offer_payload)}
+        backend_steps.append("offer")
+        _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
+        backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
+        current_data = after_offer or current_data
+        status = _order_status_code(current_data) or status
+        if _checkpoint_requested(variables, "order_offered"):
+            return True, _paused_summary(
+                "order_offered",
+                {
+                    "order_sn": order_sn,
+                    "backend_passed": True,
+                    "backend_steps": backend_steps,
+                    "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
                     "backend_status": current_data.get("status") if current_data else None,
                 },
             )
