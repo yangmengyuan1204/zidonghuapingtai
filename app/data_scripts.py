@@ -30,6 +30,7 @@ POORDER_BALANCE_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u4f59\u989d\u4ed8\u6b3
 POORDER_BANK_PAYMENT_SCRIPT_NAME = "\u914d\u9001\u5355\u94f6\u884c\u4ed8\u6b3e"
 BALANCE_RECHARGE_SCRIPT_NAME = "\u4f59\u989d\u5145\u503c"
 FULL_FLOW_SCRIPT_NAME = "\u5168\u6d41\u7a0b\u5b8c\u5168\u4f53"
+FULL_FLOW_PART_PAY_SCRIPT_NAME = "全流程加入分批付款"
 DIRECT_BOX_TO_SHELF_SCRIPT_NAME = "\u76f4\u63a5\u88c5\u7bb1\u4e0a\u67b6"
 RESUME_ORDER_FLOW_SCRIPT_NAME = "输入订单号继续执行操作"
 RESUME_PORDER_FLOW_SCRIPT_NAME = "输入配送单号继续执行操作"
@@ -2014,6 +2015,14 @@ ORDER_PART_PAY_TAIL_NODES = {"before_shelf", "before_porder_create"}
 
 
 def _order_part_pay_enabled(variables: Dict[str, Any]) -> bool:
+    return _full_flow_part_pay_script_enabled(variables) and _order_part_pay_requested(variables)
+
+
+def _full_flow_part_pay_script_enabled(variables: Dict[str, Any]) -> bool:
+    return _as_bool(variables.get("_full_flow_part_pay_script"), False)
+
+
+def _order_part_pay_requested(variables: Dict[str, Any]) -> bool:
     return _as_bool(variables.get("order_part_pay"), False) or str(variables.get("order_part_pay")).strip() == "1"
 
 
@@ -2039,7 +2048,10 @@ def _order_part_pay_fee_timing(variables: Dict[str, Any]) -> Dict[str, str]:
 
 
 def _apply_order_part_pay_payload(prepared: Dict[str, Any], variables: Dict[str, Any]) -> None:
-    prepared["order_part_pay"] = 1 if _order_part_pay_enabled(variables) else 0
+    if _full_flow_part_pay_script_enabled(variables):
+        prepared["order_part_pay"] = 1 if _order_part_pay_requested(variables) else 0
+    else:
+        prepared.pop("order_part_pay", None)
 
 
 def _order_part_pay_api_node(variables: Dict[str, Any]) -> int:
@@ -2100,6 +2112,8 @@ def _save_order_part_pay_plan_if_needed(
     offer_data: Dict[str, Any],
     timeout: int,
 ) -> tuple[bool, Dict[str, Any]]:
+    if not _full_flow_part_pay_script_enabled(variables):
+        return True, {"skipped": True, "reason": "分批付款仅全流程加入分批付款脚本启用"}
     if not _order_part_pay_enabled(variables):
         return True, {"skipped": True, "reason": "未启用分批付款"}
     fields = _order_part_pay_plan_fields(order_sn, offer_data, variables)
@@ -3093,7 +3107,7 @@ def _resolve_order_tail_partial_context(
     select_by, selected_values = _order_tail_partial_selected_values(variables)
     context.update({"partial_enabled": True, "select_by": select_by, "selected_values": selected_values})
     if not selected_values:
-        context["reason"] = "按番尾款已启用，但未填写番序号或明细 ID"
+        context["reason"] = "按番尾款已启用，但未填写番序号"
         return False, context
 
     detail_fields = _order_tail_detail_fields(order_sn, variables)
@@ -3123,7 +3137,7 @@ def _resolve_order_tail_partial_context(
     context["selected_order_detail_ids"] = selected_ids
     if missing_values:
         context["missing_values"] = missing_values
-        context["reason"] = "所选番不存在或未匹配到订单明细"
+        context["reason"] = "所选明细 ID 不存在或未匹配到订单明细" if select_by == "detail_id" else "所选番序号不存在或未匹配到订单明细"
         return False, context
 
     unpaid_ids = _order_tail_unpaid_ids_from_detail(detail_payload, rows)
@@ -3213,6 +3227,8 @@ def _run_order_tail_payment_if_needed(
     log: Dict[str, Any],
     node: str,
 ) -> tuple[bool, Dict[str, Any]]:
+    if not _full_flow_part_pay_script_enabled(variables):
+        return True, {"skipped": True, "reason": "分批付款尾款仅全流程加入分批付款脚本启用", "node": node}
     if not _order_part_pay_enabled(variables):
         return True, {"skipped": True, "reason": "未启用分批付款", "node": node}
     configured_node = _order_part_pay_tail_node(variables)
@@ -8584,7 +8600,7 @@ def _full_flow_finish(
         summary["stopped_after_node"] = current_node
     if reason:
         summary["reason"] = reason
-    return _finish_named(FULL_FLOW_SCRIPT_NAME, log, passed, summary)
+    return _finish_named(str(log.get("script") or FULL_FLOW_SCRIPT_NAME), log, passed, summary)
 
 
 def _resume_record_skipped(log: Dict[str, Any], nodes: list[str], reason: str) -> None:
@@ -8706,8 +8722,9 @@ def run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> T
     input_adjustments = _full_flow_prepare_warehouse_counts(variables)
     stop_after = _stop_after_node(variables) or FULL_FLOW_COMPLETE_NODE
     variables["stop_after_node"] = stop_after
+    report_name = str(variables.get("_full_flow_report_name") or FULL_FLOW_SCRIPT_NAME).strip() or FULL_FLOW_SCRIPT_NAME
     log: Dict[str, Any] = {
-        "script": FULL_FLOW_SCRIPT_NAME,
+        "script": report_name,
         "mode": "full_flow",
         "started_at": datetime.now(),
         "stop_after_node": stop_after,

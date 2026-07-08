@@ -1421,6 +1421,174 @@ def patch_full_flow_report(monkeypatch):
     monkeypatch.setattr(data_scripts, "write_allure_result", lambda *args, **kwargs: "mock-report.json")
 
 
+def test_full_flow_part_pay_entry_is_exact_and_hides_detail_id():
+    source = Path("static/full-flow.js").read_text(encoding="utf-8")
+
+    assert 'const FULL_FLOW_PART_PAY_SCRIPT_NAME = "全流程加入分批付款";' in source
+    assert "function ensureFullFlowPartPayScript" in source
+    assert 'String(flow?.name || "").trim() === FULL_FLOW_PART_PAY_SCRIPT_NAME' in source
+    assert "includes(FULL_FLOW_PART_PAY_SCRIPT" not in source
+    assert "尾款支付番序号" in source
+    assert "name=\"order_part_pay_tail_select_by\"" not in source
+    assert "name=\"order_part_pay_tail_detail_ids\"" not in source
+    assert "按番选择方式" not in source
+    assert "<label>明细 ID</label>" not in source
+    assert "next._full_flow_part_pay_script = true;" in source
+    assert "next._full_flow_part_pay_script = false;" in source
+
+
+def test_order_part_pay_ignored_without_full_flow_part_pay_flag(monkeypatch):
+    order_data = {
+        "order_sn": "ORDER-PART",
+        "order_detail": [{"id": "DETAIL-1", "num": 1}],
+    }
+    prepared = data_scripts._prepare_offer_data(order_data, {"order_part_pay": True}, 1)
+    assert "order_part_pay" not in prepared
+
+    prepared = data_scripts._prepare_offer_data(order_data, {"_full_flow_part_pay_script": True, "order_part_pay": True}, 1)
+    assert prepared["order_part_pay"] == 1
+
+    monkeypatch.setattr(data_scripts, "_post_admin_urlencoded", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("part pay API should not run")))
+    passed, summary = data_scripts._save_order_part_pay_plan_if_needed(
+        None,
+        "https://example.test",
+        {"order_part_pay": True},
+        "ORDER-PART",
+        prepared,
+        30,
+    )
+    assert passed is True
+    assert summary["skipped"] is True
+    assert "全流程加入分批付款" in summary["reason"]
+
+
+def test_order_part_pay_plan_runs_only_with_full_flow_part_pay_flag(monkeypatch):
+    calls = []
+    offer_data = {
+        "order_sn": "ORDER-PART",
+        "order_detail": [{"id": "DETAIL-1", "offer_num": 2, "offer_price": "10"}],
+    }
+
+    def post_admin_urlencoded(_session, _base_url, path, fields, _timeout):
+        calls.append({"path": path, "fields": dict(fields)})
+        return {"success": True, "code": 0}
+
+    monkeypatch.setattr(data_scripts, "_post_admin_urlencoded", post_admin_urlencoded)
+    passed, summary = data_scripts._save_order_part_pay_plan_if_needed(
+        None,
+        "https://example.test",
+        {
+            "_full_flow_part_pay_script": True,
+            "order_part_pay": True,
+            "order_part_pay_percent": 10,
+            "order_part_pay_tail_node": "before_shelf",
+        },
+        "ORDER-PART",
+        offer_data,
+        30,
+    )
+
+    assert passed is True
+    assert calls[0]["path"].endswith("/order.updateOrderPartPayPlan")
+    assert calls[0]["fields"]["order_sn"] == "ORDER-PART"
+    assert calls[0]["fields"]["first_payment_ratio"] == 10
+    assert summary["request"]["goods_amount"] == "2.00"
+
+
+def test_order_tail_payment_skips_without_full_flow_part_pay_flag(monkeypatch):
+    monkeypatch.setattr(data_scripts, "_login_client_for_payment", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("tail payment should not login")))
+
+    log = {}
+    passed, summary = data_scripts._run_order_tail_payment_if_needed(
+        full_flow_env(),
+        {"order_part_pay": True, "order_part_pay_tail_node": "before_shelf", "order_sn": "ORDER-PART"},
+        log,
+        "before_shelf",
+    )
+
+    assert passed is True
+    assert summary["skipped"] is True
+    assert "全流程加入分批付款" in summary["reason"]
+    assert "order_tail_payments" not in log
+
+
+class TailPartialFakeClient:
+    def __init__(self):
+        self.calls = []
+
+    def post_form(self, path, fields):
+        self.calls.append((path, dict(fields)))
+        if path.endswith("/client/order.orderDetail"):
+            return {
+                "success": True,
+                "data": {
+                    "order_detail": [
+                        {
+                            "goods": [
+                                {"id": "DETAIL-1", "sorting": "1", "tail_pay_status": 0, "tail_pay_status_name": "待支付"},
+                                {"id": "DETAIL-2", "sorting": "2", "tail_pay_status": 0, "tail_pay_status_name": "待支付"},
+                            ]
+                        }
+                    ],
+                    "part_pay_tail_summary": {"unpaid_tail_detail_ids": ["DETAIL-1", "DETAIL-2"]},
+                },
+            }
+        if path.endswith("/client/order.payData"):
+            detail_ids = [value for key, value in fields.items() if str(key).startswith("order_detail_ids[")]
+            return {
+                "success": True,
+                "data": {
+                    "part_pay_amount": {"JPY": {"tail_detail_ids": detail_ids, "pay_amount_jpy": "100"}},
+                    "tail_detail_list": [{"id": detail_id, "can_pay_tail": True} for detail_id in detail_ids],
+                },
+            }
+        raise AssertionError(f"unexpected path {path}")
+
+
+def test_order_tail_partial_resolves_sorting_and_keeps_legacy_detail_id():
+    passed, context = data_scripts._resolve_order_tail_partial_context(
+        TailPartialFakeClient(),
+        {"order_part_pay_tail_partial_enabled": 1, "order_part_pay_tail_sortings": "1,2"},
+        "ORDER-TAIL",
+        {},
+    )
+    assert passed is True
+    assert context["select_by"] == "sorting"
+    assert context["selected_order_detail_ids"] == ["DETAIL-1", "DETAIL-2"]
+
+    passed, context = data_scripts._resolve_order_tail_partial_context(
+        TailPartialFakeClient(),
+        {"order_part_pay_tail_partial_enabled": 1},
+        "ORDER-TAIL",
+        {},
+    )
+    assert passed is False
+    assert context["reason"] == "按番尾款已启用，但未填写番序号"
+
+    passed, context = data_scripts._resolve_order_tail_partial_context(
+        TailPartialFakeClient(),
+        {"order_part_pay_tail_partial_enabled": 1, "order_part_pay_tail_sortings": "9"},
+        "ORDER-TAIL",
+        {},
+    )
+    assert passed is False
+    assert context["reason"] == "所选番序号不存在或未匹配到订单明细"
+
+    passed, context = data_scripts._resolve_order_tail_partial_context(
+        TailPartialFakeClient(),
+        {
+            "order_part_pay_tail_partial_enabled": 1,
+            "order_part_pay_tail_select_by": "detail_id",
+            "order_part_pay_tail_detail_ids": "DETAIL-2",
+        },
+        "ORDER-TAIL",
+        {},
+    )
+    assert passed is True
+    assert context["select_by"] == "detail_id"
+    assert context["selected_order_detail_ids"] == ["DETAIL-2"]
+
+
 def test_full_flow_runs_nodes_in_order_and_passes_shared_numbers(monkeypatch):
     patch_full_flow_report(monkeypatch)
     calls = []

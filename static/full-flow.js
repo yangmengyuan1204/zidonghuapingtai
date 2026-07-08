@@ -237,15 +237,12 @@ if (!window.__fullFlowDataScriptLoaded) {
       .map((field) => [field.name, field.default]),
   );
   const FULL_FLOW_SAVE_DEFAULTS_FIELD = { name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false };
-  const FULL_FLOW_PART_PAY_SCRIPT_KEYWORD = "分批付款";
+  const FULL_FLOW_PART_PAY_SCRIPT_ID = "full_flow_part_pay_builtin";
+  const FULL_FLOW_PART_PAY_SCRIPT_NAME = "全流程加入分批付款";
   const FULL_FLOW_PART_PAY_PERCENT_OPTIONS = Array.from({ length: 21 }, (_, index) => index * 5);
   const FULL_FLOW_PART_PAY_TAIL_NODE_OPTIONS = [
     { value: "before_shelf", label: "上架仓库前" },
     { value: "before_porder_create", label: "提出配送单前" },
-  ];
-  const FULL_FLOW_PART_PAY_TAIL_SELECT_OPTIONS = [
-    { value: "sorting", label: "番序号 sorting" },
-    { value: "detail_id", label: "明细 ID order_detail_id" },
   ];
   const FULL_FLOW_PART_PAY_FEE_FIELDS = [
     { key: "domestic_freight", label: "国内运费", amountKeys: ["offer_freight", "confirm_freight"] },
@@ -263,7 +260,7 @@ if (!window.__fullFlowDataScriptLoaded) {
   }
 
   function isFullFlowPartPayScript(flow) {
-    return flow?.scriptType === "full_flow" && String(flow?.name || "").includes(FULL_FLOW_PART_PAY_SCRIPT_KEYWORD);
+    return flow?.scriptType === "full_flow" && (flow?.id === FULL_FLOW_PART_PAY_SCRIPT_ID || String(flow?.name || "").trim() === FULL_FLOW_PART_PAY_SCRIPT_NAME);
   }
 
   function fullFlowPartPayPercent(value) {
@@ -283,48 +280,55 @@ if (!window.__fullFlowDataScriptLoaded) {
     );
   }
 
-  function fullFlowPartPayTailSelectBy(value) {
-    const text = String(value || "").trim();
-    return ["detail_id", "order_detail_id", "id"].includes(text) ? "detail_id" : "sorting";
-  }
-
   function fullFlowPartPaySelectionText(value) {
     return splitParamList(value).join(",");
   }
 
   function normalizeFullFlowPartPayVariables(variables, flow) {
     const next = { ...(variables || {}) };
-    if (!isFullFlowPartPayScript(flow)) return next;
+    if (!isFullFlowPartPayScript(flow)) {
+      next._full_flow_part_pay_script = false;
+      delete next._full_flow_report_name;
+      return next;
+    }
+    next._full_flow_part_pay_script = true;
+    next._full_flow_report_name = FULL_FLOW_PART_PAY_SCRIPT_NAME;
     next.order_part_pay = boolValue(next.order_part_pay, true) ? 1 : 0;
     next.order_part_pay_percent = fullFlowPartPayPercent(next.order_part_pay_percent);
     const tailNode = String(next.order_part_pay_tail_node || "").trim();
     next.order_part_pay_tail_node = FULL_FLOW_PART_PAY_TAIL_NODE_OPTIONS.some((option) => option.value === tailNode) ? tailNode : "before_shelf";
     next.order_part_pay_fee_timing = fullFlowPartPayFeeTiming(next.order_part_pay_fee_timing);
     next.order_part_pay_tail_partial_enabled = boolValue(next.order_part_pay_tail_partial_enabled, false) ? 1 : 0;
-    next.order_part_pay_tail_select_by = fullFlowPartPayTailSelectBy(next.order_part_pay_tail_select_by);
+    next.order_part_pay_tail_select_by = "sorting";
     next.order_part_pay_tail_sortings = fullFlowPartPaySelectionText(next.order_part_pay_tail_sortings);
-    next.order_part_pay_tail_detail_ids = fullFlowPartPaySelectionText(next.order_part_pay_tail_detail_ids);
+    next.order_part_pay_tail_detail_ids = "";
     return next;
   }
 
   function fullFlowPartPayDisplayValues(variables) {
-    const normalized = normalizeFullFlowPartPayVariables(variables, { scriptType: "full_flow", name: FULL_FLOW_PART_PAY_SCRIPT_KEYWORD });
+    const normalized = normalizeFullFlowPartPayVariables(variables, { id: FULL_FLOW_PART_PAY_SCRIPT_ID, scriptType: "full_flow", name: FULL_FLOW_PART_PAY_SCRIPT_NAME });
     const timing = fullFlowPartPayFeeTiming(normalized.order_part_pay_fee_timing);
     return {
       order_part_pay: boolValue(normalized.order_part_pay, true),
       order_part_pay_percent: fullFlowPartPayPercent(normalized.order_part_pay_percent),
       order_part_pay_tail_node: normalized.order_part_pay_tail_node || "before_shelf",
       order_part_pay_tail_partial_enabled: boolValue(normalized.order_part_pay_tail_partial_enabled, false),
-      order_part_pay_tail_select_by: fullFlowPartPayTailSelectBy(normalized.order_part_pay_tail_select_by),
+      order_part_pay_tail_select_by: "sorting",
       order_part_pay_tail_sortings: fullFlowPartPaySelectionText(normalized.order_part_pay_tail_sortings),
-      order_part_pay_tail_detail_ids: fullFlowPartPaySelectionText(normalized.order_part_pay_tail_detail_ids),
+      order_part_pay_tail_detail_ids: "",
       ...Object.fromEntries(FULL_FLOW_PART_PAY_FEE_FIELDS.map((field) => [`order_part_pay_fee_timing_${field.key}`, timing[field.key] || "first"])),
     };
   }
 
   function applyFullFlowPartPayFormValues(variables, data, flow) {
-    if (!isFullFlowPartPayScript(flow)) return variables;
     const next = { ...(variables || {}) };
+    if (!isFullFlowPartPayScript(flow)) {
+      next._full_flow_part_pay_script = false;
+      delete next._full_flow_report_name;
+      return next;
+    }
+    next._full_flow_part_pay_script = true;
+    next._full_flow_report_name = FULL_FLOW_PART_PAY_SCRIPT_NAME;
     next.order_part_pay = data.order_part_pay ? 1 : 0;
     next.order_part_pay_percent = fullFlowPartPayPercent(data.order_part_pay_percent);
     next.order_part_pay_tail_node = FULL_FLOW_PART_PAY_TAIL_NODE_OPTIONS.some((option) => option.value === data.order_part_pay_tail_node)
@@ -337,9 +341,9 @@ if (!window.__fullFlowDataScriptLoaded) {
       }),
     );
     next.order_part_pay_tail_partial_enabled = boolValue(data.order_part_pay_tail_partial_enabled, false) ? 1 : 0;
-    next.order_part_pay_tail_select_by = fullFlowPartPayTailSelectBy(data.order_part_pay_tail_select_by);
+    next.order_part_pay_tail_select_by = "sorting";
     next.order_part_pay_tail_sortings = fullFlowPartPaySelectionText(data.order_part_pay_tail_sortings);
-    next.order_part_pay_tail_detail_ids = fullFlowPartPaySelectionText(data.order_part_pay_tail_detail_ids);
+    next.order_part_pay_tail_detail_ids = "";
     return next;
   }
 
@@ -400,12 +404,9 @@ if (!window.__fullFlowDataScriptLoaded) {
       .map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${fullFlowPartPayFormatMoney(row.amount)}</td><td>${row.timing === "tail" ? "尾款" : "首款"}</td></tr>`)
       .join("");
     const partialEnabled = boolValue(data?.order_part_pay_tail_partial_enabled, false);
-    const selectBy = fullFlowPartPayTailSelectBy(data?.order_part_pay_tail_select_by);
-    const selection = selectBy === "detail_id"
-      ? fullFlowPartPaySelectionText(data?.order_part_pay_tail_detail_ids)
-      : fullFlowPartPaySelectionText(data?.order_part_pay_tail_sortings);
+    const selection = fullFlowPartPaySelectionText(data?.order_part_pay_tail_sortings);
     const partialText = partialEnabled
-      ? `按番尾款：${selectBy === "detail_id" ? "明细 ID" : "番序号"} ${selection || "未填写，执行时会阻断"}`
+      ? `按番尾款：番序号 ${selection || "未填写，执行时会阻断"}`
       : "整单剩余尾款：尾款节点按整单待付尾款执行";
     return `
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:12px">
@@ -426,9 +427,6 @@ if (!window.__fullFlowDataScriptLoaded) {
       .join("");
     const nodeOptions = FULL_FLOW_PART_PAY_TAIL_NODE_OPTIONS
       .map((option) => `<option value="${escapeHtml(option.value)}" ${option.value === values.order_part_pay_tail_node ? "selected" : ""}>${escapeHtml(option.label)}</option>`)
-      .join("");
-    const tailSelectOptions = FULL_FLOW_PART_PAY_TAIL_SELECT_OPTIONS
-      .map((option) => `<option value="${escapeHtml(option.value)}" ${option.value === values.order_part_pay_tail_select_by ? "selected" : ""}>${escapeHtml(option.label)}</option>`)
       .join("");
     const feeFields = FULL_FLOW_PART_PAY_FEE_FIELDS.map((field) => {
       const value = values[`order_part_pay_fee_timing_${field.key}`] || "first";
@@ -466,16 +464,8 @@ if (!window.__fullFlowDataScriptLoaded) {
             </select>
           </div>
           <div class="field">
-            <label>按番选择方式</label>
-            <select name="order_part_pay_tail_select_by" data-part-pay-input>${tailSelectOptions}</select>
-          </div>
-          <div class="field">
-            <label>番序号</label>
-            <input name="order_part_pay_tail_sortings" value="${escapeHtml(values.order_part_pay_tail_sortings || "")}" placeholder="如 4,5" data-part-pay-input />
-          </div>
-          <div class="field">
-            <label>明细 ID</label>
-            <input name="order_part_pay_tail_detail_ids" value="${escapeHtml(values.order_part_pay_tail_detail_ids || "")}" placeholder="如 14051497,14051498" data-part-pay-input />
+            <label>尾款支付番序号</label>
+            <input name="order_part_pay_tail_sortings" value="${escapeHtml(values.order_part_pay_tail_sortings || "")}" placeholder="如 1,2,3" data-part-pay-input />
           </div>
           ${feeFields}
         </div>
@@ -752,6 +742,79 @@ if (!window.__fullFlowDataScriptLoaded) {
     return next;
   }
 
+  function isFullFlowPartPayScriptDeleted() {
+    if (isBuiltinDeleted(FULL_FLOW_PART_PAY_SCRIPT_ID)) return true;
+    return readDeletedFlows().some((entry) => {
+      const source = entry?.flow || {};
+      return (
+        deletedEntryKey(entry) === FULL_FLOW_PART_PAY_SCRIPT_ID ||
+        entry?.builtinId === FULL_FLOW_PART_PAY_SCRIPT_ID ||
+        source.id === FULL_FLOW_PART_PAY_SCRIPT_ID ||
+        String(source.name || entry?.name || "").trim() === FULL_FLOW_PART_PAY_SCRIPT_NAME
+      );
+    });
+  }
+
+  function ensureFullFlowPartPayScript(flows, projects, envs, cases) {
+    if (isFullFlowPartPayScriptDeleted()) return flows;
+    const env = dataScriptDefaultEnv(projects, envs);
+    const projectId = env?.project_id || dataScriptDefaultProject(projects)?.id || projects[0]?.id || "";
+    if (!env) return flows;
+
+    const baseFlow = flows.find((flow) => flow.id === "full_flow_builtin") || flows.find((flow) => flow.name === "全流程完全体") || {};
+    let baseVariables = {};
+    try {
+      baseVariables = parseJsonText(baseFlow.variables || "{}", {});
+    } catch {
+      baseVariables = {};
+    }
+
+    const existingIndex =
+      flows.findIndex((flow) => flow.id === FULL_FLOW_PART_PAY_SCRIPT_ID) >= 0
+        ? flows.findIndex((flow) => flow.id === FULL_FLOW_PART_PAY_SCRIPT_ID)
+        : flows.findIndex((flow) => String(flow.name || "").trim() === FULL_FLOW_PART_PAY_SCRIPT_NAME && flow.scriptType === "full_flow");
+    const existingFlow = existingIndex >= 0 ? flows[existingIndex] : {};
+    let existingVariables = {};
+    try {
+      existingVariables = parseJsonText(existingFlow.variables || "{}", {});
+    } catch {
+      existingVariables = {};
+    }
+
+    const mergedVariables = sanitizeScriptVariables(
+      "full_flow",
+      {
+        ...baseVariables,
+        ...existingVariables,
+        _full_flow_part_pay_script: true,
+        _full_flow_report_name: FULL_FLOW_PART_PAY_SCRIPT_NAME,
+        order_part_pay: existingVariables.order_part_pay ?? baseVariables.order_part_pay ?? 1,
+        order_part_pay_percent: existingVariables.order_part_pay_percent ?? baseVariables.order_part_pay_percent ?? 10,
+        order_part_pay_tail_node: existingVariables.order_part_pay_tail_node ?? baseVariables.order_part_pay_tail_node ?? "before_shelf",
+        order_part_pay_fee_timing: existingVariables.order_part_pay_fee_timing ?? baseVariables.order_part_pay_fee_timing ?? {},
+      },
+      { id: FULL_FLOW_PART_PAY_SCRIPT_ID, name: FULL_FLOW_PART_PAY_SCRIPT_NAME, scriptType: "full_flow" },
+    );
+    const nextFlow = {
+      ...existingFlow,
+      id: FULL_FLOW_PART_PAY_SCRIPT_ID,
+      name: FULL_FLOW_PART_PAY_SCRIPT_NAME,
+      scriptType: "full_flow",
+      projectId: String(existingFlow.projectId || baseFlow.projectId || projectId),
+      envId: String(existingFlow.envId || baseFlow.envId || env.id),
+      caseIds: (existingFlow.caseIds && existingFlow.caseIds.length ? existingFlow.caseIds : baseFlow.caseIds) || [],
+      variables: JSON.stringify(mergedVariables, null, 2),
+    };
+    const next =
+      existingIndex >= 0
+        ? flows
+            .map((flow, index) => (index === existingIndex ? nextFlow : flow))
+            .filter((flow, index) => index === existingIndex || (flow.id !== FULL_FLOW_PART_PAY_SCRIPT_ID && String(flow.name || "").trim() !== FULL_FLOW_PART_PAY_SCRIPT_NAME))
+        : [...flows.filter((flow) => flow.id !== FULL_FLOW_PART_PAY_SCRIPT_ID && String(flow.name || "").trim() !== FULL_FLOW_PART_PAY_SCRIPT_NAME), nextFlow];
+    writeFlows(next);
+    return next;
+  }
+
   function directBoxNumber(value, fallback) {
     const number = Number(value);
     return Number.isFinite(number) && number > 0 ? Math.floor(number) : fallback;
@@ -984,7 +1047,12 @@ if (!window.__fullFlowDataScriptLoaded) {
     return ensureResumePorderFlowScript(
       ensureResumeOrderFlowScript(
         ensureDirectBoxToShelfScript(
-          ensureFullFlowScript(originalEnsureWarehouseDeliveryScriptForFullFlow(flows, projects, envs, cases), projects, envs, cases),
+          ensureFullFlowPartPayScript(
+            ensureFullFlowScript(originalEnsureWarehouseDeliveryScriptForFullFlow(flows, projects, envs, cases), projects, envs, cases),
+            projects,
+            envs,
+            cases,
+          ),
           projects,
           envs,
           cases,
@@ -1691,9 +1759,10 @@ if (!window.__fullFlowDataScriptLoaded) {
       return;
     }
     if (customerIds.length === 1) variables = variablesForCustomerId(variables, customerIds[0]);
-    const progress = options.progress || openScriptProgress("全流程完全体执行进度", "预计执行 20 个业务节点");
+    const flowTitle = isFullFlowPartPayScript(flow) ? FULL_FLOW_PART_PAY_SCRIPT_NAME : "全流程完全体";
+    const progress = options.progress || openScriptProgress(`${flowTitle}执行进度`, "预计执行 20 个业务节点");
     try {
-      showToast("全流程脚本执行中，请稍候");
+      showToast(`${flowTitle}脚本执行中，请稍候`);
       progress.update(10, "正在执行商品加购、订单报价、支付、采购、上架、配送单流转...");
       const result = await api("/api/data-scripts/full-flow", {
         method: "POST",
@@ -1720,7 +1789,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       flow.lastOrderSn = orderSn || flow.lastOrderSn || "";
       flow.lastPorderSn = porderSn || flow.lastPorderSn || "";
       flow.lastRecordId = result.id;
-      progress.success(summary.paused ? `已按暂停节点停止：${summary.node_label || summary.current_node || ""}` : "全流程完全体执行完成，正在展示结果...");
+      progress.success(summary.paused ? `已按暂停节点停止：${summary.node_label || summary.current_node || ""}` : `${flowTitle}执行完成，正在展示结果...`);
       return presentScriptResult(
         {
           records: [{ id: result.id, case_name: flow.name, result: result.result }],
