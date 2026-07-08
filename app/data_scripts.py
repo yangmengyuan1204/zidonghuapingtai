@@ -2887,8 +2887,12 @@ def _order_tail_payment_mode(variables: Dict[str, Any]) -> str:
 
 
 def _order_tail_payment_path(variables: Dict[str, Any], payment_mode: str) -> str:
+    api_paths = _api_paths(variables)
+    mode_key = "client_order_tail_bank_pay" if payment_mode == "bank" else "client_order_tail_balance_pay"
     configured = str(
-        _api_paths(variables).get("client_order_tail_pay")
+        api_paths.get(mode_key)
+        or variables.get(f"{mode_key}_path")
+        or api_paths.get("client_order_tail_pay")
         or variables.get("client_order_tail_pay_path")
         or variables.get("order_tail_pay_path")
         or ""
@@ -2896,8 +2900,35 @@ def _order_tail_payment_path(variables: Dict[str, Any], payment_mode: str) -> st
     if configured:
         return configured
     if payment_mode == "bank":
-        return ""
+        return _api_path(variables, "client_bank_pay", "/client/order.bankPayOrder")
     return _api_path(variables, "client_balance_pay", "/client/order.balancePayOrder")
+
+
+def _order_tail_pay_amount_from_variables(variables: Dict[str, Any]) -> str:
+    for key in ["order_tail_pay_amount", "tail_pay_amount", "pay_amount"]:
+        value = str(variables.get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _order_tail_bank_pay_amount(
+    client: Any,
+    variables: Dict[str, Any],
+    order_sn: str,
+    payment_log: Dict[str, Any],
+) -> tuple[str, Dict[str, Any]]:
+    configured = _order_tail_pay_amount_from_variables(variables)
+    if configured:
+        return configured, {"source": "variables"}
+    lookup_variables = dict(variables)
+    lookup_variables["order_sn"] = order_sn
+    order, selected_order_sn, amount = _load_payment_order(client, lookup_variables, payment_log)
+    return amount, {
+        "source": "order_list",
+        "found": bool(order),
+        "selected_order_sn": selected_order_sn,
+    }
 
 
 def _run_order_tail_payment_if_needed(
@@ -2941,17 +2972,30 @@ def _run_order_tail_payment_if_needed(
     try:
         client, base_url, _, _ = _login_client_for_payment(env, variables, payment_log)
         fields: OrderedDict[str, Any] = OrderedDict()
-        fields["order_sn"] = order_sn
-        fields["discounts_id"] = str(variables.get("discounts_id") or "")
-        fields["merge_pay"] = str(variables.get("order_tail_merge_pay") or variables.get("merge_pay") or "0")
-        if _as_bool(variables.get("include_order_tail_pay_amount") or variables.get("include_tail_pay_amount"), False):
-            amount = str(variables.get("order_tail_pay_amount") or variables.get("tail_pay_amount") or "").strip()
-            if amount:
-                fields["pay_amount"] = amount
         if payment_mode == "bank":
-            fields["pay_bank_method"] = str(variables.get("pay_bank_method") or "1")
+            amount, amount_summary = _order_tail_bank_pay_amount(client, variables, order_sn, payment_log)
+            summary["amount_lookup"] = amount_summary
+            if not _positive_decimal(amount):
+                summary.update({"reason": "未获取到尾款银行支付金额", "payment_mode": payment_mode, "pay_amount": amount})
+                log.setdefault("order_tail_payments", []).append(summary)
+                return False, summary
+            fields["pay_bank_method"] = str(variables.get("order_tail_pay_bank_method") or variables.get("pay_bank_method") or "2")
+            fields["pay_reach_date"] = _bank_pay_reach_date(variables, datetime.now())
             fields["pay_name"] = str(variables.get("pay_name") or "自动化测试")
-            fields["pay_remark"] = str(variables.get("pay_remark") or "自动化银行尾款")
+            fields["pay_amount"] = amount
+            fields["pay_remark"] = str(variables.get("order_tail_pay_remark") or variables.get("pay_remark") or "")
+            fields["discounts_id"] = str(variables.get("discounts_id") or "")
+            fields["order_sn"] = order_sn
+            fields["merge_pay"] = str(variables.get("order_tail_merge_pay") or variables.get("merge_pay") or "0")
+            fields["predict_logistics_price_is_pay"] = str(variables.get("predict_logistics_price_is_pay") or "0")
+        else:
+            fields["order_sn"] = order_sn
+            fields["discounts_id"] = str(variables.get("discounts_id") or "")
+            fields["merge_pay"] = str(variables.get("order_tail_merge_pay") or variables.get("merge_pay") or "0")
+            if _as_bool(variables.get("include_order_tail_pay_amount") or variables.get("include_tail_pay_amount"), False):
+                amount = str(variables.get("order_tail_pay_amount") or variables.get("tail_pay_amount") or "").strip()
+                if amount:
+                    fields["pay_amount"] = amount
         _apply_extra_fields(fields, variables.get("order_tail_pay_fields") or variables.get("tail_pay_fields"))
         payment_payload = _call_with_retry("order tail payment", lambda: client.post_form(path, fields))
         data = payment_payload.get("data") if isinstance(payment_payload.get("data"), dict) else {}
