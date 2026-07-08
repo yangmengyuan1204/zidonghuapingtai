@@ -2009,6 +2009,45 @@ def _build_confirm_data(order_data: Dict[str, Any], variables: Dict[str, Any], i
     return {"order_sn": order_data.get("order_sn"), "order_detail": confirm_details}
 
 
+ORDER_PART_PAY_FEE_KEYS = ["domestic_freight", "service_fee", "additional_service_fee", "other_fee"]
+ORDER_PART_PAY_TAIL_NODES = {"before_shelf", "before_porder_create"}
+
+
+def _order_part_pay_enabled(variables: Dict[str, Any]) -> bool:
+    return _as_bool(variables.get("order_part_pay"), False) or str(variables.get("order_part_pay")).strip() == "1"
+
+
+def _order_part_pay_percent(variables: Dict[str, Any]) -> int:
+    percent = _as_int(variables.get("order_part_pay_percent"), 10)
+    percent = max(0, min(100, percent))
+    return int(round(percent / 5) * 5)
+
+
+def _order_part_pay_tail_node(variables: Dict[str, Any]) -> str:
+    node = str(variables.get("order_part_pay_tail_node") or "before_shelf").strip()
+    return node if node in ORDER_PART_PAY_TAIL_NODES else "before_shelf"
+
+
+def _order_part_pay_fee_timing(variables: Dict[str, Any]) -> Dict[str, str]:
+    raw = variables.get("order_part_pay_fee_timing")
+    raw = raw if isinstance(raw, dict) else {}
+    timing: Dict[str, str] = {}
+    for key in ORDER_PART_PAY_FEE_KEYS:
+        value = str(raw.get(key) or "first").strip()
+        timing[key] = "tail" if value in {"tail", "尾款支付"} else "first"
+    return timing
+
+
+def _apply_order_part_pay_payload(prepared: Dict[str, Any], variables: Dict[str, Any]) -> None:
+    enabled = _order_part_pay_enabled(variables)
+    prepared["order_part_pay"] = 1 if enabled else 0
+    if not enabled:
+        return
+    prepared["order_part_pay_percent"] = _order_part_pay_percent(variables)
+    prepared["order_part_pay_tail_node"] = _order_part_pay_tail_node(variables)
+    prepared["order_part_pay_fee_timing"] = _order_part_pay_fee_timing(variables)
+
+
 def _prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, Any], item_quantity: int) -> Dict[str, Any]:
     prepared = copy.deepcopy(order_data)
     quote_price = _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10")
@@ -2018,7 +2057,7 @@ def _prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, Any], i
     prepared["y_reply"] = str(variables.get("y_reply") or prepared.get("y_reply") or "")
     prepared["y_remark"] = str(variables.get("offer_remark") or prepared.get("y_remark") or "自动化业务报价")
     prepared["predict_logistics_price"] = _decimal_text(variables.get("predict_logistics_price") or prepared.get("predict_logistics_price") or "0")
-    prepared["order_part_pay"] = _as_int(variables.get("order_part_pay"), 0)
+    _apply_order_part_pay_payload(prepared, variables)
     details = prepared.get("order_detail")
     if isinstance(details, list):
         for detail in details:
@@ -2749,6 +2788,98 @@ def _apply_extra_fields(fields: OrderedDict[str, Any], extra_fields: Any) -> Ord
             if key and value is not None:
                 fields[str(key)] = value
     return fields
+
+
+def _order_tail_payment_order_sn(variables: Dict[str, Any]) -> str:
+    for key in ["order_sn", "last_order_sn", "warehouse_order_sn"]:
+        value = str(variables.get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _order_tail_payment_path(variables: Dict[str, Any]) -> str:
+    return str(_api_paths(variables).get("client_order_tail_pay") or variables.get("client_order_tail_pay_path") or variables.get("order_tail_pay_path") or "").strip()
+
+
+def _run_order_tail_payment_if_needed(
+    env: Env,
+    variables: Dict[str, Any],
+    log: Dict[str, Any],
+    node: str,
+) -> tuple[bool, Dict[str, Any]]:
+    if not _order_part_pay_enabled(variables):
+        return True, {"skipped": True, "reason": "未启用分批付款", "node": node}
+    configured_node = _order_part_pay_tail_node(variables)
+    if configured_node != node:
+        return True, {"skipped": True, "reason": "未到尾款支付节点", "node": node, "configured_node": configured_node}
+
+    order_sn = _order_tail_payment_order_sn(variables)
+    summary: Dict[str, Any] = {
+        "node": node,
+        "configured_node": configured_node,
+        "order_sn": order_sn,
+        "payment_stage": "tail",
+    }
+    path = _order_tail_payment_path(variables)
+    if not path:
+        summary.update(
+            {
+                "skipped": True,
+                "interface_configured": False,
+                "reason": "尾款支付接口未配置，等待后续接入",
+            }
+        )
+        log.setdefault("order_tail_payments", []).append(summary)
+        return True, summary
+    if not order_sn:
+        summary["reason"] = "执行尾款支付缺少订单号"
+        log.setdefault("order_tail_payments", []).append(summary)
+        return False, summary
+
+    payment_log: Dict[str, Any] = {}
+    try:
+        client, base_url, _, _ = _login_client_for_payment(env, variables, payment_log)
+        fields: OrderedDict[str, Any] = OrderedDict()
+        fields["order_sn"] = order_sn
+        fields["payment_stage"] = "tail"
+        fields["pay_node"] = node
+        fields["discounts_id"] = str(variables.get("discounts_id") or "")
+        amount = str(variables.get("order_tail_pay_amount") or variables.get("tail_pay_amount") or "").strip()
+        if amount:
+            fields["pay_amount"] = amount
+        payment_mode = str(variables.get("order_payment_mode") or variables.get("payment_mode") or "").strip()
+        if payment_mode:
+            fields["payment_mode"] = payment_mode
+        if payment_mode in {"bank", "bank_payment"}:
+            fields["pay_bank_method"] = str(variables.get("pay_bank_method") or "1")
+            fields["pay_name"] = str(variables.get("pay_name") or "自动化测试")
+            fields["pay_remark"] = str(variables.get("pay_remark") or "自动化银行尾款")
+        _apply_extra_fields(fields, variables.get("order_tail_pay_fields") or variables.get("tail_pay_fields"))
+        payment_payload = _call_with_retry("order tail payment", lambda: client.post_form(path, fields))
+        data = payment_payload.get("data") if isinstance(payment_payload.get("data"), dict) else {}
+        passed = _api_success(payment_payload)
+        summary.update(
+            {
+                "base_url": base_url,
+                "path": path,
+                "request": dict(fields),
+                "payment_passed": passed,
+                **_payload_brief(payment_payload),
+            }
+        )
+        if data.get("serial_number"):
+            summary["serial_number"] = str(data.get("serial_number"))
+        if not passed:
+            summary["reason"] = str(payment_payload.get("msg") or payment_payload.get("data") or "尾款支付接口执行失败")
+        log.setdefault("order_tail_payments", []).append(summary)
+        return passed, summary
+    except Exception as exc:
+        summary["reason"] = str(exc)
+        if payment_log:
+            summary["payment_log"] = payment_log
+        log.setdefault("order_tail_payments", []).append(summary)
+        return False, summary
 
 
 def _bank_pay_reach_date(variables: Dict[str, Any], pay_date: datetime) -> str:
@@ -3819,6 +3950,20 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
                 log,
                 False,
                 {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u672a\u627e\u5230\u53ef\u7528\u5e93\u4f4d"},
+            )
+
+        tail_pay_passed, tail_pay_summary = _run_order_tail_payment_if_needed(env, variables, log, "before_shelf")
+        if not tail_pay_passed:
+            return _finish_named(
+                PURCHASE_TO_SHELF_SCRIPT_NAME,
+                log,
+                False,
+                {
+                    "order_sn": order_sn,
+                    "purchase_no": purchase_no,
+                    "reason": str(tail_pay_summary.get("reason") or "上架前尾款支付失败"),
+                    "order_tail_payment": tail_pay_summary,
+                },
             )
 
         storage_fields = {"grid_id": selected_grid.get("id"), "data": up_data}
@@ -5835,6 +5980,22 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
         order_detail_id = order_detail_ids[0]
         actual_send_num = _as_int(delivery_items[0].get("send_num"), send_num)
         fields = _porder_create_fields_for_items(delivery_items, porder_sn, variables)
+        tail_pay_passed, tail_pay_summary = _run_order_tail_payment_if_needed(env, variables, log, "before_porder_create")
+        if not tail_pay_passed:
+            return _finish_named(
+                WAREHOUSE_DELIVERY_SCRIPT_NAME,
+                log,
+                False,
+                {
+                    "porder_sn": "",
+                    "order_detail_id": order_detail_id,
+                    "order_detail_ids": order_detail_ids,
+                    "send_num": actual_send_num,
+                    "total_send_num": total_send_num,
+                    "reason": str(tail_pay_summary.get("reason") or "提出配送单前尾款支付失败"),
+                    "order_tail_payment": tail_pay_summary,
+                },
+            )
         payload = _call_with_retry(
             "porder create",
             lambda: client.post_form(_api_path(variables, "client_porder_create", "/client/porder.porderCreate"), fields),

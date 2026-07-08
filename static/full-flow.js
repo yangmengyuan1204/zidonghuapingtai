@@ -237,6 +237,18 @@ if (!window.__fullFlowDataScriptLoaded) {
       .map((field) => [field.name, field.default]),
   );
   const FULL_FLOW_SAVE_DEFAULTS_FIELD = { name: "__save_defaults", label: "保存为默认值", type: "checkbox", default: false };
+  const FULL_FLOW_PART_PAY_SCRIPT_KEYWORD = "分批付款";
+  const FULL_FLOW_PART_PAY_PERCENT_OPTIONS = Array.from({ length: 21 }, (_, index) => index * 5);
+  const FULL_FLOW_PART_PAY_TAIL_NODE_OPTIONS = [
+    { value: "before_shelf", label: "上架仓库前" },
+    { value: "before_porder_create", label: "提出配送单前" },
+  ];
+  const FULL_FLOW_PART_PAY_FEE_FIELDS = [
+    { key: "domestic_freight", label: "国内运费", amountKeys: ["offer_freight", "confirm_freight"] },
+    { key: "service_fee", label: "手续费", amountKeys: ["service_fee", "handling_fee"] },
+    { key: "additional_service_fee", label: "附加服务费", amountKeys: ["additional_service_fee", "added_service_fee"] },
+    { key: "other_fee", label: "其他费用", amountKeys: ["other_price"] },
+  ];
 
   function isFullFlowCopy(flow) {
     if (flow?.scriptType !== "full_flow") return false;
@@ -244,6 +256,192 @@ if (!window.__fullFlowDataScriptLoaded) {
     if (FULL_FLOW_COPY_ALIASES.has(name)) return true;
     const builtin = BUILTIN_FLOW_DEFINITIONS.full_flow;
     return flow?.id !== builtin?.id && name !== builtin?.name;
+  }
+
+  function isFullFlowPartPayScript(flow) {
+    return flow?.scriptType === "full_flow" && String(flow?.name || "").includes(FULL_FLOW_PART_PAY_SCRIPT_KEYWORD);
+  }
+
+  function fullFlowPartPayPercent(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return 10;
+    const normalized = Math.round(Math.max(0, Math.min(100, number)) / 5) * 5;
+    return Math.max(0, Math.min(100, normalized));
+  }
+
+  function fullFlowPartPayFeeTiming(value) {
+    const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    return Object.fromEntries(
+      FULL_FLOW_PART_PAY_FEE_FIELDS.map((field) => {
+        const timing = String(source[field.key] || "first").trim();
+        return [field.key, timing === "tail" || timing === "尾款支付" ? "tail" : "first"];
+      }),
+    );
+  }
+
+  function normalizeFullFlowPartPayVariables(variables, flow) {
+    const next = { ...(variables || {}) };
+    if (!isFullFlowPartPayScript(flow)) return next;
+    next.order_part_pay = boolValue(next.order_part_pay, true) ? 1 : 0;
+    next.order_part_pay_percent = fullFlowPartPayPercent(next.order_part_pay_percent);
+    const tailNode = String(next.order_part_pay_tail_node || "").trim();
+    next.order_part_pay_tail_node = FULL_FLOW_PART_PAY_TAIL_NODE_OPTIONS.some((option) => option.value === tailNode) ? tailNode : "before_shelf";
+    next.order_part_pay_fee_timing = fullFlowPartPayFeeTiming(next.order_part_pay_fee_timing);
+    return next;
+  }
+
+  function fullFlowPartPayDisplayValues(variables) {
+    const normalized = normalizeFullFlowPartPayVariables(variables, { scriptType: "full_flow", name: FULL_FLOW_PART_PAY_SCRIPT_KEYWORD });
+    const timing = fullFlowPartPayFeeTiming(normalized.order_part_pay_fee_timing);
+    return {
+      order_part_pay: boolValue(normalized.order_part_pay, true),
+      order_part_pay_percent: fullFlowPartPayPercent(normalized.order_part_pay_percent),
+      order_part_pay_tail_node: normalized.order_part_pay_tail_node || "before_shelf",
+      ...Object.fromEntries(FULL_FLOW_PART_PAY_FEE_FIELDS.map((field) => [`order_part_pay_fee_timing_${field.key}`, timing[field.key] || "first"])),
+    };
+  }
+
+  function applyFullFlowPartPayFormValues(variables, data, flow) {
+    if (!isFullFlowPartPayScript(flow)) return variables;
+    const next = { ...(variables || {}) };
+    next.order_part_pay = data.order_part_pay ? 1 : 0;
+    next.order_part_pay_percent = fullFlowPartPayPercent(data.order_part_pay_percent);
+    next.order_part_pay_tail_node = FULL_FLOW_PART_PAY_TAIL_NODE_OPTIONS.some((option) => option.value === data.order_part_pay_tail_node)
+      ? data.order_part_pay_tail_node
+      : "before_shelf";
+    next.order_part_pay_fee_timing = Object.fromEntries(
+      FULL_FLOW_PART_PAY_FEE_FIELDS.map((field) => {
+        const timing = data[`order_part_pay_fee_timing_${field.key}`] === "tail" ? "tail" : "first";
+        return [field.key, timing];
+      }),
+    );
+    return next;
+  }
+
+  function fullFlowPartPayMoney(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? number : 0;
+  }
+
+  function fullFlowPartPayAmountFromKeys(data, keys) {
+    for (const key of keys) {
+      const amount = fullFlowPartPayMoney(data[key]);
+      if (amount > 0) return amount;
+    }
+    return 0;
+  }
+
+  function fullFlowPartPayFormatMoney(value) {
+    const fixed = Number(value || 0).toFixed(2);
+    return fixed.replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+  }
+
+  function fullFlowPartPayPreview(data) {
+    const shopCount = normalizePositiveInt(data.order_shop_count, 1);
+    const perShop = normalizePositiveInt(data.order_per_shop || data.order_item_count, 2);
+    const detailCount = Math.max(1, shopCount * perShop);
+    const quantity = normalizePositiveInt(data.offer_num || data.order_item_num, normalizePositiveInt(data.order_item_num, 10));
+    const price = fullFlowPartPayMoney(data.offer_price || data.quote_unit_price || 10);
+    const productAmount = detailCount * quantity * price;
+    const percent = fullFlowPartPayPercent(data.order_part_pay_percent);
+    const firstProduct = productAmount * percent / 100;
+    const tailProduct = productAmount - firstProduct;
+    let firstFee = 0;
+    let tailFee = 0;
+    const feeRows = FULL_FLOW_PART_PAY_FEE_FIELDS.map((field) => {
+      const rawAmount = fullFlowPartPayAmountFromKeys(data, field.amountKeys);
+      const amount = field.key === "domestic_freight" ? rawAmount * detailCount : rawAmount;
+      const timing = data[`order_part_pay_fee_timing_${field.key}`] === "tail" ? "tail" : "first";
+      if (timing === "tail") tailFee += amount;
+      else firstFee += amount;
+      return { label: field.label, amount, timing };
+    });
+    return {
+      percent,
+      productAmount,
+      firstProduct,
+      tailProduct,
+      firstFee,
+      tailFee,
+      firstTotal: firstProduct + firstFee,
+      tailTotal: tailProduct + tailFee,
+      feeRows,
+    };
+  }
+
+  function renderFullFlowPartPayPreview(data) {
+    const preview = fullFlowPartPayPreview(data || {});
+    const feeRows = preview.feeRows
+      .map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${fullFlowPartPayFormatMoney(row.amount)}</td><td>${row.timing === "tail" ? "尾款" : "首款"}</td></tr>`)
+      .join("");
+    return `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:12px">
+        <div style="padding:12px;border:1px solid var(--line);border-radius:8px;background:#f8fafc"><span style="display:block;color:#64748b;font-size:12px">商品金额</span><strong>${fullFlowPartPayFormatMoney(preview.productAmount)}</strong></div>
+        <div style="padding:12px;border:1px solid var(--line);border-radius:8px;background:#fff7ed"><span style="display:block;color:#64748b;font-size:12px">首款预估</span><strong>${fullFlowPartPayFormatMoney(preview.firstTotal)}</strong></div>
+        <div style="padding:12px;border:1px solid var(--line);border-radius:8px;background:#eff6ff"><span style="display:block;color:#64748b;font-size:12px">尾款预估</span><strong>${fullFlowPartPayFormatMoney(preview.tailTotal)}</strong></div>
+      </div>
+      <div class="table-wrap" style="margin-top:12px">
+        <table><thead><tr><th>费用项</th><th>预估金额</th><th>支付节点</th></tr></thead><tbody>${feeRows}</tbody></table>
+      </div>
+    `;
+  }
+
+  function renderFullFlowPartPayPanel(values) {
+    const percentOptions = FULL_FLOW_PART_PAY_PERCENT_OPTIONS
+      .map((value) => `<option value="${value}" ${Number(values.order_part_pay_percent) === value ? "selected" : ""}>${value}%</option>`)
+      .join("");
+    const nodeOptions = FULL_FLOW_PART_PAY_TAIL_NODE_OPTIONS
+      .map((option) => `<option value="${escapeHtml(option.value)}" ${option.value === values.order_part_pay_tail_node ? "selected" : ""}>${escapeHtml(option.label)}</option>`)
+      .join("");
+    const feeFields = FULL_FLOW_PART_PAY_FEE_FIELDS.map((field) => {
+      const value = values[`order_part_pay_fee_timing_${field.key}`] || "first";
+      return `
+        <div class="field">
+          <label>${escapeHtml(field.label)}</label>
+          <select name="order_part_pay_fee_timing_${escapeHtml(field.key)}" data-part-pay-input>
+            <option value="first" ${value === "first" ? "selected" : ""}>首款支付</option>
+            <option value="tail" ${value === "tail" ? "selected" : ""}>尾款支付</option>
+          </select>
+        </div>
+      `;
+    }).join("");
+    return `
+      <details class="functional-requirement" open id="fullFlowPartPayPanel">
+        <summary>分批付款</summary>
+        <div class="form-grid" style="margin-top:12px">
+          <label class="check-field">
+            <input name="order_part_pay" id="fullFlowPartPayEnabled" type="checkbox" ${values.order_part_pay ? "checked" : ""} data-part-pay-input />
+            <span>启用分批付款</span>
+          </label>
+          <div class="field">
+            <label>首款比例</label>
+            <select name="order_part_pay_percent" data-part-pay-input>${percentOptions}</select>
+          </div>
+          <div class="field">
+            <label>尾款支付节点</label>
+            <select name="order_part_pay_tail_node" data-part-pay-input>${nodeOptions}</select>
+          </div>
+          ${feeFields}
+        </div>
+        <div id="fullFlowPartPayPreview">${renderFullFlowPartPayPreview(values)}</div>
+      </details>
+    `;
+  }
+
+  function bindFullFlowPartPayPanel(form) {
+    const panel = form.querySelector("#fullFlowPartPayPanel");
+    const previewEl = form.querySelector("#fullFlowPartPayPreview");
+    if (!panel || !previewEl) return;
+    const sync = () => {
+      previewEl.innerHTML = renderFullFlowPartPayPreview(readForm(form));
+    };
+    ["order_shop_count", "order_per_shop", "order_item_count", "order_item_num", "offer_num", "offer_price", "quote_unit_price", "offer_freight", "confirm_freight", "service_fee", "handling_fee", "additional_service_fee", "added_service_fee", "other_price"].forEach((name) => {
+      form.querySelectorAll(`[name="${name}"]`).forEach((input) => input.addEventListener(input.type === "number" ? "input" : "change", sync));
+    });
+    form.querySelectorAll("[data-part-pay-input]").forEach((input) => {
+      input.addEventListener(input.type === "checkbox" || input.tagName === "SELECT" ? "change" : "input", sync);
+    });
+    sync();
   }
 
   const originalSanitizeScriptVariablesForFullFlow = sanitizeScriptVariables;
@@ -377,6 +575,7 @@ if (!window.__fullFlowDataScriptLoaded) {
     next.discounts_id = next.discounts_id || "";
     next.predict_logistics_price_is_pay = "0";
     next.include_balance_pay_amount = false;
+    Object.assign(next, normalizeFullFlowPartPayVariables(next, flow));
     if (next.shelf_type_set) {
       next.shelf_type_set = splitParamList(next.shelf_type_set).map((item) => {
         const number = Number(item);
@@ -865,17 +1064,19 @@ if (!window.__fullFlowDataScriptLoaded) {
     });
   }
 
-  function renderFullFlowCopyFieldGroups(values) {
+  function renderFullFlowCopyFieldGroups(values, flow) {
     return FULL_FLOW_COPY_FIELD_GROUPS.map((group) => {
       const groupBody = group.fields
         .map((field) => renderFullFlowCopyFormField(field, values?.[field.name] ?? field.default ?? ""))
         .join("");
       const saveDefaults = group.title === "执行控制" ? renderFormField(FULL_FLOW_SAVE_DEFAULTS_FIELD, values?.__save_defaults ?? false) : "";
+      const partPayPanel = isFullFlowPartPayScript(flow) && group.title === "订单报价" ? renderFullFlowPartPayPanel(values) : "";
       return `
         <details class="functional-requirement" ${group.open ? "open" : ""}>
           <summary>${escapeHtml(group.title)}</summary>
           <div class="form-grid" style="margin-top:12px">${groupBody}${saveDefaults}</div>
         </details>
+        ${partPayPanel}
       `;
     }).join("");
   }
@@ -963,6 +1164,7 @@ if (!window.__fullFlowDataScriptLoaded) {
     variables = withCustomerLoginInputs(mergeStoredCustomerIds(sanitizeScriptVariables("full_flow", variables, flow)));
     const values = {
       ...fullFlowCopyDisplayValues(paramFormValues(fields, variables)),
+      ...fullFlowPartPayDisplayValues(variables),
       __save_defaults: false,
     };
     const initialCounts = orderOptionCountsFromVariables(variables.order_option_counts);
@@ -973,7 +1175,7 @@ if (!window.__fullFlowDataScriptLoaded) {
           <button class="btn secondary" value="cancel" formmethod="dialog" type="button" id="closeModal">关闭</button>
         </div>
         <div class="modal-body">
-          ${renderFullFlowCopyFieldGroups(values)}
+          ${renderFullFlowCopyFieldGroups(values, flow)}
           <details class="functional-requirement">
             <summary>订单 option（可选）</summary>
             <div id="fullFlowOrderOptionPreview"><div class="empty">正在读取订单 option...</div></div>
@@ -991,7 +1193,7 @@ if (!window.__fullFlowDataScriptLoaded) {
     function runtimeVariables(includeCurrentCounts = true) {
       const data = readForm(form);
       data.confirm_volume = fullFlowDimensionValue(data, variables.confirm_volume);
-      const next = sanitizeScriptVariables("full_flow", mergeParamValues(variables, fields, data), flow);
+      const next = applyFullFlowPartPayFormValues(sanitizeScriptVariables("full_flow", mergeParamValues(variables, fields, data), flow), data, flow);
       const counts = includeCurrentCounts ? readOrderOptionCounts(form) : initialCounts;
       if (Object.keys(counts).length) next.order_option_counts = counts;
       else delete next.order_option_counts;
@@ -1021,6 +1223,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       }
     });
     document.querySelector("#refreshFullFlowOrderOptions").addEventListener("click", refreshOptions);
+    bindFullFlowPartPayPanel(form);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       try {
