@@ -2048,6 +2048,80 @@ def _apply_order_part_pay_payload(prepared: Dict[str, Any], variables: Dict[str,
     prepared["order_part_pay_fee_timing"] = _order_part_pay_fee_timing(variables)
 
 
+def _order_part_pay_api_node(variables: Dict[str, Any]) -> int:
+    configured = variables.get("order_part_pay_must_pay_node")
+    if configured not in (None, ""):
+        return _as_int(configured, 1)
+    return 1 if _order_part_pay_tail_node(variables) == "before_shelf" else 2
+
+
+def _order_part_pay_api_fee_flag(timing: Dict[str, str], key: str) -> int:
+    return 1 if timing.get(key) == "tail" else 0
+
+
+def _order_part_pay_goods_total(offer_data: Dict[str, Any]) -> Decimal:
+    total = Decimal("0")
+    details = offer_data.get("order_detail")
+    for detail in details if isinstance(details, list) else []:
+        if not isinstance(detail, dict):
+            continue
+        try:
+            num = Decimal(str(detail.get("offer_num") or detail.get("confirm_num") or detail.get("num") or "0"))
+            price = Decimal(str(detail.get("offer_price") or detail.get("confirm_price") or "0"))
+        except (InvalidOperation, TypeError, ValueError):
+            continue
+        total += max(Decimal("0"), num) * max(Decimal("0"), price)
+    return total
+
+
+def _order_part_pay_first_goods_amount(offer_data: Dict[str, Any], variables: Dict[str, Any]) -> str:
+    configured = _positive_decimal(variables.get("order_part_pay_goods_amount") or variables.get("first_goods_amount"))
+    if configured is not None:
+        return f"{configured.quantize(Decimal('0.01')):.2f}"
+    total = _order_part_pay_goods_total(offer_data)
+    amount = total * Decimal(_order_part_pay_percent(variables)) / Decimal("100")
+    return f"{amount.quantize(Decimal('0.01')):.2f}"
+
+
+def _order_part_pay_plan_fields(order_sn: str, offer_data: Dict[str, Any], variables: Dict[str, Any]) -> OrderedDict[str, Any]:
+    timing = _order_part_pay_fee_timing(variables)
+    fields: OrderedDict[str, Any] = OrderedDict()
+    fields["preview"] = str(variables.get("order_part_pay_preview") or "0")
+    fields["order_sn"] = order_sn
+    fields["goods_amount"] = _order_part_pay_first_goods_amount(offer_data, variables)
+    fields["is_pay_freight_amount"] = _order_part_pay_api_fee_flag(timing, "domestic_freight")
+    fields["is_pay_option_amount"] = _order_part_pay_api_fee_flag(timing, "additional_service_fee")
+    fields["is_pay_service_amount"] = _order_part_pay_api_fee_flag(timing, "service_fee")
+    fields["is_pay_other_amount"] = _order_part_pay_api_fee_flag(timing, "other_fee")
+    fields["must_pay_node"] = _order_part_pay_api_node(variables)
+    fields["first_payment_ratio"] = _order_part_pay_percent(variables)
+    return fields
+
+
+def _save_order_part_pay_plan_if_needed(
+    session: requests.Session,
+    base_url: str,
+    variables: Dict[str, Any],
+    order_sn: str,
+    offer_data: Dict[str, Any],
+    timeout: int,
+) -> tuple[bool, Dict[str, Any]]:
+    if not _order_part_pay_enabled(variables):
+        return True, {"skipped": True, "reason": "未启用分批付款"}
+    fields = _order_part_pay_plan_fields(order_sn, offer_data, variables)
+    payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_order_part_pay_plan", "/order.updateOrderPartPayPlan"),
+        fields,
+        timeout,
+    )
+    summary = {**_payload_brief(payload), "request": dict(fields)}
+    if not _api_success(payload):
+        summary["reason"] = str(payload.get("msg") or payload.get("data") or "分批付款方案保存失败")
+    return _api_success(payload), summary
+
+
 def _prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, Any], item_quantity: int) -> Dict[str, Any]:
     prepared = copy.deepcopy(order_data)
     quote_price = _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10")
@@ -2177,6 +2251,11 @@ def _run_backend_order_flow(
     if not _api_success(offer_payload):
         return False, {"backend_passed": False, "reason": "业务报价提交失败", "offer": _payload_brief(offer_payload)}
 
+    part_pay_passed, part_pay_summary = _save_order_part_pay_plan_if_needed(session, base_url, variables, order_sn, offer_data, timeout)
+    backend_log["part_pay_plan"] = part_pay_summary
+    if not part_pay_passed:
+        return False, {"backend_passed": False, "reason": str(part_pay_summary.get("reason") or "分批付款方案保存失败"), "part_pay_plan": part_pay_summary}
+
     # detail_after_offer：order_offered 暂停点不需要最新 status，跳过冗余查询；
     # 非暂停路径（继续到 order_paid）仍需查询以获取真实 status
     if _checkpoint_requested(variables, "order_offered"):
@@ -2191,7 +2270,7 @@ def _run_backend_order_flow(
             {
                 "order_sn": order_sn,
                 "backend_passed": True,
-                "backend_steps": ["login", "detail", "translate", "confirm", "offer"],
+                "backend_steps": ["login", "detail", "translate", "confirm", "offer", "part_pay_plan"],
                 "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
                 "backend_status": after_confirm.get("status") if after_confirm else None,
             },
@@ -2200,7 +2279,7 @@ def _run_backend_order_flow(
     backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
     return True, {
         "backend_passed": True,
-        "backend_steps": ["login", "detail", "translate", "confirm", "offer"],
+        "backend_steps": ["login", "detail", "translate", "confirm", "offer", "part_pay_plan"],
         "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
         "backend_status": after_offer.get("status") if after_offer else None,
     }
@@ -2473,6 +2552,11 @@ def _run_backend_order_flow_resume(
         if not _api_success(offer_payload):
             return False, {"backend_passed": False, "reason": "\u4e1a\u52a1\u62a5\u4ef7\u63d0\u4ea4\u5931\u8d25", "offer": _payload_brief(offer_payload)}
         backend_steps.append("offer")
+        part_pay_passed, part_pay_summary = _save_order_part_pay_plan_if_needed(session, base_url, variables, order_sn, offer_data, timeout)
+        backend_log["part_pay_plan"] = part_pay_summary
+        if not part_pay_passed:
+            return False, {"backend_passed": False, "reason": str(part_pay_summary.get("reason") or "分批付款方案保存失败"), "part_pay_plan": part_pay_summary}
+        backend_steps.append("part_pay_plan")
         _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=1)
         backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
         current_data = after_offer or current_data
