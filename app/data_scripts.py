@@ -3110,7 +3110,7 @@ def _resolve_order_tail_partial_context(
     select_by, selected_values = _order_tail_partial_selected_values(variables)
     context.update({"partial_enabled": True, "select_by": select_by, "selected_values": selected_values})
     if not selected_values:
-        context["reason"] = "按番尾款已启用，但未填写番序号或明细 ID"
+        context["reason"] = "按番尾款已启用，但未填写番序号"
         return False, context
 
     detail_fields = _order_tail_detail_fields(order_sn, variables)
@@ -3140,7 +3140,7 @@ def _resolve_order_tail_partial_context(
     context["selected_order_detail_ids"] = selected_ids
     if missing_values:
         context["missing_values"] = missing_values
-        context["reason"] = "所选番不存在或未匹配到订单明细"
+        context["reason"] = "所选明细 ID 不存在或未匹配到订单明细" if select_by == "detail_id" else "所选番序号不存在或未匹配到订单明细"
         return False, context
 
     unpaid_ids = _order_tail_unpaid_ids_from_detail(detail_payload, rows)
