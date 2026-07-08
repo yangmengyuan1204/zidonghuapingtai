@@ -2017,14 +2017,6 @@ def _order_part_pay_enabled(variables: Dict[str, Any]) -> bool:
     return _as_bool(variables.get("order_part_pay"), False) or str(variables.get("order_part_pay")).strip() == "1"
 
 
-def _order_part_pay_plan_allowed(variables: Dict[str, Any]) -> bool:
-    return _as_bool(variables.get("_allow_order_part_pay_plan"), False)
-
-
-def _order_part_pay_plan_enabled(variables: Dict[str, Any]) -> bool:
-    return _order_part_pay_enabled(variables) and _order_part_pay_plan_allowed(variables)
-
-
 def _order_part_pay_percent(variables: Dict[str, Any]) -> int:
     percent = _as_int(variables.get("order_part_pay_percent"), 10)
     percent = max(0, min(100, percent))
@@ -2047,7 +2039,7 @@ def _order_part_pay_fee_timing(variables: Dict[str, Any]) -> Dict[str, str]:
 
 
 def _apply_order_part_pay_payload(prepared: Dict[str, Any], variables: Dict[str, Any]) -> None:
-    prepared["order_part_pay"] = 1 if _order_part_pay_plan_enabled(variables) else 0
+    prepared["order_part_pay"] = 1 if _order_part_pay_enabled(variables) else 0
 
 
 def _order_part_pay_api_node(variables: Dict[str, Any]) -> int:
@@ -2110,8 +2102,6 @@ def _save_order_part_pay_plan_if_needed(
 ) -> tuple[bool, Dict[str, Any]]:
     if not _order_part_pay_enabled(variables):
         return True, {"skipped": True, "reason": "未启用分批付款"}
-    if not _order_part_pay_plan_allowed(variables):
-        return True, {"skipped": True, "reason": "分批付款方案仅全流程启用"}
     fields = _order_part_pay_plan_fields(order_sn, offer_data, variables)
     payload = _post_admin_urlencoded(
         session,
@@ -2191,9 +2181,11 @@ def _run_backend_order_flow(
     if not _api_success(translate_payload):
         return False, {"backend_passed": False, "reason": "订单翻译提交失败", "translate": _payload_brief(translate_payload)}
 
-    _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
-    backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
+    # detail_after_translate：仅 order_translated 暂停点需要准确 status，非暂停路径跳过冗余查询
+    #（translate 不修改 order_detail 结构，confirm_source 直接用 translate_data 即可）
     if _checkpoint_requested(variables, "order_translated"):
+        _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
+        backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
         return True, _paused_summary(
             "order_translated",
             {
@@ -2203,8 +2195,8 @@ def _run_backend_order_flow(
                 "backend_status": after_translate.get("status") if after_translate else None,
             },
         )
-
-    confirm_source = after_translate or translate_data
+    backend_log["detail_after_translate"] = {**_admin_detail_brief(order_data), "cached_from": "detail_before"}
+    confirm_source = translate_data
     confirm_data = _build_confirm_data(confirm_source, variables, item_quantity)
     confirm_payload = _post_admin_form(
         session,
@@ -2239,11 +2231,6 @@ def _run_backend_order_flow(
 
     offer_source = after_confirm or confirm_source
     offer_data = _prepare_offer_data(offer_source, variables, item_quantity)
-    part_pay_passed, part_pay_summary = _save_order_part_pay_plan_if_needed(session, base_url, variables, order_sn, offer_data, timeout)
-    backend_log["part_pay_plan"] = part_pay_summary
-    if not part_pay_passed:
-        return False, {"backend_passed": False, "reason": str(part_pay_summary.get("reason") or "分批付款方案保存失败"), "part_pay_plan": part_pay_summary}
-
     offer_payload = _post_admin_form(
         session,
         base_url,
@@ -2258,23 +2245,35 @@ def _run_backend_order_flow(
     if not _api_success(offer_payload):
         return False, {"backend_passed": False, "reason": "业务报价提交失败", "offer": _payload_brief(offer_payload)}
 
-    _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
-    backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
+    part_pay_passed, part_pay_summary = _save_order_part_pay_plan_if_needed(session, base_url, variables, order_sn, offer_data, timeout)
+    backend_log["part_pay_plan"] = part_pay_summary
+    if not part_pay_passed:
+        return False, {"backend_passed": False, "reason": str(part_pay_summary.get("reason") or "分批付款方案保存失败"), "part_pay_plan": part_pay_summary}
+
+    # detail_after_offer：order_offered 暂停点不需要最新 status，跳过冗余查询；
+    # 非暂停路径（继续到 order_paid）仍需查询以获取真实 status
     if _checkpoint_requested(variables, "order_offered"):
+        backend_log["detail_after_offer"] = {
+            **_admin_detail_brief(after_confirm),
+            "skipped": True,
+            "reason": "paused_at_order_offered",
+            "cached_from": "after_confirm",
+        }
         return True, _paused_summary(
             "order_offered",
             {
                 "order_sn": order_sn,
                 "backend_passed": True,
-                "backend_steps": ["login", "detail", "translate", "confirm", "part_pay_plan", "offer"],
+                "backend_steps": ["login", "detail", "translate", "confirm", "offer", "part_pay_plan"],
                 "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
-                "backend_status": after_offer.get("status") if after_offer else None,
+                "backend_status": after_confirm.get("status") if after_confirm else None,
             },
         )
-
+    _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=1)
+    backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
     return True, {
         "backend_passed": True,
-        "backend_steps": ["login", "detail", "translate", "confirm", "part_pay_plan", "offer"],
+        "backend_steps": ["login", "detail", "translate", "confirm", "offer", "part_pay_plan"],
         "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
         "backend_status": after_offer.get("status") if after_offer else None,
     }
@@ -2458,11 +2457,11 @@ def _run_backend_order_flow_resume(
     status = _order_status_code(current_data)
     if status is None:
         return False, {"backend_passed": False, "reason": "\u672a\u8bc6\u522b\u8ba2\u5355\u72b6\u6001"}
-    if status in (22, 30):
+    if status == 30:
         return True, {
             "order_sn": order_sn,
             "backend_passed": True,
-            "backend_steps": ["login", "detail", "skip_offered_order_backend"],
+            "backend_steps": ["login", "detail", "skip_completed_order_backend"],
             "backend_status": status,
             "already_order_offered": True,
         }
@@ -2486,7 +2485,6 @@ def _run_backend_order_flow_resume(
         _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
         backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
         current_data = after_translate or translate_data
-        status = _order_status_code(current_data) or status
         if _checkpoint_requested(variables, "order_translated"):
             return True, _paused_summary(
                 "order_translated",
@@ -2498,7 +2496,7 @@ def _run_backend_order_flow_resume(
                 },
             )
 
-    if status <= 20:
+    if status <= 21:
         confirm_data = _build_confirm_data(current_data, variables, item_quantity)
         confirm_payload = _post_admin_form(
             session,
@@ -2516,24 +2514,11 @@ def _run_backend_order_flow_resume(
             "detail_count": len(confirm_data.get("order_detail") or []),
         }
         if not _api_success(confirm_payload):
-            return False, {"backend_passed": False, "reason": "订单采购调查提交失败", "confirm": _payload_brief(confirm_payload)}
+            return False, {"backend_passed": False, "reason": "\u8ba2\u5355\u91c7\u8d2d\u8c03\u67e5\u63d0\u4ea4\u5931\u8d25", "confirm": _payload_brief(confirm_payload)}
         backend_steps.append("confirm")
         _, after_confirm = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
         backend_log["detail_after_confirm"] = _admin_detail_brief(after_confirm)
         current_data = after_confirm or current_data
-        status = _order_status_code(current_data) or status
-        if _checkpoint_requested(variables, "order_confirmed"):
-            return True, _paused_summary(
-                "order_confirmed",
-                {
-                    "order_sn": order_sn,
-                    "backend_passed": True,
-                    "backend_steps": backend_steps,
-                    "backend_status": current_data.get("status") if current_data else None,
-                },
-            )
-    elif status == 21:
-        backend_log["confirm"] = {"skipped": True, "reason": "订单已完成采购调查"}
         if _checkpoint_requested(variables, "order_confirmed"):
             return True, _paused_summary(
                 "order_confirmed",
@@ -2545,14 +2530,8 @@ def _run_backend_order_flow_resume(
                 },
             )
 
-    if status <= 21:
+    if status <= 22:
         offer_data = _prepare_offer_data(current_data, variables, item_quantity)
-        part_pay_passed, part_pay_summary = _save_order_part_pay_plan_if_needed(session, base_url, variables, order_sn, offer_data, timeout)
-        backend_log["part_pay_plan"] = part_pay_summary
-        if not part_pay_passed:
-            return False, {"backend_passed": False, "reason": str(part_pay_summary.get("reason") or "分批付款方案保存失败"), "part_pay_plan": part_pay_summary}
-        backend_steps.append("part_pay_plan")
-
         offer_payload = _post_admin_form(
             session,
             base_url,
@@ -2567,10 +2546,14 @@ def _run_backend_order_flow_resume(
         if not _api_success(offer_payload):
             return False, {"backend_passed": False, "reason": "\u4e1a\u52a1\u62a5\u4ef7\u63d0\u4ea4\u5931\u8d25", "offer": _payload_brief(offer_payload)}
         backend_steps.append("offer")
-        _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
+        part_pay_passed, part_pay_summary = _save_order_part_pay_plan_if_needed(session, base_url, variables, order_sn, offer_data, timeout)
+        backend_log["part_pay_plan"] = part_pay_summary
+        if not part_pay_passed:
+            return False, {"backend_passed": False, "reason": str(part_pay_summary.get("reason") or "分批付款方案保存失败"), "part_pay_plan": part_pay_summary}
+        backend_steps.append("part_pay_plan")
+        _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=1)
         backend_log["detail_after_offer"] = _admin_detail_brief(after_offer)
         current_data = after_offer or current_data
-        status = _order_status_code(current_data) or status
         if _checkpoint_requested(variables, "order_offered"):
             return True, _paused_summary(
                 "order_offered",
@@ -3110,7 +3093,7 @@ def _resolve_order_tail_partial_context(
     select_by, selected_values = _order_tail_partial_selected_values(variables)
     context.update({"partial_enabled": True, "select_by": select_by, "selected_values": selected_values})
     if not selected_values:
-        context["reason"] = "按番尾款已启用，但未填写番序号"
+        context["reason"] = "按番尾款已启用，但未填写番序号或明细 ID"
         return False, context
 
     detail_fields = _order_tail_detail_fields(order_sn, variables)
@@ -3140,7 +3123,7 @@ def _resolve_order_tail_partial_context(
     context["selected_order_detail_ids"] = selected_ids
     if missing_values:
         context["missing_values"] = missing_values
-        context["reason"] = "所选明细 ID 不存在或未匹配到订单明细" if select_by == "detail_id" else "所选番序号不存在或未匹配到订单明细"
+        context["reason"] = "所选番不存在或未匹配到订单明细"
         return False, context
 
     unpaid_ids = _order_tail_unpaid_ids_from_detail(detail_payload, rows)
@@ -8711,7 +8694,6 @@ def run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> T
     variables.setdefault("inspection_transition_delay", 0)
     variables.setdefault("after_box_submit_delay", 0.2)
     variables.setdefault("after_complete_box_delay", 0.2)
-    variables["_allow_order_part_pay_plan"] = True
     resume_porder_sn = str(variables.get("porder_sn") or "").strip()
     resume_order_sn = str(variables.get("order_sn") or variables.get("last_order_sn") or "").strip()
     if resume_porder_sn:
