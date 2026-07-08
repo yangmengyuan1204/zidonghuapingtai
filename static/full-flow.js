@@ -243,6 +243,10 @@ if (!window.__fullFlowDataScriptLoaded) {
     { value: "before_shelf", label: "上架仓库前" },
     { value: "before_porder_create", label: "提出配送单前" },
   ];
+  const FULL_FLOW_PART_PAY_TAIL_SELECT_OPTIONS = [
+    { value: "sorting", label: "番序号 sorting" },
+    { value: "detail_id", label: "明细 ID order_detail_id" },
+  ];
   const FULL_FLOW_PART_PAY_FEE_FIELDS = [
     { key: "domestic_freight", label: "国内运费", amountKeys: ["offer_freight", "confirm_freight"] },
     { key: "service_fee", label: "手续费", amountKeys: ["service_fee", "handling_fee"] },
@@ -279,6 +283,15 @@ if (!window.__fullFlowDataScriptLoaded) {
     );
   }
 
+  function fullFlowPartPayTailSelectBy(value) {
+    const text = String(value || "").trim();
+    return ["detail_id", "order_detail_id", "id"].includes(text) ? "detail_id" : "sorting";
+  }
+
+  function fullFlowPartPaySelectionText(value) {
+    return splitParamList(value).join(",");
+  }
+
   function normalizeFullFlowPartPayVariables(variables, flow) {
     const next = { ...(variables || {}) };
     if (!isFullFlowPartPayScript(flow)) return next;
@@ -287,6 +300,10 @@ if (!window.__fullFlowDataScriptLoaded) {
     const tailNode = String(next.order_part_pay_tail_node || "").trim();
     next.order_part_pay_tail_node = FULL_FLOW_PART_PAY_TAIL_NODE_OPTIONS.some((option) => option.value === tailNode) ? tailNode : "before_shelf";
     next.order_part_pay_fee_timing = fullFlowPartPayFeeTiming(next.order_part_pay_fee_timing);
+    next.order_part_pay_tail_partial_enabled = boolValue(next.order_part_pay_tail_partial_enabled, false) ? 1 : 0;
+    next.order_part_pay_tail_select_by = fullFlowPartPayTailSelectBy(next.order_part_pay_tail_select_by);
+    next.order_part_pay_tail_sortings = fullFlowPartPaySelectionText(next.order_part_pay_tail_sortings);
+    next.order_part_pay_tail_detail_ids = fullFlowPartPaySelectionText(next.order_part_pay_tail_detail_ids);
     return next;
   }
 
@@ -297,6 +314,10 @@ if (!window.__fullFlowDataScriptLoaded) {
       order_part_pay: boolValue(normalized.order_part_pay, true),
       order_part_pay_percent: fullFlowPartPayPercent(normalized.order_part_pay_percent),
       order_part_pay_tail_node: normalized.order_part_pay_tail_node || "before_shelf",
+      order_part_pay_tail_partial_enabled: boolValue(normalized.order_part_pay_tail_partial_enabled, false),
+      order_part_pay_tail_select_by: fullFlowPartPayTailSelectBy(normalized.order_part_pay_tail_select_by),
+      order_part_pay_tail_sortings: fullFlowPartPaySelectionText(normalized.order_part_pay_tail_sortings),
+      order_part_pay_tail_detail_ids: fullFlowPartPaySelectionText(normalized.order_part_pay_tail_detail_ids),
       ...Object.fromEntries(FULL_FLOW_PART_PAY_FEE_FIELDS.map((field) => [`order_part_pay_fee_timing_${field.key}`, timing[field.key] || "first"])),
     };
   }
@@ -315,6 +336,10 @@ if (!window.__fullFlowDataScriptLoaded) {
         return [field.key, timing];
       }),
     );
+    next.order_part_pay_tail_partial_enabled = boolValue(data.order_part_pay_tail_partial_enabled, false) ? 1 : 0;
+    next.order_part_pay_tail_select_by = fullFlowPartPayTailSelectBy(data.order_part_pay_tail_select_by);
+    next.order_part_pay_tail_sortings = fullFlowPartPaySelectionText(data.order_part_pay_tail_sortings);
+    next.order_part_pay_tail_detail_ids = fullFlowPartPaySelectionText(data.order_part_pay_tail_detail_ids);
     return next;
   }
 
@@ -374,12 +399,21 @@ if (!window.__fullFlowDataScriptLoaded) {
     const feeRows = preview.feeRows
       .map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${fullFlowPartPayFormatMoney(row.amount)}</td><td>${row.timing === "tail" ? "尾款" : "首款"}</td></tr>`)
       .join("");
+    const partialEnabled = boolValue(data?.order_part_pay_tail_partial_enabled, false);
+    const selectBy = fullFlowPartPayTailSelectBy(data?.order_part_pay_tail_select_by);
+    const selection = selectBy === "detail_id"
+      ? fullFlowPartPaySelectionText(data?.order_part_pay_tail_detail_ids)
+      : fullFlowPartPaySelectionText(data?.order_part_pay_tail_sortings);
+    const partialText = partialEnabled
+      ? `按番尾款：${selectBy === "detail_id" ? "明细 ID" : "番序号"} ${selection || "未填写，执行时会阻断"}`
+      : "整单剩余尾款：尾款节点按整单待付尾款执行";
     return `
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:12px">
         <div style="padding:12px;border:1px solid var(--line);border-radius:8px;background:#f8fafc"><span style="display:block;color:#64748b;font-size:12px">商品金额</span><strong>${fullFlowPartPayFormatMoney(preview.productAmount)}</strong></div>
         <div style="padding:12px;border:1px solid var(--line);border-radius:8px;background:#fff7ed"><span style="display:block;color:#64748b;font-size:12px">首款预估</span><strong>${fullFlowPartPayFormatMoney(preview.firstTotal)}</strong></div>
         <div style="padding:12px;border:1px solid var(--line);border-radius:8px;background:#eff6ff"><span style="display:block;color:#64748b;font-size:12px">尾款预估</span><strong>${fullFlowPartPayFormatMoney(preview.tailTotal)}</strong></div>
       </div>
+      <div class="empty" style="margin-top:10px;text-align:left">${escapeHtml(partialText)}</div>
       <div class="table-wrap" style="margin-top:12px">
         <table><thead><tr><th>费用项</th><th>预估金额</th><th>支付节点</th></tr></thead><tbody>${feeRows}</tbody></table>
       </div>
@@ -392,6 +426,9 @@ if (!window.__fullFlowDataScriptLoaded) {
       .join("");
     const nodeOptions = FULL_FLOW_PART_PAY_TAIL_NODE_OPTIONS
       .map((option) => `<option value="${escapeHtml(option.value)}" ${option.value === values.order_part_pay_tail_node ? "selected" : ""}>${escapeHtml(option.label)}</option>`)
+      .join("");
+    const tailSelectOptions = FULL_FLOW_PART_PAY_TAIL_SELECT_OPTIONS
+      .map((option) => `<option value="${escapeHtml(option.value)}" ${option.value === values.order_part_pay_tail_select_by ? "selected" : ""}>${escapeHtml(option.label)}</option>`)
       .join("");
     const feeFields = FULL_FLOW_PART_PAY_FEE_FIELDS.map((field) => {
       const value = values[`order_part_pay_fee_timing_${field.key}`] || "first";
@@ -420,6 +457,25 @@ if (!window.__fullFlowDataScriptLoaded) {
           <div class="field">
             <label>尾款支付节点</label>
             <select name="order_part_pay_tail_node" data-part-pay-input>${nodeOptions}</select>
+          </div>
+          <div class="field">
+            <label>尾款支付范围</label>
+            <select name="order_part_pay_tail_partial_enabled" data-part-pay-input>
+              <option value="0" ${values.order_part_pay_tail_partial_enabled ? "" : "selected"}>整单剩余尾款</option>
+              <option value="1" ${values.order_part_pay_tail_partial_enabled ? "selected" : ""}>按番尾款</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>按番选择方式</label>
+            <select name="order_part_pay_tail_select_by" data-part-pay-input>${tailSelectOptions}</select>
+          </div>
+          <div class="field">
+            <label>番序号</label>
+            <input name="order_part_pay_tail_sortings" value="${escapeHtml(values.order_part_pay_tail_sortings || "")}" placeholder="如 4,5" data-part-pay-input />
+          </div>
+          <div class="field">
+            <label>明细 ID</label>
+            <input name="order_part_pay_tail_detail_ids" value="${escapeHtml(values.order_part_pay_tail_detail_ids || "")}" placeholder="如 14051497,14051498" data-part-pay-input />
           </div>
           ${feeFields}
         </div>

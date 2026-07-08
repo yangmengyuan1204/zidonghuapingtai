@@ -2912,6 +2912,282 @@ def _order_tail_pay_amount_from_variables(variables: Dict[str, Any]) -> str:
     return ""
 
 
+def _order_tail_value_list(value: Any) -> list[str]:
+    if isinstance(value, (list, tuple)):
+        values: list[str] = []
+        for item in value:
+            values.extend(_order_tail_value_list(item))
+        return _unique_list(values)
+    text = str(value or "").strip()
+    if not text:
+        return []
+    return _unique_list([item.strip() for item in re.split(r"[\s,，;；]+", text) if item.strip()])
+
+
+def _order_tail_partial_enabled(variables: Dict[str, Any]) -> bool:
+    return _as_bool(variables.get("order_part_pay_tail_partial_enabled"), False)
+
+
+def _order_tail_partial_select_by(variables: Dict[str, Any]) -> str:
+    value = str(variables.get("order_part_pay_tail_select_by") or "").strip()
+    return "detail_id" if value in {"detail_id", "order_detail_id", "id"} else "sorting"
+
+
+def _order_tail_partial_selected_values(variables: Dict[str, Any]) -> tuple[str, list[str]]:
+    select_by = _order_tail_partial_select_by(variables)
+    primary_key = "order_part_pay_tail_detail_ids" if select_by == "detail_id" else "order_part_pay_tail_sortings"
+    fallback_key = "order_part_pay_tail_sortings" if select_by == "detail_id" else "order_part_pay_tail_detail_ids"
+    values = _order_tail_value_list(variables.get(primary_key))
+    if values:
+        return select_by, values
+    fallback_values = _order_tail_value_list(variables.get(fallback_key))
+    if fallback_values:
+        return ("sorting" if select_by == "detail_id" else "detail_id"), fallback_values
+    return select_by, []
+
+
+def _order_tail_detail_id(row: Dict[str, Any]) -> str:
+    for key in ["order_detail_id", "orderDetailId", "detail_id", "id"]:
+        value = row.get(key)
+        if value not in (None, ""):
+            return str(value).strip()
+    return ""
+
+
+def _order_tail_detail_sorting(row: Dict[str, Any]) -> str:
+    for key in ["sorting", "sort", "index", "no"]:
+        value = row.get(key)
+        if value not in (None, ""):
+            return str(value).strip()
+    return ""
+
+
+def _order_tail_detail_status(row: Dict[str, Any]) -> str:
+    value = row.get("tail_pay_status")
+    if value not in (None, ""):
+        return str(value).strip()
+    return ""
+
+
+def _order_tail_detail_is_paid(row: Dict[str, Any]) -> bool:
+    status = _order_tail_detail_status(row).lower()
+    name = str(row.get("tail_pay_status_name") or "").strip()
+    return status in {"1", "true", "paid"} or "已支付" in name
+
+
+def _order_tail_detail_is_unpaid(row: Dict[str, Any]) -> bool:
+    status = _order_tail_detail_status(row).lower()
+    name = str(row.get("tail_pay_status_name") or "").strip()
+    return status in {"0", "false", "unpaid"} or "待支付" in name
+
+
+def _order_tail_order_detail_rows(payload: Dict[str, Any]) -> list[Dict[str, Any]]:
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    groups = data.get("order_detail")
+    rows: list[Dict[str, Any]] = []
+    if isinstance(groups, list):
+        for group in groups:
+            if not isinstance(group, dict):
+                continue
+            goods = group.get("goods")
+            if isinstance(goods, list):
+                rows.extend([dict(item) for item in goods if isinstance(item, dict)])
+            elif _order_tail_detail_id(group):
+                rows.append(dict(group))
+    if not rows:
+        rows = _nested_rows(groups)
+    result: list[Dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows:
+        detail_id = _order_tail_detail_id(row)
+        if not detail_id or detail_id in seen:
+            continue
+        seen.add(detail_id)
+        result.append(row)
+    return result
+
+
+def _order_tail_unpaid_ids_from_detail(payload: Dict[str, Any], rows: list[Dict[str, Any]]) -> list[str]:
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    summary = data.get("part_pay_tail_summary") if isinstance(data.get("part_pay_tail_summary"), dict) else {}
+    ids = _order_tail_value_list(summary.get("unpaid_tail_detail_ids"))
+    if ids:
+        return ids
+    return _unique_list([_order_tail_detail_id(row) for row in rows if _order_tail_detail_is_unpaid(row)])
+
+
+def _order_tail_detail_fields(order_sn: str, variables: Dict[str, Any]) -> OrderedDict[str, Any]:
+    fields: OrderedDict[str, Any] = OrderedDict()
+    fields["order_sn"] = order_sn
+    return fields
+
+
+def _order_tail_pay_data_fields(order_sn: str, variables: Dict[str, Any], detail_ids: list[str]) -> OrderedDict[str, Any]:
+    fields: OrderedDict[str, Any] = OrderedDict()
+    fields["order_sn"] = order_sn
+    for index, detail_id in enumerate(detail_ids):
+        fields[f"order_detail_ids[{index}]"] = detail_id
+    if detail_ids:
+        fields["pay_mode"] = "partial"
+    fields["discounts_id"] = str(variables.get("discounts_id") or "")
+    return fields
+
+
+def _order_tail_apply_payment_detail_fields(fields: OrderedDict[str, Any], detail_ids: list[str]) -> None:
+    for index, detail_id in enumerate(detail_ids):
+        fields[f"order_detail_ids[{index}]"] = detail_id
+    if detail_ids:
+        fields["pay_mode"] = "partial"
+
+
+def _order_tail_pay_data_brief(payload: Dict[str, Any], fields: OrderedDict[str, Any]) -> Dict[str, Any]:
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    part_pay_amount = data.get("part_pay_amount") if isinstance(data.get("part_pay_amount"), dict) else {}
+    rmb = part_pay_amount.get("RMB") if isinstance(part_pay_amount.get("RMB"), dict) else {}
+    jpy = part_pay_amount.get("JPY") if isinstance(part_pay_amount.get("JPY"), dict) else {}
+    tail_rows = data.get("tail_detail_list") if isinstance(data.get("tail_detail_list"), list) else []
+    return {
+        **_payload_brief(payload),
+        "request": dict(fields),
+        "pay_mode": rmb.get("pay_mode") or jpy.get("pay_mode") or fields.get("pay_mode") or "full_remaining",
+        "rmb_total_amount": rmb.get("total_amount"),
+        "jpy_total_amount": jpy.get("total_amount"),
+        "pay_amount_jpy": jpy.get("pay_amount_jpy") or data.get("pay_amount_jpy"),
+        "tail_detail_ids": _order_tail_value_list(jpy.get("tail_detail_ids") or rmb.get("tail_detail_ids")),
+        "tail_detail_count": len(tail_rows),
+    }
+
+
+def _order_tail_pay_amount_from_pay_data(payload: Dict[str, Any]) -> str:
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    part_pay_amount = data.get("part_pay_amount") if isinstance(data.get("part_pay_amount"), dict) else {}
+    jpy = part_pay_amount.get("JPY") if isinstance(part_pay_amount.get("JPY"), dict) else {}
+    for value in [jpy.get("pay_amount_jpy"), jpy.get("total_amount"), data.get("pay_amount_jpy"), data.get("pay_amount")]:
+        if value not in (None, ""):
+            return str(value).strip()
+    return ""
+
+
+def _order_tail_pay_data_unpayable_ids(payload: Dict[str, Any]) -> list[str]:
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    rows = data.get("tail_detail_list") if isinstance(data.get("tail_detail_list"), list) else []
+    return _unique_list(
+        [
+            _order_tail_detail_id(row)
+            for row in rows
+            if isinstance(row, dict) and row.get("can_pay_tail") is False
+        ]
+    )
+
+
+def _resolve_order_tail_partial_context(
+    client: Any,
+    variables: Dict[str, Any],
+    order_sn: str,
+    payment_log: Dict[str, Any],
+) -> tuple[bool, Dict[str, Any]]:
+    context: Dict[str, Any] = {"partial_enabled": False}
+    if not _order_tail_partial_enabled(variables):
+        return True, context
+
+    select_by, selected_values = _order_tail_partial_selected_values(variables)
+    context.update({"partial_enabled": True, "select_by": select_by, "selected_values": selected_values})
+    if not selected_values:
+        context["reason"] = "按番尾款已启用，但未填写番序号或明细 ID"
+        return False, context
+
+    detail_fields = _order_tail_detail_fields(order_sn, variables)
+    detail_payload = _call_with_retry(
+        "order tail detail",
+        lambda: client.post_form(_api_path(variables, "client_order_detail", "/client/order.orderDetail"), detail_fields),
+    )
+    rows = _order_tail_order_detail_rows(detail_payload)
+    payment_log["order_tail_detail"] = {**_payload_brief(detail_payload), "request": dict(detail_fields), "detail_count": len(rows)}
+    context["detail_count"] = len(rows)
+    if not _api_success(detail_payload) or not rows:
+        context["reason"] = str(detail_payload.get("msg") or "未获取到订单商品明细，无法执行按番尾款")
+        return False, context
+
+    by_id = {_order_tail_detail_id(row): row for row in rows if _order_tail_detail_id(row)}
+    by_sorting = {_order_tail_detail_sorting(row): row for row in rows if _order_tail_detail_sorting(row)}
+    selected_ids: list[str] = []
+    missing_values: list[str] = []
+    for value in selected_values:
+        row = by_id.get(value) if select_by == "detail_id" else by_sorting.get(value)
+        detail_id = _order_tail_detail_id(row or {})
+        if detail_id:
+            selected_ids.append(detail_id)
+        else:
+            missing_values.append(value)
+    selected_ids = _unique_list(selected_ids)
+    context["selected_order_detail_ids"] = selected_ids
+    if missing_values:
+        context["missing_values"] = missing_values
+        context["reason"] = "所选番不存在或未匹配到订单明细"
+        return False, context
+
+    unpaid_ids = _order_tail_unpaid_ids_from_detail(detail_payload, rows)
+    unpaid_set = set(unpaid_ids)
+    already_paid_ids: list[str] = []
+    unpaid_selected_ids: list[str] = []
+    invalid_status_ids: list[str] = []
+    for detail_id in selected_ids:
+        row = by_id.get(detail_id) or {}
+        if _order_tail_detail_is_paid(row):
+            already_paid_ids.append(detail_id)
+        elif _order_tail_detail_is_unpaid(row) or detail_id in unpaid_set:
+            unpaid_selected_ids.append(detail_id)
+        else:
+            invalid_status_ids.append(detail_id)
+    context.update(
+        {
+            "unpaid_tail_detail_ids": unpaid_ids,
+            "already_paid_order_detail_ids": already_paid_ids,
+            "unpaid_selected_order_detail_ids": unpaid_selected_ids,
+            "downstream_order_detail_ids": selected_ids,
+        }
+    )
+    if invalid_status_ids:
+        context["invalid_status_order_detail_ids"] = invalid_status_ids
+        context["reason"] = "所选番尾款状态异常，不能自动支付"
+        return False, context
+
+    if not unpaid_selected_ids:
+        context.update({"payment_scope": "already_paid", "payment_skipped": True, "payment_detail_ids": []})
+        return True, context
+
+    payment_detail_ids = [] if unpaid_ids and set(unpaid_selected_ids) == set(unpaid_ids) else unpaid_selected_ids
+    context["payment_scope"] = "full_remaining" if not payment_detail_ids else "partial"
+    context["payment_detail_ids"] = payment_detail_ids
+    pay_data_fields = _order_tail_pay_data_fields(order_sn, variables, payment_detail_ids)
+    pay_data_payload = _call_with_retry(
+        "order tail pay data",
+        lambda: client.post_form(_api_path(variables, "client_order_pay_data", "/client/order.payData"), pay_data_fields),
+    )
+    pay_data_summary = _order_tail_pay_data_brief(pay_data_payload, pay_data_fields)
+    payment_log["order_tail_pay_data"] = pay_data_summary
+    context["pay_data"] = pay_data_summary
+    if not _api_success(pay_data_payload):
+        context["reason"] = str(pay_data_payload.get("msg") or "尾款金额查询失败")
+        return False, context
+    returned_tail_ids = set(_order_tail_value_list(pay_data_summary.get("tail_detail_ids")))
+    if payment_detail_ids and not set(payment_detail_ids).issubset(returned_tail_ids):
+        context["missing_pay_data_order_detail_ids"] = [detail_id for detail_id in payment_detail_ids if detail_id not in returned_tail_ids]
+        context["reason"] = "尾款金额查询未返回所选番，不能自动支付"
+        return False, context
+    unpayable_ids = _order_tail_pay_data_unpayable_ids(pay_data_payload)
+    if unpayable_ids:
+        context["unpayable_order_detail_ids"] = unpayable_ids
+        context["reason"] = "所选番当前不可支付尾款"
+        return False, context
+    context["_pay_data_payload"] = pay_data_payload
+    return True, context
+
+
+def _public_order_tail_context(context: Dict[str, Any]) -> Dict[str, Any]:
+    return {key: value for key, value in context.items() if not str(key).startswith("_")}
+
+
 def _order_tail_bank_pay_amount(
     client: Any,
     variables: Dict[str, Any],
@@ -2971,9 +3247,42 @@ def _run_order_tail_payment_if_needed(
     payment_log: Dict[str, Any] = {}
     try:
         client, base_url, _, _ = _login_client_for_payment(env, variables, payment_log)
+        partial_passed, partial_context = _resolve_order_tail_partial_context(client, variables, order_sn, payment_log)
+        summary.update(_public_order_tail_context(partial_context))
+        if not partial_passed:
+            log.setdefault("order_tail_payments", []).append(summary)
+            return False, summary
+
+        downstream_ids = _unique_list(partial_context.get("downstream_order_detail_ids") or [])
+        if downstream_ids:
+            variables["order_detail_ids"] = downstream_ids
+            variables["order_detail_id"] = downstream_ids[0]
+            summary["order_detail_ids"] = downstream_ids
+            summary["order_detail_id"] = downstream_ids[0]
+
+        if partial_context.get("payment_skipped"):
+            summary.update(
+                {
+                    "base_url": base_url,
+                    "path": path,
+                    "payment_mode": payment_mode,
+                    "payment_passed": True,
+                    "payment_skipped": True,
+                    "reason": "所选番尾款均已支付，跳过尾款支付接口",
+                }
+            )
+            log.setdefault("order_tail_payments", []).append(summary)
+            return True, summary
+
+        payment_detail_ids = _unique_list(partial_context.get("payment_detail_ids") or [])
+        pay_data_payload = partial_context.get("_pay_data_payload") if isinstance(partial_context.get("_pay_data_payload"), dict) else {}
         fields: OrderedDict[str, Any] = OrderedDict()
         if payment_mode == "bank":
-            amount, amount_summary = _order_tail_bank_pay_amount(client, variables, order_sn, payment_log)
+            amount = _order_tail_pay_amount_from_pay_data(pay_data_payload) if pay_data_payload else ""
+            if amount:
+                amount_summary = {"source": "order_pay_data", "payment_scope": partial_context.get("payment_scope") or "full_remaining"}
+            else:
+                amount, amount_summary = _order_tail_bank_pay_amount(client, variables, order_sn, payment_log)
             summary["amount_lookup"] = amount_summary
             if not _positive_decimal(amount):
                 summary.update({"reason": "未获取到尾款银行支付金额", "payment_mode": payment_mode, "pay_amount": amount})
@@ -2988,10 +3297,12 @@ def _run_order_tail_payment_if_needed(
             fields["order_sn"] = order_sn
             fields["merge_pay"] = str(variables.get("order_tail_merge_pay") or variables.get("merge_pay") or "0")
             fields["predict_logistics_price_is_pay"] = str(variables.get("predict_logistics_price_is_pay") or "0")
+            _order_tail_apply_payment_detail_fields(fields, payment_detail_ids)
         else:
             fields["order_sn"] = order_sn
             fields["discounts_id"] = str(variables.get("discounts_id") or "")
             fields["merge_pay"] = str(variables.get("order_tail_merge_pay") or variables.get("merge_pay") or "0")
+            _order_tail_apply_payment_detail_fields(fields, payment_detail_ids)
             if _as_bool(variables.get("include_order_tail_pay_amount") or variables.get("include_tail_pay_amount"), False):
                 amount = str(variables.get("order_tail_pay_amount") or variables.get("tail_pay_amount") or "").strip()
                 if amount:
@@ -4045,8 +4356,45 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
             {"row_count": len(preview_rows_after), "item_count": len(preview_items_after)},
         )
 
+        storage_preview_items = preview_items
+        storage_order_detail_ids = order_detail_ids
+        tail_pay_passed, tail_pay_summary = _run_order_tail_payment_if_needed(env, variables, log, "before_shelf")
+        if not tail_pay_passed:
+            return _finish_named(
+                PURCHASE_TO_SHELF_SCRIPT_NAME,
+                log,
+                False,
+                {
+                    "order_sn": order_sn,
+                    "purchase_no": purchase_no,
+                    "reason": str(tail_pay_summary.get("reason") or "上架前尾款支付失败"),
+                    "order_tail_payment": tail_pay_summary,
+                },
+            )
+        tail_order_detail_ids = _unique_list(
+            (tail_pay_summary.get("order_detail_ids") if isinstance(tail_pay_summary.get("order_detail_ids"), list) else [])
+            or (tail_pay_summary.get("downstream_order_detail_ids") if isinstance(tail_pay_summary.get("downstream_order_detail_ids"), list) else [])
+        )
+        if tail_order_detail_ids:
+            allowed_detail_ids = set(tail_order_detail_ids)
+            storage_preview_items = [item for item in preview_items if _purchase_order_detail_id(item) in allowed_detail_ids]
+            storage_order_detail_ids = _unique_values([_purchase_order_detail_id(item) for item in storage_preview_items])
+            if not storage_preview_items:
+                return _finish_named(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    False,
+                    {
+                        "order_sn": order_sn,
+                        "purchase_no": purchase_no,
+                        "order_tail_payment": tail_pay_summary,
+                        "reason": "已支付尾款的番未匹配到可上架商品",
+                    },
+                )
+        storage_purchase_ids = _unique_values([_order_purchase_id(item) for item in storage_preview_items])
+
         up_data = []
-        for item in preview_items:
+        for item in storage_preview_items:
             order_purchase_id = _order_purchase_id(item)
             if order_purchase_id in (None, ""):
                 continue
@@ -4069,7 +4417,7 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
         warehouse_fields = {
             "shelf_type_set": variables.get("shelf_type_set") or [1, 3],
             "user_id": userid,
-            "order_purchase_id": purchase_ids,
+            "order_purchase_id": storage_purchase_ids,
         }
         warehouse_payload = _post_admin_urlencoded(
             session,
@@ -4092,20 +4440,6 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
                 log,
                 False,
                 {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u672a\u627e\u5230\u53ef\u7528\u5e93\u4f4d"},
-            )
-
-        tail_pay_passed, tail_pay_summary = _run_order_tail_payment_if_needed(env, variables, log, "before_shelf")
-        if not tail_pay_passed:
-            return _finish_named(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                False,
-                {
-                    "order_sn": order_sn,
-                    "purchase_no": purchase_no,
-                    "reason": str(tail_pay_summary.get("reason") or "上架前尾款支付失败"),
-                    "order_tail_payment": tail_pay_summary,
-                },
             )
 
         storage_fields = {"grid_id": selected_grid.get("id"), "data": up_data}
@@ -4138,10 +4472,11 @@ def run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = No
         summary = {
             "order_sn": order_sn,
             "purchase_no": purchase_no,
-            "selected_count": len(purchase_items),
-            "purchase_ids": purchase_ids,
-            "order_detail_ids": order_detail_ids,
-            "order_detail_id": order_detail_ids[0] if order_detail_ids else "",
+            "selected_count": len(storage_preview_items),
+            "purchase_ids": storage_purchase_ids,
+            "order_detail_ids": storage_order_detail_ids,
+            "order_detail_id": storage_order_detail_ids[0] if storage_order_detail_ids else "",
+            "order_tail_payment": tail_pay_summary,
             "grid_id": selected_grid.get("id"),
             "grid_number": selected_grid.get("grid_number"),
             "storage_count": len(up_data),
@@ -5934,10 +6269,41 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
             token = _call_with_retry("client login", lambda: client.login(account, password, client_tool))
             log["login"] = {"success": True, "account": account, "client_tool": client_tool, "token_extracted": bool(token)}
 
+        tail_pay_passed, tail_pay_summary = _run_order_tail_payment_if_needed(env, variables, log, "before_porder_create")
+        if not tail_pay_passed:
+            return _finish_named(
+                WAREHOUSE_DELIVERY_SCRIPT_NAME,
+                log,
+                False,
+                {
+                    "porder_sn": "",
+                    "order_detail_id": "",
+                    "order_detail_ids": [],
+                    "reason": str(tail_pay_summary.get("reason") or "提出配送单前尾款支付失败"),
+                    "order_tail_payment": tail_pay_summary,
+                },
+            )
+        tail_order_detail_ids = _unique_list(
+            (tail_pay_summary.get("order_detail_ids") if isinstance(tail_pay_summary.get("order_detail_ids"), list) else [])
+            or (tail_pay_summary.get("downstream_order_detail_ids") if isinstance(tail_pay_summary.get("downstream_order_detail_ids"), list) else [])
+        )
+        if tail_order_detail_ids:
+            warehouse_sku_count = len(tail_order_detail_ids)
+            require_full_count = True
+            log["warehouse_sku_count"] = warehouse_sku_count
+            log["requested_warehouse_sku_count"] = warehouse_sku_count
+            log["require_warehouse_sku_count"] = require_full_count
+
         selected_items: list[Dict[str, Any]] = []
         warehouse_rows: list[Dict[str, Any]] = []
         requested_id = str(variables.get("order_detail_id") or variables.get("porder_detail_id") or "").strip()
         requested_ids = _warehouse_requested_order_detail_ids(variables)
+        if requested_ids and len(requested_ids) > warehouse_sku_count:
+            warehouse_sku_count = len(requested_ids)
+            require_full_count = True
+            log["warehouse_sku_count"] = warehouse_sku_count
+            log["requested_warehouse_sku_count"] = warehouse_sku_count
+            log["require_warehouse_sku_count"] = require_full_count
         if requested_id and warehouse_sku_count <= 1 and not require_full_count:
             # 快速路径：仍查询仓库列表拿真实可出荷数，避免 send_num 超过后端限制
             list_fields = _warehouse_list_fields(variables)
@@ -6122,22 +6488,6 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
         order_detail_id = order_detail_ids[0]
         actual_send_num = _as_int(delivery_items[0].get("send_num"), send_num)
         fields = _porder_create_fields_for_items(delivery_items, porder_sn, variables)
-        tail_pay_passed, tail_pay_summary = _run_order_tail_payment_if_needed(env, variables, log, "before_porder_create")
-        if not tail_pay_passed:
-            return _finish_named(
-                WAREHOUSE_DELIVERY_SCRIPT_NAME,
-                log,
-                False,
-                {
-                    "porder_sn": "",
-                    "order_detail_id": order_detail_id,
-                    "order_detail_ids": order_detail_ids,
-                    "send_num": actual_send_num,
-                    "total_send_num": total_send_num,
-                    "reason": str(tail_pay_summary.get("reason") or "提出配送单前尾款支付失败"),
-                    "order_tail_payment": tail_pay_summary,
-                },
-            )
         payload = _call_with_retry(
             "porder create",
             lambda: client.post_form(_api_path(variables, "client_porder_create", "/client/porder.porderCreate"), fields),
@@ -6180,6 +6530,7 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
             "selected_sku_ids": selected_sku_ids,
             "selected_warehouse_items": selected_warehouse_items,
             "warehouse_rows": len(warehouse_rows),
+            "order_tail_payment": tail_pay_summary,
             "create_passed": passed,
         }
         if actual_warehouse_sku_count < warehouse_sku_count:
