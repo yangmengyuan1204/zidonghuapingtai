@@ -1,6 +1,5 @@
-import hashlib
+﻿import hashlib
 import logging
-import os
 import re
 import secrets
 import socket
@@ -21,14 +20,12 @@ logger = logging.getLogger(__name__)
 
 import requests
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-from starlette.middleware.gzip import GZipMiddleware
 from sqlalchemy import func, or_, text
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy.orm import Session
 
+from .core.app_setup import configure_app, create_app
 from .database import Base, engine, get_db, safe_commit
 from .executors import ensure_report_dirs, execute_api_case, execute_ui_case, execute_ui_cases_batch, parse_json_value, to_json_text
 from .models import (
@@ -234,7 +231,7 @@ from .data_scripts import (
 from .functional_testing import scan_page_dom
 
 
-# ─── App 初始化 ──────────────────────────────────────────
+# 鈹€鈹€鈹€ App 鍒濆鍖?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 @asynccontextmanager
@@ -243,66 +240,12 @@ async def lifespan(_: FastAPI):
     yield
 
 
-# SEC-03: 生产环境通过 DISABLE_OPENAPI=1 关闭 /docs /redoc /openapi.json，默认保持开启以兼容现有行为
-_disable_docs = os.getenv("DISABLE_OPENAPI", "").strip() in {"1", "true", "yes"}
-app = FastAPI(
-    title="接口 + UI 自动化测试平台",
-    lifespan=lifespan,
-    docs_url=None if _disable_docs else "/docs",
-    redoc_url=None if _disable_docs else "/redoc",
-    openapi_url=None if _disable_docs else "/openapi.json",
-)
+# SEC-03: 鐢熶骇鐜閫氳繃 DISABLE_OPENAPI=1 鍏抽棴 /docs /redoc /openapi.json锛岄粯璁や繚鎸佸紑鍚互鍏煎鐜版湁琛屼负
+app = create_app(lifespan=lifespan)
 
 # 保护「至少保留一个 admin」的序列化锁（SQLite 不支持 SELECT FOR UPDATE）
 _admin_lock = threading.Lock()
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "").strip()
-allowed_origins = [origin.strip() for origin in CORS_ORIGINS.split(",") if origin.strip()] if CORS_ORIGINS else ["http://localhost:8000", "http://127.0.0.1:8000"]
-# SEC-02: CORS 收紧 methods/headers 白名单（前端实际只用这些）
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept"],
-)
-app.add_middleware(GZipMiddleware, minimum_size=1000)
-
-
-# SEC-09: 统一下发安全响应头（不改变业务逻辑，仅增强浏览器端防护）
-@app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
-    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
-    return response
-
-
-@app.middleware("http")
-async def no_cache_frontend_assets(request, call_next):
-    response = await call_next(request)
-    path = request.url.path
-    if path.startswith("/static/"):
-        # 前端 JS/CSS 已使用版本号 query 参数做缓存破坏，可安全启用浏览器强缓存
-        if "Cache-Control" not in response.headers:
-            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-    elif path == "/":
-        # index.html 禁用缓存以确保新版本能被立即获取
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-    ct = response.headers.get("content-type", "")
-    if "application/json" in ct and "charset" not in ct.lower():
-        response.headers["content-type"] = ct.replace("application/json", "application/json; charset=utf-8")
-    return response
-
-
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-# 挂载 reports 目录，供前端访问截图
-_REPORT_DIR = BASE_DIR / "reports"
-if _REPORT_DIR.exists():
-    app.mount("/reports", StaticFiles(directory=str(_REPORT_DIR)), name="reports")
+configure_app(app)
 
 
 # ─── 三大模块路由器 ──────────────────────────────────────
@@ -313,12 +256,12 @@ from .routers import register_routers
 register_routers(app)
 
 
-# ═══════════════════════════════════════════════════════════
-# 以下路由保留在 main.py 中（未迁移到模块）
-# ═══════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+# 浠ヤ笅璺敱淇濈暀鍦?main.py 涓紙鏈縼绉诲埌妯″潡锛?
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
-# ─── 基础 ────────────────────────────────────────────────
+# 鈹€鈹€鈹€ 鍩虹 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 @app.get("/")
@@ -328,7 +271,7 @@ def index() -> FileResponse:
 
 @app.get("/health")
 def health() -> Dict[str, Any]:
-    """健康检查端点。"""
+    """Health check endpoint."""
     return {"status": "ok", "timestamp": datetime.now().isoformat()}
 
 
