@@ -1,0 +1,857 @@
+﻿[
+  {
+    "method": "GET",
+    "path": "/",
+    "name": "index"
+  },
+  {
+    "method": "GET",
+    "path": "/api/action-templates",
+    "name": "list_action_templates"
+  },
+  {
+    "method": "POST",
+    "path": "/api/action-templates",
+    "name": "create_action_template"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/action-templates/{template_id}",
+    "name": "delete_action_template"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/action-templates/{template_id}",
+    "name": "update_action_template"
+  },
+  {
+    "method": "GET",
+    "path": "/api/action-templates/{template_id}/test-run",
+    "name": "test_run_template"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ai-config",
+    "name": "get_ai_config"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/ai-config",
+    "name": "update_ai_config"
+  },
+  {
+    "method": "GET",
+    "path": "/api/api-cases",
+    "name": "list_api_cases"
+  },
+  {
+    "method": "POST",
+    "path": "/api/api-cases",
+    "name": "create_api_case"
+  },
+  {
+    "method": "POST",
+    "path": "/api/api-cases/batch-execute",
+    "name": "batch_run_api_cases"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/api-cases/{case_id}",
+    "name": "delete_api_case"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/api-cases/{case_id}",
+    "name": "update_api_case"
+  },
+  {
+    "method": "POST",
+    "path": "/api/api-cases/{case_id}/execute",
+    "name": "run_api_case"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "name": "login"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/me",
+    "name": "me"
+  },
+  {
+    "method": "POST",
+    "path": "/api/browser-record/sessions",
+    "name": "create_session"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/browser-record/sessions/{session_id}",
+    "name": "close"
+  },
+  {
+    "method": "GET",
+    "path": "/api/browser-record/sessions/{session_id}/events",
+    "name": "list_events"
+  },
+  {
+    "method": "POST",
+    "path": "/api/browser-record/sessions/{session_id}/navigate",
+    "name": "navigate"
+  },
+  {
+    "method": "POST",
+    "path": "/api/browser-record/sessions/{session_id}/save",
+    "name": "save_session"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/case-generation/cases/{case_id}",
+    "name": "delete_case_generation_case"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/case-generation/cases/{case_id}",
+    "name": "update_case_generation_case"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/case-generation/cases/{case_id}/status",
+    "name": "update_case_generation_case_status"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/case-generation/requirement-notes/{note_id}",
+    "name": "delete_case_generation_requirement_note"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/case-generation/requirement-notes/{note_id}",
+    "name": "update_case_generation_requirement_note"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/case-generation/screenshots/{screenshot_id}",
+    "name": "delete_case_generation_screenshot"
+  },
+  {
+    "method": "POST",
+    "path": "/api/case-generation/screenshots/{screenshot_id}/analyze",
+    "name": "analyze_case_generation_screenshot"
+  },
+  {
+    "method": "GET",
+    "path": "/api/case-generation/screenshots/{screenshot_id}/file",
+    "name": "get_case_generation_screenshot_file"
+  },
+  {
+    "method": "GET",
+    "path": "/api/case-generation/screenshots/{screenshot_id}/impact",
+    "name": "get_case_generation_screenshot_impact"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/case-generation/screenshots/{screenshot_id}/ocr-text",
+    "name": "update_case_generation_screenshot_ocr_text"
+  },
+  {
+    "method": "GET",
+    "path": "/api/case-generation/tasks",
+    "name": "list_case_generation_tasks"
+  },
+  {
+    "method": "POST",
+    "path": "/api/case-generation/tasks",
+    "name": "create_case_generation_task"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/case-generation/tasks/{task_id}",
+    "name": "delete_case_generation_task"
+  },
+  {
+    "method": "GET",
+    "path": "/api/case-generation/tasks/{task_id}",
+    "name": "get_case_generation_task"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/case-generation/tasks/{task_id}",
+    "name": "update_case_generation_task"
+  },
+  {
+    "method": "POST",
+    "path": "/api/case-generation/tasks/{task_id}/cases/batch-status",
+    "name": "batch_update_case_generation_case_status"
+  },
+  {
+    "method": "GET",
+    "path": "/api/case-generation/tasks/{task_id}/cases/stats",
+    "name": "get_case_generation_case_stats"
+  },
+  {
+    "method": "POST",
+    "path": "/api/case-generation/tasks/{task_id}/generate-cases",
+    "name": "generate_case_generation_cases"
+  },
+  {
+    "method": "POST",
+    "path": "/api/case-generation/tasks/{task_id}/requirement-notes",
+    "name": "create_case_generation_requirement_note"
+  },
+  {
+    "method": "POST",
+    "path": "/api/case-generation/tasks/{task_id}/upload-screenshots",
+    "name": "upload_case_generation_screenshots"
+  },
+  {
+    "method": "GET",
+    "path": "/api/case-generation/workspace",
+    "name": "get_case_generation_workspace"
+  },
+  {
+    "method": "POST",
+    "path": "/api/case-generation/workspace/cases/batch-status",
+    "name": "batch_update_case_generation_workspace_case_status"
+  },
+  {
+    "method": "POST",
+    "path": "/api/case-generation/workspace/generate-cases",
+    "name": "generate_case_generation_workspace_cases"
+  },
+  {
+    "method": "POST",
+    "path": "/api/case-generation/workspace/requirement-notes",
+    "name": "create_case_generation_workspace_requirement_note"
+  },
+  {
+    "method": "POST",
+    "path": "/api/case-generation/workspace/upload-screenshots",
+    "name": "upload_case_generation_workspace_screenshots"
+  },
+  {
+    "method": "GET",
+    "path": "/api/dashboard",
+    "name": "dashboard"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/balance-payment",
+    "name": "run_balance_payment_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/balance-recharge",
+    "name": "run_balance_recharge_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/bank-payment",
+    "name": "run_bank_payment_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/direct-box-to-shelf",
+    "name": "run_direct_box_to_shelf_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/full-flow",
+    "name": "run_full_flow_data_script"
+  },
+  {
+    "method": "GET",
+    "path": "/api/data-scripts/latest-order-sn",
+    "name": "get_latest_order_sn"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/material-generation",
+    "name": "run_material_generation_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/material-order",
+    "name": "run_material_order_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/oem-bulk-order",
+    "name": "run_oem_bulk_order_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/oem-full-inquiry-flow",
+    "name": "run_oem_full_inquiry_flow_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/oem-new-inquiry",
+    "name": "run_oem_new_inquiry_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/oem-sample-admin-flow",
+    "name": "run_oem_sample_admin_flow_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/oem-sample-balance-pay",
+    "name": "run_oem_sample_balance_pay_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/oem-sample-full-flow",
+    "name": "run_oem_sample_full_flow_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/oem-sample-order",
+    "name": "run_oem_sample_order_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/order-quote",
+    "name": "run_order_quote_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/order-quote/options-preview",
+    "name": "preview_order_quote_options_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/porder-balance-payment",
+    "name": "run_porder_balance_payment_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/porder-bank-payment",
+    "name": "run_porder_bank_payment_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/purchase-to-shelf",
+    "name": "run_purchase_to_shelf_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/purchase-to-shelf-chain",
+    "name": "run_purchase_to_shelf_chain_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/resume-order-flow",
+    "name": "run_resume_order_flow_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/resume-porder-flow",
+    "name": "run_resume_porder_flow_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/shopping-cart",
+    "name": "run_shopping_cart_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/warehouse-delivery",
+    "name": "run_warehouse_delivery_data_script"
+  },
+  {
+    "method": "GET",
+    "path": "/api/envs",
+    "name": "list_envs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/envs",
+    "name": "create_env"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/envs/{env_id}",
+    "name": "delete_env"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/envs/{env_id}",
+    "name": "update_env"
+  },
+  {
+    "method": "GET",
+    "path": "/api/files/screenshot",
+    "name": "get_screenshot_by_path"
+  },
+  {
+    "method": "GET",
+    "path": "/api/flow-recorder/list",
+    "name": "list_flows"
+  },
+  {
+    "method": "POST",
+    "path": "/api/flow-recorder/save",
+    "name": "save_flow"
+  },
+  {
+    "method": "POST",
+    "path": "/api/flow-recorder/upload",
+    "name": "upload_har"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/flow-recorder/{flow_id}",
+    "name": "delete_flow"
+  },
+  {
+    "method": "GET",
+    "path": "/api/flow-recorder/{flow_id}",
+    "name": "get_flow"
+  },
+  {
+    "method": "POST",
+    "path": "/api/flow-recorder/{flow_id}/execute",
+    "name": "execute_flow"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/functional-cases/{case_id}",
+    "name": "update_functional_case"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-cases/{case_id}/generate-ui-steps",
+    "name": "generate_functional_case_ui_steps"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-cases/{case_id}/preflight",
+    "name": "preflight_check_case"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/functional-cases/{case_id}/status",
+    "name": "update_functional_case_status"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/functional-data-check-rules/{rule_id}",
+    "name": "delete_functional_data_check_rule"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/functional-data-check-rules/{rule_id}",
+    "name": "update_functional_data_check_rule"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-data-check-rules/{rule_id}/execute",
+    "name": "execute_functional_data_check"
+  },
+  {
+    "method": "GET",
+    "path": "/api/functional-executions/{job_id}",
+    "name": "get_functional_execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/functional-executions/{job_id}/events",
+    "name": "stream_functional_execution_events"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/functional-impact-items/{item_id}",
+    "name": "delete_functional_impact_item"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/functional-impact-items/{item_id}",
+    "name": "update_functional_impact_item"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/functional-requirement-notes/{note_id}",
+    "name": "delete_functional_requirement_note"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/functional-requirement-notes/{note_id}",
+    "name": "update_functional_requirement_note"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-runs/{run_id}/apply-repair",
+    "name": "apply_functional_run_repair"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-runs/{run_id}/diagnose",
+    "name": "diagnose_functional_run"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-runs/{run_id}/heal",
+    "name": "heal_functional_run_steps"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-runs/{run_id}/repair-plan",
+    "name": "functional_run_repair_plan"
+  },
+  {
+    "method": "GET",
+    "path": "/api/functional-runs/{run_id}/timeline",
+    "name": "get_functional_run_timeline"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-screenshots/{screenshot_id}/analyze",
+    "name": "analyze_uploaded_functional_screenshot"
+  },
+  {
+    "method": "GET",
+    "path": "/api/functional-screenshots/{screenshot_id}/file",
+    "name": "get_functional_screenshot_file"
+  },
+  {
+    "method": "GET",
+    "path": "/api/functional-tasks",
+    "name": "list_functional_tasks"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks",
+    "name": "create_functional_task"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/functional-tasks/{task_id}",
+    "name": "delete_functional_task"
+  },
+  {
+    "method": "GET",
+    "path": "/api/functional-tasks/{task_id}",
+    "name": "get_functional_task"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/ai-prepare",
+    "name": "ai_prepare_requirement_package"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/cases/batch-automation-status",
+    "name": "batch_update_functional_case_automation_status"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/cases/batch-generate-ui-steps",
+    "name": "batch_generate_functional_case_ui_steps"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/cases/batch-status",
+    "name": "batch_update_functional_case_status"
+  },
+  {
+    "method": "GET",
+    "path": "/api/functional-tasks/{task_id}/cases/stats",
+    "name": "get_functional_case_stats"
+  },
+  {
+    "method": "GET",
+    "path": "/api/functional-tasks/{task_id}/conclusion",
+    "name": "get_functional_task_conclusion"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/functional-tasks/{task_id}/context",
+    "name": "update_functional_task_context"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/data-check-rules",
+    "name": "create_functional_data_check_rule"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/data-check-runs",
+    "name": "execute_functional_data_checks"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/execute-async",
+    "name": "execute_functional_task_async"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/generate-cases",
+    "name": "generate_functional_task_cases"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/impact-items",
+    "name": "create_functional_impact_item"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/impact-items/analyze",
+    "name": "analyze_functional_impact_items"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/preflight-package",
+    "name": "preflight_functional_task_package"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/quick-start",
+    "name": "quick_start_functional_task"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/requirement-notes",
+    "name": "create_functional_requirement_note"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/scan-page",
+    "name": "scan_functional_page"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/seed-test-data",
+    "name": "seed_functional_task_test_data"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/upload-axure",
+    "name": "upload_functional_axure"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/upload-screenshot",
+    "name": "upload_functional_screenshot"
+  },
+  {
+    "method": "POST",
+    "path": "/api/functional-tasks/{task_id}/upload-screenshots",
+    "name": "upload_functional_screenshots_batch"
+  },
+  {
+    "method": "GET",
+    "path": "/api/functional-tasks/{task_id}/workflow",
+    "name": "get_functional_task_workflow"
+  },
+  {
+    "method": "GET",
+    "path": "/api/locator-heal-logs",
+    "name": "list_heal_logs"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/locator-heal-logs/{log_id}",
+    "name": "confirm_heal_log"
+  },
+  {
+    "method": "POST",
+    "path": "/api/locator-heal-logs/{log_id}/apply",
+    "name": "apply_heal_log"
+  },
+  {
+    "method": "GET",
+    "path": "/api/oem/goods-class-list",
+    "name": "get_oem_goods_class_list"
+  },
+  {
+    "method": "GET",
+    "path": "/api/oem/inquiry-full",
+    "name": "get_oem_full_quote"
+  },
+  {
+    "method": "GET",
+    "path": "/api/oem/option-list",
+    "name": "get_oem_option_list"
+  },
+  {
+    "method": "POST",
+    "path": "/api/oem/upload-image",
+    "name": "upload_oem_image_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/projects",
+    "name": "list_projects"
+  },
+  {
+    "method": "POST",
+    "path": "/api/projects",
+    "name": "create_project"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/projects/{project_id}",
+    "name": "delete_project"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/projects/{project_id}",
+    "name": "update_project"
+  },
+  {
+    "method": "POST",
+    "path": "/api/proxy/request",
+    "name": "proxy_http_request"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/test-account-bindings",
+    "name": "update_test_account_binding"
+  },
+  {
+    "method": "GET",
+    "path": "/api/test-accounts",
+    "name": "list_test_accounts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/test-accounts",
+    "name": "create_test_account"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/test-accounts/{account_id}",
+    "name": "delete_test_account"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/test-accounts/{account_id}",
+    "name": "update_test_account"
+  },
+  {
+    "method": "GET",
+    "path": "/api/test-records",
+    "name": "list_records"
+  },
+  {
+    "method": "GET",
+    "path": "/api/test-records/{record_id}",
+    "name": "get_record"
+  },
+  {
+    "method": "GET",
+    "path": "/api/test-records/{record_id}/report",
+    "name": "get_record_report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/test-records/{record_id}/screenshot",
+    "name": "get_record_screenshot"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ui-cases",
+    "name": "list_ui_cases"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ui-cases",
+    "name": "create_ui_case"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/ui-cases/{case_id}",
+    "name": "delete_ui_case"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/ui-cases/{case_id}",
+    "name": "update_ui_case"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ui-cases/{case_id}/execute",
+    "name": "run_ui_case"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ui-cases/{case_id}/heal-steps",
+    "name": "heal_ui_case_steps"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ui-cases/{case_id}/visual-execute",
+    "name": "start_visual_ui_case"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ui-executions/{run_id}",
+    "name": "get_visual_ui_execution"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ui-record/sessions",
+    "name": "create_ui_record_session"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/ui-record/sessions/{session_id}",
+    "name": "cancel_ui_record_session"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ui-record/sessions/{session_id}/events",
+    "name": "list_ui_record_events"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ui-record/sessions/{session_id}/save",
+    "name": "save_ui_record_session"
+  },
+  {
+    "method": "GET",
+    "path": "/api/users",
+    "name": "list_users"
+  },
+  {
+    "method": "POST",
+    "path": "/api/users",
+    "name": "create_user"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/users/{user_id}",
+    "name": "delete_user"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/users/{user_id}",
+    "name": "update_user"
+  },
+  {
+    "method": "GET",
+    "path": "/docs",
+    "name": "swagger_ui_html"
+  },
+  {
+    "method": "GET",
+    "path": "/docs/oauth2-redirect",
+    "name": "swagger_ui_redirect"
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "name": "health"
+  },
+  {
+    "method": "GET",
+    "path": "/openapi.json",
+    "name": "openapi"
+  },
+  {
+    "method": "GET",
+    "path": "/redoc",
+    "name": "redoc_html"
+  }
+]

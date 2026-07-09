@@ -308,45 +308,9 @@ if _REPORT_DIR.exists():
 # ─── 三大模块路由器 ──────────────────────────────────────
 
 
-from .routers.functional_tasks import router as functional_tasks_router
-from .routers.case_generation import router as case_generation_router
-from .routers.data_scripts import router as data_scripts_router
-from .routers.auth import router as auth_router
-from .routers.dashboard import router as dashboard_router
-from .routers.users import router as users_router
-from .routers.projects import router as projects_router
-from .routers.envs import router as envs_router
-from .routers.api_cases import router as api_cases_router
-from .routers.ui_cases import router as ui_cases_router
-from .routers.test_accounts import router as test_accounts_router
-from .routers.action_templates import router as action_templates_router
-from .routers.locator_heal_logs import router as locator_heal_logs_router
-from .routers.ai_config import router as ai_config_router
-from .routers.proxy import router as proxy_router
-from .routers.test_records import router as test_records_router
-from .routers.flow_recorder import router as flow_recorder_router
-from .routers.browser_record import router as browser_record_router
-from .routers.ui_record import router as ui_record_router
+from .routers import register_routers
 
-app.include_router(functional_tasks_router)
-app.include_router(case_generation_router)
-app.include_router(data_scripts_router)
-app.include_router(auth_router)
-app.include_router(dashboard_router)
-app.include_router(users_router)
-app.include_router(projects_router)
-app.include_router(envs_router)
-app.include_router(api_cases_router)
-app.include_router(ui_cases_router)
-app.include_router(test_accounts_router)
-app.include_router(action_templates_router)
-app.include_router(locator_heal_logs_router)
-app.include_router(ai_config_router)
-app.include_router(proxy_router)
-app.include_router(test_records_router)
-app.include_router(flow_recorder_router)
-app.include_router(browser_record_router)
-app.include_router(ui_record_router)
+register_routers(app)
 
 
 # ═══════════════════════════════════════════════════════════

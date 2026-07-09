@@ -10,6 +10,7 @@
 """
 import atexit
 import base64
+import json
 import os
 from pathlib import Path
 
@@ -40,6 +41,21 @@ from app.main import app
 init_app()
 
 client = TestClient(app)
+
+
+def test_runtime_route_contract_matches_baseline():
+    """重构前后公开路由契约必须完全一致。"""
+    expected = json.loads((Path(__file__).with_name("route_contract_expected.json")).read_text(encoding="utf-8-sig"))
+    expected_keys = {(item["method"], item["path"]) for item in expected}
+    current_keys = set()
+    for route in app.routes:
+        methods = getattr(route, "methods", None)
+        path = getattr(route, "path", None)
+        if not methods or not path:
+            continue
+        for method in sorted(methods - {"HEAD", "OPTIONS"}):
+            current_keys.add((method, path))
+    assert current_keys == expected_keys
 
 
 def _login(username: str, password: str) -> dict:

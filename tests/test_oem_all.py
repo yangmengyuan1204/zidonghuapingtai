@@ -59,7 +59,7 @@ class TestBaseScript:
         assert script.trace_id is not None
         assert len(script.trace_id) == 36
         assert script.base_url == "https://oem-test.example.com"
-        // assert script.default_timeout == 10 // 配置优先级问题，暂时注释
+        # assert script.default_timeout == 10  # 配置优先级问题，暂时注释
     
     def test_base_script_success(self):
         """测试成功返回格式正确"""
