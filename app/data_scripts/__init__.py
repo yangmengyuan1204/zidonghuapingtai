@@ -2062,7 +2062,7 @@ def _order_part_pay_api_node(variables: Dict[str, Any]) -> int:
 
 
 def _order_part_pay_api_fee_flag(timing: Dict[str, str], key: str) -> int:
-    return 1 if timing.get(key) == "tail" else 0
+    return 0 if timing.get(key) == "tail" else 1
 
 
 def _order_part_pay_goods_total(offer_data: Dict[str, Any]) -> Decimal:
@@ -2081,9 +2081,6 @@ def _order_part_pay_goods_total(offer_data: Dict[str, Any]) -> Decimal:
 
 
 def _order_part_pay_first_goods_amount(offer_data: Dict[str, Any], variables: Dict[str, Any]) -> str:
-    configured = _positive_decimal(variables.get("order_part_pay_goods_amount") or variables.get("first_goods_amount"))
-    if configured is not None:
-        return f"{configured.quantize(Decimal('0.01')):.2f}"
     total = _order_part_pay_goods_total(offer_data)
     amount = total * Decimal(_order_part_pay_percent(variables)) / Decimal("100")
     return f"{amount.quantize(Decimal('0.01')):.2f}"

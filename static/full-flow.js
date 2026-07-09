@@ -365,7 +365,25 @@ if (!window.__fullFlowDataScriptLoaded) {
     return fixed.replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
   }
 
-  function fullFlowPartPayPreview(data) {
+  function fullFlowPartPayOptionKey(option) {
+    return String(option?.key || option?.id || option?.name || "").trim();
+  }
+
+  function fullFlowPartPaySelectedOptionAmount(options, counts, productAmount) {
+    const selectedCounts = counts && typeof counts === "object" && !Array.isArray(counts) ? counts : {};
+    return (Array.isArray(options) ? options : []).reduce((total, option) => {
+      const key = fullFlowPartPayOptionKey(option);
+      const count = normalizePositiveInt(selectedCounts[key], 0);
+      if (!key || count <= 0) return total;
+      const price = fullFlowPartPayMoney(option?.price);
+      const priceType = String(option?.price_type ?? "").trim();
+      const unit = String(option?.unit || "").trim();
+      const amount = priceType === "1" || unit.includes("%") ? productAmount * price / 100 : price * count;
+      return total + amount;
+    }, 0);
+  }
+
+  function fullFlowPartPayPreview(data, orderOptions = []) {
     const shopCount = normalizePositiveInt(data.order_shop_count, 1);
     const perShop = normalizePositiveInt(data.order_per_shop || data.order_item_count, 2);
     const detailCount = Math.max(1, shopCount * perShop);
@@ -377,6 +395,7 @@ if (!window.__fullFlowDataScriptLoaded) {
     const tailProduct = productAmount - firstProduct;
     let firstFee = 0;
     let tailFee = 0;
+    const optionAmount = fullFlowPartPaySelectedOptionAmount(orderOptions, data.order_option_counts, productAmount);
     const feeRows = FULL_FLOW_PART_PAY_FEE_FIELDS.map((field) => {
       const rawAmount = fullFlowPartPayAmountFromKeys(data, field.amountKeys);
       const amount = field.key === "domestic_freight" ? rawAmount * detailCount : rawAmount;
@@ -385,6 +404,12 @@ if (!window.__fullFlowDataScriptLoaded) {
       else firstFee += amount;
       return { label: field.label, amount, timing };
     });
+    if (optionAmount > 0) {
+      const timing = data.order_part_pay_fee_timing_additional_service_fee === "tail" ? "tail" : "first";
+      if (timing === "tail") tailFee += optionAmount;
+      else firstFee += optionAmount;
+      feeRows.push({ label: "已选 option 费用", amount: optionAmount, timing });
+    }
     return {
       percent,
       productAmount,
@@ -394,12 +419,13 @@ if (!window.__fullFlowDataScriptLoaded) {
       tailFee,
       firstTotal: firstProduct + firstFee,
       tailTotal: tailProduct + tailFee,
+      optionAmount,
       feeRows,
     };
   }
 
-  function renderFullFlowPartPayPreview(data) {
-    const preview = fullFlowPartPayPreview(data || {});
+  function renderFullFlowPartPayPreview(data, orderOptions = []) {
+    const preview = fullFlowPartPayPreview(data || {}, orderOptions);
     const feeRows = preview.feeRows
       .map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${fullFlowPartPayFormatMoney(row.amount)}</td><td>${row.timing === "tail" ? "尾款" : "首款"}</td></tr>`)
       .join("");
@@ -474,12 +500,14 @@ if (!window.__fullFlowDataScriptLoaded) {
     `;
   }
 
-  function bindFullFlowPartPayPanel(form) {
+  function bindFullFlowPartPayPanel(form, orderOptionsProvider = () => []) {
     const panel = form.querySelector("#fullFlowPartPayPanel");
     const previewEl = form.querySelector("#fullFlowPartPayPreview");
-    if (!panel || !previewEl) return;
+    if (!panel || !previewEl) return null;
     const sync = () => {
-      previewEl.innerHTML = renderFullFlowPartPayPreview(readForm(form));
+      const data = readForm(form);
+      data.order_option_counts = readOrderOptionCounts(form);
+      previewEl.innerHTML = renderFullFlowPartPayPreview(data, orderOptionsProvider());
     };
     ["order_shop_count", "order_per_shop", "order_item_count", "order_item_num", "offer_num", "offer_price", "quote_unit_price", "offer_freight", "confirm_freight", "service_fee", "handling_fee", "additional_service_fee", "added_service_fee", "other_price"].forEach((name) => {
       form.querySelectorAll(`[name="${name}"]`).forEach((input) => input.addEventListener(input.type === "number" ? "input" : "change", sync));
@@ -487,7 +515,14 @@ if (!window.__fullFlowDataScriptLoaded) {
     form.querySelectorAll("[data-part-pay-input]").forEach((input) => {
       input.addEventListener(input.type === "checkbox" || input.tagName === "SELECT" ? "change" : "input", sync);
     });
+    form.addEventListener("input", (event) => {
+      if (event.target?.matches?.("[data-order-option-key]")) sync();
+    });
+    form.addEventListener("change", (event) => {
+      if (event.target?.matches?.("[data-order-option-key]")) sync();
+    });
     sync();
+    return sync;
   }
 
   const originalSanitizeScriptVariablesForFullFlow = sanitizeScriptVariables;
@@ -1314,6 +1349,7 @@ if (!window.__fullFlowDataScriptLoaded) {
     modalEl.showModal();
     const form = document.querySelector("#fullFlowRunForm");
     const previewEl = document.querySelector("#fullFlowOrderOptionPreview");
+    let currentOrderOptions = [];
     function runtimeVariables(includeCurrentCounts = true) {
       const data = readForm(form);
       data.confirm_volume = fullFlowDimensionValue(data, variables.confirm_volume);
@@ -1335,7 +1371,9 @@ if (!window.__fullFlowDataScriptLoaded) {
             variables: runtimeVariables(false),
           },
         });
+        currentOrderOptions = result.options || [];
         previewEl.innerHTML = renderOrderOptionPreview(result.options || [], { ...initialCounts, ...counts });
+        if (syncPartPayPreview) syncPartPayPreview();
       } catch (error) {
         previewEl.innerHTML = `<div class="alert error">读取 option 失败：${escapeHtml(error.message)}</div>`;
       }
@@ -1347,7 +1385,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       }
     });
     document.querySelector("#refreshFullFlowOrderOptions").addEventListener("click", refreshOptions);
-    bindFullFlowPartPayPanel(form);
+    const syncPartPayPreview = bindFullFlowPartPayPanel(form, () => currentOrderOptions);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       try {

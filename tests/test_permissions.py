@@ -1495,6 +1495,45 @@ def test_order_part_pay_plan_runs_only_with_full_flow_part_pay_flag(monkeypatch)
     assert summary["request"]["goods_amount"] == "2.00"
 
 
+def test_order_part_pay_goods_amount_ignores_legacy_override_and_fee_flags():
+    offer_data = {
+        "order_sn": "ORDER-PART",
+        "order_detail": [{"id": "DETAIL-1", "offer_num": 30, "offer_price": "10"}],
+    }
+
+    fields = data_scripts._order_part_pay_plan_fields(
+        "ORDER-PART",
+        offer_data,
+        {
+            "order_part_pay_percent": 10,
+            "order_part_pay_goods_amount": "300",
+            "first_goods_amount": "300",
+            "order_part_pay_fee_timing": {
+                "domestic_freight": "first",
+                "service_fee": "tail",
+                "additional_service_fee": "first",
+                "other_fee": "tail",
+            },
+        },
+    )
+
+    assert fields["goods_amount"] == "30.00"
+    assert fields["is_pay_freight_amount"] == 1
+    assert fields["is_pay_service_amount"] == 0
+    assert fields["is_pay_option_amount"] == 1
+    assert fields["is_pay_other_amount"] == 0
+
+
+def test_full_flow_part_pay_preview_includes_selected_option_fee():
+    source = Path("static/full-flow.js").read_text(encoding="utf-8")
+
+    assert "function fullFlowPartPaySelectedOptionAmount" in source
+    assert "data.order_option_counts = readOrderOptionCounts(form);" in source
+    assert "fullFlowPartPaySelectedOptionAmount(orderOptions, data.order_option_counts, productAmount)" in source
+    assert "data.order_part_pay_fee_timing_additional_service_fee" in source
+    assert "bindFullFlowPartPayPanel(form, () => currentOrderOptions)" in source
+
+
 def test_order_part_pay_plan_runs_before_submit_offer(monkeypatch):
     calls = []
     order_detail = {"id": "DETAIL-1", "goods_id": "GOODS-1", "num": 2}
