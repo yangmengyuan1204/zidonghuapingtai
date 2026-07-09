@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 # SEC-05: 上传文件大小上限（20MB），防止内存 DoS
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
-from ..core.utils import (
+from ...core.utils import (
     QUALITY_AUTH_RISK,
     QUALITY_EXECUTABLE,
     QUALITY_LOCATOR_RISK,
@@ -51,7 +51,7 @@ from ..core.utils import (
     serialize_many,
     suggest_functional_impact_items,
 )
-from ..models import (
+from ...models import (
     FunctionalCase,
     FunctionalDataCheckResult,
     FunctionalDataCheckRule,
@@ -66,7 +66,7 @@ from ..models import (
     UiCase,
     User,
 )
-from ..schemas import (
+from ...schemas import (
     FunctionalCaseBatchAutomationUpdate,
     FunctionalCaseBatchIds,
     FunctionalCaseBatchStatusUpdate,
@@ -85,7 +85,7 @@ from ..schemas import (
     FunctionalTaskCreate,
     PreflightResult,
 )
-from ..executors import (
+from ...executors import (
     ensure_report_dirs,
     execute_api_case,
     execute_ui_case,
@@ -94,7 +94,7 @@ from ..executors import (
     _strip_leading_login_steps,
     to_json_text,
 )
-from ..functional_testing import (
+from ...functional_testing import (
     FunctionalScanError,
     analyze_functional_screenshot,
     diagnose_failure,
@@ -105,9 +105,9 @@ from ..functional_testing import (
     store_axure_file,
     store_functional_screenshot_file,
 )
-from ..database import get_db, safe_commit
-from ..security import get_current_user, require_admin
-from ..services.requirement_workflow import build_workflow_status
+from ...database import get_db, safe_commit
+from ...security import get_current_user, require_admin
+from ...services.requirement_workflow import build_workflow_status
 
 router = APIRouter(prefix="/api", tags=["functional-tasks"])
 
