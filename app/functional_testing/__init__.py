@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 import requests
 
-from .executors import SCREENSHOT_DIR, ensure_report_dirs, launch_chromium_browser
-from .models import AiConfig, FunctionalCase, FunctionalRequirementNote, FunctionalRun, FunctionalScreenshot, FunctionalTask, PageSnapshot
+from ..executors import SCREENSHOT_DIR, ensure_report_dirs, launch_chromium_browser
+from ..models import AiConfig, FunctionalCase, FunctionalRequirementNote, FunctionalRun, FunctionalScreenshot, FunctionalTask, PageSnapshot
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
