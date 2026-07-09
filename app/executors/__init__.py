@@ -1,11 +1,9 @@
 import logging
 from datetime import datetime
 import json
-import os
 import queue
 from pathlib import Path
 import re
-import shutil
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -19,6 +17,7 @@ logger = logging.getLogger(__name__)
 import requests
 
 from ..models import ActionTemplate, ApiCase, Env, LocatorHealLog, UiCase
+from .browser import _browser_executable_candidates, _get_proxy_from_env, launch_chromium_browser
 from .common import (
     BASE_DIR,
     REPORT_DIR,
@@ -111,113 +110,6 @@ def _url_looks_reasonable(url: str, expected_base: str = "") -> bool:
         # 不包含期望 base 说明页面跳转到了预期外的域名
         return False
     return True
-
-
-def _browser_executable_candidates() -> list[str]:
-    candidates = [
-        os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"),
-        os.getenv("CHROME_PATH"),
-        os.getenv("EDGE_PATH"),
-    ]
-    # 系统环境变量路径
-    for env_name, relative in [
-        ("ProgramFiles", r"Google\Chrome\Application\chrome.exe"),
-        ("ProgramFiles(x86)", r"Google\Chrome\Application\chrome.exe"),
-        ("LOCALAPPDATA", r"Google\Chrome\Application\chrome.exe"),
-        ("ProgramFiles", r"Microsoft\Edge\Application\msedge.exe"),
-        ("ProgramFiles(x86)", r"Microsoft\Edge\Application\msedge.exe"),
-        ("LOCALAPPDATA", r"Microsoft\Edge\Application\msedge.exe"),
-        # 额外常见路径
-        ("LOCALAPPDATA", r"Chromium\Application\chrome.exe"),
-        ("LOCALAPPDATA", r"Google\Chrome Beta\Application\chrome.exe"),
-        ("LOCALAPPDATA", r"Google\Chrome SxS\Application\chrome.exe"),
-    ]:
-        root = os.getenv(env_name)
-        if root:
-            candidates.append(str(Path(root) / relative))
-    # 环境 PATH 查找
-    for command in ["chrome", "chrome.exe", "msedge", "msedge.exe", "chromium", "chromium.exe", "google-chrome", "google-chrome-stable"]:
-        found = shutil.which(command)
-        if found:
-            candidates.append(found)
-    # Playwright 内置浏览器路径
-    playwright_browsers = os.getenv("PLAYWRIGHT_BROWSERS_PATH", str(Path.home() / "AppData" / "Local" / "ms-playwright"))
-    for channel_dir in ["chromium", "chrome", "msedge"]:
-        p = Path(playwright_browsers) / channel_dir
-        if p.is_dir():
-            for exe in ["chrome.exe", "chrome-win" / "chrome.exe", "chrome-win64" / "chrome.exe"]:
-                full = p / exe
-                if full.exists():
-                    candidates.append(str(full))
-
-    result = []
-    seen = set()
-    for item in candidates:
-        if not item:
-            continue
-        path = str(item)
-        key = path.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        if Path(path).exists():
-            result.append(path)
-    return result
-
-
-def _get_proxy_from_env() -> str | None:
-    """从环境变量读取代理地址，优先级：HTTPS_PROXY > HTTP_PROXY > ALL_PROXY"""
-    return (
-        os.environ.get("HTTPS_PROXY")
-        or os.environ.get("https_proxy")
-        or os.environ.get("HTTP_PROXY")
-        or os.environ.get("http_proxy")
-        or os.environ.get("ALL_PROXY")
-        or os.environ.get("all_proxy")
-    )
-
-
-def launch_chromium_browser(playwright: Any, headless: bool = True, proxy: str | None = None) -> Any:
-    args = [
-        "--no-sandbox",
-        "--disable-gpu",
-        "--disable-dev-shm-usage",
-        "--disable-setuid-sandbox",
-        "--ignore-certificate-errors",
-    ]
-    launch_kwargs = {"headless": headless, "args": args}
-    proxy = proxy or _get_proxy_from_env()
-    if proxy:
-        launch_kwargs["proxy"] = {"server": proxy}
-    errors = []
-    # 1) 无参数默认启动（会尝试 Playwright 内置浏览器）
-    try:
-        return playwright.chromium.launch(**launch_kwargs)
-    except Exception as exc:
-        errors.append(f"default: {exc}")
-    # 2) 指定通道启动
-    for channel in ["chrome", "msedge"]:
-        try:
-            return playwright.chromium.launch(channel=channel, **launch_kwargs)
-        except Exception as exc:
-            errors.append(f"channel={channel}: {exc}")
-    # 3) 逐一路径尝试
-    for executable_path in _browser_executable_candidates():
-        try:
-            return playwright.chromium.launch(executable_path=executable_path, **launch_kwargs)
-        except Exception as exc:
-            errors.append(f"{Path(executable_path).name}: {exc}")
-
-    # 4) 最终：尝试安装提示
-    import subprocess
-    suggested_install = f"python -m playwright install chromium"
-    raise RuntimeError(
-        "浏览器启动失败，未找到可用的 Chrome/Edge/Chromium。\n"
-        f"请尝试：\n"
-        f"  1. {suggested_install}\n"
-        f"  2. 或安装 Chrome/Edge 浏览器\n"
-        f"最后 3 个错误：{'; '.join(errors[-3:])}"
-    )
 
 
 def _pick_path(payload: Any, path: str) -> Any:
