@@ -6314,7 +6314,11 @@ def run_warehouse_delivery_script(env: Env, variables: Dict[str, Any] | None = N
         warehouse_rows: list[Dict[str, Any]] = []
         requested_id = str(variables.get("order_detail_id") or variables.get("porder_detail_id") or "").strip()
         requested_ids = _warehouse_requested_order_detail_ids(variables)
-        if requested_ids and len(requested_ids) > warehouse_sku_count:
+        explicit_warehouse_sku_count = any(
+            variables.get(key) not in (None, "")
+            for key in ("warehouse_sku_count", "porder_sku_count", "sku_count")
+        )
+        if requested_ids and len(requested_ids) > warehouse_sku_count and not explicit_warehouse_sku_count:
             warehouse_sku_count = len(requested_ids)
             require_full_count = True
             log["warehouse_sku_count"] = warehouse_sku_count

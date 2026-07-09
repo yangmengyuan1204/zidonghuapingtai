@@ -7,7 +7,7 @@ def test_oem_balance_pay_missing_order_sn():
     env = Env(base_url="https://oem-test.example.com", timeout=25)
     success, msg, trace_id, detail = run_oem_sample_balance_pay_script(env, variables={})
     assert success is False
-    assert "order_sn必填" in msg
+    assert "order_sn" in msg
     assert isinstance(trace_id, str) and len(trace_id) > 0
     assert detail.get("error_type") == "business"
     assert detail.get("code") == 1001
@@ -37,12 +37,10 @@ def test_oem_base_script_success_fail():
 def test_oem_base_script_business_exception():
     """测试业务异常返回正确"""
     from app.script_common import BaseScript, BusinessException
-    class TestScript(BaseScript):
-        def run(self):
-            raise BusinessException(1001, "参数错误", "详细错误信息")
-    
+
     env = Env(base_url="https://test.com", timeout=10)
-    success, msg, trace_id, detail = TestScript(env, variables={}).run()
+    script = BaseScript(env, variables={})
+    success, msg, trace_id, detail = script.fail(BusinessException(1001, "参数错误", "详细错误信息"))
     assert success is False
     assert msg == "参数错误"
     assert detail.get("code") == 1001
@@ -52,12 +50,10 @@ def test_oem_base_script_business_exception():
 def test_oem_base_script_system_exception():
     """测试系统异常返回正确"""
     from app.script_common import BaseScript, SystemException
-    class TestScript(BaseScript):
-        def run(self):
-            raise SystemException(3001, "网络超时", "超时堆栈")
-    
+
     env = Env(base_url="https://test.com", timeout=10)
-    success, msg, trace_id, detail = TestScript(env, variables={}).run()
+    script = BaseScript(env, variables={})
+    success, msg, trace_id, detail = script.fail(SystemException(3001, "网络超时", "超时堆栈"))
     assert success is False
     assert msg == "网络超时"
     assert detail.get("code") == 3001

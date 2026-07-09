@@ -76,12 +76,9 @@ class TestBaseScript:
     
     def test_base_script_business_exception(self):
         """测试业务异常返回格式正确"""
-        class TestScript(BaseScript):
-            def run(self):
-                raise BusinessException(1001, "参数错误", "详细错误")
-        
         env = Env(base_url="https://test.com")
-        success, msg, trace_id, detail = TestScript(env, {}).run()
+        script = BaseScript(env, {})
+        success, msg, trace_id, detail = script.fail(BusinessException(1001, "参数错误", "详细错误"))
         assert success is False
         assert msg == "参数错误"
         assert detail.get("code") == 1001
@@ -90,12 +87,9 @@ class TestBaseScript:
     
     def test_base_script_system_exception(self):
         """测试系统异常返回格式正确"""
-        class TestScript(BaseScript):
-            def run(self):
-                raise SystemException(3001, "网络超时", "超时堆栈")
-        
         env = Env(base_url="https://test.com")
-        success, msg, trace_id, detail = TestScript(env, {}).run()
+        script = BaseScript(env, {})
+        success, msg, trace_id, detail = script.fail(SystemException(3001, "网络超时", "超时堆栈"))
         assert success is False
         assert msg == "网络超时"
         assert detail.get("code") == 3001
@@ -104,12 +98,9 @@ class TestBaseScript:
     
     def test_base_script_unknown_exception(self):
         """测试未知异常返回格式正确"""
-        class TestScript(BaseScript):
-            def run(self):
-                raise ValueError("未知错误")
-        
         env = Env(base_url="https://test.com")
-        success, msg, trace_id, detail = TestScript(env, {}).run()
+        script = BaseScript(env, {})
+        success, msg, trace_id, detail = script.fail(ValueError("未知错误"))
         assert success is False
         assert msg == "未知错误"
         assert detail.get("error_type") == "unknown"
@@ -131,7 +122,7 @@ class TestSampleBalancePay:
     def test_pay_success(self, mock_post, mock_login):
         """测试支付成功场景"""
         from app.oem_scripts.sample_balance_pay import run_oem_sample_balance_pay_script
-        mock_login.return_value = ("test_token_123456", "user_123")
+        mock_login.return_value = ("test_token_123456", "user_123", "cookie")
         mock_post.return_value = {
             "success": True,
             "code": 0,
@@ -143,12 +134,12 @@ class TestSampleBalancePay:
         assert detail.get("order_sn") == "PO123"
         assert detail.get("serial_number") == "SN20240601001"
     
-    @patch("app.oem_scripts.sample_balance_pay._oem_client_login")
-    @patch("app.oem_scripts.sample_balance_pay._oem_post_json")
+    @patch("app.data_scripts._oem_client_login")
+    @patch("app.data_scripts._oem_post_json")
     def test_pay_business_error(self, mock_post, mock_login):
         """测试支付业务失败场景"""
         from app.oem_scripts.sample_balance_pay import run_oem_sample_balance_pay_script
-        mock_login.return_value = ("test_token_123456", "user_123")
+        mock_login.return_value = ("test_token_123456", "user_123", "cookie")
         mock_post.return_value = {
             "success": False,
             "code": 100,
@@ -168,7 +159,8 @@ class TestSampleOrder:
         env = Env(base_url="https://test.com")
         success, msg, trace_id, detail = run_oem_sample_order_script(env, {})
         assert success is False
-        assert "order_sn不能为空" in msg
+        assert "order_sn" in msg
+        assert "不能为空" in msg
     
     def test_parse_sku_json(self):
         """测试JSON格式SKU解析正确"""

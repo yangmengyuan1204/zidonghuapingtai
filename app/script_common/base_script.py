@@ -13,7 +13,8 @@ class BaseScript:
         self.variables = variables or {}
         self.config = get_config()
         self.trace_id = str(uuid.uuid4())
-        self.http_client = HttpClient(trace_id=self.trace_id)
+        self.default_timeout = getattr(env, "timeout", None) or self.config.get("oem.timeout", 25)
+        self.http_client = HttpClient(trace_id=self.trace_id, default_timeout=self.default_timeout)
         self.session = requests.Session()
         self.base_url = self.config.get("oem.base_url")
 
