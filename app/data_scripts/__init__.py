@@ -13,10 +13,10 @@ from urllib.parse import urljoin
 
 import requests
 
-from .executors import ensure_report_dirs, write_allure_result
-from .models import Env
-from .vendor import piliangtianjiagouwuche as bulk_cart
-from .oem_scripts.material_order import run_material_order_script  # noqa: E402
+from ..executors import ensure_report_dirs, write_allure_result
+from ..models import Env
+from ..vendor import piliangtianjiagouwuche as bulk_cart
+from ..oem_scripts.material_order import run_material_order_script  # noqa: E402
 
 
 
@@ -7607,7 +7607,9 @@ def run_purchase_to_shelf_chain(env: Env, variables: Dict[str, Any] | None = Non
     }
 
     try:
-        from . import data_scripts as ds
+        import sys
+
+        ds = sys.modules[__name__]
 
         # Step 1: 订单报价
         quote_vars = dict(variables)
