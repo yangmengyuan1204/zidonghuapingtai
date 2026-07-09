@@ -387,7 +387,7 @@ if (!window.__fullFlowDataScriptLoaded) {
     const shopCount = normalizePositiveInt(data.order_shop_count, 1);
     const perShop = normalizePositiveInt(data.order_per_shop || data.order_item_count, 2);
     const detailCount = Math.max(1, shopCount * perShop);
-    const quantity = normalizePositiveInt(data.offer_num || data.order_item_num, normalizePositiveInt(data.order_item_num, 10));
+    const quantity = normalizePositiveInt(data.order_item_num, 10);
     const price = fullFlowPartPayMoney(data.offer_price || data.quote_unit_price || 10);
     const productAmount = detailCount * quantity * price;
     const percent = fullFlowPartPayPercent(data.order_part_pay_percent);

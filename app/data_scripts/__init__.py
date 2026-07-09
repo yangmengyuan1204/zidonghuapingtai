@@ -2072,7 +2072,7 @@ def _order_part_pay_goods_total(offer_data: Dict[str, Any]) -> Decimal:
         if not isinstance(detail, dict):
             continue
         try:
-            num = Decimal(str(detail.get("offer_num") or detail.get("confirm_num") or detail.get("num") or "0"))
+            num = Decimal(str(detail.get("confirm_num") or detail.get("num") or detail.get("offer_num") or "0"))
             price = Decimal(str(detail.get("offer_price") or detail.get("confirm_price") or "0"))
         except (InvalidOperation, TypeError, ValueError):
             continue
