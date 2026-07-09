@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 import requests
 
-from .models import ActionTemplate, ApiCase, Env, LocatorHealLog, UiCase
+from ..models import ActionTemplate, ApiCase, Env, LocatorHealLog, UiCase
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
