@@ -295,6 +295,10 @@ class FunctionalExecuteRequest(BaseModel):
     save_variables: bool = False
 
 
+class ReExecuteConfirmRequest(BaseModel):
+    confirmed: bool = False
+
+
 class CaseGenerationTaskCreate(BaseModel):
     project_id: int
     task_name: str

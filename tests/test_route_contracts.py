@@ -121,6 +121,8 @@ PROTECTED_ENDPOINTS = [
     ("get", "/api/locator-heal-logs"),
     ("get", "/api/ai-config"),
     ("get", "/api/test-records"),
+    ("get", "/api/test-records/1/re-execute"),
+    ("post", "/api/test-records/1/re-execute"),
     ("post", "/api/proxy/request"),
 ]
 

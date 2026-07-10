@@ -194,6 +194,7 @@ def _run_visual_ui_case_background(
     case: UiCase,
     variables: Dict[str, Any],
     execution_context: Dict[str, Any],
+    runtime_variables: Dict[str, Any],
 ) -> None:
     bg_db = SessionLocal()
     try:
@@ -205,7 +206,19 @@ def _run_visual_ui_case_background(
             db_session=bg_db,
             progress_callback=lambda event: _update_visual_execution(run_id, event),
         )
-        record = save_ui_record(bg_db, case, passed, log_text, report_path, screenshot_path)
+        record = save_ui_record(
+            bg_db,
+            case,
+            passed,
+            log_text,
+            report_path,
+            screenshot_path,
+            kind="ui_case",
+            script_key="ui_case",
+            variables=runtime_variables,
+            account_mode=execution_context.get("record_account_mode", "default"),
+            account_profile_id=execution_context.get("account_profile_id"),
+        )
         _finish_visual_execution(run_id, record=record)
     except Exception as exc:
         _update_visual_execution(run_id, {"event": "finished", "status": "failed", "error": str(exc)})
@@ -385,9 +398,22 @@ def run_ui_case(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     case = get_or_404(db, UiCase, case_id)
+    runtime_variables = dict(payload.variables if payload else {})
     variables, execution_context = resolve_execution_account(db, payload, "ui_case", case.id, case.project_id, case.page_url)
     passed, log_text, screenshot_path, report_path = execute_ui_case(case, variables, execution_context, db_session=db)
-    record = save_ui_record(db, case, passed, log_text, report_path, screenshot_path)
+    record = save_ui_record(
+        db,
+        case,
+        passed,
+        log_text,
+        report_path,
+        screenshot_path,
+        kind="ui_case",
+        script_key="ui_case",
+        variables=runtime_variables,
+        account_mode=(payload.account_mode if payload else "default") or "default",
+        account_profile_id=execution_context.get("account_profile_id"),
+    )
     return serialize(record)
 
 
@@ -401,8 +427,10 @@ def start_visual_ui_case(
     case = get_or_404(db, UiCase, case_id)
     payload_data = payload if isinstance(payload, dict) else {}
     execute_payload = FunctionalExecuteRequest(**payload_data)
+    runtime_variables = dict(execute_payload.variables or {})
     variables, execution_context = resolve_execution_account(db, execute_payload, "ui_case", case.id, case.project_id, case.page_url)
     execution_context = dict(execution_context or {})
+    execution_context["record_account_mode"] = execute_payload.account_mode or "default"
     execution_context["headed"] = payload_data.get("headed", True) is not False
     execution_context["visual_execution"] = True
 
@@ -438,7 +466,7 @@ def start_visual_ui_case(
 
     thread = threading.Thread(
         target=_run_visual_ui_case_background,
-        args=(run_id, _visual_case_copy(case), variables, execution_context),
+        args=(run_id, _visual_case_copy(case), variables, execution_context, runtime_variables),
         daemon=True,
     )
     thread.start()

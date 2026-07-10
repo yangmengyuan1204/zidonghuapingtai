@@ -6,10 +6,13 @@ from fastapi.responses import FileResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from ..core.utils import serialize, serialize_many, get_or_404, safe_file_response
+from ..core.utils import get_or_404, safe_file_response, serialize, serialize_many
 from ..database import get_db
 from ..models import ApiCase, TestRecord, UiCase, User
+from ..schemas import ReExecuteConfirmRequest
 from ..security import get_current_user
+from ..services.test_record_reexecution import build_reexecute_context, reexecute_record
+
 
 router = APIRouter(tags=["test-records"])
 
@@ -61,3 +64,24 @@ def get_record_screenshot(record_id: int, db: Session = Depends(get_db), current
 @router.get("/api/files/screenshot")
 def get_screenshot_by_path(path: str = Query(..., description="截图文件路径"), current_user: User = Depends(get_current_user)) -> FileResponse:
     return safe_file_response(path)
+
+
+@router.get("/api/test-records/{record_id}/re-execute")
+def get_reexecute_context(
+    record_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    record = get_or_404(db, TestRecord, record_id)
+    return build_reexecute_context(db, record)
+
+
+@router.post("/api/test-records/{record_id}/re-execute")
+def confirm_reexecute_record(
+    record_id: int,
+    payload: ReExecuteConfirmRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    record = get_or_404(db, TestRecord, record_id)
+    return reexecute_record(db, record, payload.confirmed)

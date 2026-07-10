@@ -107,19 +107,19 @@ def run_api_case(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="环境不属于该用例项目")
     runtime_vars = payload.variables if payload else {}
     passed, log_text, report_path, extracted_vars = execute_api_case(case, env, runtime_vars)
-    record = TestRecord(
-        case_type="api",
-        case_id=case.id,
+    record = save_record(
+        db,
+        "api",
+        case.id,
+        passed,
+        log_text,
+        report_path,
         project_id=case.project_id,
-        result="passed" if passed else "failed",
-        log=log_text,
-        screenshot="",
-        report_path=report_path,
-        execute_time=datetime.now(),
+        kind="api_case",
+        script_key="api_case",
+        env_id=env.id,
+        variables=runtime_vars,
     )
-    db.add(record)
-    db.commit()
-    db.refresh(record)
     data = serialize(record)
     data["extracted_vars"] = extracted_vars
     return data
@@ -141,9 +141,22 @@ def batch_run_api_cases(
         env = get_or_404(db, Env, env_id)
         if env.project_id != case.project_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"用例 {case.id} 与所选环境不属于同一项目")
-        passed, log_text, report_path, extracted_vars = execute_api_case(case, env, runtime_vars)
+        case_runtime_vars = dict(runtime_vars)
+        passed, log_text, report_path, extracted_vars = execute_api_case(case, env, case_runtime_vars)
         runtime_vars.update(extracted_vars)
-        record = save_record(db, "api", case.id, passed, log_text, report_path, project_id=case.project_id)
+        record = save_record(
+            db,
+            "api",
+            case.id,
+            passed,
+            log_text,
+            report_path,
+            project_id=case.project_id,
+            kind="api_case",
+            script_key="api_case",
+            env_id=env.id,
+            variables=case_runtime_vars,
+        )
         record_data = serialize(record)
         record_data["case_name"] = case.case_name
         record_data["extracted_vars"] = extracted_vars

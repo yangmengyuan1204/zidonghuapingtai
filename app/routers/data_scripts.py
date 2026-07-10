@@ -1,4 +1,4 @@
-﻿import json
+import json
 import sys
 from datetime import datetime
 from typing import Any, Dict
@@ -74,7 +74,7 @@ def run_shopping_cart_data_script(
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_shopping_cart_script", run_shopping_cart_script)(env, variables)
     cart_case = db.query(ApiCase).filter(ApiCase.case_name == CART_CASE_NAME, ApiCase.project_id == project_id).order_by(ApiCase.id.asc()).first()
-    record = save_record(db, "api", cart_case.id if cart_case else 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", cart_case.id if cart_case else 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="shopping_cart", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -89,7 +89,7 @@ def run_order_quote_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_order_quote_script", run_order_quote_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="order_quote", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -115,7 +115,7 @@ def run_balance_payment_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_balance_payment_script", run_balance_payment_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="balance_payment", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -130,7 +130,7 @@ def run_bank_payment_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_bank_payment_script", run_bank_payment_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="bank_payment", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -159,7 +159,7 @@ def run_purchase_to_shelf_data_script(
         passed, log_text, report_path, summary = _runtime_func("run_purchase_to_shelf_chain", run_purchase_to_shelf_chain)(env, variables)
     else:
         passed, log_text, report_path, summary = _runtime_func("run_purchase_to_shelf_script", run_purchase_to_shelf_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="purchase_to_shelf", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -174,7 +174,7 @@ def run_purchase_to_shelf_chain_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_purchase_to_shelf_chain", run_purchase_to_shelf_chain)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="purchase_to_shelf_chain", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -189,7 +189,7 @@ def run_direct_box_to_shelf_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_direct_box_to_shelf_script", run_direct_box_to_shelf_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="direct_box_to_shelf", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -204,7 +204,7 @@ def run_warehouse_delivery_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_warehouse_delivery_script", run_warehouse_delivery_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="warehouse_delivery", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -219,7 +219,7 @@ def run_porder_balance_payment_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_porder_balance_payment_script", run_porder_balance_payment_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="porder_balance_payment", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -234,7 +234,7 @@ def run_porder_bank_payment_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_porder_bank_payment_script", run_porder_bank_payment_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="porder_bank_payment", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -249,7 +249,7 @@ def run_full_flow_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_full_flow_script", run_full_flow_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="full_flow", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -264,7 +264,7 @@ def run_resume_order_flow_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_resume_order_flow_script", run_resume_order_flow_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="resume_order_flow", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -279,7 +279,7 @@ def run_resume_porder_flow_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_resume_porder_flow_script", run_resume_porder_flow_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="resume_porder_flow", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -294,7 +294,7 @@ def run_material_generation_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_material_generation_script", run_material_generation_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="material_generation", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -310,7 +310,7 @@ def run_material_order_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_material_order_script", run_material_order_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="material_order", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -329,7 +329,7 @@ def run_balance_recharge_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_balance_recharge_script", run_balance_recharge_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="balance_recharge", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -376,7 +376,7 @@ def run_oem_new_inquiry_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_new_inquiry_script", run_oem_new_inquiry_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_new_inquiry", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -391,7 +391,7 @@ def run_oem_sample_order_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_sample_order_script", run_oem_sample_order_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_sample_order", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -406,7 +406,7 @@ def run_oem_sample_admin_flow_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_sample_admin_flow_script", run_oem_sample_admin_flow_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_sample_admin_flow", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -421,7 +421,7 @@ def run_oem_full_inquiry_flow_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_full_inquiry_flow_script", run_oem_full_inquiry_flow_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_full_inquiry_flow", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -436,7 +436,7 @@ def run_oem_sample_full_flow_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_sample_full_flow_script", run_oem_sample_full_flow_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_sample_full_flow", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -451,7 +451,7 @@ def run_oem_bulk_order_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_bulk_order_script", run_oem_bulk_order_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_bulk_order", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -466,7 +466,7 @@ def run_oem_sample_balance_pay_data_script(
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_sample_balance_pay_script", run_oem_sample_balance_pay_script)(env, variables)
-    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_balance_pay", env_id=env.id, variables=payload.variables)
     data = serialize(record)
     data["summary"] = summary
     return data

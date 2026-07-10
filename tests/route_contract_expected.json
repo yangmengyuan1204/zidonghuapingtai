@@ -741,6 +741,16 @@
   },
   {
     "method": "GET",
+    "path": "/api/test-records/{record_id}/re-execute",
+    "name": "get_reexecute_context"
+  },
+  {
+    "method": "POST",
+    "path": "/api/test-records/{record_id}/re-execute",
+    "name": "confirm_reexecute_record"
+  },
+  {
+    "method": "GET",
     "path": "/api/test-records/{record_id}/report",
     "name": "get_record_report"
   },

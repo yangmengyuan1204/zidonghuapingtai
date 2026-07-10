@@ -3103,7 +3103,45 @@ def ensure_case_generation_task(db: Session, task_id: int) -> CaseGenerationTask
     return get_or_404(db, CaseGenerationTask, task_id)
 
 
-def save_ui_record(db: Session, case: UiCase, passed: bool, log_text: str, report_path: str, screenshot_path: str = "") -> TestRecord:
+def enrich_log_with_exec_params(log_text: str, **exec_params: Any) -> str:
+    """将加密后的执行上下文嵌入日志，供安全的再次执行使用。"""
+    if not exec_params:
+        return log_text
+    params = dict(exec_params)
+    variables = params.pop("variables", {})
+    if not isinstance(variables, dict):
+        variables = {}
+    script_key = str(params.pop("script_key", None) or params.pop("script", None) or "").strip()
+    kind = str(params.pop("kind", "") or "").strip()
+    if not kind:
+        kind = "api_case" if script_key == "api_case" else "ui_case" if script_key == "ui_case" else "data_script"
+    metadata: Dict[str, Any] = {
+        "version": 1,
+        "kind": kind,
+        "variables_encrypted": encrypt_account_payload(variables),
+    }
+    if script_key:
+        metadata["script_key"] = script_key
+    for key in ("target_id", "project_id", "env_id", "account_mode", "account_profile_id"):
+        value = params.get(key)
+        if value not in (None, ""):
+            metadata[key] = value
+    try:
+        log_data = json.loads(log_text) if log_text else {}
+    except (json.JSONDecodeError, TypeError):
+        return log_text
+    if isinstance(log_data, dict):
+        log_data.pop("_exec_params", None)
+        log_data["_exec_meta"] = metadata
+        return json.dumps(log_data, ensure_ascii=False, default=str)
+    return log_text
+
+
+def save_ui_record(db: Session, case: UiCase, passed: bool, log_text: str, report_path: str, screenshot_path: str = "", **exec_params: Any) -> TestRecord:
+    if exec_params:
+        exec_params.setdefault("target_id", case.id)
+        exec_params.setdefault("project_id", case.project_id)
+    log_text = enrich_log_with_exec_params(log_text, **exec_params)
     record = TestRecord(
         case_type="ui",
         case_id=case.id,
@@ -3129,7 +3167,12 @@ def save_record(
     report_path: str,
     screenshot: str = "",
     project_id: int | None = None,
+    **exec_params: Any,
 ) -> TestRecord:
+    if exec_params:
+        exec_params.setdefault("target_id", case_id)
+        exec_params.setdefault("project_id", project_id)
+    log_text = enrich_log_with_exec_params(log_text, **exec_params)
     record = TestRecord(
         case_type=case_type,
         case_id=case_id,
