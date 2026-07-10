@@ -1,4 +1,4 @@
-﻿import copy
+import copy
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import OrderedDict
@@ -17,6 +17,7 @@ from ..executors import ensure_report_dirs, write_allure_result
 from ..models import Env
 from ..vendor import piliangtianjiagouwuche as bulk_cart
 from ..oem_scripts.material_order import run_material_order_script  # noqa: E402
+from .registry import SCRIPT_REGISTRY, register_script
 
 
 
@@ -7522,79 +7523,9 @@ def run_balance_recharge_script(env: Env, variables: Dict[str, Any] | None = Non
         )
 
 
-SCRIPT_REGISTRY: Dict[str, Any] = {
-    "shopping_cart": {
-        "name": SCRIPT_NAME,
-        "func": None,
-    },
-    "order_quote": {
-        "name": ORDER_SCRIPT_NAME,
-        "func": None,
-    },
-    "balance_payment": {
-        "name": BALANCE_PAYMENT_SCRIPT_NAME,
-        "func": None,
-    },
-    "bank_payment": {
-        "name": BANK_PAYMENT_SCRIPT_NAME,
-        "func": None,
-    },
-    "purchase_to_shelf": {
-        "name": PURCHASE_TO_SHELF_SCRIPT_NAME,
-        "func": None,
-    },
-    "purchase_to_shelf_chain": {
-        "name": "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6(\u7ec4\u5408\u811a\u672c)",
-        "func": None,
-        "chain": True,
-    },
-    "warehouse_delivery": {
-        "name": WAREHOUSE_DELIVERY_SCRIPT_NAME,
-        "func": None,
-    },
-    "porder_balance_payment": {
-        "name": POORDER_BALANCE_PAYMENT_SCRIPT_NAME,
-        "func": None,
-    },
-    "porder_bank_payment": {
-        "name": POORDER_BANK_PAYMENT_SCRIPT_NAME,
-        "func": None,
-    },
-    "full_flow": {
-        "name": FULL_FLOW_SCRIPT_NAME,
-        "func": None,
-        "chain": True,
-    },
-    "direct_box_to_shelf": {
-        "name": DIRECT_BOX_TO_SHELF_SCRIPT_NAME,
-        "func": None,
-        "chain": True,
-    },
-    "resume_order_flow": {
-        "name": RESUME_ORDER_FLOW_SCRIPT_NAME,
-        "func": None,
-        "chain": True,
-    },
-    "resume_porder_flow": {
-        "name": RESUME_PORDER_FLOW_SCRIPT_NAME,
-        "func": None,
-        "chain": True,
-    },
-    "material_order": {
-        "name": MATERIAL_ORDER_SCRIPT_NAME,
-        "func": run_material_order_script,
-    },
-
-    "material_generation": {
-        "name": MATERIAL_GENERATION_SCRIPT_NAME,
-        "func": run_material_generation_script,
-    },
-    "balance_recharge": {
-        "name": BALANCE_RECHARGE_SCRIPT_NAME,
-        "func": run_balance_recharge_script,
-    },
-}
-
+register_script("material_order", run_material_order_script)
+register_script("material_generation", run_material_generation_script)
+register_script("balance_recharge", run_balance_recharge_script)
 
 def run_purchase_to_shelf_chain(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
     ensure_report_dirs()
@@ -7720,13 +7651,13 @@ def run_purchase_to_shelf_chain(env: Env, variables: Dict[str, Any] | None = Non
 
 
 # 注册脚本函数
-SCRIPT_REGISTRY["shopping_cart"]["func"] = run_shopping_cart_script
-SCRIPT_REGISTRY["order_quote"]["func"] = run_order_quote_script
-SCRIPT_REGISTRY["balance_payment"]["func"] = run_balance_payment_script
-SCRIPT_REGISTRY["bank_payment"]["func"] = run_bank_payment_script
-SCRIPT_REGISTRY["purchase_to_shelf"]["func"] = run_purchase_to_shelf_script
-SCRIPT_REGISTRY["purchase_to_shelf_chain"]["func"] = run_purchase_to_shelf_chain
-SCRIPT_REGISTRY["warehouse_delivery"]["func"] = run_warehouse_delivery_script
+register_script("shopping_cart", run_shopping_cart_script)
+register_script("order_quote", run_order_quote_script)
+register_script("balance_payment", run_balance_payment_script)
+register_script("bank_payment", run_bank_payment_script)
+register_script("purchase_to_shelf", run_purchase_to_shelf_script)
+register_script("purchase_to_shelf_chain", run_purchase_to_shelf_chain)
+register_script("warehouse_delivery", run_warehouse_delivery_script)
 
 
 def run_porder_balance_payment_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
@@ -8491,7 +8422,7 @@ def run_direct_box_to_shelf_script(env: Env, variables: Dict[str, Any] | None = 
         return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"error": str(exc), "reason": str(exc)})
 
 
-SCRIPT_REGISTRY["direct_box_to_shelf"]["func"] = run_direct_box_to_shelf_script
+register_script("direct_box_to_shelf", run_direct_box_to_shelf_script)
 
 
 def _full_flow_update_shared(shared: Dict[str, Any], summary: Dict[str, Any]) -> None:
@@ -9168,11 +9099,11 @@ def run_resume_porder_flow_script(env: Env, variables: Dict[str, Any] | None = N
         return _resume_flow_finish(log, False, str(log["steps"][-1]["node"] if log["steps"] else "warehouse_delivery_created"), reason=str(exc))
 
 
-SCRIPT_REGISTRY["porder_balance_payment"]["func"] = run_porder_balance_payment_script
-SCRIPT_REGISTRY["porder_bank_payment"]["func"] = run_porder_bank_payment_script
-SCRIPT_REGISTRY["full_flow"]["func"] = run_full_flow_script
-SCRIPT_REGISTRY["resume_order_flow"]["func"] = run_resume_order_flow_script
-SCRIPT_REGISTRY["resume_porder_flow"]["func"] = run_resume_porder_flow_script
+register_script("porder_balance_payment", run_porder_balance_payment_script)
+register_script("porder_bank_payment", run_porder_bank_payment_script)
+register_script("full_flow", run_full_flow_script)
+register_script("resume_order_flow", run_resume_order_flow_script)
+register_script("resume_porder_flow", run_resume_porder_flow_script)
 
 
 # ─── OEM 独立数据脚本（与日本站完全隔离，不影响日本站脚本）──────────────
@@ -11079,4 +11010,13 @@ def run_oem_sample_balance_pay_script(env: Env, variables: Dict[str, Any] | None
     except Exception as exc:
         log["error"] = str(exc)
         return _finish_named(OEM_BALANCE_PAY_NAME, log, False, {"reason": str(exc), "error": str(exc)})
+
+
+register_script("oem_new_inquiry", run_oem_new_inquiry_script)
+register_script("oem_sample_order", run_oem_sample_order_script)
+register_script("oem_sample_admin_flow", run_oem_sample_admin_flow_script)
+register_script("oem_full_inquiry_flow", run_oem_full_inquiry_flow_script)
+register_script("oem_sample_full_flow", run_oem_sample_full_flow_script)
+register_script("oem_bulk_order", run_oem_bulk_order_script)
+register_script("oem_balance_pay", run_oem_sample_balance_pay_script)
 
