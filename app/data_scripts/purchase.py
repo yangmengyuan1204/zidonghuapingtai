@@ -75,6 +75,9 @@ _COMPAT_NAMES = (
 
 def _sync_compat_globals() -> None:
     package = sys.modules["app.data_scripts"]
+    sync_legacy = getattr(package, "_sync_legacy_overrides", None)
+    if callable(sync_legacy):
+        sync_legacy()
     for name in _COMPAT_NAMES:
         globals()[name] = getattr(package, name)
 
