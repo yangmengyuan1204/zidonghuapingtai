@@ -3189,363 +3189,44 @@ def save_record(
     return record
 
 
-def split_customer_ids(value: Any) -> list[str]:
-    if value in (None, ""):
-        return []
-    raw_items = value if isinstance(value, list) else [value]
-    customer_ids: list[str] = []
-    for raw_item in raw_items:
-        if raw_item in (None, ""):
-            continue
-        for item in re.split(r"[\s,，;；]+", str(raw_item).strip()):
-            customer_id = item.strip()
-            if not customer_id:
-                continue
-            if not re.fullmatch(r"\d+", customer_id):
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"客户ID只能是数字：{customer_id}")
-            customer_ids.append(customer_id)
-    return customer_ids
 
 
-def apply_frontend_customer_login_variables(variables: Dict[str, Any]) -> Dict[str, Any]:
-    customer_ids = split_customer_ids(variables.get("customer_id"))
-    if not customer_ids:
-        customer_ids = split_customer_ids(variables.get("customer_ids"))
-    if not customer_ids:
-        return variables
-    customer_id = customer_ids[0]
-    variables["customer_id"] = customer_id
-    variables["customer_ids"] = customer_ids
-    variables["account"] = f"userID/{customer_id}In"
-    variables["password"] = FRONTEND_UNIVERSAL_ACCOUNT_PASSWORD
-    return variables
 
 
-def resolve_data_script_context(db: Session, payload: DataScriptExecuteRequest) -> tuple[Env, int]:
-    project_id = int(payload.project_id) if payload.project_id is not None else None
-    if project_id is not None:
-        ensure_project_exists(db, project_id)
-    if payload.env_id:
-        env = get_or_404(db, Env, payload.env_id)
-        if project_id is not None and env.project_id != project_id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="环境不属于所选项目")
-        return env, env.project_id
-    query = db.query(Env)
-    if project_id is not None:
-        query = query.filter(Env.project_id == project_id)
-    else:
-        data_script_project = find_data_script_project(db)
-        if data_script_project:
-            query = query.filter(Env.project_id == data_script_project.id)
-    env = query.order_by(Env.id.asc()).first()
-    if not env:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先配置环境")
-    return env, env.project_id
 
 
-def data_script_variables(db: Session, variables: Dict[str, Any] | None, project_id: int | None = None) -> Dict[str, Any]:
-    merged = dict(variables or {})
-    configured_paths = {}
-
-    # 批量查询：一次性查出所有相关 ApiCase，避免 ~40 次循环 x 4 种匹配的 N+1 查询
-    all_search_names = set()
-    all_urls = set()
-    for item in DATA_SCRIPT_API_CASES:
-        all_search_names.add(item["case_name"])
-        all_search_names.add(strip_case_name_prefix(item["case_name"]))
-        all_urls.add(item["url"])
-    batch_query = db.query(ApiCase).filter(
-        or_(ApiCase.case_name.in_(all_search_names), ApiCase.url.in_(all_urls))
-    )
-    if project_id is not None:
-        batch_query = batch_query.filter(ApiCase.project_id == project_id)
-    all_cases = batch_query.order_by(ApiCase.id.asc()).all()
-
-    # 构建内存索引，沿用原有 4 级匹配优先级
-    case_by_name: Dict[str, ApiCase] = {}
-    case_by_name_url: Dict[tuple[str, str], ApiCase] = {}
-    case_by_url_first: Dict[str, ApiCase] = {}
-    for c in all_cases:
-        if c.case_name not in case_by_name:
-            case_by_name[c.case_name] = c
-        key_nu = (c.case_name, c.url)
-        if key_nu not in case_by_name_url:
-            case_by_name_url[key_nu] = c
-        if c.url not in case_by_url_first:
-            case_by_url_first[c.url] = c
-
-    for item in DATA_SCRIPT_API_CASES:
-        legacy_name = item["case_name"]
-        case_name = strip_case_name_prefix(legacy_name)
-        url = item["url"]
-        case = (
-            case_by_name.get(legacy_name)
-            or case_by_name_url.get((case_name, url))
-            or case_by_url_first.get(url)
-            or case_by_name.get(case_name)
-        )
-        configured_paths[item["key"]] = case.url if case else item["url"]
-    custom_paths = merged.get("api_paths") if isinstance(merged.get("api_paths"), dict) else {}
-    merged["api_paths"] = {**configured_paths, **custom_paths}
-    login_case_query = db.query(ApiCase).filter(ApiCase.case_name == LOGIN_CASE_NAME)
-    if project_id is not None:
-        login_case_query = login_case_query.filter(ApiCase.project_id == project_id)
-    login_case = login_case_query.order_by(ApiCase.id.asc()).first()
-    login_body = parse_json_value(login_case.body, {}) if login_case else {}
-    if isinstance(login_body, dict):
-        for key in ["account", "password", "client_tool"]:
-            default_value = login_body.get(key)
-            if default_value in (None, ""):
-                continue
-            current_value = merged.get(key)
-            is_old_seed = (key == "account" and current_value == "abner") or (key == "password" and current_value == "12345")
-            if current_value in (None, "") or is_old_seed:
-                merged[key] = default_value
-    return apply_frontend_customer_login_variables(merged)
 
 
 SENSITIVE_ACCOUNT_KEY_RE = re.compile(r"(password|passwd|pwd|captcha|token|secret|authorization|auth|密码|验证码)", re.I)
 SENSITIVE_ACCOUNT_KEY_NAMES = {"code", "verify_code", "verification_code", "captcha_code"}
 
 
-def is_sensitive_account_key(key: Any) -> bool:
-    text = str(key or "").strip()
-    return text.lower() in SENSITIVE_ACCOUNT_KEY_NAMES or bool(SENSITIVE_ACCOUNT_KEY_RE.search(text))
 
 
-def mask_variables(variables: Dict[str, Any]) -> Dict[str, Any]:
-    return {key: ("***" if is_sensitive_account_key(key) else value) for key, value in (variables or {}).items()}
 
 
-def account_cipher() -> Fernet:
-    key = base64.urlsafe_b64encode(hashlib.sha256(str(SECRET_KEY).encode("utf-8")).digest())
-    return Fernet(key)
 
 
-def encrypt_account_payload(values: Dict[str, Any]) -> str:
-    if not values:
-        return ""
-    raw = json.dumps(values, ensure_ascii=False, default=str).encode("utf-8")
-    return account_cipher().encrypt(raw).decode("utf-8")
 
 
-def decrypt_account_payload(value: str | None) -> Dict[str, Any]:
-    if not value:
-        return {}
-    try:
-        decrypted = account_cipher().decrypt(str(value).encode("utf-8")).decode("utf-8")
-        return parse_json_value(decrypted, {})
-    except (InvalidToken, ValueError, TypeError):
-        legacy = parse_json_value(str(value), {})
-        return legacy if isinstance(legacy, dict) else {}
 
 
-def normalize_account_payload(db: Session, data: Dict[str, Any], existing: TestAccountProfile | None = None) -> Dict[str, Any]:
-    if "profile_name" in data and data["profile_name"] is not None:
-        data["profile_name"] = str(data["profile_name"]).strip()
-        if not data["profile_name"]:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="账号档案名称不能为空")
-    if "project_id" in data and data["project_id"] is not None:
-        ensure_project_exists(db, int(data["project_id"]))
-        data["project_id"] = int(data["project_id"])
-    for field in ACCOUNT_CONFIG_FIELDS:
-        if field in data and data[field] is not None:
-            data[field] = str(data[field]).strip()
-    public_source = data.pop("variables", None)
-    sensitive_source = data.pop("sensitive_variables", None)
-    if public_source is not None or sensitive_source is not None:
-        public_values: Dict[str, Any] = (
-            parse_json_value(existing.variables or "", {}) if existing is not None and public_source is None else {}
-        )
-        if not isinstance(public_values, dict):
-            public_values = {}
-        sensitive_values: Dict[str, Any] = (
-            decrypt_account_payload(existing.sensitive_variables) if existing is not None and sensitive_source is None else {}
-        )
-        sensitive_changed = sensitive_source is not None
-        if public_source is not None:
-            for key, value in dict(public_source or {}).items():
-                if value is None:
-                    continue
-                if is_sensitive_account_key(key):
-                    sensitive_values[str(key)] = value
-                    sensitive_changed = True
-                else:
-                    public_values[str(key)] = value
-        for key, value in dict(sensitive_source or {}).items():
-            if value is not None:
-                sensitive_values[str(key)] = value
-        data["variables"] = to_json_text(public_values, {})
-        if sensitive_changed:
-            data["sensitive_variables"] = encrypt_account_payload(sensitive_values)
-    elif existing is not None:
-        data.pop("variables", None)
-        data.pop("sensitive_variables", None)
-    if "status" in data and data["status"]:
-        data["status"] = str(data["status"])
-    return data
 
 
-def serialize_account_profile(profile: TestAccountProfile) -> Dict[str, Any]:
-    public_values = parse_json_value(profile.variables or "", {})
-    if not isinstance(public_values, dict):
-        public_values = {}
-    sensitive_values = decrypt_account_payload(profile.sensitive_variables)
-    masked = {**public_values, **{key: "***" for key in sensitive_values.keys()}}
-    return {
-        "id": profile.id,
-        "project_id": profile.project_id,
-        "profile_name": profile.profile_name,
-        "variables": public_values,
-        "masked_variables": masked,
-        "sensitive_keys": sorted(sensitive_values.keys()),
-        "login_url": profile.login_url or "",
-        "username_locator": profile.username_locator or "",
-        "password_locator": profile.password_locator or "",
-        "submit_locator": profile.submit_locator or "",
-        "success_url_contains": profile.success_url_contains or "",
-        "success_selector": profile.success_selector or "",
-        "status": profile.status,
-        "create_time": profile.create_time.strftime("%Y-%m-%d %H:%M:%S") if profile.create_time else "",
-        "update_time": profile.update_time.strftime("%Y-%m-%d %H:%M:%S") if profile.update_time else "",
-    }
 
 
-def account_profile_variables(db: Session, profile_id: int, project_id: int | None) -> tuple[Dict[str, Any], Dict[str, Any]]:
-    profile = get_or_404(db, TestAccountProfile, profile_id)
-    if profile.status != "active":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="账号档案未启用")
-    if profile.project_id is not None and project_id is not None and profile.project_id != project_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="账号档案不属于当前项目")
-    public_values = parse_json_value(profile.variables or "", {})
-    if not isinstance(public_values, dict):
-        public_values = {}
-    variables = {**public_values, **decrypt_account_payload(profile.sensitive_variables)}
-    login_config = {field: getattr(profile, field) or "" for field in ACCOUNT_CONFIG_FIELDS}
-    return variables, {"id": profile.id, "profile_name": profile.profile_name, "login_config": login_config}
 
 
-def account_target_project_id(db: Session, target_type: str, target_id: int) -> int:
-    if target_type == "project":
-        ensure_project_exists(db, target_id)
-        return target_id
-    elif target_type == "functional_task":
-        item = get_or_404(db, FunctionalTask, target_id)
-        return item.project_id
-    elif target_type == "functional_case":
-        item = get_or_404(db, FunctionalCase, target_id)
-        task = get_or_404(db, FunctionalTask, item.task_id)
-        return task.project_id
-    elif target_type == "ui_case":
-        item = get_or_404(db, UiCase, target_id)
-        return item.project_id
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不支持的账号绑定目标")
 
 
-def account_binding_profile(db: Session, target_type: str, target_id: int) -> TestAccountProfile | None:
-    binding = db.query(TestAccountBinding).filter(
-        TestAccountBinding.target_type == target_type,
-        TestAccountBinding.target_id == target_id,
-    ).first()
-    if not binding or not binding.account_profile_id:
-        return None
-    return db.get(TestAccountProfile, binding.account_profile_id)
 
 
-def account_profile_summary(profile: TestAccountProfile | None) -> Dict[str, Any]:
-    if not profile:
-        return {"account_profile_id": None, "account_profile_name": ""}
-    return {"account_profile_id": profile.id, "account_profile_name": profile.profile_name}
 
 
-def default_account_profile_for_target(
-    db: Session,
-    target_type: str,
-    target_id: int,
-    project_id: int | None,
-) -> TestAccountProfile | None:
-    if target_type == "functional_case":
-        case_profile = account_binding_profile(db, "functional_case", target_id)
-        if case_profile:
-            return case_profile
-        functional_case = db.get(FunctionalCase, target_id)
-        if functional_case:
-            task_profile = account_binding_profile(db, "functional_task", functional_case.task_id)
-            if task_profile:
-                return task_profile
-    elif target_type in {"functional_task", "ui_case"}:
-        direct_profile = account_binding_profile(db, target_type, target_id)
-        if direct_profile:
-            return direct_profile
-    if project_id is not None:
-        project_profile = account_binding_profile(db, "project", project_id)
-        if project_profile:
-            return project_profile
-        project_profiles = (
-            db.query(TestAccountProfile)
-            .filter(TestAccountProfile.project_id == project_id, TestAccountProfile.status == "active")
-            .order_by(TestAccountProfile.id.asc())
-            .all()
-        )
-        if len(project_profiles) == 1:
-            return project_profiles[0]
-    return None
 
 
-def resolve_execution_account(
-    db: Session,
-    payload: FunctionalExecuteRequest | None,
-    target_type: str,
-    target_id: int,
-    project_id: int | None,
-    target_url: str,
-) -> tuple[Dict[str, Any], Dict[str, Any]]:
-    runtime_vars = dict(payload.variables if payload else {})
-    account_mode = (payload.account_mode if payload else "default") or "default"
-    if account_mode == "none":
-        return runtime_vars, {}
-    profile: TestAccountProfile | None = None
-    if account_mode == "override":
-        if payload and payload.account_profile_id:
-            profile = get_or_404(db, TestAccountProfile, payload.account_profile_id)
-        else:
-            return runtime_vars, {}
-    else:
-        profile = default_account_profile_for_target(db, target_type, target_id, project_id)
-    if not profile:
-        return runtime_vars, {}
-    account_vars, meta = account_profile_variables(db, profile.id, project_id)
-    variables = {**account_vars, **runtime_vars}
-    execution_context = {
-        "login_required": True,
-        "account_profile_id": profile.id,
-        "login_config": meta.get("login_config") or {},
-        "target_url": target_url,
-    }
-    return variables, execution_context
 
 
-def save_test_account_binding(db: Session, target_type: str, target_id: int, account_profile_id: int | None) -> None:
-    existing = db.query(TestAccountBinding).filter(
-        TestAccountBinding.target_type == target_type,
-        TestAccountBinding.target_id == target_id,
-    ).first()
-    if existing and account_profile_id is not None:
-        existing.account_profile_id = account_profile_id
-        existing.update_time = datetime.now()
-    elif existing and account_profile_id is None:
-        db.delete(existing)
-    elif not existing and account_profile_id is not None:
-        db.add(TestAccountBinding(
-            target_type=target_type,
-            target_id=target_id,
-            account_profile_id=account_profile_id,
-            create_time=datetime.now(),
-            update_time=None,
-        ))
-    else:
-        return
-    db.flush()
 
 
 def _serialize_template(template: ActionTemplate) -> Dict[str, Any]:
@@ -3812,102 +3493,32 @@ def save_functional_run(
     return run
 
 
-def proxy_ip_is_blocked(ip_value: str) -> bool:
-    ip = ipaddress.ip_address(ip_value)
-    return any(
-        (
-            ip.is_loopback,
-            ip.is_private,
-            ip.is_link_local,
-            ip.is_reserved,
-            ip.is_multicast,
-            ip.is_unspecified,
-        )
-    )
-
-
-def _resolve_and_check_hostname(hostname: str, port: int) -> None:
-    """解析 hostname 并检查所有解析到的 IP 是否为内网地址。"""
-    try:
-        resolved = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
-    except socket.gaierror:
-        return
-    for item in resolved:
-        address = item[4][0]
-        try:
-            if proxy_ip_is_blocked(address):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"代理请求禁止访问本机或内网地址 (解析到 {address})",
-                )
-        except ValueError:
-            continue
-
-
-def validate_proxy_target(method: str, url: str) -> None:
-    if method not in PROXY_ALLOWED_METHODS:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不支持的请求方法")
-    parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="仅支持 HTTP/HTTPS URL")
-    if not parsed.hostname:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="URL host 不能为空")
-    if PROXY_ALLOW_PRIVATE_URLS:
-        return
-
-    hostname = parsed.hostname.rstrip(".").lower()
-    if hostname in {"localhost", "localhost.localdomain"} or hostname.endswith(".localhost") or hostname.endswith(".local"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="代理请求禁止访问本机或内网地址")
-
-    port = parsed.port or (443 if parsed.scheme == "https" else 80)
-
-    # 如果 hostname 本身就是 IP，直接检查
-    try:
-        if proxy_ip_is_blocked(hostname):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="代理请求禁止访问本机或内网地址")
-        return
-    except ValueError:
-        pass
-
-    # 解析 DNS 并检查所有解析到的 IP
-    _resolve_and_check_hostname(hostname, port)
-
-
-def _origin(url: str) -> str:
-    """提取 URL 的 origin（scheme + host），用于跨域判断。"""
-    parsed = urlparse(url)
-    return f"{parsed.scheme}://{parsed.hostname.lower()}:{parsed.port or (443 if parsed.scheme == 'https' else 80)}"
-
-
-def guarded_proxy_request(method: str, url: str, headers: Dict[str, Any], body: str, timeout: int) -> requests.Response:
-    current_method = method
-    current_url = url
-    current_body = body
-    original_origin = _origin(current_url)
-    request_headers = dict(headers or {})
-    for _ in range(PROXY_MAX_REDIRECTS + 1):
-        validate_proxy_target(current_method, current_url)
-        # 跨域重定向时剥离 Authorization 头（防泄露给第三方）
-        redirect_headers = dict(request_headers)
-        if _origin(current_url) != original_origin:
-            for sensitive_header in {"authorization", "proxy-authorization", "cookie", "x-api-key"}:
-                redirect_headers.pop(sensitive_header, None)
-                redirect_headers.pop(sensitive_header.title(), None)
-        response = requests.request(
-            current_method,
-            current_url,
-            headers=redirect_headers,
-            data=current_body,
-            timeout=timeout,
-            allow_redirects=False,
-        )
-        if not response.is_redirect:
-            return response
-        location = response.headers.get("Location")
-        if not location:
-            return response
-        current_url = urljoin(current_url, location)
-        if response.status_code in {301, 302, 303}:
-            current_method = "GET"
-            current_body = ""
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="重定向次数过多")
+from .data_script_context import (
+    split_customer_ids,
+    apply_frontend_customer_login_variables,
+    resolve_data_script_context,
+    data_script_variables,
+)
+from .account_utils import (
+    is_sensitive_account_key,
+    mask_variables,
+    account_cipher,
+    encrypt_account_payload,
+    decrypt_account_payload,
+    normalize_account_payload,
+    serialize_account_profile,
+    account_profile_variables,
+    account_target_project_id,
+    account_binding_profile,
+    account_profile_summary,
+    default_account_profile_for_target,
+    resolve_execution_account,
+    save_test_account_binding,
+)
+from .proxy_utils import (
+    proxy_ip_is_blocked,
+    _resolve_and_check_hostname,
+    validate_proxy_target,
+    _origin,
+    guarded_proxy_request,
+)
