@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sys
 
+from .common import VAR_PATTERN
+
 
 _COMPAT_NAMES = (
     'Any',

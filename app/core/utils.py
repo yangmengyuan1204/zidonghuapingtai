@@ -365,174 +365,14 @@ ACCOUNT_CONFIG_FIELDS = (
 FUNCTIONAL_TEST_RESULTS = {"untested", "passed", "failed", "blocked", "skipped", "needs_review"}
 
 
-def normalize_functional_result(value: Any) -> str:
-    text_value = str(value or "untested").strip().lower()
-    return text_value if text_value in FUNCTIONAL_TEST_RESULTS else "untested"
 
 
-def functional_result_counts(items: Iterable[Any], attr_name: str = "test_result") -> Dict[str, int]:
-    counts = {key: 0 for key in FUNCTIONAL_TEST_RESULTS}
-    total = 0
-    for item in items:
-        total += 1
-        counts[normalize_functional_result(getattr(item, attr_name, None))] += 1
-    counts["total"] = total
-    return counts
 
 
-def latest_data_check_results_by_rule(db: Session, task_id: int) -> Dict[int, FunctionalDataCheckResult]:
-    latest: Dict[int, FunctionalDataCheckResult] = {}
-    rows = (
-        db.query(FunctionalDataCheckResult)
-        .filter(FunctionalDataCheckResult.task_id == task_id)
-        .order_by(FunctionalDataCheckResult.id.desc())
-        .all()
-    )
-    for row in rows:
-        if row.rule_id not in latest:
-            latest[row.rule_id] = row
-    return latest
 
 
-def functional_task_conclusion_summary(db: Session, task: FunctionalTask) -> Dict[str, Any]:
-    cases = db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id).all()
-    impact_items = db.query(FunctionalImpactItem).filter(FunctionalImpactItem.task_id == task.id).all()
-    rules = (
-        db.query(FunctionalDataCheckRule)
-        .filter(FunctionalDataCheckRule.task_id == task.id, FunctionalDataCheckRule.status != "inactive")
-        .all()
-    )
-    latest_results = latest_data_check_results_by_rule(db, task.id)
-
-    p0_blockers = []
-    p1_failures = []
-    for case in cases:
-        priority = str(case.priority or "P1").upper()
-        result = normalize_functional_result(case.test_result)
-        if priority == "P0" and result in {"untested", "failed", "blocked"}:
-            p0_blockers.append(case.title)
-        elif priority == "P1" and result in {"failed", "blocked"}:
-            p1_failures.append(case.title)
-
-    impact_failures = [
-        item.title
-        for item in impact_items
-        if normalize_functional_result(item.test_result) in {"failed", "blocked"}
-    ]
-    data_failures = []
-    data_pending = []
-    for rule in rules:
-        latest = latest_results.get(rule.id)
-        if not latest:
-            data_pending.append(rule.rule_name)
-        elif latest.result != "passed":
-            data_failures.append(rule.rule_name)
-
-    reasons = []
-    if p0_blockers:
-        reasons.append(f"P0 新功能用例未通过或未测试 {len(p0_blockers)} 条")
-    if data_failures:
-        reasons.append(f"数据核对失败 {len(data_failures)} 条")
-    if p1_failures:
-        reasons.append(f"P1 新功能用例失败/阻塞 {len(p1_failures)} 条")
-    if impact_failures:
-        reasons.append(f"关联影响回归失败/阻塞 {len(impact_failures)} 条")
-    if data_pending:
-        reasons.append(f"还有 {len(data_pending)} 条数据核对未执行")
-
-    if p0_blockers or data_failures:
-        decision = "not_recommended"
-        decision_text = "不建议上线"
-    elif p1_failures or impact_failures:
-        decision = "risky"
-        decision_text = "有风险上线"
-    else:
-        decision = "ready"
-        decision_text = "可上线"
-
-    return {
-        "decision": decision,
-        "decision_text": decision_text,
-        "summary": "；".join(reasons) if reasons else "新功能、关联影响和数据核对暂无阻断风险",
-        "new_feature": {
-            "counts": functional_result_counts(cases),
-            "p0_blockers": p0_blockers[:10],
-            "p1_failures": p1_failures[:10],
-        },
-        "impact": {
-            "counts": functional_result_counts(impact_items),
-            "failures": impact_failures[:10],
-        },
-        "data": {
-            "total": len(rules),
-            "passed": sum(1 for rule in rules if latest_results.get(rule.id) and latest_results[rule.id].result == "passed"),
-            "failed": len(data_failures),
-            "pending": len(data_pending),
-            "failures": data_failures[:10],
-            "pending_rules": data_pending[:10],
-        },
-    }
 
 
-def functional_task_detail(db: Session, task: FunctionalTask) -> Dict[str, Any]:
-    data = serialize(task)
-    project = db.get(Project, task.project_id)
-    data["project_name"] = project.name if project else task.project_id
-    data.update(account_profile_summary(default_account_profile_for_target(db, "functional_task", task.id, task.project_id)))
-    cases = []
-    for case in db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id).order_by(FunctionalCase.id.asc()).all():
-        item = serialize(case)
-        item.update(account_profile_summary(default_account_profile_for_target(db, "functional_case", case.id, task.project_id)))
-        ui_case = db.get(UiCase, case.ui_case_id) if case.ui_case_id else None
-        item.update(functional_case_credibility_payload(case, ui_case))
-        cases.append(item)
-    data["cases"] = cases
-    data["snapshots"] = serialize_many(db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).order_by(PageSnapshot.id.desc()).all())
-    data["screenshots"] = serialize_many(
-        db.query(FunctionalScreenshot).filter(FunctionalScreenshot.task_id == task.id).order_by(FunctionalScreenshot.id.desc()).all()
-    )
-    data["requirement_notes"] = serialize_many(
-        db.query(FunctionalRequirementNote)
-        .filter(FunctionalRequirementNote.task_id == task.id)
-        .order_by(FunctionalRequirementNote.id.desc())
-        .all()
-    )
-    data["runs"] = serialize_many(db.query(FunctionalRun).filter(FunctionalRun.task_id == task.id).order_by(FunctionalRun.id.desc()).limit(20).all())
-    data["impact_items"] = serialize_many(
-        db.query(FunctionalImpactItem)
-        .filter(FunctionalImpactItem.task_id == task.id)
-        .order_by(FunctionalImpactItem.id.asc())
-        .all()
-    )
-    rules = (
-        db.query(FunctionalDataCheckRule)
-        .filter(FunctionalDataCheckRule.task_id == task.id)
-        .order_by(FunctionalDataCheckRule.id.asc())
-        .all()
-    )
-    data_rules = []
-    for rule in rules:
-        item = serialize(rule)
-        latest = (
-            db.query(FunctionalDataCheckResult)
-            .filter(FunctionalDataCheckResult.rule_id == rule.id)
-            .order_by(FunctionalDataCheckResult.id.desc())
-            .first()
-        )
-        item["latest_result"] = serialize(latest) if latest else None
-        data_rules.append(item)
-    data["data_check_rules"] = data_rules
-    data["data_check_results"] = serialize_many(
-        db.query(FunctionalDataCheckResult)
-        .filter(FunctionalDataCheckResult.task_id == task.id)
-        .order_by(FunctionalDataCheckResult.id.desc())
-        .limit(20)
-        .all()
-    )
-    data["conclusion"] = functional_task_conclusion_summary(db, task)
-    data["preflight_summary"] = functional_package_preflight_summary(cases)
-    data["credibility_summary"] = functional_case_credibility_summary(cases)
-    return data
 
 
 FUNCTIONAL_TRUSTED_CATEGORIES = {"主流程", "查询筛选", "表单交互", "页面展示", "输入校验"}
@@ -547,138 +387,23 @@ SEARCH_KEYWORDS = {
 }
 
 
-def normalize_variable_name(value: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
 
 
-def quality_report_payload(status_value: str, reason: str, issues: list[str] | None = None, **extra: Any) -> Dict[str, Any]:
-    payload = {
-        "status": status_value,
-        "reason": reason,
-        "issues": issues or [],
-        "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    }
-    payload.update(extra)
-    return payload
 
 
-def parse_case_steps(raw: Any) -> list[Dict[str, Any]]:
-    parsed = parse_json_value(raw or "", [])
-    if isinstance(parsed, dict):
-        parsed = parsed.get("steps") or parsed.get("actions") or []
-    if not isinstance(parsed, list):
-        return []
-    return [item for item in parsed if isinstance(item, dict)]
 
 
-def functional_case_ui_payload(db: Session, case: FunctionalCase) -> tuple[UiCase | None, list[Dict[str, Any]]]:
-    ui_case = db.get(UiCase, case.ui_case_id) if case.ui_case_id else None
-    if not ui_case:
-        return None, []
-    return ui_case, parse_case_steps(ui_case.steps)
 
 
-def functional_case_kind(case: FunctionalCase) -> str:
-    text = " ".join([case.title or "", case.precondition or "", case.steps or "", case.expected or "", case.category or ""]).lower()
-    auth_negative_markers = [
-        "未登录",
-        "未登陆",
-        "不登录",
-        "无账号",
-        "unauth",
-        "without login",
-        "not logged",
-        "直接访问",
-    ]
-    if any(marker in text for marker in auth_negative_markers):
-        return FUNCTIONAL_CASE_KIND_AUTH_NEGATIVE
-    manual_markers = [
-        "网络中断",
-        "断网",
-        "弱网",
-        "权限绕过",
-        "已删除",
-        "不存在",
-        "无效id",
-        "无效 id",
-        "库存不足",
-        "并发",
-        "安全",
-        "越权",
-        "导出",
-        "删除",
-        "network",
-        "permission",
-        "deleted",
-        "invalid id",
-        "stock",
-        "concurrency",
-        "security",
-        "privilege",
-        "export",
-        "delete",
-    ]
-    manual_categories = {"权限状态", "数据结果"}
-    if str(case.category or "") in manual_categories or any(marker in text for marker in manual_markers):
-        return FUNCTIONAL_CASE_KIND_MANUAL_ONLY
-    return FUNCTIONAL_CASE_KIND_BUSINESS_AUTH
 
 
-def functional_case_auto_trusted(case: FunctionalCase) -> bool:
-    if functional_case_kind(case) != FUNCTIONAL_CASE_KIND_BUSINESS_AUTH:
-        return False
-    category = str(case.category or "")
-    text = " ".join([case.title or "", case.steps or "", case.expected or ""]).lower()
-    if category in FUNCTIONAL_TRUSTED_CATEGORIES:
-        return True
-    trusted_markers = ["登录后", "进入", "访问", "查看", "查询", "搜索", "筛选", "点击", "弹窗", "表单", "登记", "列表", "search", "filter"]
-    risky_markers = [
-        "删除",
-        "导出",
-        "网络",
-        "权限",
-        "未登录",
-        "不存在",
-        "已删除",
-        "越权",
-        "库存不足",
-        "network",
-        "permission",
-        "deleted",
-        "invalid id",
-        "security",
-        "privilege",
-        "export",
-        "delete",
-    ]
-    return any(marker in text for marker in trusted_markers) and not any(marker in text for marker in risky_markers)
 
 
-def case_has_business_assertion(case: FunctionalCase, steps: list[Dict[str, Any]]) -> bool:
-    for step in steps:
-        action = str(step.get("action") or "").strip().lower()
-        if action in ASSERTION_ACTIONS:
-            locator = str(step.get("locator") or "").strip().lower()
-            value = str(step.get("value") or "").strip()
-            if action == "text_assert" and locator in {"", "body", "html"} and len(value) < 2:
-                continue
-            return True
-        condition = step.get("success_condition") or step.get("expected") or step.get("assert")
-        if isinstance(condition, (dict, list)) and condition:
-            return True
-        if isinstance(condition, str) and condition.strip():
-            return True
-    return False
 
 
 GENERIC_EXPECTED_TEXTS = {"", "页面正常显示", "操作成功", "成功", "椤甸潰姝ｅ父鏄剧ず", "鎿嶄綔鎴愬姛", "鎴愬姛"}
 
 
-def meaningful_expected_text(case: FunctionalCase) -> str:
-    expected = re.sub(r"\s+", " ", str(case.expected or "")).strip()
-    if expected in GENERIC_EXPECTED_TEXTS:
-        return ""
-    return expected[:160]
 
 
 TRUST_LEVEL_LABELS = {
@@ -708,1044 +433,84 @@ FAILURE_CATEGORY_LABELS = {
 }
 
 
-def _json_log_payload(value: Any) -> Dict[str, Any]:
-    payload = parse_json_value(value, {})
-    return payload if isinstance(payload, dict) else {}
-
-
-def _business_assertion_count_from_log(log_data: Dict[str, Any]) -> int:
-    business = log_data.get("business_verification")
-    if isinstance(business, dict):
-        try:
-            return int(business.get("business_assertion_count") or 0)
-        except (TypeError, ValueError):
-            return 0
-    steps = log_data.get("steps")
-    if isinstance(steps, list):
-        return sum(1 for step in steps if isinstance(step, dict) and str(step.get("action") or "").lower() in ASSERTION_ACTIONS)
-    return 0
-
-
-def _api_assertion_count_from_log(log_data: Dict[str, Any]) -> int:
-    assertions = log_data.get("assertions")
-    return len(assertions) if isinstance(assertions, list) else 0
-
-
-def classify_failure_category(log_data: Dict[str, Any], log_text: str = "") -> str:
-    text = json.dumps(log_data, ensure_ascii=False, default=str).lower() if log_data else str(log_text or "").lower()
-    error_category = str(log_data.get("error_category") or "").lower() if isinstance(log_data, dict) else ""
-    if error_category in {"step_validation_failed", "system_error", "parallel_execution_failed"}:
-        return "script_issue"
-    if error_category in {"case_timeout", "environment_timeout"}:
-        return "environment_issue"
-    if any(marker in text for marker in ["locator", "selector", "not visible", "not found element", "定位器", "元素"]):
-        return "locator_issue"
-    if any(marker in text for marker in ["login_required", "/login", "#/login", "permission", "unauthorized", "forbidden", "登录", "权限", "越权"]):
-        return "account_permission_issue"
-    if any(marker in text for marker in ["missing_variables", "order_not_found", "not found order", "库存不足", "数据不足", "缺少变量", "缺少真实数据"]):
-        return "test_data_issue"
-    if any(marker in text for marker in ["timeout", "timed out", "network", "connection", "http 5", "502", "503", "504", "环境"]):
-        return "environment_issue"
-    if any(marker in text for marker in ["missing_business_assertion", "缺少业务断言", "需求", "needs_review"]):
-        return "requirement_unclear"
-    if any(marker in text for marker in ["assert", "failed_verification", "断言失败", "验证失败"]):
-        return "product_or_assertion"
-    return "unknown"
-
-
-def test_record_credibility_payload(record: TestRecord) -> Dict[str, Any]:
-    log_data = _json_log_payload(record.log)
-    case_id = int(record.case_id or 0)
-    script_label = str(log_data.get("script") or log_data.get("mode") or "").strip()
-    traceability_status = "bound" if case_id > 0 else ("scenario_only" if script_label else "unbound")
-    traceability_labels = {
-        "bound": "已绑定用例",
-        "scenario_only": "仅绑定脚本场景",
-        "unbound": "未绑定测试对象",
-    }
-    warnings: list[str] = []
-    if traceability_status != "bound":
-        warnings.append("执行记录未绑定具体用例，不能作为强可信通过证据")
-
-    result = str(record.result or "unknown")
-    business_assertions = _business_assertion_count_from_log(log_data)
-    api_assertions = _api_assertion_count_from_log(log_data)
-    verification_status = str(log_data.get("verification_status") or "")
-    if result == "passed":
-        if record.case_type == "ui":
-            trusted = traceability_status == "bound" and verification_status == "trusted_passed" and business_assertions > 0
-        elif record.case_type == "api":
-            trusted = traceability_status == "bound" and api_assertions > 0
-        else:
-            trusted = False
-        result_credibility = "trusted_passed" if trusted else "weak_passed"
-        if not trusted:
-            if record.case_type == "ui" and business_assertions <= 0:
-                warnings.append("UI 通过缺少业务断言证据，已按弱通过处理")
-            if record.case_type == "api" and api_assertions <= 0:
-                warnings.append("接口通过缺少显式断言，已按弱通过处理")
-    else:
-        failure_category = classify_failure_category(log_data, str(record.log or ""))
-        result_credibility = "failed_with_reason" if failure_category != "unknown" else "failed_unclassified"
-
-    failure_category = "" if result == "passed" else classify_failure_category(log_data, str(record.log or ""))
-    return {
-        "traceability_status": traceability_status,
-        "traceability_label": traceability_labels.get(traceability_status, traceability_status),
-        "test_object_label": script_label or (f"{record.case_type} #{case_id}" if case_id else ""),
-        "result_credibility": result_credibility if result in {"passed", "failed"} else ("blocked" if result == "blocked" else "unknown"),
-        "result_credibility_label": RESULT_CREDIBILITY_LABELS.get(result_credibility if result in {"passed", "failed"} else result, result),
-        "business_assertion_count": business_assertions,
-        "api_assertion_count": api_assertions,
-        "failure_category": failure_category,
-        "failure_category_label": FAILURE_CATEGORY_LABELS.get(failure_category, ""),
-        "credibility_warnings": warnings,
-        "is_trusted_pass": result == "passed" and result_credibility == "trusted_passed",
-        "is_weak_pass": result == "passed" and result_credibility == "weak_passed",
-    }
-
-
-def _check_item(key: str, label: str, passed: bool, warning: str = "") -> Dict[str, Any]:
-    return {"key": key, "label": label, "passed": bool(passed), "warning": warning if not passed else ""}
-
-
-def functional_case_credibility_payload(case: FunctionalCase, ui_case: UiCase | None = None) -> Dict[str, Any]:
-    steps = parse_json_value(ui_case.steps, []) if ui_case else []
-    if not isinstance(steps, list):
-        steps = []
-    quality = case.quality_status or QUALITY_UNCHECKED
-    report = _json_log_payload(case.quality_report)
-    has_precondition = bool(str(case.precondition or "").strip())
-    has_steps = bool(str(case.steps or "").strip()) or bool(steps)
-    has_expected = bool(str(case.expected or "").strip()) and bool(meaningful_expected_text(case) or str(case.expected or "").strip())
-    has_assertion = case_has_business_assertion(case, steps) if steps else False
-    has_test_data = quality != QUALITY_MISSING_VARIABLES and not report.get("required_seed_keys")
-    risk_text = " ".join(str(item or "") for item in [case.title, case.category, case.precondition, case.steps, case.expected]).lower()
-    covers_risk = any(marker in risk_text for marker in ["权限", "异常", "边界", "无效", "失败", "未登录", "越权", "error", "invalid"])
-
-    checklist = [
-        _check_item("precondition", "前置条件", has_precondition, "未写前置条件"),
-        _check_item("steps", "操作步骤", has_steps, "未写操作步骤"),
-        _check_item("expected", "预期结果", has_expected, "未写明确预期结果"),
-        _check_item("business_assertion", "业务断言", has_assertion, "缺少可验证业务断言"),
-        _check_item("test_data", "测试数据", has_test_data, "缺少真实测试数据或运行变量"),
-        _check_item("risk_case", "权限/异常/边界", covers_risk, "未体现权限、异常或边界风险点"),
-    ]
-    blocking_failed = [item for item in checklist if item["key"] in {"steps", "expected", "business_assertion", "test_data"} and not item["passed"]]
-    if quality == QUALITY_EXECUTABLE and not blocking_failed:
-        level = "trusted"
-    elif quality in {QUALITY_NOT_RECOMMENDED, QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES} or len(blocking_failed) >= 2:
-        level = "untrusted"
-    else:
-        level = "weak"
-    issues = [item["warning"] for item in checklist if item["warning"]]
-    return {
-        "credibility_level": level,
-        "credibility_label": TRUST_LEVEL_LABELS[level],
-        "self_check": checklist,
-        "self_check_warnings": issues,
-        "can_be_trusted_pass": level == "trusted",
-    }
-
-
-def functional_case_credibility_summary(cases: list[Dict[str, Any]]) -> Dict[str, Any]:
-    counts = Counter(str(item.get("credibility_level") or "weak") for item in cases)
-    return {
-        "total": len(cases),
-        "trusted": counts.get("trusted", 0),
-        "weak": counts.get("weak", 0),
-        "untrusted": counts.get("untrusted", 0),
-        "trusted_label": TRUST_LEVEL_LABELS["trusted"],
-        "weak_label": TRUST_LEVEL_LABELS["weak"],
-        "untrusted_label": TRUST_LEVEL_LABELS["untrusted"],
-    }
-
-
-def ensure_weak_business_assertion(db: Session, case: FunctionalCase, ui_case: UiCase, steps: list[Dict[str, Any]]) -> tuple[list[Dict[str, Any]], bool]:
-    expected = meaningful_expected_text(case)
-    if not expected or case_has_business_assertion(case, steps):
-        return steps, False
-    if any(isinstance(step, dict) and step.get("generated_assertion") == "expected_text" for step in steps):
-        return steps, False
-    next_steps = [dict(step) if isinstance(step, dict) else step for step in steps]
-    next_steps.append(
-        {
-            "name": "自动弱断言",
-            "action": "text_assert",
-            "locator": "body",
-            "value": expected,
-            "generated_assertion": "expected_text",
-        }
-    )
-    ui_case.steps = to_json_text(next_steps, [])
-    db.flush()
-    return next_steps, True
-
-
-def case_locator_issues(steps: list[Dict[str, Any]]) -> list[str]:
-    issues: list[str] = []
-    for index, step in enumerate(steps, start=1):
-        action = str(step.get("action") or "").strip().lower()
-        locator = str(step.get("locator") or "").strip()
-        if action in LOCATOR_REQUIRED_ACTIONS and not locator:
-            issues.append(f"第{index}步 {action} 缺少 locator")
-    return issues
-
-
-def case_step_structure_issues(steps: list[Dict[str, Any]]) -> list[str]:
-    issues: list[str] = []
-    for index, step in enumerate(steps, start=1):
-        action = str(step.get("action") or "").strip().lower()
-        if action in VALUE_REQUIRED_ACTIONS and step.get("value") in (None, ""):
-            issues.append(f"第{index}步 {action} 缺少 value")
-        if action in LOCATOR_REQUIRED_ACTIONS and not str(step.get("locator") or "").strip():
-            issues.append(f"第{index}步 {action} 缺少 locator")
-    return issues
-
-
-def placeholder_names(text: str) -> list[str]:
-    names = re.findall(r"\{\{\s*([A-Za-z_][A-Za-z0-9_$]*)\s*\}\}", text or "")
-    result: list[str] = []
-    seen: set[str] = set()
-    for name in names:
-        clean = name.replace("$", "")
-        norm = normalize_variable_name(clean)
-        if not norm or norm in seen or clean in BUILTIN_RUNTIME_VARS or clean in ACCOUNT_RUNTIME_VARS:
-            continue
-        seen.add(norm)
-        result.append(clean)
-    return result
-
-
-def seed_has_key(seed_variables: Dict[str, Any], name: str) -> bool:
-    target = normalize_variable_name(name)
-    if not target:
-        return True
-    for key, value in (seed_variables or {}).items():
-        if value in ("", None):
-            continue
-        if normalize_variable_name(key) == target:
-            return True
-    for canonical, aliases in SEARCH_SEED_KEYS.items():
-        alias_norms = {normalize_variable_name(item) for item in [canonical, *aliases]}
-        if target in alias_norms:
-            return any(seed_variables.get(alias) not in ("", None) for alias in [canonical, *aliases])
-    return False
-
-
-def case_required_seed_keys(case: FunctionalCase, steps: list[Dict[str, Any]]) -> list[str]:
-    raw_text = " ".join(
-        [
-            case.title or "",
-            case.precondition or "",
-            case.steps or "",
-            case.expected or "",
-            json.dumps(steps, ensure_ascii=False, default=str),
-        ]
-    )
-    lower_text = raw_text.lower()
-    needed: list[str] = placeholder_names(raw_text)
-    if any(keyword in raw_text for keyword in ["搜索", "查询", "筛选"]) or "search" in lower_text:
-        for seed_key, keywords in SEARCH_KEYWORDS.items():
-            if any(keyword.lower() in lower_text for keyword in keywords):
-                needed.append(seed_key)
-    if re.search(r"\b(CUST|ORDER|BOX)[-_]?\d{3,}\b", raw_text, flags=re.IGNORECASE):
-        if "customer_id" not in needed and re.search(r"\bCUST[-_]?\d{3,}\b", raw_text, flags=re.IGNORECASE):
-            needed.append("customer_id")
-        if "orderNumber" not in needed and re.search(r"\bORDER[-_]?\d{3,}\b", raw_text, flags=re.IGNORECASE):
-            needed.append("orderNumber")
-        if "box_no" not in needed and re.search(r"\bBOX[-_]?\d{3,}\b", raw_text, flags=re.IGNORECASE):
-            needed.append("box_no")
-    unique: list[str] = []
-    seen: set[str] = set()
-    for item in needed:
-        norm = normalize_variable_name(item)
-        if norm and norm not in seen:
-            seen.add(norm)
-            unique.append(item)
-    return unique
-
-
-def first_pattern_value(text: str, patterns: list[str]) -> str:
-    for pattern in patterns:
-        match = re.search(pattern, text or "", flags=re.IGNORECASE)
-        if match:
-            value = match.group(1) if match.groups() else match.group(0)
-            value = str(value or "").strip(" ：:，,。;；\n\r\t")
-            if value:
-                return value[:80]
-    return ""
-
-
-def clean_seed_value(value: str, value_type: str) -> str:
-    text = str(value or "").strip(" ：:，,。;；\n\r\t")
-    if not text:
-        return ""
-    lower = text.lower()
-    fake_values = {
-        "cust123456",
-        "customer123456",
-        "order123456",
-        "ord123456",
-        "box123456",
-        "test123456",
-        "boxkeyword",
-        "orderstatusmap",
-    }
-    if lower in fake_values or lower.endswith(("keyword", "map", "placeholder")):
-        return ""
-    if "{{" in text or "}}" in text:
-        return ""
-    if value_type in {"customer_id", "order_no", "box_no", "location_code"} and not re.search(r"\d", text):
-        return ""
-    if value_type == "customer_name":
-        generic_terms = {"搜索", "筛选", "查询", "页面", "功能", "测试", "search", "filter", "query", "page", "feature", "test"}
-        if lower in generic_terms or any(text.startswith(item) for item in ["搜索", "筛选", "查询", "页面", "功能"]):
-            return ""
-        return text[:80]
-    if value_type == "customer_name" and any(keyword in text for keyword in ["搜索", "筛选", "查询", "页面", "功能", "测试"]):
-        return ""
-    return text[:80]
-
-
-def build_functional_seed_text(db: Session, task: FunctionalTask) -> tuple[str, list[str]]:
-    chunks: list[str] = []
-    sources: list[str] = []
-    snapshot = (
-        db.query(PageSnapshot)
-        .filter(PageSnapshot.task_id == task.id)
-        .order_by(PageSnapshot.id.desc())
-        .first()
-    )
-    if snapshot and snapshot.dom_summary:
-        chunks.append(snapshot.dom_summary)
-        sources.append("page_snapshot")
-    ui_ids = [
-        row[0]
-        for row in db.query(FunctionalCase.ui_case_id)
-        .filter(FunctionalCase.task_id == task.id, FunctionalCase.ui_case_id.isnot(None))
-        .all()
-        if row[0]
-    ]
-    if ui_ids:
-        records = (
-            db.query(TestRecord)
-            .filter(TestRecord.case_type == "ui", TestRecord.case_id.in_(ui_ids))
-            .order_by(TestRecord.id.desc())
-            .limit(20)
-            .all()
-        )
-        for record in records:
-            if record.log:
-                chunks.append(record.log)
-        if records:
-            sources.append("recent_ui_records")
-    return "\n".join(chunks), sources
-
-
-def seed_functional_package_data(db: Session, task: FunctionalTask) -> Dict[str, Any]:
-    text, sources = build_functional_seed_text(db, task)
-    variables: Dict[str, Any] = {}
-    customer_id = first_pattern_value(
-        text,
-        [
-            r"\bID\s*[:\uFF1A]\s*([A-Za-z0-9_-]{3,32})",
-            r'"customer(?:_?id|Id)"\s*:\s*"([A-Za-z0-9_-]{3,32})"',
-            r"(?:客户ID|客户Id|客户id|客户编号|客户号)\s*[:：]?\s*([A-Za-z0-9_-]{3,32})",
-            r"\b(CUST[-_]?[A-Za-z0-9]{3,24})\b",
-        ],
-    )
-    if customer_id:
-        customer_id = clean_seed_value(customer_id, "customer_id")
-    if customer_id:
-        variables.update({"customer_id": customer_id, "customerId": customer_id, "customerID": customer_id})
-    customer_name = first_pattern_value(
-        text,
-        [
-            r"\bID\s*[:\uFF1A]\s*[A-Za-z0-9_-]{3,32}\s+([^\s\d][^\r\n]{1,40}?)\s+(?:20\d{8,}|[A-Z]{2,}[-_]?\d|\u3010)",
-            r'"customer(?:_?name|Name)"\s*:\s*"([^"]{2,40})"',
-            r"(?:客户名称|客户名|客户姓名)\s*[:：]?\s*([\u4e00-\u9fffA-Za-z0-9_\- ]{2,40})",
-        ],
-    )
-    if customer_name:
-        customer_name = clean_seed_value(customer_name, "customer_name")
-    if customer_name:
-        variables.update({"customer_name": customer_name, "customerName": customer_name})
-    order_no = first_pattern_value(
-        text,
-        [
-            r"(?:订单号|订单编号|订单SN|order[_ -]?(?:no|number|sn))\s*[:：]?\s*([A-Z0-9][A-Z0-9_-]{5,40})",
-            r"\b(ORDER[-_]?[A-Z0-9]{5,36})\b",
-        ],
-    )
-    if order_no:
-        order_no = clean_seed_value(order_no, "order_no")
-    if order_no:
-        variables.update({"orderNumber": order_no, "order_no": order_no, "orderNo": order_no, "order_sn": order_no})
-    box_no = first_pattern_value(
-        text,
-        [
-            r"\b(20\d{10,}-[A-Za-z0-9_-]{3,}-\d+)\b",
-            r'"box(?:_?no|No|_?number|Number|Code|_?code)"\s*:\s*"([A-Za-z0-9_-]{5,40})"',
-            r"(?:箱号|箱子编号|box[_ -]?(?:no|number))\s*[:：]?\s*([A-Z0-9][A-Z0-9_-]{4,40})",
-            r"\b(BOX[-_]?[A-Z0-9]{4,36})\b",
-        ],
-    )
-    if box_no:
-        box_no = clean_seed_value(box_no, "box_no")
-    if box_no:
-        variables.update({"box_no": box_no, "boxNo": box_no, "boxCode": box_no, "box_number": box_no})
-    location_code = first_pattern_value(
-        text,
-        [
-            r"\u3010([^\u3011]{2,80})\u3011",
-            r'"(?:location(?:_?code|Code)?|warehouse_location|storage_location)"\s*:\s*"([^"]{2,80})"',
-            r"(?:库位|仓位|location(?:_code)?)\s*[:：]?\s*([A-Z0-9][A-Z0-9_-]{2,32})",
-        ],
-    )
-    if location_code:
-        location_code = clean_seed_value(location_code, "location_code")
-    if location_code:
-        variables.update({"location_code": location_code, "locationCode": location_code, "warehouse_location": location_code})
-    if "keyword" not in variables:
-        keyword = location_code or customer_id or customer_name or box_no
-        if keyword:
-            variables["keyword"] = keyword
-    dates = re.findall(r"(20\d{2}[-/]\d{1,2}[-/]\d{1,2})", text or "")
-    if dates:
-        variables.update({"startDate": dates[0], "start_date": dates[0]})
-        variables.update({"endDate": dates[-1], "end_date": dates[-1]})
-    saved_runtime_variables = functional_task_runtime_variables(task)
-    if saved_runtime_variables:
-        variables.update(saved_runtime_variables)
-        if "task_runtime_variables" not in sources:
-            sources.append("task_runtime_variables")
-    return {"variables": variables, "sources": sources, "source_text_available": bool(text)}
-
-
-def functional_task_runtime_variables(task: FunctionalTask) -> Dict[str, Any]:
-    payload = parse_json_value(task.context or "", {})
-    if not isinstance(payload, dict):
-        return {}
-    raw_variables = payload.get("runtime_variables") or payload.get("__runtime_variables") or {}
-    if not isinstance(raw_variables, dict):
-        return {}
-    return {
-        str(key): value
-        for key, value in raw_variables.items()
-        if value not in ("", None) and not is_sensitive_account_key(key)
-    }
-
-
-def account_preflight_status(
-    db: Session,
-    task: FunctionalTask,
-    payload: FunctionalExecuteRequest | None,
-) -> Dict[str, Any]:
-    account_mode = (payload.account_mode if payload else "default") or "default"
-    if account_mode == "none":
-        return {"status": "skipped", "message": "本次选择不使用测试账号"}
-    try:
-        variables, execution_context = resolve_execution_account(
-            db,
-            payload,
-            "functional_task",
-            task.id,
-            task.project_id,
-            task.target_url,
-        )
-    except Exception as exc:
-        return {"status": "blocked", "message": f"账号解析失败：{exc}"}
-    if not execution_context.get("login_required"):
-        return {"status": "warning", "message": "未绑定测试账号，预检按公开页面处理"}
-    login_config = execution_context.get("login_config") or {}
-    login_url = str(login_config.get("login_url") or "").strip() or guess_functional_login_url(task.target_url)
-    has_username = any(str(variables.get(key) or "").strip() for key in ["username", "account", "email", "mobile", "phone"])
-    has_password = any(str(variables.get(key) or "").strip() for key in ["password", "pwd"])
-    missing = []
-    if not login_url:
-        missing.append("登录页URL")
-    if not has_username:
-        missing.append("登录账号")
-    if not has_password:
-        missing.append("登录密码")
-    if missing:
-        return {
-            "status": "blocked",
-            "message": "登录前置缺失：" + "、".join(missing),
-            "account_profile_id": execution_context.get("account_profile_id"),
-            "login_url": login_url,
-        }
-    return {
-        "status": "ready",
-        "message": "测试账号信息完整，正式执行时会先登录并复用登录态",
-        "account_profile_id": execution_context.get("account_profile_id"),
-        "login_url": login_url,
-    }
-
-
-def guess_functional_login_url(target_url: str | None) -> str:
-    raw = str(target_url or "").strip()
-    try:
-        parsed = urlparse(raw)
-        if not parsed.scheme or not parsed.netloc:
-            return ""
-        if parsed.fragment and "/" in parsed.fragment:
-            hash_prefix = "#!/" if parsed.fragment.startswith("!/") else "#/"
-            return f"{parsed.scheme}://{parsed.netloc}{parsed.path or '/'}{hash_prefix}login"
-        return f"{parsed.scheme}://{parsed.netloc}/login"
-    except Exception:
-        return ""
-
-
-def evaluate_functional_case_quality(
-    db: Session,
-    task: FunctionalTask,
-    case: FunctionalCase,
-    seed_variables: Dict[str, Any],
-    account_status: Dict[str, Any],
-) -> Dict[str, Any]:
-    if case.automation_status != "approved":
-        return quality_report_payload(QUALITY_NOT_RECOMMENDED, "用例未确认，不进入自动执行")
-    if not case.ui_case_id:
-        return quality_report_payload(QUALITY_NOT_RECOMMENDED, "尚未生成 UI 步骤")
-    ui_case, steps = functional_case_ui_payload(db, case)
-    if not ui_case:
-        return quality_report_payload(QUALITY_NOT_RECOMMENDED, "关联 UI 用例不存在")
-    if account_status.get("status") == "blocked":
-        return quality_report_payload(QUALITY_AUTH_RISK, account_status.get("message") or "登录前置未通过")
-    if not steps:
-        return quality_report_payload(QUALITY_NOT_RECOMMENDED, "UI 步骤为空，无法自动执行")
-    case_kind = functional_case_kind(case)
-    if case_kind == FUNCTIONAL_CASE_KIND_AUTH_NEGATIVE:
-        return quality_report_payload(
-            QUALITY_NOT_RECOMMENDED,
-            "未登录/负向认证用例默认作为人工/高级用例，不进入可信自动执行",
-            case_kind=case_kind,
-        )
-    if case_kind == FUNCTIONAL_CASE_KIND_MANUAL_ONLY:
-        return quality_report_payload(
-            QUALITY_NOT_RECOMMENDED,
-            "该用例依赖权限、异常环境或复杂业务状态，默认不进入可信自动执行",
-            case_kind=case_kind,
-        )
-    if case_kind == FUNCTIONAL_CASE_KIND_BUSINESS_AUTH:
-        stripped_steps, removed_login_steps = _strip_leading_login_steps(steps)
-        if removed_login_steps:
-            steps = stripped_steps
-            ui_case.steps = to_json_text(steps, [])
-            db.flush()
-    steps, generated_weak_assertion = ensure_weak_business_assertion(db, case, ui_case, steps)
-    step_issues = case_step_structure_issues(steps)
-    if step_issues:
-        return quality_report_payload(
-            QUALITY_NOT_RECOMMENDED,
-            "UI 步骤结构不完整，需修复后才能自动执行",
-            step_issues,
-            case_kind=case_kind,
-            result_reason="step_invalid",
-        )
-    locator_issues = case_locator_issues(steps)
-    if locator_issues:
-        return quality_report_payload(QUALITY_LOCATOR_RISK, "存在缺失 locator 的步骤", locator_issues)
-    required_seed_keys = case_required_seed_keys(case, steps)
-    missing_seed = [item for item in required_seed_keys if not seed_has_key(seed_variables, item)]
-    if missing_seed:
-        return quality_report_payload(
-            QUALITY_MISSING_VARIABLES,
-            "搜索/筛选类用例缺少真实业务数据样本",
-            [f"缺少真实数据：{item}" for item in missing_seed],
-            required_seed_keys=required_seed_keys,
-        )
-    if not case_has_business_assertion(case, steps):
-        return quality_report_payload(
-            QUALITY_NEEDS_REVIEW,
-            "缺少明确业务断言，不能自动标记为可信通过",
-            ["请补充 assert_url/assert_visible/assert_value/text_assert 或成功条件"],
-        )
-    if generated_weak_assertion:
-        return quality_report_payload(
-            QUALITY_NEEDS_REVIEW,
-            "已根据预期结果自动补充弱断言，建议人工确认后再作为可信通过",
-            ["自动追加 body 文本弱断言"],
-            generated_assertion=True,
-        )
-    return quality_report_payload(
-        QUALITY_EXECUTABLE,
-        "账号、步骤、测试数据和业务断言预检通过",
-        required_seed_keys=required_seed_keys,
-    )
-
-
-def functional_package_preflight_summary(cases: list[Dict[str, Any]]) -> Dict[str, Any]:
-    counts = Counter((item.get("quality_status") or QUALITY_UNCHECKED) for item in cases)
-    total = len(cases)
-    manual_statuses = {QUALITY_NEEDS_REVIEW, QUALITY_MISSING_VARIABLES, QUALITY_LOCATOR_RISK, QUALITY_AUTH_RISK, QUALITY_NOT_RECOMMENDED}
-    trial_statuses = {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_LOCATOR_RISK}
-    return {
-        "total": total,
-        "executable": counts.get(QUALITY_EXECUTABLE, 0),
-        "trial_runnable": sum(counts.get(item, 0) for item in trial_statuses),
-        "manual_check": sum(counts.get(item, 0) for item in manual_statuses),
-        "unchecked": counts.get(QUALITY_UNCHECKED, 0),
-        "auth_blocked": counts.get(QUALITY_AUTH_RISK, 0),
-        "data_missing": counts.get(QUALITY_MISSING_VARIABLES, 0),
-        "locator_risk": counts.get(QUALITY_LOCATOR_RISK, 0),
-        "missing_assertion": counts.get(QUALITY_NEEDS_REVIEW, 0),
-        "not_automatable": counts.get(QUALITY_NOT_RECOMMENDED, 0),
-    }
-
-
-def _case_group_key(category: Any) -> str:
-    raw = str(category or "").strip()
-    aliases = {
-        "页面展示": "页面展示",
-        "输入校验": "等价类",
-        "主流程": "主流程",
-        "异常流程": "异常流程",
-        "权限/状态": "权限状态",
-        "权限状态": "权限状态",
-        "数据结果": "数据结果",
-        "边界值": "边界值",
-        "等价类": "等价类",
-    }
-    if raw in aliases:
-        return aliases[raw]
-    if "边界" in raw:
-        return "边界值"
-    if "等价" in raw or "输入" in raw or "校验" in raw:
-        return "等价类"
-    if "权限" in raw or "状态" in raw:
-        return "权限状态"
-    if "异常" in raw:
-        return "异常流程"
-    if "数据" in raw:
-        return "数据结果"
-    return "主流程"
-
-
-def functional_preflight_case_groups(cases: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
-    order = ["主流程", "等价类", "边界值", "异常流程", "权限状态", "数据结果", "页面展示"]
-    grouped: Dict[str, Dict[str, Any]] = {}
-    for item in cases:
-        key = _case_group_key(item.get("category"))
-        group = grouped.setdefault(
-            key,
-            {
-                "category": key,
-                "total": 0,
-                "executable": 0,
-                "blocked": 0,
-                "needs_review": 0,
-                "locator_risk": 0,
-                "case_ids": [],
-            },
-        )
-        status_value = item.get("quality_status") or QUALITY_UNCHECKED
-        group["total"] += 1
-        group["case_ids"].append(item.get("case_id"))
-        if status_value == QUALITY_EXECUTABLE:
-            group["executable"] += 1
-        elif status_value in {QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES, QUALITY_NOT_RECOMMENDED}:
-            group["blocked"] += 1
-        elif status_value == QUALITY_NEEDS_REVIEW:
-            group["needs_review"] += 1
-        elif status_value == QUALITY_LOCATOR_RISK:
-            group["locator_risk"] += 1
-    return sorted(grouped.values(), key=lambda item: order.index(item["category"]) if item["category"] in order else len(order))
-
-
-def functional_missing_variables_detail(cases: list[Dict[str, Any]], seed_variables: Dict[str, Any]) -> list[Dict[str, Any]]:
-    details: Dict[str, Dict[str, Any]] = {}
-    for item in cases:
-        if item.get("quality_status") != QUALITY_MISSING_VARIABLES:
-            continue
-        required_keys = item.get("required_seed_keys") or []
-        if not required_keys:
-            for issue in item.get("issues") or []:
-                text = str(issue or "")
-                if "：" in text:
-                    required_keys.append(text.rsplit("：", 1)[-1].strip())
-                elif ":" in text:
-                    required_keys.append(text.rsplit(":", 1)[-1].strip())
-        for name in required_keys:
-            key = str(name or "").strip()
-            if not key:
-                continue
-            row = details.setdefault(
-                key,
-                {
-                    "name": key,
-                    "affected_case_ids": [],
-                    "suggested_value": seed_variables.get(key, ""),
-                    "source": "seed" if seed_variables.get(key) not in ("", None) else "",
-                    "required": True,
-                },
-            )
-            row["affected_case_ids"].append(item.get("case_id"))
-    return list(details.values())
-
-
-def functional_preflight_primary_action(account_status: Dict[str, Any], summary: Dict[str, Any], missing_details: list[Dict[str, Any]]) -> str:
-    if account_status.get("status") == "blocked" or summary.get("auth_blocked", 0):
-        return "bind_account"
-    if missing_details or summary.get("data_missing", 0):
-        return "fill_variables"
-    if summary.get("locator_risk", 0):
-        return "fix_locators"
-    if summary.get("missing_assertion", 0):
-        return "review_assertions"
-    if summary.get("executable", 0):
-        return "execute"
-    return "review_assertions"
-
-
-def preflight_functional_package(
-    db: Session,
-    task: FunctionalTask,
-    payload: FunctionalExecuteRequest | None = None,
-    selected_case_ids: list[int] | None = None,
-    persist: bool = True,
-) -> Dict[str, Any]:
-    requested_ids = set(selected_case_ids or [])
-    seed_result = seed_functional_package_data(db, task)
-    seed_variables = dict(seed_result.get("variables") or {})
-    if payload and payload.variables:
-        seed_variables.update({key: value for key, value in payload.variables.items() if value not in ("", None)})
-    account_status = account_preflight_status(db, task, payload)
-    query = db.query(FunctionalCase).filter(FunctionalCase.task_id == task.id)
-    if requested_ids:
-        query = query.filter(FunctionalCase.id.in_(requested_ids))
-    cases = query.order_by(FunctionalCase.id.asc()).all()
-    case_items: list[Dict[str, Any]] = []
-    for case in cases:
-        report = evaluate_functional_case_quality(db, task, case, seed_variables, account_status)
-        status_value = str(report.get("status") or QUALITY_UNCHECKED)
-        if persist:
-            case.quality_status = status_value
-            case.quality_report = json.dumps(report, ensure_ascii=False, default=str)
-        case_items.append(
-            {
-                "case_id": case.id,
-                "title": case.title,
-                "category": case.category,
-                "priority": case.priority,
-                "automation_status": case.automation_status,
-                "quality_status": status_value,
-                "case_kind": report.get("case_kind") or functional_case_kind(case),
-                "reason": report.get("reason") or "",
-                "issues": report.get("issues") or [],
-                "required_seed_keys": report.get("required_seed_keys") or [],
-            }
-        )
-    summary = functional_package_preflight_summary(case_items)
-    case_groups = functional_preflight_case_groups(case_items)
-    missing_variables_detail = functional_missing_variables_detail(case_items, seed_variables)
-    primary_action = functional_preflight_primary_action(account_status, summary, missing_variables_detail)
-    executable_case_ids = [item["case_id"] for item in case_items if item["quality_status"] == QUALITY_EXECUTABLE]
-    trusted_case_ids = executable_case_ids[:12]
-    trial_case_ids = [
-        item["case_id"]
-        for item in case_items
-        if item["quality_status"] in {QUALITY_EXECUTABLE, QUALITY_UNCHECKED, QUALITY_NEEDS_REVIEW, QUALITY_LOCATOR_RISK}
-    ]
-    manual_items = [item for item in case_items if item["quality_status"] != QUALITY_EXECUTABLE]
-    blocked_cases = [
-        item
-        for item in case_items
-        if item["quality_status"] in {QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES, QUALITY_NOT_RECOMMENDED}
-    ]
-    page_status = "ready" if db.query(PageSnapshot).filter(PageSnapshot.task_id == task.id).first() else "unchecked"
-    result = {
-        "task_id": task.id,
-        "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "login": account_status,
-        "page": {
-            "status": page_status,
-            "target_url": task.target_url,
-            "message": "已有页面快照" if page_status == "ready" else "暂无页面快照，建议先扫描目标页面",
-        },
-        "seed": seed_result,
-        "counts": summary,
-        "total": len(case_items),
-        "design_case_count": len(case_items),
-        "trusted_case_count": len(trusted_case_ids),
-        "manual_case_count": len(manual_items),
-        "executable_count": len(trusted_case_ids),
-        "executable_case_ids": trusted_case_ids,
-        "trusted_case_ids": trusted_case_ids,
-        "trial_count": len(trial_case_ids),
-        "trial_case_ids": trial_case_ids,
-        "blocked_cases": blocked_cases[:80],
-        "manual_check_items": manual_items[:80],
-        "case_groups": case_groups,
-        "missing_variables_detail": missing_variables_detail,
-        "primary_action": primary_action,
-        "can_execute_now": bool(executable_case_ids) and account_status.get("status") != "blocked",
-    }
-    if persist:
-        db.commit()
-    return result
-
-
-def functional_task_keywords(task: FunctionalTask) -> list[str]:
-    raw = " ".join([task.iteration_name or "", task.requirement_text or "", task.context or "", task.target_url or ""])
-    try:
-        parsed = urlparse(task.target_url or "")
-        raw += " " + parsed.path.replace("/", " ")
-    except Exception:
-        pass
-    tokens = re.findall(r"[A-Za-z0-9_]{2,}|[\u4e00-\u9fff]{2,}", raw)
-    seen: set[str] = set()
-    result = []
-    for token in tokens:
-        text = token.strip().lower()
-        if text and text not in seen:
-            seen.add(text)
-            result.append(text)
-    return result[:30]
-
-
-def keyword_score(text: str, keywords: Iterable[str]) -> int:
-    source = (text or "").lower()
-    return sum(1 for keyword in keywords if keyword and keyword in source)
-
-
-def impact_item_key(item_type: str, ref_id: int | None, title: str, target: str | None = "") -> str:
-    return f"{item_type}:{ref_id or ''}:{(title or '').strip().lower()}:{(target or '').strip().lower()}"
-
-
-def suggest_functional_impact_items(db: Session, task: FunctionalTask) -> list[Dict[str, Any]]:
-    keywords = functional_task_keywords(task)
-    candidates: list[Dict[str, Any]] = []
-    seen: set[str] = set()
-
-    def add_candidate(item: Dict[str, Any]) -> None:
-        key = impact_item_key(item.get("item_type") or "", item.get("ref_id"), item.get("title") or "", item.get("target") or "")
-        if key in seen:
-            return
-        seen.add(key)
-        candidates.append(item)
-
-    existing_task_ids = [
-        row[0]
-        for row in db.query(FunctionalTask.id)
-        .filter(FunctionalTask.project_id == task.project_id, FunctionalTask.id != task.id)
-        .all()
-    ]
-    if existing_task_ids:
-        case_rows = (
-            db.query(FunctionalCase, FunctionalTask)
-            .join(FunctionalTask, FunctionalCase.task_id == FunctionalTask.id)
-            .filter(FunctionalCase.task_id.in_(existing_task_ids))
-            .all()
-        )
-        for case, source_task in case_rows:
-            text = " ".join([case.title or "", case.precondition or "", case.steps or "", case.expected or "", source_task.iteration_name or ""])
-            score = keyword_score(text, keywords)
-            is_history_risk = normalize_functional_result(case.test_result) in {"failed", "blocked"}
-            if score <= 0 and not is_history_risk:
-                continue
-            add_candidate(
-                {
-                    "item_type": "functional_case",
-                    "ref_id": case.id,
-                    "title": case.title,
-                    "target": f"{source_task.iteration_name} / 用例#{case.id}",
-                    "risk_level": "P0" if is_history_risk else (case.priority or "P1"),
-                    "source": "history_failed" if is_history_risk else "keyword",
-                    "reason": "历史失败/阻塞用例" if is_history_risk else f"命中需求关键词 {score} 个",
-                }
-            )
-
-    try:
-        target_path = urlparse(task.target_url or "").path.strip("/").lower()
-    except Exception:
-        target_path = ""
-    for ui_case in db.query(UiCase).filter(UiCase.project_id == task.project_id).all():
-        text = f"{ui_case.case_name or ''} {ui_case.page_url or ''}"
-        score = keyword_score(text, keywords)
-        same_path = bool(target_path and target_path in (ui_case.page_url or "").lower())
-        if score <= 0 and not same_path:
-            continue
-        add_candidate(
-            {
-                "item_type": "ui_case",
-                "ref_id": ui_case.id,
-                "title": ui_case.case_name,
-                "target": ui_case.page_url,
-                "risk_level": "P1" if same_path else "P2",
-                "source": "same_url" if same_path else "keyword",
-                "reason": "同页面或同路径相关" if same_path else f"命中需求关键词 {score} 个",
-            }
-        )
-
-    for api_case in db.query(ApiCase).filter(ApiCase.project_id == task.project_id).all():
-        text = f"{api_case.case_name or ''} {api_case.url or ''}"
-        score = keyword_score(text, keywords)
-        if score <= 0:
-            continue
-        add_candidate(
-            {
-                "item_type": "api_case",
-                "ref_id": api_case.id,
-                "title": api_case.case_name,
-                "target": f"{api_case.method} {api_case.url}",
-                "risk_level": "P1",
-                "source": "keyword",
-                "reason": f"接口名称/路径命中需求关键词 {score} 个",
-            }
-        )
-
-    return candidates[:30]
-
-
-def normalize_data_check_payload(data: Dict[str, Any], require_name: bool = False) -> Dict[str, Any]:
-    if require_name or "rule_name" in data:
-        require_non_blank_text(data, "rule_name", "核对规则名称")
-    if "check_type" in data and data["check_type"]:
-        data["check_type"] = str(data["check_type"]).strip()
-    data = normalize_json_fields(data)
-    if "api_method" in data and data["api_method"]:
-        data["api_method"] = str(data["api_method"]).upper()
-    return data
-
-
-def full_data_check_url(task: FunctionalTask, api_url: str) -> str:
-    raw = (api_url or "").strip()
-    if not raw:
-        return ""
-    parsed = urlparse(raw)
-    if parsed.scheme and parsed.netloc:
-        return raw
-    base = urlparse(task.target_url or "")
-    origin = f"{base.scheme}://{base.netloc}" if base.scheme and base.netloc else ""
-    return urljoin(origin.rstrip("/") + "/", raw.lstrip("/")) if origin else raw
-
-
-def lookup_nested_value(payload: Any, path: str) -> Any:
-    if not path or path in {"json", "$"}:
-        return payload
-    current = payload
-    parts = [part for part in path.replace("[", ".").replace("]", "").split(".") if part and part != "json"]
-    for part in parts:
-        if isinstance(current, dict):
-            current = current.get(part)
-        elif isinstance(current, list) and part.isdigit():
-            index = int(part)
-            current = current[index] if 0 <= index < len(current) else None
-        else:
-            return None
-    return current
-
-
-def extract_response_value(response: requests.Response, value_path: str | None) -> Any:
-    path = (value_path or "json").strip()
-    if path == "status_code":
-        return response.status_code
-    if path.lower().startswith("header."):
-        return response.headers.get(path.split(".", 1)[1], "")
-    if path == "text":
-        return response.text
-    try:
-        payload = response.json()
-    except Exception:
-        payload = response.text
-    return lookup_nested_value(payload, path)
-
-
-def normalize_compare_text(value: Any) -> str:
-    return re.sub(r"\s+", "", str(value if value is not None else "")).strip()
-
-
-def normalize_decimal_value(value: Any) -> Decimal | None:
-    text_value = str(value if value is not None else "").strip()
-    text_value = re.sub(r"[^\d.\-]", "", text_value.replace(",", ""))
-    if not text_value:
-        return None
-    try:
-        return Decimal(text_value).quantize(Decimal("0.01"))
-    except (InvalidOperation, ValueError):
-        return None
-
-
-def compare_data_check_values(rule: FunctionalDataCheckRule, page_value: Any, api_value: Any) -> tuple[bool, str]:
-    compare_rule = parse_json_value(rule.compare_rule, {})
-    expected_value = rule.expected_value if rule.expected_value not in (None, "") else None
-    check_type = rule.check_type or "page_api_consistency"
-
-    left = page_value
-    right = api_value
-    if check_type == "amount_quantity":
-        left_amount = normalize_decimal_value(left)
-        right_amount = normalize_decimal_value(right)
-        expected_amount = normalize_decimal_value(expected_value) if expected_value is not None else None
-        if left_amount is None or right_amount is None:
-            return False, "金额/数量无法转换为数字"
-        if expected_amount is not None:
-            passed = left_amount == expected_amount and right_amount == expected_amount
-            return passed, f"页面={left_amount}，接口={right_amount}，预期={expected_amount}"
-        return left_amount == right_amount, f"页面={left_amount}，接口={right_amount}"
-
-    if check_type == "status_flow":
-        mapping = {}
-        if isinstance(compare_rule, dict):
-            mapping = compare_rule.get("status_mapping") or compare_rule.get("mapping") or {}
-        if isinstance(mapping, dict):
-            left = mapping.get(str(left), left)
-            right = mapping.get(str(right), right)
-
-    left_text = normalize_compare_text(left)
-    right_text = normalize_compare_text(right)
-    if expected_value is not None:
-        expected_text = normalize_compare_text(expected_value)
-        passed = left_text == expected_text and right_text == expected_text
-        return passed, f"页面={left_text}，接口={right_text}，预期={expected_text}"
-    return left_text == right_text, f"页面={left_text}，接口={right_text}"
-
-
-def execute_functional_data_check_rule(db: Session, task: FunctionalTask, rule: FunctionalDataCheckRule) -> FunctionalDataCheckResult:
-    page_value = rule.page_value or ""
-    api_value: Any = ""
-    result = "blocked"
-    message = ""
-    detail: Dict[str, Any] = {}
-    try:
-        url = full_data_check_url(task, rule.api_url or "")
-        if not url:
-            raise RuntimeError("接口 URL 不能为空")
-        headers = parse_json_value(rule.api_headers, {})
-        body_value = parse_json_value(rule.api_body, {})
-        body_text = "" if (rule.api_method or "GET").upper() == "GET" else json.dumps(body_value, ensure_ascii=False)
-        proxy_request = runtime_main_attr("guarded_proxy_request", guarded_proxy_request)
-        response = proxy_request(rule.api_method or "GET", url, headers if isinstance(headers, dict) else {}, body_text, 20)
-        api_value = extract_response_value(response, rule.api_value_path)
-        passed, message = compare_data_check_values(rule, page_value, api_value)
-        result = "passed" if passed else "failed"
-        detail = {
-            "status_code": response.status_code,
-            "api_url": url,
-            "api_value_path": rule.api_value_path,
-            "compare_type": rule.check_type,
-        }
-    except Exception as exc:
-        message = str(exc)
-        detail = {"error": str(exc)}
-
-    record = FunctionalDataCheckResult(
-        task_id=task.id,
-        rule_id=rule.id,
-        result=result,
-        page_value=str(page_value),
-        api_value=json.dumps(api_value, ensure_ascii=False, default=str) if isinstance(api_value, (dict, list)) else str(api_value),
-        message=message,
-        detail=json.dumps(detail, ensure_ascii=False, default=str),
-        execute_time=datetime.now(),
-    )
-    db.add(record)
-    db.commit()
-    db.refresh(record)
-    return record
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 CASE_GENERATION_TEST_RESULTS = {"untested", "passed", "failed", "blocked", "skipped"}
@@ -2455,4 +1220,67 @@ from .serialization import (
     safe_file_response,
     latest_ai_config,
     serialize_ai_config,
+)
+
+
+from .functional_results import (
+    normalize_functional_result,
+    functional_result_counts,
+    latest_data_check_results_by_rule,
+    functional_task_conclusion_summary,
+    functional_task_detail,
+)
+from .functional_quality import (
+    normalize_variable_name,
+    quality_report_payload,
+    parse_case_steps,
+    functional_case_ui_payload,
+    functional_case_kind,
+    functional_case_auto_trusted,
+    case_has_business_assertion,
+    meaningful_expected_text,
+    _json_log_payload,
+    _business_assertion_count_from_log,
+    _api_assertion_count_from_log,
+    classify_failure_category,
+    test_record_credibility_payload,
+    _check_item,
+    functional_case_credibility_payload,
+    functional_case_credibility_summary,
+    ensure_weak_business_assertion,
+    case_locator_issues,
+    case_step_structure_issues,
+)
+from .functional_preflight import (
+    placeholder_names,
+    seed_has_key,
+    case_required_seed_keys,
+    first_pattern_value,
+    clean_seed_value,
+    build_functional_seed_text,
+    seed_functional_package_data,
+    functional_task_runtime_variables,
+    account_preflight_status,
+    guess_functional_login_url,
+    evaluate_functional_case_quality,
+    functional_package_preflight_summary,
+    _case_group_key,
+    functional_preflight_case_groups,
+    functional_missing_variables_detail,
+    functional_preflight_primary_action,
+    preflight_functional_package,
+    functional_task_keywords,
+    keyword_score,
+    impact_item_key,
+    suggest_functional_impact_items,
+)
+from .functional_data_checks import (
+    normalize_data_check_payload,
+    full_data_check_url,
+    lookup_nested_value,
+    extract_response_value,
+    normalize_compare_text,
+    normalize_decimal_value,
+    compare_data_check_values,
+    execute_functional_data_check_rule,
 )

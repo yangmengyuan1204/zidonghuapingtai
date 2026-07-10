@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sys
 
+from ..executors import parse_json_value
+
 
 _COMPAT_NAMES = (
     'ALLOWED_UI_ACTIONS',
