@@ -21,6 +21,7 @@ _COMPAT_NAMES = (
     '_first_stock',
     '_response_json',
     '_runtime_from_variables',
+    '_paused_summary',
     '_stop_after_node',
     'datetime',
     'json',
@@ -316,6 +317,17 @@ def _impl__is_paused(summary: Dict[str, Any] | None) -> bool:
     return bool(isinstance(summary, dict) and summary.get("paused"))
 
 
+def _impl__finish_paused(
+    script_name: str,
+    log: Dict[str, Any],
+    node: str,
+    summary: Dict[str, Any] | None = None,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
+    paused = _paused_summary(node, summary)
+    log["paused"] = paused
+    return _finish_named(script_name, log, True, paused)
+
+
 _runtime_from_variables = _compat_wrapper(_impl__runtime_from_variables)
 _admin_session_from = _compat_wrapper(_impl__admin_session_from)
 _client_login_inputs = _compat_wrapper(_impl__client_login_inputs)
@@ -341,3 +353,4 @@ _stop_after_node = _compat_wrapper(_impl__stop_after_node)
 _checkpoint_requested = _compat_wrapper(_impl__checkpoint_requested)
 _paused_summary = _compat_wrapper(_impl__paused_summary)
 _is_paused = _compat_wrapper(_impl__is_paused)
+_finish_paused = _compat_wrapper(_impl__finish_paused)
