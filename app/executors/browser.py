@@ -32,7 +32,7 @@ def _browser_executable_candidates() -> list[str]:
     for channel_dir in ["chromium", "chrome", "msedge"]:
         p = Path(playwright_browsers) / channel_dir
         if p.is_dir():
-            for exe in ["chrome.exe", "chrome-win" / "chrome.exe", "chrome-win64" / "chrome.exe"]:
+            for exe in ["chrome.exe", r"chrome-win\chrome.exe", r"chrome-win64\chrome.exe"]:
                 full = p / exe
                 if full.exists():
                     candidates.append(str(full))

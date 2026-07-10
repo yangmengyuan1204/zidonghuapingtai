@@ -12,7 +12,7 @@ from .utils import BASE_DIR, STATIC_DIR
 def create_app(*, lifespan: Any) -> FastAPI:
     disable_docs = os.getenv("DISABLE_OPENAPI", "").strip() in {"1", "true", "yes"}
     return FastAPI(
-        title="API + UI automation test platform",
+        title="接口 + UI 自动化测试平台",
         lifespan=lifespan,
         docs_url=None if disable_docs else "/docs",
         redoc_url=None if disable_docs else "/redoc",
