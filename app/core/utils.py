@@ -513,336 +513,42 @@ FAILURE_CATEGORY_LABELS = {
 
 
 
-CASE_GENERATION_TEST_RESULTS = {"untested", "passed", "failed", "blocked", "skipped"}
-CASE_GENERATION_WORKSPACE_TASK_NAME = "用例生成草稿"
-CASE_GENERATION_WORKSPACE_TARGET_NAME = "用例生成"
 
 
-def case_generation_case_is_protected(item: CaseGenerationCase) -> bool:
-    return bool(item.manual_edited) or (item.test_result or "untested") != "untested"
 
 
-def ensure_case_generation_workspace(db: Session, project_id: int) -> CaseGenerationTask:
-    ensure_project_exists(db, project_id)
-    task = (
-        db.query(CaseGenerationTask)
-        .filter(
-            CaseGenerationTask.project_id == project_id,
-            CaseGenerationTask.task_name == CASE_GENERATION_WORKSPACE_TASK_NAME,
-            CaseGenerationTask.target_name == CASE_GENERATION_WORKSPACE_TARGET_NAME,
-        )
-        .order_by(CaseGenerationTask.id.desc())
-        .first()
-    )
-    if task:
-        return task
-    task = CaseGenerationTask(
-        project_id=project_id,
-        task_name=CASE_GENERATION_WORKSPACE_TASK_NAME,
-        target_name=CASE_GENERATION_WORKSPACE_TARGET_NAME,
-        target_url="",
-        requirement_text="",
-        context="",
-        status="draft",
-        create_time=datetime.now(),
-        update_time=None,
-    )
-    db.add(task)
-    db.commit()
-    db.refresh(task)
-    return task
 
 
-def case_generation_serialize_json(value: Any) -> str:
-    return json.dumps(value or [], ensure_ascii=False)
 
 
-def apply_case_generation_ocr_material(screenshot: CaseGenerationScreenshot, analysis_result: str) -> None:
-    payload = parse_json_value(analysis_result, {})
-    material = payload.get("ocr_material") if isinstance(payload, dict) else {}
-    if not isinstance(material, dict):
-        material = {}
-    screenshot.ocr_text = str(material.get("ocr_text") or "")
-    try:
-        screenshot.ocr_confidence = float(material.get("ocr_confidence") or 0)
-    except (TypeError, ValueError):
-        screenshot.ocr_confidence = 0
-    screenshot.low_confidence_items = case_generation_serialize_json(material.get("low_confidence_items"))
-    screenshot.regions = case_generation_serialize_json(material.get("regions"))
-    screenshot.needs_manual_confirm = 1 if material.get("needs_manual_confirm", True) else 0
-    screenshot.ocr_error = str(material.get("ocr_error") or "")
 
 
-def case_generation_task_proxy(task: CaseGenerationTask) -> SimpleNamespace:
-    target = task.target_url or task.target_name or ""
-    return SimpleNamespace(
-        id=task.id,
-        project_id=task.project_id,
-        iteration_name=task.task_name,
-        target_url=target,
-        requirement_text=task.requirement_text or "",
-        context=task.context or "",
-        status=task.status,
-    )
 
 
-def case_generation_source_refs(
-    screenshots: Iterable[CaseGenerationScreenshot],
-    notes: Iterable[CaseGenerationRequirementNote],
-) -> str:
-    payload = {
-        "screenshots": [item.id for item in screenshots],
-        "notes": [item.id for item in notes],
-        "initial_requirement": True,
-    }
-    return json.dumps(payload, ensure_ascii=False)
 
 
-def case_generation_refs_include_screenshot(item: CaseGenerationCase, screenshot_id: int) -> bool:
-    refs = parse_json_value(item.source_refs, {})
-    values = refs.get("screenshots") if isinstance(refs, dict) else []
-    return str(screenshot_id) in {str(value) for value in (values or [])}
 
 
-def case_generation_refs_include_note(item: CaseGenerationCase, note_id: int) -> bool:
-    refs = parse_json_value(item.source_refs, {})
-    values = refs.get("notes") if isinstance(refs, dict) else []
-    return str(note_id) in {str(value) for value in (values or [])}
 
 
-def case_generation_stats(cases: Iterable[CaseGenerationCase]) -> Dict[str, int]:
-    stats = {key: 0 for key in ["total", "untested", "passed", "failed", "blocked", "skipped"]}
-    for item in cases:
-        stats["total"] += 1
-        result = item.test_result or "untested"
-        if result not in CASE_GENERATION_TEST_RESULTS:
-            result = "untested"
-        stats[result] += 1
-    return stats
 
 
-def case_generation_detail(db: Session, task: CaseGenerationTask) -> Dict[str, Any]:
-    data = serialize(task)
-    project = db.get(Project, task.project_id)
-    data["project_name"] = project.name if project else task.project_id
-    screenshots = (
-        db.query(CaseGenerationScreenshot)
-        .filter(CaseGenerationScreenshot.task_id == task.id)
-        .order_by(CaseGenerationScreenshot.id.desc())
-        .all()
-    )
-    notes = (
-        db.query(CaseGenerationRequirementNote)
-        .filter(CaseGenerationRequirementNote.task_id == task.id)
-        .order_by(CaseGenerationRequirementNote.id.desc())
-        .all()
-    )
-    cases = (
-        db.query(CaseGenerationCase)
-        .filter(CaseGenerationCase.task_id == task.id)
-        .order_by(CaseGenerationCase.id.asc())
-        .all()
-    )
-    data["screenshots"] = serialize_many(screenshots)
-    data["requirement_notes"] = serialize_many(notes)
-    data["cases"] = serialize_many(cases)
-    data["stats"] = case_generation_stats(cases)
-    return data
 
 
-def remove_uploaded_case_generation_file(raw_path: str | None) -> None:
-    if not raw_path:
-        return
-    try:
-        path = Path(raw_path)
-        if not path.is_absolute():
-            path = BASE_DIR / path
-        resolved = path.resolve()
-        reports_dir = (BASE_DIR / "reports").resolve()
-        if resolved.exists() and resolved.is_file() and (resolved == reports_dir or reports_dir in resolved.parents):
-            resolved.unlink()
-    except Exception:
-        pass
 
 
-def case_generation_screenshot_impact(db: Session, screenshot: CaseGenerationScreenshot) -> Dict[str, int]:
-    impacted = [
-        item
-        for item in db.query(CaseGenerationCase).filter(CaseGenerationCase.task_id == screenshot.task_id).all()
-        if case_generation_refs_include_screenshot(item, screenshot.id)
-    ]
-    deletable = [item for item in impacted if not case_generation_case_is_protected(item)]
-    protected = [item for item in impacted if case_generation_case_is_protected(item)]
-    return {
-        "total": len(impacted),
-        "deletable": len(deletable),
-        "protected": len(protected),
-    }
 
 
-def generate_case_generation_cases_for_task(db: Session, task: CaseGenerationTask) -> Dict[str, Any]:
-    screenshots = (
-        db.query(CaseGenerationScreenshot)
-        .filter(CaseGenerationScreenshot.task_id == task.id)
-        .order_by(CaseGenerationScreenshot.id.asc())
-        .all()
-    )
-    notes = (
-        db.query(CaseGenerationRequirementNote)
-        .filter(CaseGenerationRequirementNote.task_id == task.id)
-        .order_by(CaseGenerationRequirementNote.id.asc())
-        .all()
-    )
-    generated = generate_functional_cases(
-        case_generation_task_proxy(task),
-        "",
-        None,
-        latest_ai_config(db),
-        screenshots,
-        notes,
-    )
-    for old_case in db.query(CaseGenerationCase).filter(CaseGenerationCase.task_id == task.id).all():
-        if not case_generation_case_is_protected(old_case):
-            db.delete(old_case)
-    db.flush()
-
-    batch = uuid4().hex[:12]
-    source_refs = case_generation_source_refs(screenshots, notes)
-    created = 0
-    for item in generated.items:
-        title = (item.get("title") or "").strip()
-        if not title:
-            continue
-        db.add(
-            CaseGenerationCase(
-                task_id=task.id,
-                title=title[:200],
-                precondition=item.get("precondition", ""),
-                steps=item.get("steps", ""),
-                expected=item.get("expected", ""),
-                priority=item.get("priority", "P1"),
-                source_refs=source_refs,
-                generation_batch=batch,
-                manual_edited=0,
-                test_result="untested",
-                source_missing=0,
-                remark="",
-                create_time=datetime.now(),
-                update_time=None,
-            )
-        )
-        created += 1
-    task.status = "cases_generated"
-    task.update_time = datetime.now()
-    db.commit()
-    db.refresh(task)
-    return {"created": created, "workspace": case_generation_detail(db, task)}
 
 
-def batch_update_case_generation_cases_for_task(
-    db: Session,
-    task_id: int,
-    payload: CaseGenerationCaseBatchStatusUpdate,
-) -> Dict[str, Any]:
-    if payload.test_result not in CASE_GENERATION_TEST_RESULTS:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的测试状态")
-    updated = (
-        db.query(CaseGenerationCase)
-        .filter(CaseGenerationCase.task_id == task_id, CaseGenerationCase.id.in_(payload.case_ids or [-1]))
-        .update({"test_result": payload.test_result, "update_time": datetime.now()}, synchronize_session="fetch")
-    )
-    db.commit()
-    return {"updated": updated, "test_result": payload.test_result}
 
 
-def ensure_case_generation_task(db: Session, task_id: int) -> CaseGenerationTask:
-    return get_or_404(db, CaseGenerationTask, task_id)
 
 
-def enrich_log_with_exec_params(log_text: str, **exec_params: Any) -> str:
-    """将加密后的执行上下文嵌入日志，供安全的再次执行使用。"""
-    if not exec_params:
-        return log_text
-    params = dict(exec_params)
-    variables = params.pop("variables", {})
-    if not isinstance(variables, dict):
-        variables = {}
-    script_key = str(params.pop("script_key", None) or params.pop("script", None) or "").strip()
-    kind = str(params.pop("kind", "") or "").strip()
-    if not kind:
-        kind = "api_case" if script_key == "api_case" else "ui_case" if script_key == "ui_case" else "data_script"
-    metadata: Dict[str, Any] = {
-        "version": 1,
-        "kind": kind,
-        "variables_encrypted": encrypt_account_payload(variables),
-    }
-    if script_key:
-        metadata["script_key"] = script_key
-    for key in ("target_id", "project_id", "env_id", "account_mode", "account_profile_id"):
-        value = params.get(key)
-        if value not in (None, ""):
-            metadata[key] = value
-    try:
-        log_data = json.loads(log_text) if log_text else {}
-    except (json.JSONDecodeError, TypeError):
-        return log_text
-    if isinstance(log_data, dict):
-        log_data.pop("_exec_params", None)
-        log_data["_exec_meta"] = metadata
-        return json.dumps(log_data, ensure_ascii=False, default=str)
-    return log_text
 
 
-def save_ui_record(db: Session, case: UiCase, passed: bool, log_text: str, report_path: str, screenshot_path: str = "", **exec_params: Any) -> TestRecord:
-    if exec_params:
-        exec_params.setdefault("target_id", case.id)
-        exec_params.setdefault("project_id", case.project_id)
-    log_text = enrich_log_with_exec_params(log_text, **exec_params)
-    record = TestRecord(
-        case_type="ui",
-        case_id=case.id,
-        project_id=case.project_id,
-        result="passed" if passed else "failed",
-        log=log_text,
-        screenshot=screenshot_path,
-        report_path=report_path,
-        execute_time=datetime.now(),
-    )
-    db.add(record)
-    safe_commit(db)
-    db.refresh(record)
-    return record
 
 
-def save_record(
-    db: Session,
-    case_type: str,
-    case_id: int,
-    passed: bool,
-    log_text: str,
-    report_path: str,
-    screenshot: str = "",
-    project_id: int | None = None,
-    **exec_params: Any,
-) -> TestRecord:
-    if exec_params:
-        exec_params.setdefault("target_id", case_id)
-        exec_params.setdefault("project_id", project_id)
-    log_text = enrich_log_with_exec_params(log_text, **exec_params)
-    record = TestRecord(
-        case_type=case_type,
-        case_id=case_id,
-        project_id=project_id,
-        result="passed" if passed else "failed",
-        log=log_text,
-        screenshot=screenshot,
-        report_path=report_path,
-        execute_time=datetime.now(),
-    )
-    db.add(record)
-    safe_commit(db)
-    db.refresh(record)
-    return record
 
 
 
@@ -937,216 +643,16 @@ def _record_login_attempt(client_ip: str, username: str = "") -> None:
                 del _LOGIN_RATE_LIMIT[k]
 
 
-def ui_steps_have_strong_assertion(steps: Any) -> bool:
-    parsed = parse_json_value(steps, steps)
-    if isinstance(parsed, str):
-        parsed = parse_json_value(parsed, [])
-    if not isinstance(parsed, list):
-        return False
-    strong_actions = {"assert_url", "assert_visible", "assert_value", "text_assert"}
-    for step in parsed:
-        if not isinstance(step, dict):
-            continue
-        if step.get("action") in strong_actions:
-            return True
-        if step.get("success_condition") or step.get("assertions"):
-            return True
-    return False
 
 
-def save_generated_functional_ui_steps(
-    db: Session,
-    task: FunctionalTask,
-    case: FunctionalCase,
-    snapshot: PageSnapshot | None = None,
-) -> Dict[str, Any]:
-    generated = generate_ui_steps(case, task, snapshot, latest_ai_config(db))
-    generated_steps = generated.items
-    if functional_case_kind(case) == FUNCTIONAL_CASE_KIND_BUSINESS_AUTH:
-        generated_steps, _removed_login_steps = _strip_leading_login_steps(generated_steps)
-    steps_text = to_json_text(generated_steps, [])
-    if case.ui_case_id:
-        ui_case = db.get(UiCase, case.ui_case_id)
-        if ui_case:
-            ui_case.case_name = case.title
-            ui_case.page_url = task.target_url
-            ui_case.steps = steps_text
-            ui_case.status = "draft"
-        else:
-            case.ui_case_id = None
-    if not case.ui_case_id:
-        ui_case = UiCase(
-            project_id=task.project_id,
-            case_name=case.title,
-            page_url=task.target_url,
-            steps=steps_text,
-            timeout=30,
-            status="draft",
-            create_time=datetime.now(),
-        )
-        db.add(ui_case)
-        db.flush()
-        case.ui_case_id = ui_case.id
-    case.automation_status = "draft"
-    task.status = "ui_steps_generated"
-    return {"source": generated.source, "warning": generated.warning, "case": serialize(case), "steps": generated_steps}
 
 
-def can_execute_functional_case(
-    functional_case: FunctionalCase,
-    payload: FunctionalExecuteRequest | None = None,
-) -> tuple[bool, str]:
-    """
-    执行前门禁检查。
-    Returns (allowed, reason) — allowed=False 则拒绝执行。
-    """
-    if functional_case.automation_status != "approved":
-        return False, f"用例状态为 {functional_case.automation_status}，仅 approved 可自动执行"
-    if not functional_case.ui_case_id:
-        return False, "尚未关联 UI 步骤，无法执行"
-    quality = functional_case.quality_status or QUALITY_UNCHECKED
-    trial_mode = bool(payload and (payload.force or payload.execution_mode == "trial"))
-    if quality in (QUALITY_AUTH_RISK, QUALITY_MISSING_VARIABLES, QUALITY_NOT_RECOMMENDED):
-        return False, f"预检未通过（{quality}），不允许自动执行"
-    if quality in (QUALITY_LOCATOR_RISK, QUALITY_NEEDS_REVIEW) and not trial_mode:
-        return False, f"预检未通过（{quality}），不允许自动执行"
-    return True, ""
 
 
-def execute_functional_case_for_run(
-    db: Session,
-    functional_case: FunctionalCase,
-    variables: Dict[str, Any],
-    payload: FunctionalExecuteRequest | None = None,
-) -> tuple[Dict[str, Any], int, int]:
-    # ── 执行门禁 ──────────────────────────────────────
-    allowed, reason = can_execute_functional_case(functional_case, payload)
-    if not allowed:
-        return (
-            {
-                "functional_case_id": functional_case.id,
-                "title": functional_case.title,
-                "result": "failed",
-                "error": reason,
-                "gate_blocked": True,
-            },
-            0,
-            1,
-        )
-    # ──────────────────────────────────────────────────
-    ui_case = db.get(UiCase, functional_case.ui_case_id) if functional_case.ui_case_id else None
-    if not ui_case:
-        return (
-            {
-                "functional_case_id": functional_case.id,
-                "title": functional_case.title,
-                "result": "failed",
-                "error": "关联UI用例不存在",
-            },
-            0,
-            1,
-        )
-    case_variables, execution_context = resolve_execution_account(
-        db,
-        payload,
-        "functional_case",
-        functional_case.id,
-        ui_case.project_id,
-        ui_case.page_url,
-    )
-    case_variables = {**variables, **case_variables}
-    execution_context = dict(execution_context or {})
-    execution_context["strip_login_steps"] = True
-    try:
-        passed, log_text, screenshot_path, report_path = execute_ui_case(ui_case, case_variables, execution_context, None, db)
-    except Exception as exc:
-        passed = False
-        screenshot_path = ""
-        report_path = ""
-        log_text = json.dumps(
-            {
-                "case_name": ui_case.case_name,
-                "page_url": ui_case.page_url,
-                "error": str(exc),
-                "finished_at": datetime.now(),
-            },
-            ensure_ascii=False,
-            indent=2,
-            default=str,
-        )
-    record = save_ui_record(db, ui_case, passed, log_text, report_path, screenshot_path)
-    return (
-        {
-            "functional_case_id": functional_case.id,
-            "ui_case_id": ui_case.id,
-            "record_id": record.id,
-            "title": functional_case.title,
-            "result": record.result,
-            "screenshot": screenshot_path,
-            "log": log_text,
-        },
-        1 if passed else 0,
-        0 if passed else 1,
-    )
 
 
-def execute_functional_case_for_run_isolated(
-    functional_case_id: int,
-    variables: Dict[str, Any],
-    payload_data: Dict[str, Any] | None = None,
-) -> tuple[Dict[str, Any], int, int]:
-    from ..database import SessionLocal
-
-    db = SessionLocal()
-    try:
-        functional_case = db.get(FunctionalCase, functional_case_id)
-        if not functional_case:
-            return (
-                {
-                    "functional_case_id": functional_case_id,
-                    "title": f"#{functional_case_id}",
-                    "result": "failed",
-                    "error": "功能用例不存在",
-                },
-                0,
-                1,
-            )
-        payload = FunctionalExecuteRequest(**payload_data) if payload_data else None
-        return execute_functional_case_for_run(db, functional_case, variables, payload)
-    finally:
-        db.close()
 
 
-def save_functional_run(
-    db: Session,
-    task: FunctionalTask,
-    variables: Dict[str, Any],
-    records: list[Dict[str, Any]],
-    passed_count: int,
-    failed_count: int,
-) -> FunctionalRun:
-    result = "passed" if failed_count == 0 else "failed"
-    log_payload = {
-        "task_id": task.id,
-        "task": task.iteration_name,
-        "variables": {key: ("***" if "password" in str(key).lower() else value) for key, value in variables.items()},
-        "records": records,
-        "passed_count": passed_count,
-        "failed_count": failed_count,
-    }
-    run = FunctionalRun(
-        task_id=task.id,
-        result=result,
-        log=json.dumps(log_payload, ensure_ascii=False, indent=2, default=str),
-        passed_count=passed_count,
-        failed_count=failed_count,
-        execute_time=datetime.now(),
-    )
-    task.status = result
-    db.add(run)
-    db.commit()
-    db.refresh(run)
-    return run
 
 
 from .data_script_context import (
@@ -1283,4 +789,39 @@ from .functional_data_checks import (
     normalize_decimal_value,
     compare_data_check_values,
     execute_functional_data_check_rule,
+)
+
+
+from .case_generation_utils import (
+    CASE_GENERATION_TEST_RESULTS,
+    CASE_GENERATION_WORKSPACE_TASK_NAME,
+    CASE_GENERATION_WORKSPACE_TARGET_NAME,
+    case_generation_case_is_protected,
+    ensure_case_generation_workspace,
+    case_generation_serialize_json,
+    apply_case_generation_ocr_material,
+    case_generation_task_proxy,
+    case_generation_source_refs,
+    case_generation_refs_include_screenshot,
+    case_generation_refs_include_note,
+    case_generation_stats,
+    case_generation_detail,
+    remove_uploaded_case_generation_file,
+    case_generation_screenshot_impact,
+    generate_case_generation_cases_for_task,
+    batch_update_case_generation_cases_for_task,
+    ensure_case_generation_task,
+)
+from .record_utils import (
+    enrich_log_with_exec_params,
+    save_ui_record,
+    save_record,
+)
+from .functional_execution_utils import (
+    ui_steps_have_strong_assertion,
+    save_generated_functional_ui_steps,
+    can_execute_functional_case,
+    execute_functional_case_for_run,
+    execute_functional_case_for_run_isolated,
+    save_functional_run,
 )
