@@ -305,6 +305,15 @@ if (!window.__fullFlowDataScriptLoaded) {
     return next;
   }
 
+  function validateFullFlowPartPayVariables(variables, flow) {
+    if (!isFullFlowPartPayScript(flow)) return;
+    if (!boolValue(variables?.order_part_pay, true)) return;
+    if (!boolValue(variables?.order_part_pay_tail_partial_enabled, false)) return;
+    if (!fullFlowPartPaySelectionText(variables?.order_part_pay_tail_sortings)) {
+      throw new Error("按番尾款已启用，但未填写番序号");
+    }
+  }
+
   function fullFlowPartPayDisplayValues(variables) {
     const normalized = normalizeFullFlowPartPayVariables(variables, { id: FULL_FLOW_PART_PAY_SCRIPT_ID, scriptType: "full_flow", name: FULL_FLOW_PART_PAY_SCRIPT_NAME });
     const timing = fullFlowPartPayFeeTiming(normalized.order_part_pay_fee_timing);
@@ -1391,6 +1400,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       try {
         const data = readForm(form);
         const next = runtimeVariables(true);
+        validateFullFlowPartPayVariables(next, flow);
         if (data.__save_defaults) saveFlowVariables(flow, fullFlowCopyDefaultVariables(next));
         await runSavedFlow(flow, next);
       } catch (error) {

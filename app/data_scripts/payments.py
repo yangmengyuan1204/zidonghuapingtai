@@ -126,6 +126,8 @@ def _run_balance_recharge_script(env: Env, variables: Dict[str, Any] | None = No
         # Step 2: 后台确认入金
         finance_confirm = _as_bool(variables.get("finance_confirm"), True)
         confirm_ok = True
+        selected_bill: Dict[str, Any] | None = None
+        list_payload: Dict[str, Any] = {}
         if finance_confirm:
             session = _admin_session_from(variables)
             login_payload, token = _admin_login(session, base_url, variables, timeout)
@@ -143,9 +145,10 @@ def _run_balance_recharge_script(env: Env, variables: Dict[str, Any] | None = No
                 retries = _as_int(variables.get("finance_confirm_retries"), 6)
                 if initial_delay > 0:
                     time.sleep(initial_delay)
-                list_payload: Dict[str, Any] = {}
                 confirm_payload: Dict[str, Any] = {}
-                selected_bill: Dict[str, Any] | None = None
+                fallback_list_payload: Dict[str, Any] | None = None
+                fallback_list_fields: OrderedDict[str, Any] | None = None
+                fallback_rows: list[Dict[str, Any]] = []
                 for attempt in range(retries):
                     list_fields = _finance_unconfirm_fields(variables, serial_number, "")
                     list_payload = _post_admin_form(
@@ -157,11 +160,44 @@ def _run_balance_recharge_script(env: Env, variables: Dict[str, Any] | None = No
                     )
                     rows = _finance_rows_from_payload(list_payload)
                     selected_bill = _select_finance_bill(rows, serial_number, "")
+                    if serial_number and selected_bill and str(selected_bill.get("serial_number") or "") != serial_number:
+                        selected_bill = None
+                    # 当前后台接口带 serial_number 筛选时可能返回空列表，去掉筛选后再在客户端精确匹配流水号。
+                    if _api_success(list_payload) and not selected_bill and serial_number:
+                        fallback_list_fields = _finance_unconfirm_fields(variables, "", "")
+                        fallback_list_payload = _post_admin_form(
+                            session,
+                            base_url,
+                            _api_path(variables, "admin_bill_unconfirm_list", "/bill.unConfirmList"),
+                            fallback_list_fields,
+                            timeout,
+                        )
+                        fallback_rows = _finance_rows_from_payload(fallback_list_payload)
+                        fallback_selected = _select_finance_bill(fallback_rows, serial_number, "")
+                        if fallback_selected and str(fallback_selected.get("serial_number") or "") == serial_number:
+                            list_payload = fallback_list_payload
+                            rows = fallback_rows
+                            selected_bill = fallback_selected
                     if _api_success(list_payload) and selected_bill and selected_bill.get("id") not in (None, ""):
                         break
                     if attempt < retries - 1:
                         time.sleep(retry_delay)
-                log["finance"]["unconfirm_list"] = {**_payload_brief(list_payload), "serial_number": serial_number, "selected_bill": _finance_bill_brief(selected_bill)}
+                log["finance"]["unconfirm_list"] = {
+                    **_payload_brief(list_payload),
+                    "request": dict(fallback_list_fields or list_fields),
+                    "row_count": len(rows),
+                    "serial_number": serial_number,
+                    "selected_bill": _finance_bill_brief(selected_bill),
+                }
+                if fallback_list_payload is not None:
+                    log["finance"]["unconfirm_list_fallback"] = {
+                        **_payload_brief(fallback_list_payload),
+                        "request": dict(fallback_list_fields or {}),
+                        "row_count": len(fallback_rows),
+                        "selected_bill": _finance_bill_brief(
+                            _select_finance_bill(fallback_rows, serial_number, "")
+                        ),
+                    }
                 if _api_success(list_payload) and selected_bill and selected_bill.get("id") not in (None, ""):
                     confirm_payload = _post_admin_form(
                         session,
@@ -180,6 +216,8 @@ def _run_balance_recharge_script(env: Env, variables: Dict[str, Any] | None = No
                     last_msg = last_payload.get("msg") or last_payload.get("data") or "\u8d22\u52a1\u786e\u8ba4\u5165\u91d1\u5931\u8d25"
                     log["finance"]["reason"] = f"\u8d22\u52a1\u786e\u8ba4\u5165\u91d1\u5931\u8d25\uff1a{last_msg}"
 
+        if finance_confirm and not confirm_ok and not selected_bill and _api_success(list_payload):
+            log["finance"]["reason"] = f"\u5f85\u786e\u8ba4\u5217\u8868\u672a\u627e\u5230\u6d41\u6c34\u53f7 {serial_number}"
         passed = recharge_ok and confirm_ok
         summary = {
             "recharge_type": "balance",

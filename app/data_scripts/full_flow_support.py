@@ -64,7 +64,10 @@ def _impl__looks_like_balance_insufficient(summary: Dict[str, Any], log_text: st
     text = _summary_text(summary, log_text)
     if any(marker.lower() in text for marker in BALANCE_INSUFFICIENT_MARKERS):
         return True
-    return "\u4f59\u989d" in text and any(marker in text for marker in ["\u4e0d\u8db3", "\u4e0d\u591f", "\u4f4e\u4e8e"])
+    return (
+        ("\u4f59\u989d" in text and any(marker in text for marker in ["\u4e0d\u8db3", "\u4e0d\u591f", "\u4f4e\u4e8e"]))
+        or ("\u6b8b\u9ad8" in text and "\u4e0d\u8db3" in text)
+    )
 
 
 def _impl__payment_with_bank_fallback(

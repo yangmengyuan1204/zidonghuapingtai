@@ -26,6 +26,7 @@ _COMPAT_NAMES = (
     '_full_flow_part_pay_script_enabled',
     '_load_payment_order',
     '_login_client_for_payment',
+    '_looks_like_balance_insufficient',
     '_nested_rows',
     '_order_part_pay_enabled',
     '_order_part_pay_tail_node',
@@ -67,6 +68,7 @@ _COMPAT_NAMES = (
     'bulk_cart',
     'datetime',
     're',
+    'run_bank_payment_script',
     'timedelta',
 )
 
@@ -722,6 +724,13 @@ def _impl__run_order_tail_payment_if_needed(
         "order_sn": order_sn,
         "payment_stage": "tail",
     }
+    configured_payment_mode = str(
+        variables.get("order_tail_payment_mode")
+        or variables.get("order_payment_mode")
+        or variables.get("payment_mode")
+        or "balance_first"
+    ).strip().lower()
+    balance_first = configured_payment_mode not in {"bank", "bank_payment"}
     payment_mode = _order_tail_payment_mode(variables)
     path = _order_tail_payment_path(variables, payment_mode)
     if not path:
@@ -814,13 +823,90 @@ def _impl__run_order_tail_payment_if_needed(
                 "request": dict(fields),
                 "payment_mode": payment_mode,
                 "payment_passed": passed,
+                "attempted_payment_types": [payment_mode],
                 **_payload_brief(payment_payload),
             }
         )
         if data.get("serial_number"):
             summary["serial_number"] = str(data.get("serial_number"))
+        if not passed and payment_mode == "balance" and balance_first and _looks_like_balance_insufficient(summary, str(payment_payload)):
+            balance_failure = dict(summary)
+            bank_path = _order_tail_payment_path(variables, "bank")
+            bank_amount = _order_tail_pay_amount_from_pay_data(pay_data_payload) if pay_data_payload else ""
+            if bank_amount:
+                bank_amount_summary = {"source": "order_pay_data", "payment_scope": partial_context.get("payment_scope") or "full_remaining"}
+            else:
+                bank_amount, bank_amount_summary = _order_tail_bank_pay_amount(client, variables, order_sn, payment_log)
+            if not _positive_decimal(bank_amount):
+                summary.update(
+                    {
+                        "fallback_from_balance": True,
+                        "attempted_payment_types": ["balance", "bank"],
+                        "balance_failure": balance_failure,
+                        "payment_mode": "bank",
+                        "amount_lookup": bank_amount_summary,
+                        "pay_amount": bank_amount,
+                        "reason": "\u672a\u83b7\u53d6\u5230\u5c3e\u6b3e\u94f6\u884c\u652f\u4ed8\u91d1\u989d",
+                    }
+                )
+                log.setdefault("order_tail_payments", []).append(summary)
+                return False, summary
+
+            bank_fields: OrderedDict[str, Any] = OrderedDict()
+            bank_fields["pay_bank_method"] = str(variables.get("order_tail_pay_bank_method") or variables.get("pay_bank_method") or "2")
+            bank_fields["pay_reach_date"] = _bank_pay_reach_date(variables, datetime.now())
+            bank_fields["pay_name"] = str(variables.get("pay_name") or "\u81ea\u52a8\u5316\u6d4b\u8bd5")
+            bank_fields["pay_amount"] = bank_amount
+            bank_fields["pay_remark"] = str(variables.get("order_tail_pay_remark") or variables.get("pay_remark") or "")
+            bank_fields["discounts_id"] = str(variables.get("discounts_id") or "")
+            bank_fields["order_sn"] = order_sn
+            bank_fields["merge_pay"] = str(variables.get("order_tail_merge_pay") or variables.get("merge_pay") or "0")
+            bank_fields["predict_logistics_price_is_pay"] = str(variables.get("predict_logistics_price_is_pay") or "0")
+            _order_tail_apply_payment_detail_fields(bank_fields, payment_detail_ids)
+            _apply_extra_fields(bank_fields, variables.get("order_tail_pay_fields") or variables.get("tail_pay_fields"))
+            payment_payload = _call_with_retry("order tail bank payment", lambda: client.post_form(bank_path, bank_fields))
+            data = payment_payload.get("data") if isinstance(payment_payload.get("data"), dict) else {}
+            passed = _api_success(payment_payload)
+            for response_key in ["success", "code", "msg", "message", "data", "data_count"]:
+                summary.pop(response_key, None)
+            for response_key in [key for key in list(summary) if key.startswith("data.")]:
+                summary.pop(response_key, None)
+            summary.update(
+                {
+                    "fallback_from_balance": True,
+                    "attempted_payment_types": ["balance", "bank"],
+                    "balance_failure": balance_failure,
+                    "base_url": base_url,
+                    "path": bank_path,
+                    "request": dict(bank_fields),
+                    "payment_mode": "bank",
+                    "pay_amount": bank_amount,
+                    "payment_passed": passed,
+                    **_payload_brief(payment_payload),
+                }
+            )
+            if data.get("serial_number"):
+                summary["serial_number"] = str(data.get("serial_number"))
+            payment_mode = "bank"
+        if passed and payment_mode == "bank":
+            finance_passed, finance_confirmation = _impl__confirm_order_tail_bank_payment(
+                env,
+                variables,
+                order_sn,
+                str(summary.get("serial_number") or ""),
+            )
+            summary.update(
+                {
+                    "finance_confirm": finance_confirmation.get("finance_confirm"),
+                    "finance_passed": finance_confirmation.get("finance_passed"),
+                    "finance_confirmation": finance_confirmation,
+                }
+            )
+            if not finance_passed:
+                passed = False
+                summary["reason"] = str(finance_confirmation.get("reason") or "尾款银行付款财务确认失败")
         if not passed:
-            summary["reason"] = str(payment_payload.get("msg") or payment_payload.get("data") or "尾款支付接口执行失败")
+            summary.setdefault("reason", str(payment_payload.get("msg") or payment_payload.get("data") or "尾款支付接口执行失败"))
         log.setdefault("order_tail_payments", []).append(summary)
         return passed, summary
     except Exception as exc:
@@ -829,6 +915,54 @@ def _impl__run_order_tail_payment_if_needed(
             summary["payment_log"] = payment_log
         log.setdefault("order_tail_payments", []).append(summary)
         return False, summary
+
+
+def _impl__confirm_order_tail_bank_payment(
+    env: Env,
+    variables: Dict[str, Any],
+    order_sn: str,
+    serial_number: str,
+) -> tuple[bool, Dict[str, Any]]:
+    finance_confirm = _as_bool(variables.get("finance_confirm"), True)
+    confirmation: Dict[str, Any] = {
+        "finance_confirm": finance_confirm,
+        "finance_passed": True,
+        "order_sn": order_sn,
+        "serial_number": serial_number,
+    }
+    if not finance_confirm:
+        confirmation.update({"skipped": True, "reason": "已关闭后台财务确认"})
+        return True, confirmation
+    if not serial_number:
+        confirmation.update(
+            {
+                "finance_passed": False,
+                "reason": "银行尾款支付未返回流水号，无法执行财务确认",
+            }
+        )
+        return False, confirmation
+
+    finance_variables = dict(variables)
+    finance_variables.update(
+        {
+            "order_sn": order_sn,
+            "serial_number": serial_number,
+            "finance_confirm": True,
+        }
+    )
+    finance_passed, _, finance_report, finance_summary = run_bank_payment_script(env, finance_variables)
+    finance_summary = dict(finance_summary or {})
+    confirmation.update(
+        {
+            "finance_passed": finance_passed,
+            "summary": finance_summary,
+        }
+    )
+    if finance_report:
+        confirmation["report_path"] = finance_report
+    if not finance_passed:
+        confirmation["reason"] = str(finance_summary.get("reason") or "尾款银行付款财务确认失败")
+    return finance_passed, confirmation
 
 
 def _impl__bank_pay_reach_date(variables: Dict[str, Any], pay_date: datetime) -> str:

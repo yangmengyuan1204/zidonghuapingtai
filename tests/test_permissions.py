@@ -1435,6 +1435,9 @@ def test_full_flow_part_pay_entry_is_exact_and_hides_detail_id():
     assert "<label>明细 ID</label>" not in source
     assert "next._full_flow_part_pay_script = true;" in source
     assert "next._full_flow_part_pay_script = false;" in source
+    assert "function validateFullFlowPartPayVariables" in source
+    assert 'throw new Error("按番尾款已启用，但未填写番序号");' in source
+    assert "validateFullFlowPartPayVariables(next, flow);" in source
 
 
 def test_order_part_pay_ignored_without_full_flow_part_pay_flag(monkeypatch):
@@ -1696,6 +1699,192 @@ def test_order_tail_partial_resolves_sorting_and_keeps_legacy_detail_id():
     assert passed is True
     assert context["select_by"] == "detail_id"
     assert context["selected_order_detail_ids"] == ["DETAIL-2"]
+
+
+class TailBalanceFallbackFakeClient(TailPartialFakeClient):
+    def post_form(self, path, fields):
+        if path.endswith("/client/order.orderList"):
+            self.calls.append((path, dict(fields)))
+            return {"success": True, "code": 0, "data": [{"order_sn": "ORDER-TAIL", "amount": "100"}]}
+        if path.endswith("/client/order.balancePayOrder"):
+            self.calls.append((path, dict(fields)))
+            return {"success": False, "code": 10000, "msg": "\u6b8b\u9ad8\u304c\u4e0d\u8db3\u3057\u3066\u3044\u307e\u3059"}
+        if path.endswith("/client/order.bankPayOrder"):
+            self.calls.append((path, dict(fields)))
+            return {"success": True, "code": 0, "data": {"serial_number": "TAIL-BANK-1"}}
+        return super().post_form(path, fields)
+
+
+def test_order_tail_balance_insufficient_falls_back_to_bank(monkeypatch):
+    client = TailBalanceFallbackFakeClient()
+    finance_calls = []
+    monkeypatch.setattr(
+        data_scripts,
+        "_login_client_for_payment",
+        lambda *args, **kwargs: (client, "https://example.test", 30, "TOKEN"),
+    )
+
+    def finance_only(_env, variables):
+        finance_calls.append(dict(variables))
+        return True, "", "finance-report.json", {
+            "payment_type": "bank",
+            "order_sn": variables["order_sn"],
+            "serial_number": variables["serial_number"],
+            "finance_confirm": True,
+            "finance_passed": True,
+        }
+
+    monkeypatch.setattr(data_scripts, "run_bank_payment_script", finance_only)
+
+    passed, summary = data_scripts._run_order_tail_payment_if_needed(
+        full_flow_env(),
+        {
+            "_full_flow_part_pay_script": True,
+            "order_part_pay": True,
+            "order_part_pay_tail_node": "before_shelf",
+            "order_payment_mode": "balance_first",
+            "order_sn": "ORDER-TAIL",
+        },
+        {},
+        "before_shelf",
+    )
+
+    assert passed is True
+    assert summary["fallback_from_balance"] is True
+    assert summary["attempted_payment_types"] == ["balance", "bank"]
+    assert summary["payment_mode"] == "bank"
+    assert summary["serial_number"] == "TAIL-BANK-1"
+    assert summary["finance_confirm"] is True
+    assert summary["finance_passed"] is True
+    assert summary["finance_confirmation"]["report_path"] == "finance-report.json"
+    assert finance_calls == [
+        {
+            "_full_flow_part_pay_script": True,
+            "order_part_pay": True,
+            "order_part_pay_tail_node": "before_shelf",
+            "order_payment_mode": "balance_first",
+            "order_sn": "ORDER-TAIL",
+            "serial_number": "TAIL-BANK-1",
+            "finance_confirm": True,
+        }
+    ]
+    assert [path for path, _fields in client.calls] == [
+        "/client/order.balancePayOrder",
+        "/client/order.orderList",
+        "/client/order.bankPayOrder",
+    ]
+    assert client.calls[-1][1]["pay_amount"] == "100"
+
+
+def test_order_tail_bank_finance_failure_stops_flow(monkeypatch):
+    client = TailBalanceFallbackFakeClient()
+    monkeypatch.setattr(
+        data_scripts,
+        "_login_client_for_payment",
+        lambda *args, **kwargs: (client, "https://example.test", 30, "TOKEN"),
+    )
+    monkeypatch.setattr(
+        data_scripts,
+        "run_bank_payment_script",
+        lambda _env, variables: (
+            False,
+            "",
+            "",
+            {
+                "payment_type": "bank",
+                "order_sn": variables["order_sn"],
+                "serial_number": variables["serial_number"],
+                "finance_confirm": True,
+                "finance_passed": False,
+                "reason": "待确认列表未找到流水号",
+            },
+        ),
+    )
+
+    passed, summary = data_scripts._run_order_tail_payment_if_needed(
+        full_flow_env(),
+        {
+            "_full_flow_part_pay_script": True,
+            "order_part_pay": True,
+            "order_part_pay_tail_node": "before_shelf",
+            "order_payment_mode": "balance_first",
+            "order_sn": "ORDER-TAIL",
+        },
+        {},
+        "before_shelf",
+    )
+
+    assert passed is False
+    assert summary["payment_passed"] is True
+    assert summary["finance_passed"] is False
+    assert summary["reason"] == "待确认列表未找到流水号"
+
+
+def test_order_tail_direct_bank_payment_also_confirms_finance(monkeypatch):
+    client = TailBalanceFallbackFakeClient()
+    finance_calls = []
+    monkeypatch.setattr(
+        data_scripts,
+        "_login_client_for_payment",
+        lambda *args, **kwargs: (client, "https://example.test", 30, "TOKEN"),
+    )
+
+    def finance_only(_env, variables):
+        finance_calls.append(dict(variables))
+        return True, "", "", {"finance_confirm": True, "finance_passed": True}
+
+    monkeypatch.setattr(data_scripts, "run_bank_payment_script", finance_only)
+
+    passed, summary = data_scripts._run_order_tail_payment_if_needed(
+        full_flow_env(),
+        {
+            "_full_flow_part_pay_script": True,
+            "order_part_pay": True,
+            "order_part_pay_tail_node": "before_shelf",
+            "order_payment_mode": "bank",
+            "order_sn": "ORDER-TAIL",
+        },
+        {},
+        "before_shelf",
+    )
+
+    assert passed is True
+    assert summary["payment_mode"] == "bank"
+    assert summary["finance_passed"] is True
+    assert finance_calls[0]["serial_number"] == "TAIL-BANK-1"
+    assert [path for path, _fields in client.calls] == [
+        "/client/order.orderList",
+        "/client/order.bankPayOrder",
+    ]
+
+
+def test_full_flow_rejects_empty_tail_sorting_before_order_creation(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    monkeypatch.setattr(
+        data_scripts,
+        "run_order_quote_script",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("order should not be created")),
+    )
+
+    passed, log_text, _, summary = data_scripts.run_full_flow_script(
+        full_flow_env(),
+        {
+            "_full_flow_part_pay_script": True,
+            "order_part_pay": True,
+            "order_part_pay_tail_partial_enabled": 1,
+            "order_part_pay_tail_sortings": "",
+        },
+    )
+
+    log = json.loads(log_text)
+    assert passed is False
+    assert summary["current_node"] == "input_validation"
+    assert summary["total_steps"] == 0
+    assert summary["reason"] == "按番尾款已启用，但未填写番序号"
+    assert log["input_validation"] == {
+        "passed": False,
+        "reason": "按番尾款已启用，但未填写番序号",
+    }
 
 
 def test_full_flow_runs_nodes_in_order_and_passes_shared_numbers(monkeypatch):

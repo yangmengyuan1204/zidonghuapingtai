@@ -131,6 +131,34 @@ def test_happy_path_recharge_and_confirm(patched):
     assert "id" in confirm_call["fields"]
 
 
+def test_falls_back_to_unfiltered_bill_list_when_serial_filter_returns_empty(patched, monkeypatch):
+    calls = []
+
+    def _post_admin_form(_session, _base_url, path, fields, _timeout):
+        calls.append({"path": path, "fields": dict(fields)})
+        if "unConfirmList" in path:
+            if fields.get("serial_number"):
+                return {"success": True, "code": 0, "data": {"data": []}}
+            return {
+                "success": True,
+                "code": 0,
+                "data": {"data": [{"id": 88, "serial_number": "RC20260629001"}]},
+            }
+        return patched.confirm_payload
+
+    monkeypatch.setattr(data_scripts, "_post_admin_form", _post_admin_form)
+    passed, log_text, _report, summary = run_balance_recharge_script(
+        _env(), {"customer_id": "300001", "amount": "100", "account": "userID/300001In", "password": "pwd"}
+    )
+
+    assert passed is True
+    assert summary["confirm_passed"] is True
+    assert any("serial_number" not in call["fields"] for call in calls if "unConfirmList" in call["path"])
+    confirm_call = next(call for call in calls if "bill.confirm" in call["path"])
+    assert confirm_call["fields"] == {"id": 88}
+    assert "unconfirm_list_fallback" in log_text
+
+
 def test_customer_id_drives_login_account(patched):
     """customer_id 决定前台登录账号（由路由层 apply_frontend_customer_login_variables 注入 account）。"""
     passed, _log, _report, _summary = run_balance_recharge_script(

@@ -31,6 +31,9 @@ _COMPAT_NAMES = (
     '_full_flow_stop_reached',
     '_full_flow_update_shared',
     '_is_paused',
+    '_order_part_pay_enabled',
+    '_order_tail_partial_enabled',
+    '_order_tail_partial_selected_values',
     '_payment_with_bank_fallback',
     '_purchase_timestamp_no',
     '_resume_flow_finish',
@@ -57,6 +60,13 @@ def _sync_compat_globals() -> None:
         sync_legacy()
     for name in _COMPAT_NAMES:
         globals()[name] = getattr(package, name)
+
+
+def _full_flow_part_pay_input_error(variables: Dict[str, Any]) -> str:
+    if not _order_part_pay_enabled(variables) or not _order_tail_partial_enabled(variables):
+        return ""
+    _, selected_values = _order_tail_partial_selected_values(variables)
+    return "" if selected_values else "按番尾款已启用，但未填写番序号"
 
 
 def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
@@ -93,6 +103,10 @@ def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None
         "steps": [],
         "shared_data": {},
     }
+    input_error = _full_flow_part_pay_input_error(variables)
+    if input_error:
+        log["input_validation"] = {"passed": False, "reason": input_error}
+        return _full_flow_finish(log, False, "input_validation", reason=input_error)
 
     try:
         if _full_flow_stop_reached(variables, "shopping_cart"):
