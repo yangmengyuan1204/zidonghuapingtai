@@ -60,7 +60,17 @@ def build_reexecute_context(db: Session, record: TestRecord) -> Dict[str, Any]:
 
     kind = str(metadata.get("kind") or "").strip()
     target_id = int(metadata.get("target_id") or record.case_id or 0)
-    variables, sensitive_keys = _safe_context_variables(_metadata_variables(metadata))
+    raw_variables = _metadata_variables(metadata)
+    variables, sensitive_keys = _safe_context_variables(raw_variables)
+    script_name = str(raw_variables.get("_data_script_name") or metadata.get("script_name") or "").strip()
+    script_flow_id = str(raw_variables.get("_data_script_flow_id") or metadata.get("script_flow_id") or "").strip()
+    if not script_name:
+        try:
+            log_data = json.loads(record.log or "{}")
+        except (json.JSONDecodeError, TypeError):
+            log_data = {}
+        if isinstance(log_data, dict):
+            script_name = str(log_data.get("script") or "").strip()
     context: Dict[str, Any] = {
         "record_id": record.id,
         "available": True,
@@ -69,6 +79,9 @@ def build_reexecute_context(db: Session, record: TestRecord) -> Dict[str, Any]:
         "project_id": metadata.get("project_id", record.project_id),
         "env_id": metadata.get("env_id"),
         "script_key": metadata.get("script_key", ""),
+        "script_name": script_name,
+        "script_flow_id": script_flow_id,
+        "script_name_source": "flow_metadata" if raw_variables.get("_data_script_name") or metadata.get("script_name") else "legacy_log",
         "account_mode": metadata.get("account_mode", "default"),
         "account_profile_id": metadata.get("account_profile_id"),
         "variables": variables,

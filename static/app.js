@@ -3408,6 +3408,22 @@ renderUiCases = async function () {
     button.addEventListener("click", () => deleteItem(`/api/ui-cases/${button.dataset.delUi}`, renderUiCases));
   });
 };
+async function refreshTestRecordList(options = {}) {
+  const expectedId = Number(options.expectedId || 0);
+  const attemptsValue = Number(options.attempts);
+  const delayValue = Number(options.delayMs);
+  const attempts = Number.isFinite(attemptsValue) && attemptsValue > 0 ? Math.floor(attemptsValue) : 4;
+  const delayMs = Number.isFinite(delayValue) && delayValue >= 0 ? Math.floor(delayValue) : 400;
+  state.view = "records";
+  state.filters.recordPage = 1;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    await renderRecords();
+    if (!expectedId || document.querySelector(`[data-log="${expectedId}"]`)) return true;
+    if (attempt < attempts - 1) await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+  }
+  return false;
+}
+window.refreshTestRecordList = refreshTestRecordList;
 async function bootstrap() {  if (!state.token) {    renderLogin();    return;  }  try {    await renderShell();  } catch {    renderLogin();  }}bootstrap();
 Promise.resolve().then(() => {
   if (typeof saveTestAccountBinding === "function") {

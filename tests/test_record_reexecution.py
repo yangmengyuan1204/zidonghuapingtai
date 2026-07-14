@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from app.core.utils import enrich_log_with_exec_params
 from app.database import SessionLocal
 from app.models import ApiCase, Env, Project, TestRecord as RecordModel, UiCase
+from app.services.test_record_reporting import build_test_record_report_fields
 from app.services import test_record_reexecution as reexecution
 
 
@@ -41,6 +42,46 @@ def test_execution_metadata_encrypts_sensitive_variables():
     assert context["kind"] == "data_script"
     assert context["variables"] == {"customer_id": "1001"}
     assert context["sensitive_keys"] == ["password"]
+
+
+def test_data_script_context_keeps_exact_flow_identity():
+    log_text = _record_log(
+        kind="data_script",
+        script_key="full_flow",
+        project_id=1,
+        env_id=1,
+        variables={
+            "_data_script_flow_id": "full_flow_copy",
+            "_data_script_name": "全流程脚本可根据订单和配送单输入后继续执行",
+        },
+    )
+    record = RecordModel(id=11, case_type="api", case_id=0, project_id=1, log=log_text)
+    with SessionLocal() as db:
+        context = reexecution.build_reexecute_context(db, record)
+        report_fields = build_test_record_report_fields(db, record)
+
+    assert context["script_flow_id"] == "full_flow_copy"
+    assert context["script_name"] == "全流程脚本可根据订单和配送单输入后继续执行"
+    assert context["script_name_source"] == "flow_metadata"
+    assert report_fields["script_name"] == "全流程脚本可根据订单和配送单输入后继续执行"
+
+
+def test_data_script_report_resolves_logged_interface_name():
+    log_text = _record_log(
+        kind="data_script",
+        script_key="order_quote",
+        project_id=1,
+        env_id=1,
+        variables={"_data_script_name": "订单报价"},
+    )
+    payload = json.loads(log_text)
+    payload.update({"path": "/order.submitOffer", "method": "POST", "steps": [{"script": "订单报价"}]})
+    record = RecordModel(id=12, case_type="api", case_id=0, project_id=1, log=json.dumps(payload, ensure_ascii=False))
+    with SessionLocal() as db:
+        report_fields = build_test_record_report_fields(db, record)
+
+    assert report_fields["script_name"] == "订单报价"
+    assert "业务报价提交（POST /order.submitOffer）" in report_fields["interface_names"]
 
 
 def test_shopping_cart_record_is_not_misclassified_as_api_case():

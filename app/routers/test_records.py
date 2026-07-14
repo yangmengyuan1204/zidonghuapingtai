@@ -6,11 +6,12 @@ from fastapi.responses import FileResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from ..core.utils import get_or_404, safe_file_response, serialize, serialize_many
+from ..core.utils import get_or_404, safe_file_response, serialize
 from ..database import get_db
 from ..models import ApiCase, TestRecord, UiCase, User
 from ..schemas import ReExecuteConfirmRequest
 from ..security import get_current_user
+from ..services.test_record_reporting import build_test_record_report_fields
 from ..services.test_record_reexecution import build_reexecute_context, reexecute_record
 
 
@@ -40,13 +41,21 @@ def list_records(
             )
         )
     total = query.count()
-    items = serialize_many(query.order_by(TestRecord.id.desc()).offset((page - 1) * page_size).limit(page_size).all())
+    records = query.order_by(TestRecord.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for record in records:
+        item = serialize(record)
+        item.update(build_test_record_report_fields(db, record))
+        items.append(item)
     return {"total": total, "page": page, "page_size": page_size, "items": items}
 
 
 @router.get("/api/test-records/{record_id}")
 def get_record(record_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
-    return serialize(get_or_404(db, TestRecord, record_id))
+    record = get_or_404(db, TestRecord, record_id)
+    data = serialize(record)
+    data.update(build_test_record_report_fields(db, record))
+    return data
 
 
 @router.get("/api/test-records/{record_id}/report")

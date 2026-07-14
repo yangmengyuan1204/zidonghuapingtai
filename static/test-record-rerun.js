@@ -1,4 +1,12 @@
 (function () {
+  async function refreshRecordList(result) {
+    if (typeof window.refreshTestRecordList === "function") {
+      return window.refreshTestRecordList({ expectedId: result?.id, attempts: 5, delayMs: 450 });
+    }
+    if (typeof window.renderRecords === "function") await window.renderRecords();
+    return false;
+  }
+
   async function open(recordId) {
     try {
       const context = await window.api(`/api/test-records/${recordId}/re-execute`);
@@ -9,15 +17,34 @@
 
       if (context.kind === "data_script") {
         const flows = typeof window.readFlows === "function" ? window.readFlows() : [];
-        const flow = flows.find((item) => item.scriptType === context.script_key);
+        const candidates = flows.filter((item) => item.scriptType === context.script_key);
+        const flowById = context.script_flow_id
+          ? candidates.find((item) => String(item.id) === String(context.script_flow_id))
+          : null;
+        const flowByName = context.script_name
+          ? candidates.filter((item) => String(item.name || "").trim() === String(context.script_name).trim())
+          : [];
+        const legacyAmbiguousFullFlow = context.script_key === "full_flow"
+          && context.script_name_source !== "flow_metadata"
+          && candidates.length > 1;
+        const flow = flowById || (!legacyAmbiguousFullFlow && flowByName.length === 1 ? flowByName[0] : null);
         if (!flow || typeof window.openRunScriptForm !== "function") {
-          window.showToast("未找到原数据脚本入口，请到数据工厂中执行");
+          window.showToast(
+            legacyAmbiguousFullFlow
+              ? "历史记录缺少明确脚本身份，请到数据工厂选择对应脚本执行"
+              : "未找到对应数据脚本入口，请到数据工厂中执行",
+          );
           return;
         }
         const defaults = typeof window.safeVariables === "function" ? window.safeVariables(flow.variables) : {};
         const prepared = {
           ...flow,
-          variables: JSON.stringify({ ...defaults, ...(context.variables || {}) }),
+          variables: JSON.stringify({
+            ...defaults,
+            ...(context.variables || {}),
+            _data_script_flow_id: flow.id,
+            _data_script_name: flow.name,
+          }),
         };
         window.openRunScriptForm(prepared);
         window.showToast(
@@ -41,9 +68,10 @@
         method: "POST",
         body: { confirmed: true },
       });
-      progress?.success("执行完成");
+      progress?.update(92, "正在刷新执行报告...");
+      await refreshRecordList(result);
+      progress?.success("执行完成，列表已刷新");
       window.showToast(`执行完成：${result.result === "passed" ? "成功" : "失败"}`);
-      if (typeof window.renderRecords === "function") await window.renderRecords();
     } catch (error) {
       window.showToast(error.message || "再次执行失败");
     }
