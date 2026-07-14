@@ -119,6 +119,11 @@ if (!window.__fullFlowDataScriptLoaded) {
 
   const FULL_FLOW_COPY_FIELD_GROUPS = [
     {
+      title: "客户范围",
+      open: true,
+      fields: [CUSTOMER_ID_FIELD],
+    },
+    {
       title: "继续执行",
       open: true,
       fields: [
@@ -1598,7 +1603,7 @@ if (!window.__fullFlowDataScriptLoaded) {
   const originalOpenRunScriptFormForFullFlow = openRunScriptForm;
   openRunScriptForm = function (flow) {
     if (flow?.scriptType === "direct_box_to_shelf") {
-      openDirectBoxRunForm(flow, scriptParamFields("direct_box_to_shelf", flow));
+      openDirectBoxRunForm(flow, customerScriptFields("direct_box_to_shelf", flow));
       return;
     }
     if (flow?.scriptType === "full_flow") {
@@ -1606,15 +1611,15 @@ if (!window.__fullFlowDataScriptLoaded) {
         openFullFlowCopyRunForm(flow);
         return;
       }
-      openFullFlowRunForm(flow, scriptParamFields("full_flow", flow));
+      openFullFlowRunForm(flow, customerScriptFields("full_flow", flow));
       return;
     }
     if (flow?.scriptType === "resume_order_flow") {
-      openResumeOrderRunForm(flow, scriptParamFields("resume_order_flow", flow));
+      openResumeOrderRunForm(flow, customerScriptFields("resume_order_flow", flow));
       return;
     }
     if (flow?.scriptType === "resume_porder_flow") {
-      openResumePorderRunForm(flow, scriptParamFields("resume_porder_flow", flow));
+      openResumePorderRunForm(flow, customerScriptFields("resume_porder_flow", flow));
       return;
     }
     return originalOpenRunScriptFormForFullFlow(flow);
