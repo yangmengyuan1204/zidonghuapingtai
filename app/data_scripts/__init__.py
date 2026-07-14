@@ -23,6 +23,7 @@ _DOMAIN_ENTRY_NAMES = (
     "run_oem_sample_full_flow_script",
     "run_oem_sample_order_script",
     "run_order_quote_script",
+    "run_problem_goods_script",
     "run_porder_balance_payment_script",
     "run_porder_bank_payment_script",
     "run_purchase_to_shelf_chain",
@@ -72,6 +73,7 @@ from .order_payments import (
 )
 from .orders import run_order_quote_script
 from .payments import run_balance_recharge_script
+from .problem_goods import run_problem_goods_script
 from .purchase import run_direct_box_to_shelf_script, run_purchase_to_shelf_chain, run_purchase_to_shelf_script
 from .warehouse import run_warehouse_delivery_script
 
@@ -96,6 +98,7 @@ register_script("resume_porder_flow", run_resume_porder_flow_script)
 register_script("material_order", run_material_order_script)
 register_script("material_generation", run_material_generation_script)
 register_script("balance_recharge", run_balance_recharge_script)
+register_script("problem_goods", run_problem_goods_script)
 register_script("oem_new_inquiry", run_oem_new_inquiry_script)
 register_script("oem_sample_order", run_oem_sample_order_script)
 register_script("oem_sample_admin_flow", run_oem_sample_admin_flow_script)

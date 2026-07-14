@@ -1,6 +1,7 @@
 let _projectsCache = null;async function getProjects() {  if (!_projectsCache) _projectsCache = await api("/api/projects");  return _projectsCache;}function invalidateProjectsCache() { _projectsCache = null; }const state = {  token: localStorage.getItem("token") || "",  user: null,  view: "dashboard",  filters: {    projectId: localStorage.getItem("projectId") || "",    envId: "",    recordType: "",  },  selectedApiIds: new Set(),  factory: {    flowId: localStorage.getItem("factoryFlowId") || "",    projectId: localStorage.getItem("factoryProjectId") || localStorage.getItem("projectId") || "",    envId: localStorage.getItem("factoryEnvId") || "",    caseIds: JSON.parse(localStorage.getItem("factoryCaseIds") || "[]"),    variables: localStorage.getItem("factoryVariables") || '{\n  "keyword": "test",\n  "account": "abner"\n}',    editing: false,  },  dataScriptTab: localStorage.getItem("dataScriptTab") || "active",  functionalTaskId: localStorage.getItem("functionalTaskId") || "",};const views = [  { key: "dashboard", label: "工作台总览" },  { key: "projects", label: "项目空间" },  { key: "apiCases", label: "接口用例库" },  { key: "dataScripts", label: "数据工厂" },  { key: "caseGeneration", label: "AI用例生成" },  { key: "functionalTests", label: "功能验证中心" },  { key: "uiCases", label: "UI自动化" },  { key: "records", label: "执行报告" },  { key: "users", label: "权限中心", adminOnly: true },];const FLOW_STORAGE_KEY = "dataFactoryFlows";const DELETED_BUILTIN_KEY = "dataFactoryDeletedBuiltins";const DELETED_FLOW_STORAGE_KEY = "dataFactoryDeletedFlows";const HIDDEN_FLOW_STORAGE_KEY = "dataFactoryHiddenFlows";const HIDDEN_BUILTIN_KEY = "dataFactoryHiddenBuiltins";const DATA_SCRIPT_CUSTOMER_IDS_KEY = "dataScriptCustomerIds";const FUNCTIONAL_SCAN_AUTH_PREFIX = "functionalScanAuth:";const CASE_NAME_PREFIXES = ["\u6570\u636e\u811a\u672c-", "test-"];const BUILTIN_FLOW_DEFINITIONS = {  shopping_cart: { id: "shopping_cart_builtin", name: "\u5546\u54c1\u8d2d\u7269\u8f66" },  order_quote: { id: "order_quote_builtin", name: "\u8ba2\u5355\u62a5\u4ef7" },  balance_payment: { id: "balance_payment_builtin", name: "\u4f59\u989d\u652f\u4ed8" },  bank_payment: { id: "bank_payment_builtin", name: "\u94f6\u884c\u652f\u4ed8" },  purchase_to_shelf: { id: "purchase_to_shelf_builtin", name: "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6" },  purchase_to_shelf_chain: {    id: "purchase_to_shelf_chain_builtin",    name: "\u5f85\u62cd\u4e0b\u5230\u5546\u54c1\u4e0a\u67b6(\u7ec4\u5408\u811a\u672c)",  },  warehouse_delivery: { id: "warehouse_delivery_builtin", name: "\u4ed3\u5e93\u63d0\u51fa\u914d\u9001\u5355" },  porder_balance_payment: { id: "porder_balance_payment_builtin", name: "\u914d\u9001\u5355\u4f59\u989d\u4ed8\u6b3e" },  porder_bank_payment: { id: "porder_bank_payment_builtin", name: "\u914d\u9001\u5355\u94f6\u884c\u4ed8\u6b3e" },
   material_generation: { id: "material_generation_builtin", name: "\u8f85\u6599\u751f\u6210" },
   balance_recharge: { id: "balance_recharge_builtin", name: "\u4f59\u989d\u5145\u503c" },
+  problem_goods: { id: "problem_goods_builtin", name: "\u65e5\u672c\u7ad9\u95ee\u9898\u4ea7\u54c1\u5904\u7406" },
   oem_new_inquiry: { id: "oem_new_inquiry_builtin", name: "OEM\u63d0\u51fa\u8be2\u4ef7\u5355" },
   oem_sample_order: { id: "oem_sample_order_builtin", name: "OEM\u63d0\u51fa\u6837\u54c1\u5355" },
   oem_full_inquiry_flow: { id: "oem_full_inquiry_flow_builtin", name: "OEM询价单全流程" },
@@ -238,6 +239,7 @@ function openForm(title, fields, values, onSubmit, submitLabel = "保存") {  co
     projects,
     allEnvs,
   );
+  flows = ensureProblemGoodsScript(flows, projects, allEnvs);
   if (latestOrder?.order_sn) {
     flows = flows.map((flow) =>
       ["order_quote", "purchase_to_shelf", "purchase_to_shelf_chain"].includes(flow.scriptType)
@@ -745,6 +747,28 @@ function ensureBalanceRechargeScript(flows, projects, envs, cases) {
     variables: JSON.stringify({ customer_ids: "", amount: "" }, null, 2),
   };
   const next = [...flows, nextFlow];
+  writeFlows(next);
+  return next;
+}
+
+function ensureProblemGoodsScript(flows, projects, envs) {
+  if (isBuiltinDeleted("problem_goods_builtin")) return flows;
+  const env = dataScriptDefaultEnv(projects, envs);
+  const projectId = env?.project_id || dataScriptDefaultProject(projects)?.id || projects[0]?.id || "";
+  if (!env) return flows;
+  if (flows.some((flow) => flow.id === "problem_goods_builtin")) return flows;
+  const next = [
+    ...flows,
+    {
+      id: "problem_goods_builtin",
+      name: "\u65e5\u672c\u7ad9\u95ee\u9898\u4ea7\u54c1\u5904\u7406",
+      scriptType: "problem_goods",
+      projectId: String(projectId),
+      envId: String(env.id),
+      caseIds: [],
+      variables: JSON.stringify({ order_sn: "", customer_id: "", backend_account_profile_id: "" }, null, 2),
+    },
+  ];
   writeFlows(next);
   return next;
 }
@@ -2408,10 +2432,18 @@ function openOemBulkOrderRunForm(flow) {
 }
 
 function openRunScriptForm(flow) {
-  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery", "porder_balance_payment", "porder_bank_payment", "material_generation", "balance_recharge", "oem_new_inquiry", "oem_sample_order", "oem_full_inquiry_flow", "oem_sample_admin_flow", "oem_sample_full_flow", "oem_bulk_order"];
+  const builtInTypes = ["shopping_cart", "order_quote", "balance_payment", "bank_payment", "purchase_to_shelf", "purchase_to_shelf_chain", "warehouse_delivery", "porder_balance_payment", "porder_bank_payment", "material_generation", "balance_recharge", "problem_goods", "oem_new_inquiry", "oem_sample_order", "oem_full_inquiry_flow", "oem_sample_admin_flow", "oem_sample_full_flow", "oem_bulk_order"];
   if (!flow || (!builtInTypes.includes(flow.scriptType) && !(flow.caseIds || []).length)) {
     showToast("脚本没有配置步骤");
     return;
+  if (flow.scriptType === "problem_goods") {
+    if (!window.ProblemGoodsUI) {
+      showToast("\u95ee\u9898\u4ea7\u54c1\u6267\u884c\u7ec4\u4ef6\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u5237\u65b0\u9875\u9762\u540e\u91cd\u8bd5");
+      return;
+    }
+    window.ProblemGoodsUI.open(flow, { api, modalEl, showToast, escapeHtml });
+    return;
+  }
   }
   const fields = scriptParamFields(flow.scriptType, flow);
   if (!fields.length) {

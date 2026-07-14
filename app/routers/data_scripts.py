@@ -10,6 +10,7 @@ from ..core.utils import (
     CART_CASE_NAME,
     OEM_DATA_SCRIPT_PROJECT_NAME,
     apply_frontend_customer_login_variables,
+    account_profile_variables,
     data_script_variables,
     find_oem_data_script_project,
     get_or_404,
@@ -38,6 +39,7 @@ from ..data_scripts import (
     run_oem_sample_full_flow_script,
     run_oem_sample_order_script,
     run_order_quote_script,
+    run_problem_goods_script,
     run_porder_balance_payment_script,
     run_porder_bank_payment_script,
     run_purchase_to_shelf_chain,
@@ -48,6 +50,7 @@ from ..data_scripts import (
     run_warehouse_delivery_script,
     upload_oem_image,
 )
+from ..data_scripts.problem_goods import ProblemGoodsError, fetch_problem_goods_options, inspect_problem_goods
 from ..database import get_db
 from ..models import ApiCase, Env, TestRecord, User
 from ..schemas import DataScriptExecuteRequest
@@ -62,6 +65,33 @@ def _runtime_func(name: str, fallback: Any) -> Any:
         return fallback
     main_module = sys.modules.get("app.main")
     return getattr(main_module, name, fallback) if main_module else fallback
+
+
+def _problem_goods_variables(
+    db: Session,
+    payload: DataScriptExecuteRequest,
+    project_id: int,
+) -> Dict[str, Any]:
+    variables = data_script_variables(db, payload.variables, project_id)
+    profile_id = variables.get("backend_account_profile_id") or variables.get("admin_account_profile_id")
+    if not profile_id:
+        return variables
+    account_vars, meta = account_profile_variables(db, int(profile_id), project_id)
+    backend_account = account_vars.get("backend_account") or account_vars.get("username") or account_vars.get("account")
+    backend_password = account_vars.get("backend_password") or account_vars.get("password")
+    backend_code = account_vars.get("backend_code") or account_vars.get("code") or ""
+    if not backend_account or not backend_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="所选后台账号档案缺少账号或密码")
+    variables.update(
+        {
+            "backend_account": str(backend_account),
+            "backend_password": str(backend_password),
+            "backend_code": str(backend_code),
+            "backend_account_profile_id": int(profile_id),
+            "backend_account_profile_name": meta.get("profile_name") or "",
+        }
+    )
+    return variables
 
 
 @router.post("/data-scripts/shopping-cart")
@@ -330,6 +360,61 @@ def run_balance_recharge_data_script(
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_balance_recharge_script", run_balance_recharge_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="balance_recharge", env_id=env.id, variables=payload.variables)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+@router.post("/data-scripts/problem-goods/inspect")
+def inspect_problem_goods_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = _problem_goods_variables(db, payload, project_id)
+    try:
+        return inspect_problem_goods(env, variables)
+    except ProblemGoodsError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/data-scripts/problem-goods/options")
+def get_problem_goods_options_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = _problem_goods_variables(db, payload, project_id)
+    try:
+        return fetch_problem_goods_options(env, variables)
+    except ProblemGoodsError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/data-scripts/problem-goods")
+def run_problem_goods_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = _problem_goods_variables(db, payload, project_id)
+    passed, log_text, report_path, summary = _runtime_func("run_problem_goods_script", run_problem_goods_script)(env, variables)
+    record = save_record(
+        db,
+        "api",
+        0,
+        passed,
+        log_text,
+        report_path,
+        project_id=project_id,
+        kind="data_script",
+        script_key="problem_goods",
+        env_id=env.id,
+        variables=payload.variables,
+    )
     data = serialize(record)
     data["summary"] = summary
     return data

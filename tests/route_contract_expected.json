@@ -331,6 +331,21 @@
   },
   {
     "method": "POST",
+    "path": "/api/data-scripts/problem-goods",
+    "name": "run_problem_goods_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/problem-goods/inspect",
+    "name": "inspect_problem_goods_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/problem-goods/options",
+    "name": "get_problem_goods_options_data_script"
+  },
+  {
+    "method": "POST",
     "path": "/api/data-scripts/purchase-to-shelf",
     "name": "run_purchase_to_shelf_data_script"
   },
