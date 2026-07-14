@@ -1421,6 +1421,123 @@ def patch_full_flow_report(monkeypatch):
     monkeypatch.setattr(data_scripts, "write_allure_result", lambda *args, **kwargs: "mock-report.json")
 
 
+class BankMinimumDepositFakeClient:
+    def __init__(self, pay_amount_jpy="10600", bank_pay_amount_min="12000"):
+        self.calls = []
+        self.pay_amount_jpy = pay_amount_jpy
+        self.bank_pay_amount_min = bank_pay_amount_min
+
+    def post_form(self, path, fields):
+        self.calls.append((path, dict(fields)))
+        if path.endswith("/client/order.orderList"):
+            return {
+                "success": True,
+                "code": 0,
+                "data": [{"order_sn": "ORDER-MIN", "status_name": "等待付款", "order_amount": "10600"}],
+            }
+        if path.endswith("/client/order.payData"):
+            return {
+                "success": True,
+                "code": 0,
+                "data": {
+                    "part_pay_amount": {
+                        "JPY": {
+                            "bank_pay_amount_min": self.bank_pay_amount_min,
+                            "pay_amount_jpy": self.pay_amount_jpy,
+                        }
+                    }
+                },
+            }
+        if path.endswith("/client/order.bankPayOrder"):
+            return {
+                "success": True,
+                "code": 0,
+                "data": {"order_sn": "ORDER-MIN", "serial_number": "BANK-MIN-1"},
+            }
+        raise AssertionError(path)
+
+
+def test_part_pay_bank_uses_minimum_deposit_amount(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    client = BankMinimumDepositFakeClient()
+    monkeypatch.setattr(
+        data_scripts,
+        "_login_client_for_payment",
+        lambda *args, **kwargs: (client, "https://example.test", 30, "TOKEN"),
+    )
+
+    passed, log_text, _, summary = data_scripts.run_bank_payment_script(
+        full_flow_env(),
+        {
+            "order_sn": "ORDER-MIN",
+            "_full_flow_part_pay_script": True,
+            "order_part_pay": True,
+            "finance_confirm": False,
+        },
+    )
+
+    assert passed is True
+    assert [path for path, _ in client.calls] == [
+        "/client/order.orderList",
+        "/client/order.payData",
+        "/client/order.bankPayOrder",
+    ]
+    assert client.calls[-1][1]["pay_amount"] == "12000"
+    assert summary["pay_amount"] == "12000"
+    assert summary["minimum_deposit_amount"] == "12000"
+    assert summary["amount_source"] == "bank_pay_amount_min"
+    assert json.loads(log_text)["order_pay_data"]["selected_amount"] == "12000"
+
+
+def test_part_pay_bank_keeps_current_amount_above_minimum(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    client = BankMinimumDepositFakeClient(pay_amount_jpy="13000")
+    monkeypatch.setattr(
+        data_scripts,
+        "_login_client_for_payment",
+        lambda *args, **kwargs: (client, "https://example.test", 30, "TOKEN"),
+    )
+
+    passed, _, _, summary = data_scripts.run_bank_payment_script(
+        full_flow_env(),
+        {
+            "order_sn": "ORDER-MIN",
+            "_full_flow_part_pay_script": True,
+            "order_part_pay": True,
+            "finance_confirm": False,
+        },
+    )
+
+    assert passed is True
+    assert client.calls[-1][1]["pay_amount"] == "13000"
+    assert summary["pay_amount"] == "13000"
+    assert summary["minimum_deposit_amount"] == "12000"
+    assert summary["amount_source"] == "order_pay_data"
+
+
+def test_regular_bank_payment_keeps_order_list_amount(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    client = BankMinimumDepositFakeClient()
+    monkeypatch.setattr(
+        data_scripts,
+        "_login_client_for_payment",
+        lambda *args, **kwargs: (client, "https://example.test", 30, "TOKEN"),
+    )
+
+    passed, _, _, summary = data_scripts.run_bank_payment_script(
+        full_flow_env(),
+        {"order_sn": "ORDER-MIN", "finance_confirm": False},
+    )
+
+    assert passed is True
+    assert [path for path, _ in client.calls] == [
+        "/client/order.orderList",
+        "/client/order.bankPayOrder",
+    ]
+    assert client.calls[-1][1]["pay_amount"] == "10600"
+    assert summary["amount_source"] == "order_list"
+
+
 def test_full_flow_part_pay_entry_is_exact_and_hides_detail_id():
     source = Path("static/full-flow.js").read_text(encoding="utf-8")
 

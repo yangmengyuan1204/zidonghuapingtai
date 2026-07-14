@@ -31,6 +31,9 @@ _COMPAT_NAMES = (
     '_load_payment_order',
     '_load_porder_payment_amount',
     '_login_client_for_payment',
+    '_order_part_pay_enabled',
+    '_order_tail_pay_amount_from_pay_data',
+    '_order_tail_pay_data_fields',
     '_payload_brief',
     '_porder_payload_matches',
     '_porder_payment_summary',
@@ -53,6 +56,63 @@ def _sync_compat_globals() -> None:
         sync_legacy()
     for name in _COMPAT_NAMES:
         globals()[name] = getattr(package, name)
+
+
+def _bank_pay_amount_min(payload: Dict[str, Any]) -> str:
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    part_pay_amount = data.get("part_pay_amount") if isinstance(data.get("part_pay_amount"), dict) else {}
+    for source in [
+        part_pay_amount.get("JPY"),
+        data.get("JPY"),
+        data,
+        payload,
+    ]:
+        if not isinstance(source, dict):
+            continue
+        amount = source.get("bank_pay_amount_min")
+        if _positive_decimal(amount) is not None:
+            return str(amount).strip()
+    return ""
+
+
+def _part_pay_bank_amount(
+    client: Any,
+    variables: Dict[str, Any],
+    order: Dict[str, Any],
+    order_sn: str,
+    order_list_amount: str,
+    log: Dict[str, Any],
+) -> tuple[str, str, str]:
+    if not _order_part_pay_enabled(variables):
+        return order_list_amount, "order_list", ""
+
+    fields = _order_tail_pay_data_fields(order_sn, variables, [])
+    payload = _call_with_retry(
+        "order pay data",
+        lambda: client.post_form(_api_path(variables, "client_order_pay_data", "/client/order.payData"), fields),
+    )
+    minimum_amount = _bank_pay_amount_min(payload) or _bank_pay_amount_min(order)
+    current_pay_amount = _order_tail_pay_amount_from_pay_data(payload)
+    minimum_value = _positive_decimal(minimum_amount)
+    current_value = _positive_decimal(current_pay_amount)
+    if minimum_value is not None and (current_value is None or minimum_value > current_value):
+        amount = minimum_amount
+        source = "bank_pay_amount_min"
+    elif current_value is not None:
+        amount = current_pay_amount
+        source = "order_pay_data"
+    else:
+        amount = order_list_amount
+        source = "order_list"
+    log["order_pay_data"] = {
+        **_payload_brief(payload),
+        "request": dict(fields),
+        "bank_pay_amount_min": minimum_amount,
+        "current_pay_amount": current_pay_amount,
+        "selected_amount": amount,
+        "amount_source": source,
+    }
+    return amount, source, minimum_amount
 
 
 def _impl_run_balance_payment_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
@@ -129,6 +189,8 @@ def _impl_run_bank_payment_script(env: Env, variables: Dict[str, Any] | None = N
         payment_data: Dict[str, Any] = {"order_sn": order_sn, "serial_number": existing_serial_number}
         payment_ok = True
         serial_number = existing_serial_number
+        amount_source = "variables" if str(variables.get("pay_amount") or "").strip() else "order_list"
+        minimum_deposit_amount = ""
         if existing_serial_number:
             log["payment"] = {
                 "skipped": True,
@@ -144,6 +206,15 @@ def _impl_run_bank_payment_script(env: Env, variables: Dict[str, Any] | None = N
                     log,
                     False,
                     {"payment_type": "bank", "order_sn": "", "pay_amount": "0", "reason": "\u672a\u67e5\u8be2\u5230\u7b49\u5f85\u4ed8\u6b3e\u8ba2\u5355"},
+                )
+            if not str(variables.get("pay_amount") or "").strip():
+                amount, amount_source, minimum_deposit_amount = _part_pay_bank_amount(
+                    client,
+                    variables,
+                    order,
+                    order_sn,
+                    amount,
+                    log,
                 )
             if not _positive_decimal(amount):
                 return _finish_named(
@@ -259,6 +330,8 @@ def _impl_run_bank_payment_script(env: Env, variables: Dict[str, Any] | None = N
                 "serial_number": serial_number,
                 "finance_confirm": finance_confirm,
                 "finance_passed": finance_ok,
+                "amount_source": amount_source,
+                "minimum_deposit_amount": minimum_deposit_amount,
             },
         )
         finance_reason = log.get("finance", {}).get("reason")
