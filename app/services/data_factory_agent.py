@@ -1338,7 +1338,10 @@ def _normalize_goal(
         }
     else:
         if not expected_items or not variables.get("order_item_num"):
-            return "clarifying", {}, "续跑订单如需修改价格，请同时明确商品种类数和每种购买数量。"
+            if force_ready:
+                variables["order_item_num"] = 1
+            else:
+                return "clarifying", {}, "续跑订单如需修改价格，请同时明确商品种类数和每种购买数量。"
         pricing, price_question = _compile_price_intent(
             price_source, variables, expected_items, int(variables["order_item_num"])
         )
@@ -1398,7 +1401,13 @@ def _normalize_goal(
     if order_options:
         evidence["options"] = str(order_options["evidence"])
     if not operations:
-        return "clarifying", {}, question or "没有识别到可执行的目标操作，请补充希望执行到的状态或业务动作。"
+        if force_ready:
+            target_node = target_node or "order_offered"
+            operation_type = "advance_order"
+            operations.append({"id": "operation_1", "type": operation_type, "target_node": target_node, "target_label": FULL_FLOW_NODE_LABELS.get(target_node, target_node), "evidence": "智能体自动推断"})
+            steps.append("智能体自动推断执行至" + FULL_FLOW_NODE_LABELS.get(target_node, target_node))
+        else:
+            return "clarifying", {}, question or "没有识别到可执行的目标操作，请补充希望执行到的状态或业务动作。"
 
     if mode == "new":
         price_text = "、".join(pricing["effective_unit_prices"])
@@ -1596,6 +1605,10 @@ def create_agent_session(
         bounded = _bounded_clarification(session, _clarification_field(question), question)
         if bounded["blocked"]:
             session_status, goal, question, analysis_trace = _analyze_turn(db, messages, intent_state, force_ready=True)
+            if session_status == "clarifying":
+                goal = goal or {"mode": "new", "target_node": "order_offered", "target_label": "订单待付款", "customer_ids": [], "order_sn": "", "porder_sn": "", "variables": dict(DEFAULT_VARIABLES), "operations": [], "summary": "智能体自动推断：默认单店单品至订单待付款", "assumptions": ["追问次数已达上限，智能体自动推断默认参数"], "steps": ["创建并执行至订单待付款"], "contract_hash": ""}
+                session_status = "awaiting_confirmation"
+                question = ""
             session.intent_state = _update_pending_fields(intent_state, session_status, question)
             session.status = session_status
             session.goal = goal
@@ -1662,6 +1675,10 @@ def add_agent_message(db: Session, session_id: str, user_id: int, message: str) 
                 session_status, goal, question = _merge_follow_up_analysis(
                     previous_goal, session_status, goal, question, messages, session.intent_state,
                 )
+                if session_status == "clarifying":
+                    goal = goal or previous_goal or {"mode": "new", "target_node": "order_offered", "target_label": "订单待付款", "customer_ids": [], "order_sn": "", "porder_sn": "", "variables": dict(DEFAULT_VARIABLES), "operations": [], "summary": "智能体自动推断", "assumptions": ["追问次数已达上限"], "steps": [], "contract_hash": ""}
+                    session_status = "awaiting_confirmation"
+                    question = ""
                 analysis_trace = retry_trace
                 analysis_trace["final_status"] = session_status
                 analysis_trace["force_ready"] = True
