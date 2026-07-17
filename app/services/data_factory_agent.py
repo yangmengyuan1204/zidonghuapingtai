@@ -946,7 +946,28 @@ def _problem_goods_intent(source_text: str) -> tuple[Dict[str, Any], str]:
         re.IGNORECASE,
     ) else "keep"
 
-    if not quantity_mode and freight_mode == "keep":
+    # --- 价格调整检测 ---
+    price_adjustment_mode = "keep"
+    price_adjustment_value = None
+    price_zero = re.search(
+        r"(?:单价|报价|价格|offer.?price)\s*(?:改成|改为|调整为|变成|是|为|=|:)\s*0",
+        evidence, re.IGNORECASE,
+    )
+    price_fixed = re.search(
+        r"(?:单价|报价|价格|offer.?price)\s*(?:改成|改为|调整为|变成|是|为|=|:)\s*(\d+(?:\.\d+)?)",
+        evidence, re.IGNORECASE,
+    )
+    if price_zero:
+        price_adjustment_mode = "zero"
+        if not quantity_mode:
+            quantity_mode = "keep"  # 只改单价时数量保持不变
+    elif price_fixed:
+        price_adjustment_mode = "fixed"
+        price_adjustment_value = price_fixed.group(1)
+        if not quantity_mode:
+            quantity_mode = "keep"
+
+    if not quantity_mode and freight_mode == "keep" and price_adjustment_mode == "keep":
         return {}, "请明确问题产品需要修改数量、单价还是国内运费。"
     return {
         "type": "problem_goods",
@@ -958,7 +979,8 @@ def _problem_goods_intent(source_text: str) -> tuple[Dict[str, Any], str]:
         "quantity_refund_value": quantity_value,
         "freight_refund_mode": freight_mode,
         "option_refund_mode": option_mode,
-        "price_adjustment_mode": "keep",
+        "price_adjustment_mode": price_adjustment_mode,
+        "price_adjustment_value": price_adjustment_value,
         "evidence": evidence,
     }, ""
 
@@ -1369,7 +1391,14 @@ def _normalize_goal(
         quantity_label = {"all": "退全部数量", "half": "退一半数量", "fixed": f"退{problem_operation.get('quantity_refund_value')}件", "keep": "数量保持不变"}[problem_operation["quantity_refund_mode"]]
         freight_label = "退全部国内运费" if problem_operation["freight_refund_mode"] == "all" else "国内运费保持不变"
         option_label = "退全部附加服务金额" if problem_operation["option_refund_mode"] == "all" else "附加服务保持不变"
-        summary_parts.append(f"然后提出问题产品（{quantity_label}，{freight_label}，{option_label}，单价保持不变，类型其他）")
+        price_mode = str(problem_operation.get("price_adjustment_mode") or "keep")
+        if price_mode == "zero":
+            price_label = "单价改为0"
+        elif price_mode == "fixed":
+            price_label = f"单价改为{problem_operation.get('price_adjustment_value', '?')}元"
+        else:
+            price_label = "单价保持不变"
+        summary_parts.append(f"然后提出问题产品（{quantity_label}，{freight_label}，{option_label}，{price_label}，类型其他）")
     if order_options:
         summary_parts.insert(1, f"每个商品随机添加{order_options['count']}个附加服务")
     summary = "，".join(summary_parts)
