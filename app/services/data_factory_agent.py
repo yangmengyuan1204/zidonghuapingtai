@@ -502,6 +502,9 @@ def _reduce_intent_state(state: Dict[str, Any], message: str) -> Dict[str, Any]:
     return result
 
 
+MAX_CLARIFICATION_TOTAL_ROUNDS = 3
+
+
 def _bounded_clarification(
     session: AgentSessionState,
     field_name: str,
@@ -509,7 +512,9 @@ def _bounded_clarification(
 ) -> Dict[str, Any]:
     count = int(session.clarification_counts.get(field_name, 0)) + 1
     session.clarification_counts[field_name] = count
-    return {"blocked": False, "message": str(message or "请补充该字段。"), "count": count}
+    total_rounds = sum(session.clarification_counts.values())
+    blocked = total_rounds >= MAX_CLARIFICATION_TOTAL_ROUNDS
+    return {"blocked": blocked, "message": str(message or "请补充该字段。"), "count": count}
 
 
 def _clarification_field(question: str) -> str:
@@ -1060,6 +1065,7 @@ def _customer_ids(value: Any) -> list[str]:
 def _normalize_goal(
     payload: Any,
     messages: list[Dict[str, str]] | None = None,
+    force_ready: bool = False,
 ) -> tuple[str, Dict[str, Any], str]:
     if not isinstance(payload, dict):
         raise ValueError("DeepSeek未返回合法目标JSON")
@@ -1096,7 +1102,10 @@ def _normalize_goal(
 
     problem_operation, problem_question = _problem_goods_intent(source_text)
     if problem_question:
-        return "clarifying", {}, problem_question
+        if force_ready:
+            problem_operation = {}
+        else:
+            return "clarifying", {}, problem_question
     order_options = _explicit_order_option_intent(source_text)
 
     unhandled = _raw_unhandled_requests(raw_goal)
@@ -1133,7 +1142,7 @@ def _normalize_goal(
             item for item in unhandled
             if not generic_parse_failure.fullmatch(item) and not is_covered_resume_note(item)
         ]
-    if unhandled or ignored:
+    if (unhandled or ignored) and not force_ready:
         missing = "；".join(unhandled or ignored)
         return "clarifying", {}, f"还有要求没有进入执行合同：{missing}。请确认如何处理，当前不会执行任何业务操作。"
 
@@ -1166,7 +1175,11 @@ def _normalize_goal(
         target_evidence = str(latest_target.get("evidence") or "")
         target_question = ""
     if target_question:
-        return "clarifying", {}, target_question
+        if force_ready:
+            explicit_target = explicit_target or "order_offered"
+            target_evidence = target_evidence or "智能体自动推断"
+        else:
+            return "clarifying", {}, target_question
     if explicit_target:
         evidence["target_node"] = target_evidence
         if target_node and target_node != explicit_target:
@@ -1184,7 +1197,11 @@ def _normalize_goal(
     if problem_operation and order_sn and not advance_request:
         target_node = ""
     if not target_node and not (problem_operation and order_sn):
-        return "clarifying", {}, question or "希望最终把测试数据造到哪个状态？例如：待拍下、上架入库或配送单支付完成。"
+        if force_ready:
+            target_node = "order_offered"
+            target_evidence = "智能体自动推断：默认至订单待付款"
+        else:
+            return "clarifying", {}, question or "希望最终把测试数据造到哪个状态？例如：待拍下、上架入库或配送单支付完成。"
     if mode == "resume_order" and target_node in {"shopping_cart", "order_created", "full_complete", "porder_paid"}:
         return "clarifying", {}, "该目标节点不适用于订单号续跑，请选择订单报价至配送单报价之间的节点。"
     if mode == "resume_porder" and target_node and target_node not in {
@@ -1213,7 +1230,11 @@ def _normalize_goal(
         if not count_intent.get("items_per_shop"):
             variables["order_per_shop"] = DEFAULT_VARIABLES["order_per_shop"]
     if count_question:
-        return "clarifying", {}, count_question
+        if force_ready:
+            count_intent["shop_count"] = count_intent.get("shop_count") or 1
+            count_intent["items_per_shop"] = count_intent.get("items_per_shop") or 1
+        else:
+            return "clarifying", {}, count_question
     model_quantity, model_quantity_evidence = _model_evidenced_count(
         raw_goal,
         source_text,
@@ -1301,7 +1322,7 @@ def _normalize_goal(
             if price_source.get("mode") == "ambiguous"
             else ""
         )
-    if price_question:
+    if price_question and not force_ready:
         return "clarifying", {}, price_question
     if mode != "new" and price_source.get("source") in {"default", "legacy_model"}:
         variables.pop("offer_price", None)
@@ -1360,7 +1381,10 @@ def _normalize_goal(
     operations: list[Dict[str, Any]] = []
     steps: list[str] = []
     if problem_operation and mode == "new" and expected_items > 1 and problem_operation.get("scope") != "all_candidates":
-        return "clarifying", {}, f"订单将创建{expected_items}个商品，请明确问题产品处理哪一个，或说明全部商品都处理。"
+        if force_ready:
+            problem_operation["scope"] = "all_candidates"
+        else:
+            return "clarifying", {}, f"订单将创建{expected_items}个商品，请明确问题产品处理哪一个，或说明全部商品都处理。"
     if target_node:
         porder_start = FULL_FLOW_NODE_SEQUENCE.index("warehouse_delivery_created")
         operation_type = "advance_porder" if mode == "resume_porder" or FULL_FLOW_NODE_SEQUENCE.index(target_node) >= porder_start else "advance_order"
@@ -1435,6 +1459,14 @@ def _normalize_goal(
     goal["contract_hash"] = hashlib.sha256(
         json.dumps(goal, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
     ).hexdigest()[:16]
+    if force_ready:
+        if not target_node:
+            target_node = "order_offered"
+            goal["target_node"] = target_node
+            goal["target_label"] = FULL_FLOW_NODE_LABELS.get(target_node, "")
+            goal["assumptions"].append("追问达上限，智能体自动推断目标为订单待付款")
+        requested_status = "ready"
+        question = ""
     if requested_status == "clarifying" and question and not problem_operation and not target_node:
         return "clarifying", {}, question
     return "awaiting_confirmation", goal, ""
@@ -1444,11 +1476,18 @@ def _analyze_turn(
     db: Session,
     messages: list[Dict[str, str]],
     intent_state: Dict[str, Any],
+    force_ready: bool = False,
 ) -> tuple[str, Dict[str, Any], str, Dict[str, Any]]:
     config = _latest_model_config(db)
     try:
-        payload = call_local_model_json(config, _analysis_prompt(messages, intent_state), timeout=120, system_prompt=SYSTEM_PROMPT)
-        session_status, goal, question = _normalize_goal(payload, messages)
+        prompt = _analysis_prompt(messages, intent_state)
+        if force_ready:
+            prompt += "\n\n【强制指令】已多次追问仍未满足所有条件。本轮你必须输出 status=\"ready\"，所有不确定字段使用合理默认值，在 assumptions 中逐一标注你采用的默认值及原因。禁止输出 clarifying。"
+        payload = call_local_model_json(config, prompt, timeout=120, system_prompt=SYSTEM_PROMPT)
+        if force_ready and isinstance(payload, dict):
+            payload["status"] = "ready"
+            payload["question"] = ""
+        session_status, goal, question = _normalize_goal(payload, messages, force_ready=force_ready)
         trace = {
             "turn_index": max(0, len(messages) - 1),
             "model": str(config.model or ""),
@@ -1555,13 +1594,24 @@ def create_agent_session(
     )
     if session_status == "clarifying" and question:
         bounded = _bounded_clarification(session, _clarification_field(question), question)
-        session.question = bounded["message"]
-        session.events[0] = _event(
-            "clarification",
-            bounded["message"],
-            field=_clarification_field(question),
-            count=bounded["count"],
-        )
+        if bounded["blocked"]:
+            session_status, goal, question, analysis_trace = _analyze_turn(db, messages, intent_state, force_ready=True)
+            session.intent_state = _update_pending_fields(intent_state, session_status, question)
+            session.status = session_status
+            session.goal = goal
+            session.question = question
+            session.events[0] = _event(
+                "analysis",
+                "追问次数已达上限，智能体已自动推断默认参数生成执行合同",
+            )
+        else:
+            session.question = bounded["message"]
+            session.events[0] = _event(
+                "clarification",
+                bounded["message"],
+                field=_clarification_field(question),
+                count=bounded["count"],
+            )
     _save_analysis_record(db, session, analysis_trace, session.status, session.question)
     with _STORE_LOCK:
         _cleanup_sessions()
@@ -1607,14 +1657,16 @@ def add_agent_message(db: Session, session_id: str, user_id: int, message: str) 
         if session_status == "clarifying" and question:
             field_name = _clarification_field(question)
             bounded = _bounded_clarification(session, field_name, question)
-            question = bounded["message"]
             if bounded["blocked"]:
-                session_status = "blocked"
-                session.result = {
-                    "reason": question,
-                    "capability_gap": True,
-                    "field": field_name,
-                }
+                session_status, goal, question, retry_trace = _analyze_turn(db, messages, session.intent_state, force_ready=True)
+                session_status, goal, question = _merge_follow_up_analysis(
+                    previous_goal, session_status, goal, question, messages, session.intent_state,
+                )
+                analysis_trace = retry_trace
+                analysis_trace["final_status"] = session_status
+                analysis_trace["force_ready"] = True
+            else:
+                question = bounded["message"]
         session.status = session_status
         session.intent_state = next_intent_state
         session.goal = goal

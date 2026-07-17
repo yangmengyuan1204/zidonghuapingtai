@@ -148,13 +148,16 @@ def build_analysis_prompt(
    - "付完钱/已付款/付款完成" = target_node="order_paid"
    - "到待拍下/待拍下" = target_node="pending_purchase"
    - "上架/入库/上架入库" = target_node="shelf_stored"
-2. 未明确目标节点时必须 clarifying；只说"下单"必须追问。但用户只说了目标状态（如"上架入库"）其他都默认时不用追问。
+2. 推断优先原则（最高优先级仅次于节点铁律）：
+   - 未明确目标节点时**优先推断**而非追问：有订单号→推断为续跑处理问题产品；说"下单"→推断为新建至订单待付款(order_offered)；说"上架"→推断为全流程至上架入库(shelf_stored)；仅有"问题产品"→推断为仅处理问题产品无需目标节点。
+   - 只有完全无法推断（如用户消息仅"帮我"两字）时才 clarifying。
+   - 推断的依据必须在 assumptions 中明确标注。
 3. 两个店铺共两个商品 = order_shop_count=2、order_per_shop=1；每店N个 = order_per_shop=N。
 4. 价格只写入 intent.pricing，禁止写入 variables 中的 price 字段。"商品总价X元/总价X元/合计X元"=goods_total；"每个商品X元/单价X元"=uniform_unit；只说"价格X元"=ambiguous并clarifying。
 5. "银行入金/银行支付并入金"=order_payment_mode="bank"且finance_confirm=true。
 6. 多动作（然后/再/接着/并且）必须全部写入 operations，禁止只保留第一个。
 7. 安全约束：不得输出账号/密码/Token/API Key/URL，不得调用未注册工具。
-8. 只有追问目标节点/价格口径不明/商品价格矛盾时才 clarifying；普通缺省参数直接填入 assumptions。
+8. 只有价格口径完全不明（既无"总价"也无"单价"也无数字金额）时才 clarifying；普通缺省参数直接填入 assumptions 并标记"智能体自动推断"。
 
 节点：
 {node_text}
