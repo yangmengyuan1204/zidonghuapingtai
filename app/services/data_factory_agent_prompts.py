@@ -55,9 +55,9 @@ ANALYSIS_FEW_SHOT_EXAMPLES = """\
 {"status":"ready","goal":{"mode":"new","target_node":"shelf_stored","customer_ids":[],"order_sn":"","porder_sn":"","variables":{"keyword":"衣服","shop_type":"1688","order_shop_count":3,"order_per_shop":1,"order_item_num":1,"order_payment_mode":"bank","finance_confirm":true},"intent":{"target_evidence":"做到上架入库","item_count_evidence":"3个店每店1个商品","quantity_evidence":"","pricing":{"mode":"unspecified","amount":"","amounts":[],"evidence":""}},"operations":[],"unhandled_requests":[],"summary":"新建3店铺各1商品银行支付至上架入库","assumptions":["默认1688店铺类型"]}}
 
 示例3:
-用户消息: "订单SN20240701-001，把问题产品处理掉"
+用户消息: "帮我把2026071715475684-300001这个订单,1番提出问题产品，单价改成0"
 正确输出:
-{"status":"ready","goal":{"mode":"resume_order","target_node":"","customer_ids":[],"order_sn":"SN20240701-001","porder_sn":"","variables":{},"intent":{"target_evidence":"","item_count_evidence":"","quantity_evidence":"","pricing":{"mode":"unspecified","amount":"","amounts":[],"evidence":""}},"operations":[{"type":"problem_goods","target_node":"","evidence":"问题产品处理掉"}],"unhandled_requests":[],"summary":"续跑订单SN20240701-001并处理问题产品","assumptions":[]}}
+{"status":"ready","goal":{"mode":"resume_order","target_node":"","customer_ids":[],"order_sn":"2026071715475684-300001","porder_sn":"","variables":{"order_item_num":1},"intent":{"target_evidence":"","item_count_evidence":"","quantity_evidence":"","pricing":{"mode":"uniform_unit","amount":"0","amounts":[],"evidence":"单价改成0"}},"operations":[{"type":"problem_goods","target_node":"","evidence":"1番提出问题产品"}],"unhandled_requests":[],"summary":"续跑订单2026071715475684-300001第1番问题产品单价退0","assumptions":["退款针对第1番商品"]}}
 
 示例4:
 用户消息: "配送单P2024-001做到配送单支付"
