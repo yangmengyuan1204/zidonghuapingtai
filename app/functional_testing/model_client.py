@@ -73,11 +73,12 @@ def _retry_model_from_error(current_model: str, response_text: str) -> str:
     return flash or supported[0]
 
 
-def _openai_chat_payload(model: str, prompt: str) -> Dict[str, Any]:
+def _openai_chat_payload(model: str, prompt: str, system_prompt: str = "") -> Dict[str, Any]:
+    default_system = "你是资深软件测试工程师，只输出合法 JSON。"
     return {
         "model": model,
         "messages": [
-            {"role": "system", "content": "你是资深软件测试工程师，只输出合法 JSON。"},
+            {"role": "system", "content": system_prompt or default_system},
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.2,
@@ -136,7 +137,7 @@ def _is_deepseek_api_base_url(base_url: str) -> bool:
     return host == "api.deepseek.com" or host.endswith(".deepseek.com")
 
 
-def call_local_model_json(config: AiConfig | None, prompt: str, timeout: int = 90) -> Any:
+def call_local_model_json(config: AiConfig | None, prompt: str, timeout: int = 90, system_prompt: str = "") -> Any:
     if not config or not config.base_url or not config.model:
         return None
     provider = (config.provider or "openai_compatible").strip().lower()
@@ -162,7 +163,7 @@ def call_local_model_json(config: AiConfig | None, prompt: str, timeout: int = 9
     response = requests.post(
         endpoint,
         headers=headers,
-        json=_openai_chat_payload(config.model, prompt),
+        json=_openai_chat_payload(config.model, prompt, system_prompt),
         timeout=timeout,
     )
     if not response.ok and response.status_code == 400:
@@ -177,7 +178,7 @@ def call_local_model_json(config: AiConfig | None, prompt: str, timeout: int = 9
             retry_response = requests.post(
                 endpoint,
                 headers=headers,
-                json=_openai_chat_payload(retry_model, prompt),
+                json=_openai_chat_payload(retry_model, prompt, system_prompt),
                 timeout=timeout,
             )
             response = retry_response
