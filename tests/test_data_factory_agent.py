@@ -9,7 +9,14 @@ from fastapi.testclient import TestClient
 from app import data_scripts
 from app.database import SessionLocal
 from app.main import app
-from app.models import AiConfig, Env, Project
+from app.core.account_utils import encrypt_account_payload
+from app.models import (
+    AiConfig,
+    Env,
+    Project,
+    TestAccountBinding as AccountBinding,
+    TestAccountProfile as AccountProfile,
+)
 from app.services import data_factory_agent as agent_service
 from app.services import data_factory_agent_tools as agent_tools
 from app.services.data_factory_agent_tools import AgentToolContext, execute_agent_tool
@@ -82,6 +89,153 @@ def _ready_goal() -> dict:
             },
         },
     }
+
+
+def test_agent_customer_priority_is_natural_language_then_topbar(monkeypatch):
+    project, env = _agent_context()
+    monkeypatch.setattr(agent_service, "call_local_model_json", lambda *args, **kwargs: _ready_goal())
+    with TestClient(app) as client:
+        headers = _login(client)
+        created = client.post(
+            "/api/data-scripts/agent/sessions",
+            headers=headers,
+            json={
+                "project_id": project.id,
+                "env_id": env.id,
+                "instruction": "客户300002，造两店各一件，报价1元和2元，银行入金，到待拍下",
+                "topbar_customer_ids": [" 300001 ", "300001"],
+            },
+        ).json()
+
+    assert created["goal"]["customer_ids"] == ["300002"]
+    assert created["goal"]["customer_source"] == "natural_language"
+
+
+def test_agent_uses_topbar_customer_when_instruction_has_none(monkeypatch):
+    project, env = _agent_context()
+    monkeypatch.setattr(agent_service, "call_local_model_json", lambda *args, **kwargs: _ready_goal())
+    with TestClient(app) as client:
+        headers = _login(client)
+        created = client.post(
+            "/api/data-scripts/agent/sessions",
+            headers=headers,
+            json={
+                "project_id": project.id,
+                "env_id": env.id,
+                "instruction": "造两店各一件，报价1元和2元，银行入金，到待拍下",
+                "topbar_customer_ids": [" 300001 ", "300001"],
+            },
+        ).json()
+
+    assert created["goal"]["customer_ids"] == ["300001"]
+    assert created["goal"]["customer_source"] == "topbar"
+
+
+def test_agent_uses_bound_account_customer_when_other_sources_are_absent():
+    project, _ = _agent_context()
+    db = SessionLocal()
+    profile = AccountProfile(
+        project_id=project.id,
+        profile_name="data-agent-bound-customer",
+        variables="{}",
+        sensitive_variables=encrypt_account_payload(
+            {"customer_ids": ["invalid", "300003", "300003"]}
+        ),
+        status="active",
+        create_time=datetime.now(),
+    )
+    binding = None
+    try:
+        db.add(profile)
+        db.flush()
+        binding = AccountBinding(
+            target_type="project",
+            target_id=project.id,
+            account_profile_id=profile.id,
+            create_time=datetime.now(),
+        )
+        db.add(binding)
+        db.commit()
+
+        compile_context = agent_service.build_agent_compile_context(db, project.id, [])
+        status, goal, question = agent_service._normalize_goal(
+            _ready_goal(),
+            [{"role": "user", "content": "造两店各一件，报价1元和2元，银行入金，到待拍下"}],
+            compile_context=compile_context,
+        )
+
+        assert (status, question) == ("awaiting_confirmation", "")
+        assert compile_context == {
+            "topbar_customer_ids": [],
+            "bound_customer_ids": ["300003"],
+        }
+        assert goal["customer_ids"] == ["300003"]
+        assert goal["customer_source"] == "bound_account"
+    finally:
+        if binding is not None and binding.id is not None:
+            db.query(AccountBinding).filter(AccountBinding.id == binding.id).delete(synchronize_session=False)
+        if profile.id is not None:
+            db.query(AccountProfile).filter(AccountProfile.id == profile.id).delete(synchronize_session=False)
+        db.commit()
+        db.close()
+
+
+def test_agent_rejects_invalid_topbar_customer_id(monkeypatch):
+    project, env = _agent_context()
+    monkeypatch.setattr(agent_service, "call_local_model_json", lambda *args, **kwargs: _ready_goal())
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/data-scripts/agent/sessions",
+            headers=_login(client),
+            json={
+                "project_id": project.id,
+                "env_id": env.id,
+                "instruction": "造两店各一件",
+                "topbar_customer_ids": ["300001", " bad "],
+            },
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "客户ID只能是数字：bad"
+
+
+def test_agent_follow_up_reuses_stored_compile_context(monkeypatch):
+    project, env = _agent_context()
+    responses = iter(
+        [
+            {"status": "clarifying", "question": "请补充目标状态", "goal": {}},
+            _ready_goal(),
+        ]
+    )
+    monkeypatch.setattr(agent_service, "call_local_model_json", lambda *args, **kwargs: next(responses))
+    with TestClient(app) as client:
+        headers = _login(client)
+        created = client.post(
+            "/api/data-scripts/agent/sessions",
+            headers=headers,
+            json={
+                "project_id": project.id,
+                "env_id": env.id,
+                "instruction": "造两店各一件",
+                "topbar_customer_ids": ["300004"],
+            },
+        ).json()
+        followed = client.post(
+            f"/api/data-scripts/agent/sessions/{created['id']}/messages",
+            headers=headers,
+            json={"message": "报价1元和2元，银行入金，做到待拍下"},
+        ).json()
+
+    assert followed["goal"]["customer_ids"] == ["300004"]
+    assert followed["goal"]["customer_source"] == "topbar"
+    assert "compile_context" not in followed
+
+
+def test_data_agent_frontend_passes_topbar_customer_context():
+    source = Path("static/data-factory-agent.js").read_text(encoding="utf-8")
+
+    assert "dataScriptCustomerIds" in source
+    assert "topbar_customer_ids" in source
 
 
 def test_agent_builds_confirmable_goal_contract(monkeypatch):

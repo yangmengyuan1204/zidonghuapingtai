@@ -16,7 +16,7 @@ from typing import Any, Dict
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..core.account_utils import account_profile_variables
+from ..core.account_utils import account_profile_variables, default_account_profile_for_target
 from ..core.data_script_catalog import DATA_SCRIPT_PROJECT_NAME
 from ..core.utils import data_script_variables, save_record
 from ..database import SessionLocal
@@ -271,6 +271,7 @@ class AgentSessionState:
     status: str
     plan_version: int = 1
     messages: list[Dict[str, str]] = field(default_factory=list)
+    compile_context: Dict[str, Any] = field(default_factory=dict)
     goal: Dict[str, Any] = field(default_factory=dict)
     question: str = ""
     events: list[Dict[str, Any]] = field(default_factory=list)
@@ -1071,6 +1072,45 @@ def _customer_ids(value: Any) -> list[str]:
     return result
 
 
+def _numeric_context_customer_ids(value: Any) -> list[str]:
+    values = value if isinstance(value, list) else [value]
+    result: list[str] = []
+    for item in values:
+        for part in str(item or "").replace("，", ",").split(","):
+            customer_id = part.strip()
+            if customer_id.isdigit() and customer_id not in result:
+                result.append(customer_id)
+    return result
+
+
+def build_agent_compile_context(
+    db: Session,
+    project_id: int,
+    topbar_customer_ids: list[str] | None,
+) -> Dict[str, Any]:
+    page_ids: list[str] = []
+    for value in topbar_customer_ids or []:
+        customer_id = str(value).strip()
+        if not customer_id.isdigit():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"客户ID只能是数字：{customer_id}",
+            )
+        if customer_id not in page_ids:
+            page_ids.append(customer_id)
+
+    bound_ids: list[str] = []
+    profile = default_account_profile_for_target(db, "project", int(project_id), int(project_id))
+    if profile is not None and profile.status == "active":
+        variables, _ = account_profile_variables(db, int(profile.id), int(project_id))
+        for key in ("customer_ids", "customer_id"):
+            for customer_id in _numeric_context_customer_ids(variables.get(key)):
+                if customer_id not in bound_ids:
+                    bound_ids.append(customer_id)
+
+    return {"topbar_customer_ids": page_ids, "bound_customer_ids": bound_ids}
+
+
 def _normalize_goal(
     payload: Any,
     messages: list[Dict[str, str]] | None = None,
@@ -1612,8 +1652,10 @@ def create_agent_session(
     project_id: int,
     env_id: int,
     instruction: str,
+    topbar_customer_ids: list[str] | None = None,
 ) -> Dict[str, Any]:
     validate_agent_context(db, project_id, env_id)
+    compile_context = build_agent_compile_context(db, project_id, topbar_customer_ids)
     messages = [{"role": "user", "content": str(instruction or "").strip()}]
     intent_state = _reduce_intent_state({}, messages[0]["content"])
     capability_gap = _unsupported_capability(messages)
@@ -1626,7 +1668,9 @@ def create_agent_session(
             "intent_state": sanitize_observation(intent_state),
         }
     else:
-        session_status, goal, question, analysis_trace = _analyze_turn(db, messages, intent_state)
+        session_status, goal, question, analysis_trace = _analyze_turn(
+            db, messages, intent_state, compile_context=compile_context,
+        )
     intent_state = _update_pending_fields(intent_state, session_status, question)
     session = AgentSessionState(
         id=uuid.uuid4().hex,
@@ -1635,6 +1679,7 @@ def create_agent_session(
         env_id=int(env_id),
         status=session_status,
         messages=messages,
+        compile_context=compile_context,
         intent_state=intent_state,
         goal=goal,
         question=question,
@@ -1649,7 +1694,9 @@ def create_agent_session(
     if session_status == "clarifying" and question:
         bounded = _bounded_clarification(session, _clarification_field(question), question)
         if bounded["blocked"]:
-            session_status, goal, question, analysis_trace = _analyze_turn(db, messages, intent_state, force_ready=True)
+            session_status, goal, question, analysis_trace = _analyze_turn(
+                db, messages, intent_state, force_ready=True, compile_context=compile_context,
+            )
             if session_status == "clarifying":
                 goal = goal or {"mode": "new", "target_node": "order_offered", "target_label": "订单待付款", "customer_ids": [], "order_sn": "", "porder_sn": "", "variables": dict(DEFAULT_VARIABLES), "operations": [], "summary": "智能体自动推断：默认单店单品至订单待付款", "assumptions": ["追问次数已达上限，智能体自动推断默认参数"], "steps": ["创建并执行至订单待付款"], "contract_hash": ""}
                 session_status = "awaiting_confirmation"
@@ -1696,7 +1743,9 @@ def add_agent_message(db: Session, session_id: str, user_id: int, message: str) 
             "intent_state": sanitize_observation(session.intent_state),
         }
     else:
-        session_status, goal, question, analysis_trace = _analyze_turn(db, messages, session.intent_state)
+        session_status, goal, question, analysis_trace = _analyze_turn(
+            db, messages, session.intent_state, compile_context=session.compile_context,
+        )
         session_status, goal, question = _merge_follow_up_analysis(
             previous_goal,
             session_status,
@@ -1704,6 +1753,7 @@ def add_agent_message(db: Session, session_id: str, user_id: int, message: str) 
             question,
             messages,
             session.intent_state,
+            session.compile_context,
         )
         analysis_trace["final_status"] = session_status
         analysis_trace["final_intent"] = sanitize_observation(goal.get("intent") or {})
@@ -1716,9 +1766,21 @@ def add_agent_message(db: Session, session_id: str, user_id: int, message: str) 
             field_name = _clarification_field(question)
             bounded = _bounded_clarification(session, field_name, question)
             if bounded["blocked"]:
-                session_status, goal, question, retry_trace = _analyze_turn(db, messages, session.intent_state, force_ready=True)
+                session_status, goal, question, retry_trace = _analyze_turn(
+                    db,
+                    messages,
+                    session.intent_state,
+                    force_ready=True,
+                    compile_context=session.compile_context,
+                )
                 session_status, goal, question = _merge_follow_up_analysis(
-                    previous_goal, session_status, goal, question, messages, session.intent_state,
+                    previous_goal,
+                    session_status,
+                    goal,
+                    question,
+                    messages,
+                    session.intent_state,
+                    session.compile_context,
                 )
                 if session_status == "clarifying":
                     goal = goal or previous_goal or {"mode": "new", "target_node": "order_offered", "target_label": "订单待付款", "customer_ids": [], "order_sn": "", "porder_sn": "", "variables": dict(DEFAULT_VARIABLES), "operations": [], "summary": "智能体自动推断", "assumptions": ["追问次数已达上限"], "steps": [], "contract_hash": ""}
