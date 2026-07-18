@@ -21,6 +21,7 @@ package-lock.json
 .reasonix/
 .codegraph/
 .playwright-cli/
+.worktrees/
 
 # Large binaries / runtime deps
 .ocr_cache/
