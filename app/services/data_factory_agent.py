@@ -23,6 +23,7 @@ from ..database import SessionLocal
 from ..functional_testing.model_client import call_local_model_json
 from ..models import AiConfig, Env, Project
 from .data_factory_agent_intent import reduce_intent_fields
+from .data_factory_agent_contract import compile_contract_defaults
 from .data_factory_agent_prompts import (
     SYSTEM_PROMPT,
     SYSTEM_PROMPT_ACTION,
@@ -169,6 +170,7 @@ ALLOWED_VARIABLE_KEYS = {
     "order_item_num",
     "order_option_counts",
     "order_payment_mode",
+    "payment_fallback",
     "order_per_shop",
     "order_shop_count",
     "other_price",
@@ -1073,6 +1075,7 @@ def _normalize_goal(
     payload: Any,
     messages: list[Dict[str, str]] | None = None,
     force_ready: bool = False,
+    compile_context: Dict[str, Any] | None = None,
 ) -> tuple[str, Dict[str, Any], str]:
     if not isinstance(payload, dict):
         raise ValueError("DeepSeek未返回合法目标JSON")
@@ -1174,7 +1177,9 @@ def _normalize_goal(
     if mode == "resume_porder" and not porder_sn:
         return "clarifying", {}, "请提供需要继续执行的配送单号。"
 
-    target_node = _target_node(raw_goal.get("target_node"))
+    raw_target_node = str(raw_goal.get("target_node") or "").strip()
+    target_node = _target_node(raw_target_node)
+    invalid_model_target = bool(raw_target_node) and not target_node
     explicit_target, target_evidence, target_question = _explicit_target_intent(source_text)
     latest_target = resolved_fields.get("target_node") if isinstance(resolved_fields, dict) else None
     if isinstance(latest_target, dict) and latest_target.get("value"):
@@ -1203,6 +1208,28 @@ def _normalize_goal(
     )
     if problem_operation and order_sn and not advance_request:
         target_node = ""
+    target_was_resolved = bool(target_node)
+    explicit_customer_ids, customer_evidence = _explicit_customer_ids(source_text)
+    if customer_evidence:
+        evidence["customer_ids"] = customer_evidence
+    contract_defaults = compile_contract_defaults(
+        mode=mode,
+        target_node=target_node,
+        variables=raw_variables,
+        explicit_customer_ids=explicit_customer_ids,
+        context=compile_context,
+    )
+    target_node = contract_defaults.target_node
+    if invalid_model_target and not target_was_resolved and not force_ready:
+        return "clarifying", {}, question or "希望最终把测试数据造到哪个状态？例如：待拍下、上架入库或配送单支付完成。"
+    if (
+        requested_status == "clarifying"
+        and question
+        and not problem_operation
+        and not target_was_resolved
+        and not force_ready
+    ):
+        return "clarifying", {}, question
     if not target_node and not (problem_operation and order_sn):
         if force_ready:
             target_node = "order_offered"
@@ -1217,9 +1244,9 @@ def _normalize_goal(
     }:
         return "clarifying", {}, "配送单号续跑只能选择配送单阶段的目标节点。"
 
-    variables = dict(DEFAULT_VARIABLES) if mode == "new" else dict(raw_variables)
+    variables = dict(DEFAULT_VARIABLES) if mode == "new" else dict(contract_defaults.variables)
     if mode == "new":
-        variables.update(raw_variables)
+        variables.update(contract_defaults.variables)
     count_intent, count_question = _explicit_count_intent(source_text)
     latest_item_count = resolved_fields.get("item_count") if isinstance(resolved_fields, dict) else None
     latest_quantity = resolved_fields.get("quantity_per_item") if isinstance(resolved_fields, dict) else None
@@ -1362,18 +1389,12 @@ def _normalize_goal(
         corrections.append({"field": "pricing", "before": raw_price, "after": effective_price, "reason": f"按{pricing['mode_label']}编译执行价格"})
 
     model_customer_ids = _customer_ids(raw_goal.get("customer_ids"))
-    explicit_customer_ids, customer_evidence = _explicit_customer_ids(source_text)
-    customer_ids = explicit_customer_ids
-    if customer_evidence:
-        evidence["customer_ids"] = customer_evidence
+    customer_ids = contract_defaults.customer_ids
     if model_customer_ids and model_customer_ids != customer_ids:
         corrections.append({"field": "customer_ids", "before": model_customer_ids, "after": customer_ids, "reason": "丢弃用户原文中没有证据的客户ID"})
 
-    defaults_used = []
+    defaults_used = list(contract_defaults.defaults_used)
     if mode == "new":
-        for key, default in DEFAULT_VARIABLES.items():
-            if key not in raw_variables or (key == "order_item_num" and "quantity" not in evidence):
-                defaults_used.append({"field": key, "value": variables.get(key, default)})
         variables["target_shops"] = variables["order_shop_count"]
         variables["per_shop"] = variables["order_per_shop"]
         variables["auto_fill_cart_on_shortage"] = True
@@ -1470,6 +1491,7 @@ def _normalize_goal(
         "summary": summary,
         "assumptions": system_assumptions[:20],
         "defaults_used": defaults_used,
+        "customer_source": contract_defaults.customer_source,
         "steps": steps,
     }
     goal["contract_hash"] = hashlib.sha256(
@@ -1493,6 +1515,7 @@ def _analyze_turn(
     messages: list[Dict[str, str]],
     intent_state: Dict[str, Any],
     force_ready: bool = False,
+    compile_context: Dict[str, Any] | None = None,
 ) -> tuple[str, Dict[str, Any], str, Dict[str, Any]]:
     config = _latest_model_config(db)
     try:
@@ -1503,7 +1526,12 @@ def _analyze_turn(
         if force_ready and isinstance(payload, dict):
             payload["status"] = "ready"
             payload["question"] = ""
-        session_status, goal, question = _normalize_goal(payload, messages, force_ready=force_ready)
+        session_status, goal, question = _normalize_goal(
+            payload,
+            messages,
+            force_ready=force_ready,
+            compile_context=compile_context,
+        )
         trace = {
             "turn_index": max(0, len(messages) - 1),
             "model": str(config.model or ""),
@@ -1522,8 +1550,17 @@ def _analyze_turn(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"DeepSeek理解命令失败：{exc}") from exc
 
 
-def _analyze_messages(db: Session, messages: list[Dict[str, str]]) -> tuple[str, Dict[str, Any], str]:
-    session_status, goal, question, _ = _analyze_turn(db, messages, {})
+def _analyze_messages(
+    db: Session,
+    messages: list[Dict[str, str]],
+    compile_context: Dict[str, Any] | None = None,
+) -> tuple[str, Dict[str, Any], str]:
+    session_status, goal, question, _ = _analyze_turn(
+        db,
+        messages,
+        {},
+        compile_context=compile_context,
+    )
     return session_status, goal, question
 
 
@@ -1551,6 +1588,7 @@ def _merge_follow_up_analysis(
     question: str,
     messages: list[Dict[str, str]],
     intent_state: Dict[str, Any],
+    compile_context: Dict[str, Any] | None = None,
 ) -> tuple[str, Dict[str, Any], str]:
     if session_status != "clarifying" or not previous_goal:
         return session_status, goal, question
@@ -1565,7 +1603,7 @@ def _merge_follow_up_analysis(
         "question": "",
         "goal": _raw_goal_from_contract(previous_goal),
     }
-    return _normalize_goal(payload, messages)
+    return _normalize_goal(payload, messages, compile_context=compile_context)
 
 
 def create_agent_session(
