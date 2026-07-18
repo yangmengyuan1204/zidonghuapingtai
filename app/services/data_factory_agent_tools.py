@@ -909,7 +909,33 @@ def _process_problem(context: AgentToolContext, arguments: Dict[str, Any]) -> Di
     expected_map = context.state.get("problem_goods_expected") if isinstance(context.state.get("problem_goods_expected"), dict) else {}
     active_known = [item for item in existing if _problem_int(item.get("problem_goods_id")) in known_ids and _problem_int(item.get("status")) < 6]
     completed_known = [item for item in existing if _problem_int(item.get("problem_goods_id")) in known_ids and _problem_int(item.get("status")) == 6]
-    rows = [*active_known, *candidates] if operation.get("scope") == "all_candidates" else (active_known or candidates)
+    operation_scope = str(operation.get("scope") or "")
+    if operation_scope == "all_candidates":
+        rows = [*active_known, *candidates]
+    elif operation_scope == "selected_item" and not active_known:
+        if not candidates and known_ids and len(completed_known) == len(known_ids):
+            rows = []
+        else:
+            selected_index = _problem_int(operation.get("item_index"))
+            ordered_candidates = sorted(
+                candidates,
+                key=lambda item: (_problem_int(item.get("sorting"), 10**9), _problem_int(item.get("order_detail_id"))),
+            )
+            if selected_index <= 0 or selected_index > len(ordered_candidates):
+                return {
+                    "tool": "process_problem_goods",
+                    "passed": False,
+                    "record_id": None,
+                    "report_path": "",
+                    "summary": {
+                        "order_sn": order_sn,
+                        "reason": f"订单有{len(ordered_candidates)}个可处理商品，无法匹配第{selected_index}番",
+                        "needs_clarification": True,
+                    },
+                }
+            rows = [ordered_candidates[selected_index - 1]]
+    else:
+        rows = active_known or candidates
     if not rows and known_ids and len(completed_known) == len(known_ids):
         mismatches = _problem_contract_mismatches(completed_known, expected_map)
         completed_all = bool(expected_map) and not mismatches
@@ -934,7 +960,7 @@ def _process_problem(context: AgentToolContext, arguments: Dict[str, Any]) -> Di
             "report_path": "",
             "summary": {"order_sn": order_sn, "reason": "没有可提出或可继续的问题产品记录", "needs_clarification": True},
         }
-    if operation.get("scope") != "all_candidates" and len(rows) != 1:
+    if operation_scope != "all_candidates" and len(rows) != 1:
         return {
             "tool": "process_problem_goods",
             "passed": False,

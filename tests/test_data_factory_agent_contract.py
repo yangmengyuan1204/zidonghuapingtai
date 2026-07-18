@@ -288,3 +288,47 @@ def test_problem_goods_filter_keeps_unhandled_mixed_request():
     assert status == "clarifying"
     assert goal == {}
     assert "报价后修改收货地址" in question
+
+
+def test_selected_problem_item_with_valid_index_satisfies_scope_gate():
+    status, goal, question = agent_service._normalize_goal(
+        {
+            "status": "ready",
+            "goal": {
+                "mode": "resume_order",
+                "order_sn": "2026071715475684-300001",
+                "variables": {},
+            },
+        },
+        [{
+            "role": "user",
+            "content": "订单2026071715475684-300001，2番提出问题产品，单价改成0",
+        }],
+    )
+
+    assert (status, question) == ("awaiting_confirmation", "")
+    problem = goal["operations"][0]
+    assert problem["scope"] == "selected_item"
+    assert problem["item_index"] == 2
+
+
+def test_problem_goods_filter_keeps_unknown_clause_after_supported_clause():
+    status, goal, question = agent_service._normalize_goal(
+        {
+            "status": "ready",
+            "goal": {
+                "mode": "resume_order",
+                "order_sn": "2026071715475684-300001",
+                "variables": {},
+                "unhandled_requests": ["提出问题产品后修改收货地址"],
+            },
+        },
+        [{
+            "role": "user",
+            "content": "订单2026071715475684-300001第1番提出问题产品，数量改成0，提出问题产品后修改收货地址",
+        }],
+    )
+
+    assert status == "clarifying"
+    assert goal == {}
+    assert "修改收货地址" in question

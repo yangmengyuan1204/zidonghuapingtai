@@ -1046,6 +1046,29 @@ def _raw_unhandled_requests(raw_goal: Dict[str, Any]) -> list[str]:
     return [str(item).strip() for item in raw if str(item).strip()]
 
 
+def _problem_request_is_covered(value: str, evidence_values: list[str]) -> bool:
+    remaining = _compact_semantic_text(value)
+    for evidence in sorted(
+        {_compact_semantic_text(item) for item in evidence_values if _compact_semantic_text(item)},
+        key=len,
+        reverse=True,
+    ):
+        remaining = remaining.replace(evidence, "")
+    remaining = re.sub(
+        r"(?:option|附加服务)(?:也)?(?:(?:改|变)(?:成|为)?|清零|=|:)?0",
+        "",
+        remaining,
+        flags=re.IGNORECASE,
+    )
+    remaining = re.sub(r"问题产品|问题商品", "", remaining)
+    remaining = re.sub(
+        r"(?:然后|之后|后|并且|并|同时|再|把|这些|这个|和|与|、|也|都|,|。|；|;)",
+        "",
+        remaining,
+    )
+    return not remaining
+
+
 def _price_list(value: Any) -> list[str]:
     if value in (None, ""):
         return []
@@ -1193,14 +1216,18 @@ def _normalize_goal(
         if re.search(r"忽略|未支持|无法执行", str(item))
     ]
     if problem_operation:
-        supported_problem_words = re.compile(
-            r"问题产品|问题商品|商品金额|数量|运费|退款|退了|全退|半退|改0|清零|"
-            r"(?:单价|价格|报价).{0,8}(?:(?:改|变)(?:成|为)?|调整为|=|:)\d+(?:\.\d+)?|"
-            r"全部处理|所有商品|每番|各番|分别处理|option|附加服务",
-            re.IGNORECASE,
-        )
-        unhandled = [item for item in unhandled if not supported_problem_words.search(item)]
-        ignored = [item for item in ignored if not supported_problem_words.search(item)]
+        problem_evidence = list((deterministic_problem_fields.get("evidence") or {}).values())
+        latest_pricing_field = resolved_fields.get("pricing") if isinstance(resolved_fields, dict) else None
+        if isinstance(latest_pricing_field, dict):
+            problem_evidence.append(str(latest_pricing_field.get("evidence") or ""))
+        unhandled = [
+            item for item in unhandled
+            if not _problem_request_is_covered(item, problem_evidence)
+        ]
+        ignored = [
+            item for item in ignored
+            if not _problem_request_is_covered(item, problem_evidence)
+        ]
     if order_options:
         supported_option_words = re.compile(r"option|附加服务", re.IGNORECASE)
         unhandled = [item for item in unhandled if not supported_option_words.search(item)]
@@ -1417,8 +1444,17 @@ def _normalize_goal(
         else 0
     )
     if problem_operation:
+        problem_contract_fields = copy.deepcopy(deterministic_problem_fields)
+        operation_scope = str(problem_operation.get("scope") or "")
+        operation_item_index = problem_operation.get("item_index")
+        if not problem_contract_fields.get("problem_scope"):
+            if operation_scope == "selected_item" and isinstance(operation_item_index, int) and operation_item_index > 0:
+                problem_contract_fields["problem_scope"] = "item"
+                problem_contract_fields["item_index"] = operation_item_index
+            elif operation_scope == "all_candidates":
+                problem_contract_fields["problem_scope"] = "all"
         has_problem_change = any(
-            name in deterministic_problem_fields
+            name in problem_contract_fields
             for name in ("problem_refund_quantity", "problem_refund_freight")
         ) or any(
             str(problem_operation.get(name) or "keep") != "keep"
@@ -1426,7 +1462,7 @@ def _normalize_goal(
         )
         problem_contract_question = problem_goods_clarification(
             problem_requested=True,
-            problem_fields=deterministic_problem_fields,
+            problem_fields=problem_contract_fields,
             item_count=expected_items or None,
             existing_order=mode != "new",
             has_explicit_change=has_problem_change,
