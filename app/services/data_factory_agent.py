@@ -1054,6 +1054,18 @@ def _problem_request_is_covered(value: str, evidence_values: list[str]) -> bool:
         reverse=True,
     ):
         remaining = remaining.replace(evidence, "")
+    supported_problem_patterns = (
+        r"(?:一半数量|数量.{0,5}一半|退一半)",
+        r"(?:退|退款)(?:掉)?\d+(?:个|件|份)?(?:数量|商品)?",
+        r"(?:商品)?数量.{0,4}(?:保留|不退|不变)",
+        r"(?:国内运费|运费).{0,3}(?:保留|不退|不变)",
+        r"(?:所有|全部|全)(?:商品)?(?:金额|数量).{0,20}(?:退|退款)",
+        r"数量.{0,8}(?:全部|全|都)(?:给)?退",
+        r"(?:国内运费|运费).{0,8}(?:全部|全|都)?(?:给)?退",
+        r"(?:全部|全|都)退.{0,8}(?:国内运费|运费)",
+    )
+    for pattern in supported_problem_patterns:
+        remaining = re.sub(pattern, "", remaining)
     remaining = re.sub(
         r"(?:option|附加服务)(?:也)?(?:(?:改|变)(?:成|为)?|清零|=|:)?0",
         "",
@@ -1562,7 +1574,19 @@ def _normalize_goal(
 
     operations: list[Dict[str, Any]] = []
     steps: list[str] = []
-    if problem_operation and mode == "new" and expected_items > 1 and problem_operation.get("scope") != "all_candidates":
+    selected_problem_item = (
+        problem_operation
+        and problem_operation.get("scope") == "selected_item"
+        and isinstance(problem_operation.get("item_index"), int)
+        and problem_operation["item_index"] > 0
+    )
+    if (
+        problem_operation
+        and mode == "new"
+        and expected_items > 1
+        and problem_operation.get("scope") != "all_candidates"
+        and not selected_problem_item
+    ):
         if force_ready:
             problem_operation["scope"] = "all_candidates"
         else:

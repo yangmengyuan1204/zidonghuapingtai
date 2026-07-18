@@ -742,6 +742,34 @@ def _problem_int(value: Any, fallback: int = 0) -> int:
         return fallback
 
 
+_PROBLEM_SELECTED_ITEM_STATE_KEY = "problem_goods_selected_item"
+
+
+def _problem_row_identity(row: Dict[str, Any]) -> Dict[str, int]:
+    return {
+        key: value
+        for key in ("problem_goods_id", "sorting", "order_purchase_id", "order_detail_id")
+        if (value := _problem_int(row.get(key))) > 0
+    }
+
+
+def _problem_row_matches_identity(row: Dict[str, Any], identity: Dict[str, Any]) -> bool:
+    problem_goods_id = _problem_int(identity.get("problem_goods_id"))
+    if problem_goods_id and _problem_int(row.get("problem_goods_id")) == problem_goods_id:
+        return True
+    order_detail_id = _problem_int(identity.get("order_detail_id"))
+    if order_detail_id:
+        return _problem_int(row.get("order_detail_id")) == order_detail_id
+    order_purchase_id = _problem_int(identity.get("order_purchase_id"))
+    sorting = _problem_int(identity.get("sorting"))
+    return bool(
+        order_purchase_id
+        and sorting
+        and _problem_int(row.get("order_purchase_id")) == order_purchase_id
+        and _problem_int(row.get("sorting")) == sorting
+    )
+
+
 def _problem_option_rows(value: Any) -> list[Dict[str, Any]]:
     if isinstance(value, str):
         try:
@@ -910,10 +938,41 @@ def _process_problem(context: AgentToolContext, arguments: Dict[str, Any]) -> Di
     active_known = [item for item in existing if _problem_int(item.get("problem_goods_id")) in known_ids and _problem_int(item.get("status")) < 6]
     completed_known = [item for item in existing if _problem_int(item.get("problem_goods_id")) in known_ids and _problem_int(item.get("status")) == 6]
     operation_scope = str(operation.get("scope") or "")
-    if operation_scope == "all_candidates":
+    selected_identity = context.state.get(_PROBLEM_SELECTED_ITEM_STATE_KEY)
+    selected_identity = dict(selected_identity) if isinstance(selected_identity, dict) else {}
+    if operation_scope == "selected_item" and selected_identity:
+        matching_existing = [item for item in existing if _problem_row_matches_identity(item, selected_identity)]
+        matching_completed = [item for item in matching_existing if _problem_int(item.get("status")) == 6]
+        matching_active = [item for item in matching_existing if _problem_int(item.get("status")) < 6]
+        matching_candidates = [item for item in candidates if _problem_row_matches_identity(item, selected_identity)]
+        if matching_completed:
+            completed_known = matching_completed
+            known_ids = {
+                problem_goods_id
+                for item in matching_completed
+                if (problem_goods_id := _problem_int(item.get("problem_goods_id"))) > 0
+            }
+            rows = []
+        elif matching_active:
+            rows = matching_active
+        elif matching_candidates:
+            rows = [matching_candidates[0]]
+        else:
+            return {
+                "tool": "process_problem_goods",
+                "passed": False,
+                "record_id": None,
+                "report_path": "",
+                "summary": {
+                    "order_sn": order_sn,
+                    "reason": "原先选择的问题商品已不在候选或已处理记录中，已停止避免改动其他商品",
+                    "needs_clarification": True,
+                },
+            }
+    elif operation_scope == "all_candidates":
         rows = [*active_known, *candidates]
     elif operation_scope == "selected_item" and not active_known:
-        if not candidates and known_ids and len(completed_known) == len(known_ids):
+        if known_ids and len(completed_known) == len(known_ids):
             rows = []
         else:
             selected_index = _problem_int(operation.get("item_index"))
@@ -933,7 +992,9 @@ def _process_problem(context: AgentToolContext, arguments: Dict[str, Any]) -> Di
                         "needs_clarification": True,
                     },
                 }
-            rows = [ordered_candidates[selected_index - 1]]
+            selected_row = ordered_candidates[selected_index - 1]
+            context.state[_PROBLEM_SELECTED_ITEM_STATE_KEY] = _problem_row_identity(selected_row)
+            rows = [selected_row]
     else:
         rows = active_known or candidates
     if not rows and known_ids and len(completed_known) == len(known_ids):
@@ -1011,6 +1072,10 @@ def _process_problem(context: AgentToolContext, arguments: Dict[str, Any]) -> Di
             child_record_ids.append(int(result["record_id"]))
         last_report = str(result.get("report_path") or last_report)
         problem_goods_id = _problem_int(summary.get("problem_goods_id"))
+        if operation_scope == "selected_item" and problem_goods_id:
+            selected_identity = dict(context.state.get(_PROBLEM_SELECTED_ITEM_STATE_KEY) or {})
+            selected_identity["problem_goods_id"] = problem_goods_id
+            context.state[_PROBLEM_SELECTED_ITEM_STATE_KEY] = selected_identity
         if problem_goods_id and problem_goods_id not in completed_ids:
             completed_ids.append(problem_goods_id)
         if problem_goods_id:

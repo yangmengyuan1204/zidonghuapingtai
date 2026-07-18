@@ -332,3 +332,55 @@ def test_problem_goods_filter_keeps_unknown_clause_after_supported_clause():
     assert status == "clarifying"
     assert goal == {}
     assert "修改收货地址" in question
+
+
+def test_new_order_selected_second_item_passes_late_scope_gate():
+    status, goal, question = agent_service._normalize_goal(
+        {
+            "status": "ready",
+            "goal": {
+                "mode": "new",
+                "target_node": "pending_purchase",
+                "variables": {},
+            },
+        },
+        [{
+            "role": "user",
+            "content": "造一个2番商品的订单，每个数量1，到待拍下后第2番提出问题产品，数量改成0",
+        }],
+    )
+
+    assert (status, question) == ("awaiting_confirmation", "")
+    problem = goal["operations"][1]
+    assert problem["scope"] == "selected_item"
+    assert problem["item_index"] == 2
+
+
+@pytest.mark.parametrize(
+    ("instruction", "unhandled"),
+    [
+        ("退一半", "退一半"),
+        ("退款2件", "退款2件"),
+        ("退一半，国内运费保持不变", "国内运费保持不变"),
+        ("数量不退，单价改成0", "数量不退"),
+    ],
+)
+def test_supported_problem_expression_does_not_remain_unhandled(instruction, unhandled):
+    status, goal, question = agent_service._normalize_goal(
+        {
+            "status": "ready",
+            "goal": {
+                "mode": "resume_order",
+                "order_sn": "2026071715475684-300001",
+                "variables": {},
+                "unhandled_requests": [unhandled],
+            },
+        },
+        [{
+            "role": "user",
+            "content": f"订单2026071715475684-300001第1番提出问题产品，{instruction}",
+        }],
+    )
+
+    assert (status, question) == ("awaiting_confirmation", "")
+    assert goal["operations"][0]["type"] == "problem_goods"

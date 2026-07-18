@@ -1748,6 +1748,139 @@ def test_problem_goods_tool_selected_item_completed_retry_is_idempotent(monkeypa
     assert calls == []
 
 
+def test_problem_goods_tool_selected_item_retry_does_not_relocate_after_completion(monkeypatch):
+    project, env = _agent_context()
+    db = SessionLocal()
+    context = AgentToolContext(
+        db=db,
+        env=env,
+        project_id=project.id,
+        goal={
+            "operations": [{
+                "id": "operation_1",
+                "type": "problem_goods",
+                "scope": "selected_item",
+                "item_index": 2,
+                "quantity_refund_mode": "all",
+                "freight_refund_mode": "keep",
+                "option_refund_mode": "keep",
+            }],
+            "variables": {},
+        },
+        variables={},
+        public_variables={},
+        state={"order_sn": "ORDER-PG-STABLE", "current_operation_id": "operation_1"},
+    )
+    inspections = iter([
+        {
+            "order_sn": "ORDER-PG-STABLE",
+            "items": [],
+            "order_candidates": [
+                {"sorting": 1, "order_purchase_id": 11, "order_detail_id": 21, "confirm_num": 1, "max_submit_num": 1, "confirm_price": "10", "confirm_freight": "1"},
+                {"sorting": 2, "order_purchase_id": 12, "order_detail_id": 22, "confirm_num": 2, "max_submit_num": 2, "confirm_price": "20", "confirm_freight": "2"},
+                {"sorting": 3, "order_purchase_id": 13, "order_detail_id": 23, "confirm_num": 3, "max_submit_num": 3, "confirm_price": "30", "confirm_freight": "3"},
+            ],
+        },
+        {
+            "order_sn": "ORDER-PG-STABLE",
+            "items": [{"problem_goods_id": 902, "status": 6, "sorting": 2, "order_purchase_id": 12, "order_detail_id": 22, "pre_num": 0, "pre_price": "20", "pre_freight": "2"}],
+            "order_candidates": [
+                {"sorting": 1, "order_purchase_id": 11, "order_detail_id": 21, "confirm_num": 1, "max_submit_num": 1, "confirm_price": "10", "confirm_freight": "1"},
+                {"sorting": 3, "order_purchase_id": 13, "order_detail_id": 23, "confirm_num": 3, "max_submit_num": 3, "confirm_price": "30", "confirm_freight": "3"},
+            ],
+        },
+    ])
+    calls = []
+
+    def fake_save(context, tool_name, runner, variables):
+        calls.append(dict(variables))
+        return {
+            "tool": tool_name,
+            "passed": False,
+            "record_id": 302,
+            "report_path": "",
+            "summary": {
+                "problem_goods_id": 902,
+                "paused": True,
+                "permission_required": True,
+                "completed": False,
+            },
+        }
+
+    monkeypatch.setattr(agent_tools, "inspect_problem_goods", lambda *args, **kwargs: next(inspections))
+    monkeypatch.setattr(agent_tools, "_save_script_result", fake_save)
+    try:
+        first = execute_agent_tool("process_problem_goods", context, {})
+        second = execute_agent_tool("process_problem_goods", context, {})
+    finally:
+        db.close()
+
+    assert first["summary"]["awaiting_permission"] is True
+    assert second["passed"] is True
+    assert len(calls) == 1
+    assert calls[0]["order_detail_id"] == 22
+
+
+def test_problem_goods_tool_selected_item_missing_stable_identity_does_not_mutate(monkeypatch):
+    project, env = _agent_context()
+    db = SessionLocal()
+    context = AgentToolContext(
+        db=db,
+        env=env,
+        project_id=project.id,
+        goal={
+            "operations": [{
+                "id": "operation_1",
+                "type": "problem_goods",
+                "scope": "selected_item",
+                "item_index": 2,
+            }],
+            "variables": {},
+        },
+        variables={},
+        public_variables={},
+        state={
+            "order_sn": "ORDER-PG-MISSING",
+            "current_operation_id": "operation_1",
+            "problem_goods_selected_item": {
+                "sorting": 2,
+                "order_purchase_id": 12,
+                "order_detail_id": 22,
+            },
+        },
+    )
+    inspection = {
+        "order_sn": "ORDER-PG-MISSING",
+        "items": [],
+        "order_candidates": [
+            {"sorting": 1, "order_purchase_id": 11, "order_detail_id": 21, "confirm_num": 1, "max_submit_num": 1, "confirm_price": "10", "confirm_freight": "1"},
+            {"sorting": 3, "order_purchase_id": 13, "order_detail_id": 23, "confirm_num": 3, "max_submit_num": 3, "confirm_price": "30", "confirm_freight": "3"},
+        ],
+    }
+    calls = []
+    monkeypatch.setattr(agent_tools, "inspect_problem_goods", lambda *args, **kwargs: inspection)
+
+    def fake_save(context, tool_name, runner, variables):
+        calls.append(dict(variables))
+        return {
+            "tool": tool_name,
+            "passed": True,
+            "record_id": 303,
+            "report_path": "",
+            "summary": {"problem_goods_id": 903, "completed": True, "status": 6},
+        }
+
+    monkeypatch.setattr(agent_tools, "_save_script_result", fake_save)
+    try:
+        result = execute_agent_tool("process_problem_goods", context, {})
+    finally:
+        db.close()
+
+    assert result["passed"] is False
+    assert result["summary"]["needs_clarification"] is True
+    assert calls == []
+
+
 def test_problem_goods_contract_rejects_nonzero_option_after_completion():
     mismatches = agent_tools._problem_contract_mismatches(
         [{
