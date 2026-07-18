@@ -235,6 +235,74 @@ def test_purchase_list_candidates_use_unstored_quantity_and_confirmed_values():
     assert rows[0]["pre_price"] == "58.00"
 
 
+def test_order_detail_candidates_include_nested_purchases_across_nodes():
+    payload = {
+        "success": True,
+        "data": {
+            "order_sn": "2026071816165891-300001",
+            "order_detail": [{
+                "id": 14052981, "sorting": 1, "confirm_num": 1,
+                "confirm_price": "10.00", "confirm_freight": "2.00",
+                "order_purchase": [{
+                    "id": 15328208, "order_detail_id": 14052981,
+                    "purchase_no": "20260718161716", "possible_num": 1,
+                    "storage_num": 0, "status": 40,
+                }],
+            }],
+        },
+    }
+
+    rows = order_purchase_candidates(payload)
+
+    assert rows == [{
+        "order_purchase_id": 15328208, "order_detail_id": 14052981,
+        "sorting": 1, "purchase_no": "20260718161716", "goods_name": None,
+        "sku_id": None, "purchase_status": 40, "possible_num": 1,
+        "storage_num": 0, "max_submit_num": 1, "can_submit": True,
+        "price": "10.00", "freight": "2.00", "confirm_num": 1,
+        "confirm_price": "10.00", "confirm_freight": "2.00", "pre_num": 1,
+        "pre_price": "10.00", "pre_freight": "2.00", "option": [],
+    }]
+
+
+def test_follow_list_candidates_accept_flat_child_fields():
+    payload = {
+        "success": True,
+        "data": {"data": [{
+            "order_sn": "2026071816165891-300001", "purchase_no": "20260718161716",
+            "list": [{
+                "order_purchase_id": 15328209, "order_detail_id": 14052982,
+                "sorting": 2, "possible_num": 1, "storage_num": 0,
+                "confirm_num": 1, "confirm_price": "11.00", "confirm_freight": "3.00",
+            }],
+        }]},
+    }
+
+    rows = order_purchase_candidates(payload)
+
+    assert len(rows) == 1
+    assert rows[0]["order_purchase_id"] == 15328209
+    assert rows[0]["order_detail_id"] == 14052982
+    assert rows[0]["sorting"] == 2
+    assert rows[0]["purchase_no"] == "20260718161716"
+    assert rows[0]["max_submit_num"] == 1
+
+
+def test_candidates_mark_fully_stored_purchase_unavailable():
+    payload = {"data": {"order_detail": [{
+        "id": 14052983, "sorting": 3,
+        "order_purchase": [{
+            "id": 15328210, "order_detail_id": 14052983,
+            "possible_num": 1, "storage_num": 1,
+        }],
+    }]}}
+
+    rows = order_purchase_candidates(payload)
+
+    assert rows[0]["max_submit_num"] == 0
+    assert rows[0]["can_submit"] is False
+
+
 def test_available_option_catalog_keeps_unique_option_templates():
     rows = available_option_catalog(
         {

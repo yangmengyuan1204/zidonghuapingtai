@@ -366,16 +366,29 @@ def public_problem_row(row: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def order_purchase_candidates(order_data: Dict[str, Any]) -> list[Dict[str, Any]]:
+    nested_data = order_data.get("data")
+    if isinstance(nested_data, dict):
+        order_data = nested_data
+
     pairs: list[tuple[Dict[str, Any], Dict[str, Any]]] = []
     for order in _nested_list(order_data):
         if not isinstance(order, dict):
             continue
-        purchases = order.get("order_purchase") or order.get("order_purchases") or []
+        purchases = (
+            order.get("order_purchase")
+            or order.get("order_purchases")
+            or order.get("list")
+            or order.get("items")
+            or []
+        )
         if isinstance(purchases, dict):
             purchases = [purchases]
-        for purchase in purchases if isinstance(purchases, list) else []:
-            if not isinstance(purchase, dict):
+        for raw_purchase in purchases if isinstance(purchases, list) else []:
+            if not isinstance(raw_purchase, dict):
                 continue
+            purchase = dict(raw_purchase)
+            purchase.setdefault("purchase_no", order.get("purchase_no"))
+            purchase.setdefault("order_sn", order.get("order_sn"))
             detail = purchase.get("order_detail") if isinstance(purchase.get("order_detail"), dict) else {}
             pairs.append((detail, purchase))
 
@@ -386,9 +399,12 @@ def order_purchase_candidates(order_data: Dict[str, Any]) -> list[Dict[str, Any]
         purchases = detail.get("order_purchase") or detail.get("order_purchases") or []
         if isinstance(purchases, dict):
             purchases = [purchases]
-        for purchase in purchases if isinstance(purchases, list) else []:
-            if isinstance(purchase, dict):
-                pairs.append((detail, purchase))
+        for raw_purchase in purchases if isinstance(purchases, list) else []:
+            if not isinstance(raw_purchase, dict):
+                continue
+            purchase = dict(raw_purchase)
+            purchase.setdefault("order_detail_id", detail.get("id"))
+            pairs.append((detail, purchase))
 
     candidates: list[Dict[str, Any]] = []
     seen: set[int] = set()
@@ -403,14 +419,17 @@ def order_purchase_candidates(order_data: Dict[str, Any]) -> list[Dict[str, Any]
         max_submit_num = max(0, possible_num - storage_num)
         price = purchase.get("price") if purchase.get("price") not in (None, "") else detail.get("confirm_price")
         freight = purchase.get("freight") if purchase.get("freight") not in (None, "") else detail.get("confirm_freight")
+        confirm_num = detail.get("confirm_num") if detail.get("confirm_num") not in (None, "") else purchase.get("confirm_num")
+        confirm_price = detail.get("confirm_price") if detail.get("confirm_price") not in (None, "") else purchase.get("confirm_price")
+        confirm_freight = detail.get("confirm_freight") if detail.get("confirm_freight") not in (None, "") else purchase.get("confirm_freight")
         candidates.append(
             {
                 "order_purchase_id": purchase_id,
                 "order_detail_id": detail_id,
-                "sorting": detail.get("sorting"),
+                "sorting": detail.get("sorting") if detail.get("sorting") not in (None, "") else purchase.get("sorting"),
                 "purchase_no": purchase.get("purchase_no"),
-                "goods_name": detail.get("goods_name") or detail.get("goods_title") or detail.get("title"),
-                "sku_id": detail.get("sku_id"),
+                "goods_name": detail.get("goods_name") or detail.get("goods_title") or detail.get("title") or purchase.get("goods_name"),
+                "sku_id": detail.get("sku_id") or purchase.get("sku_id"),
                 "purchase_status": purchase.get("status"),
                 "possible_num": possible_num,
                 "storage_num": storage_num,
@@ -418,13 +437,13 @@ def order_purchase_candidates(order_data: Dict[str, Any]) -> list[Dict[str, Any]
                 "can_submit": max_submit_num > 0,
                 "price": price,
                 "freight": freight,
-                "confirm_num": detail.get("confirm_num"),
-                "confirm_price": detail.get("confirm_price"),
-                "confirm_freight": detail.get("confirm_freight"),
-                "pre_num": detail.get("confirm_num") if detail.get("confirm_num") not in (None, "") else possible_num,
-                "pre_price": detail.get("confirm_price") if detail.get("confirm_price") not in (None, "") else price,
-                "pre_freight": detail.get("confirm_freight") if detail.get("confirm_freight") not in (None, "") else freight,
-                "option": detail.get("option") or [],
+                "confirm_num": confirm_num,
+                "confirm_price": confirm_price,
+                "confirm_freight": confirm_freight,
+                "pre_num": confirm_num if confirm_num not in (None, "") else possible_num,
+                "pre_price": confirm_price if confirm_price not in (None, "") else price,
+                "pre_freight": confirm_freight if confirm_freight not in (None, "") else freight,
+                "option": detail.get("option") or purchase.get("option") or [],
             }
         )
     return candidates
