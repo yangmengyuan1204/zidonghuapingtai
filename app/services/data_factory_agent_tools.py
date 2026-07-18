@@ -27,6 +27,12 @@ SENSITIVE_KEYS = {
     "usertoken",
 }
 
+INSUFFICIENT_BALANCE_PATTERNS = (
+    "浣欓涓嶈冻",
+    "鍙敤浣欓涓嶈冻",
+    "insufficient balance",
+)
+
 
 @dataclass(frozen=True)
 class AgentToolSpec:
@@ -176,6 +182,24 @@ def sanitize_observation(value: Any, *, depth: int = 0) -> Any:
     if isinstance(value, (int, float, bool)) or value is None:
         return value
     return str(value)[:1000]
+
+
+def is_insufficient_balance(result: Dict[str, Any]) -> bool:
+    if not isinstance(result, dict) or result.get("passed") is True:
+        return False
+    summary = result.get("summary") if isinstance(result.get("summary"), dict) else {}
+    for container in (result, summary):
+        if any(container.get(key) is True for key in ("mutation_uncertain", "mutation_outcome_uncertain", "outcome_uncertain")):
+            return False
+        if str(container.get("mutation_status") or "").strip().casefold() in {"uncertain", "unknown"}:
+            return False
+    accepted = {pattern.casefold() for pattern in INSUFFICIENT_BALANCE_PATTERNS}
+    return any(
+        isinstance(container.get(key), str)
+        and container[key].strip().casefold() in accepted
+        for container in (result, summary)
+        for key in ("reason", "error", "message")
+    )
 
 
 def _decimal_text(value: Any) -> str:
@@ -580,18 +604,72 @@ def _quote_order(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict[s
     )
 
 
+def _pay_with_strict_bank_fallback(
+    context: AgentToolContext,
+    *,
+    mode: str,
+    balance_tool_name: str,
+    balance_runner: Callable[..., Any],
+    bank_tool_name: str,
+    bank_runner: Callable[..., Any],
+    identifiers: Dict[str, Any],
+    variables: Dict[str, Any],
+) -> Dict[str, Any]:
+    payment_mode = str(mode or "balance_first").strip().lower()
+    if payment_mode == "bank":
+        return _save_script_result(
+            context,
+            bank_tool_name,
+            bank_runner,
+            _tool_variables(context, {**identifiers, **variables, "finance_confirm": True}),
+        )
+
+    initial_result = _save_script_result(
+        context,
+        balance_tool_name,
+        balance_runner,
+        _tool_variables(context, {**identifiers, **variables, "finance_confirm": False}),
+    )
+    fallback_mode = str(context.goal.get("variables", {}).get("payment_fallback") or "").strip().lower()
+    if initial_result.get("passed") is True or fallback_mode != "bank" or not is_insufficient_balance(initial_result):
+        return initial_result
+
+    final_result = _save_script_result(
+        context,
+        bank_tool_name,
+        bank_runner,
+        _tool_variables(context, {**identifiers, **variables, "finance_confirm": True}),
+    )
+    initial_summary = initial_result.get("summary") if isinstance(initial_result.get("summary"), dict) else {}
+    final_summary = final_result.get("summary") if isinstance(final_result.get("summary"), dict) else {}
+    combined_summary = sanitize_observation(final_summary)
+    combined_summary.update(
+        {
+            "payment_fallback_reason": "insufficient_balance",
+            "initial_payment_mode": "balance_first",
+            "final_payment_mode": "bank",
+            "initial_payment_failure": sanitize_observation(initial_summary),
+        }
+    )
+    if final_result.get("passed") is not True:
+        combined_summary["final_payment_failure"] = sanitize_observation(final_summary)
+    return {**final_result, "summary": sanitize_observation(combined_summary)}
+
+
 def _pay_order(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict[str, Any]:
     order_sn = _state_identifier(context, "order_sn", arguments)
     if not order_sn:
         raise ValueError("订单支付缺少订单号")
     mode = str(context.goal["variables"].get("order_payment_mode") or "balance_first")
-    runner = data_scripts.run_bank_payment_script if mode == "bank" else data_scripts.run_balance_payment_script
-    key = "bank_payment" if mode == "bank" else "balance_payment"
-    return _save_script_result(
+    return _pay_with_strict_bank_fallback(
         context,
-        key,
-        runner,
-        _tool_variables(context, {"order_sn": order_sn, "finance_confirm": mode == "bank"}),
+        mode=mode,
+        balance_tool_name="balance_payment",
+        balance_runner=data_scripts.run_balance_payment_script,
+        bank_tool_name="bank_payment",
+        bank_runner=data_scripts.run_bank_payment_script,
+        identifiers={"order_sn": order_sn},
+        variables={},
     )
 
 
@@ -635,16 +713,15 @@ def _pay_porder(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict[st
     if not porder_sn:
         raise ValueError("配送单支付缺少配送单号")
     mode = str(context.goal["variables"].get("porder_payment_mode") or "balance_first")
-    runner = data_scripts.run_porder_bank_payment_script if mode == "bank" else data_scripts.run_porder_balance_payment_script
-    key = "porder_bank_payment" if mode == "bank" else "porder_balance_payment"
-    return _save_script_result(
+    return _pay_with_strict_bank_fallback(
         context,
-        key,
-        runner,
-        _tool_variables(
-            context,
-            {"porder_sn": porder_sn, "run_backend_porder_flow": False, "finance_confirm": mode == "bank"},
-        ),
+        mode=mode,
+        balance_tool_name="porder_balance_payment",
+        balance_runner=data_scripts.run_porder_balance_payment_script,
+        bank_tool_name="porder_bank_payment",
+        bank_runner=data_scripts.run_porder_bank_payment_script,
+        identifiers={"porder_sn": porder_sn},
+        variables={"run_backend_porder_flow": False},
     )
 
 

@@ -91,6 +91,18 @@ def _ready_goal() -> dict:
     }
 
 
+def _tool_context() -> AgentToolContext:
+    return AgentToolContext(
+        db=None,
+        env=SimpleNamespace(id=1),
+        project_id=1,
+        goal={"variables": {}},
+        variables={},
+        public_variables={},
+        state={"order_sn": "ORDER-1", "porder_sn": "PORDER-1"},
+    )
+
+
 def test_agent_customer_priority_is_natural_language_then_topbar(monkeypatch):
     project, env = _agent_context()
     monkeypatch.setattr(agent_service, "call_local_model_json", lambda *args, **kwargs: _ready_goal())
@@ -418,6 +430,167 @@ def test_unknown_tool_never_calls_business_runner():
             )
     finally:
         db.close()
+
+
+def test_order_payment_falls_back_to_bank_only_for_insufficient_balance(monkeypatch):
+    calls = []
+    context = _tool_context()
+    context.goal["variables"].update({
+        "order_payment_mode": "balance_first",
+        "payment_fallback": "bank",
+    })
+    monkeypatch.setattr(
+        agent_tools,
+        "_save_script_result",
+        lambda ctx, name, runner, variables: (
+            {"tool": name, "passed": False, "summary": {"reason": "鍙敤浣欓涓嶈冻"}}
+            if name == "balance_payment"
+            else calls.append((name, variables)) or {"tool": name, "passed": True, "summary": {"finance_passed": True}}
+        ),
+    )
+    result = agent_tools._pay_order(context, {})
+    assert result["passed"] is True
+    assert result["summary"]["payment_fallback_reason"] == "insufficient_balance"
+    assert result["summary"]["initial_payment_mode"] == "balance_first"
+    assert result["summary"]["final_payment_mode"] == "bank"
+    assert len(calls) == 1
+    assert calls[0][0] == "bank_payment"
+    assert calls[0][1]["finance_confirm"] is True
+
+
+@pytest.mark.parametrize("reason", ["Token澶辨晥", "璇锋眰瓒呮椂", "缃戠粶閿欒", "鏀粯澶辫触", "缁撴灉鏈煡"])
+def test_order_payment_does_not_fallback_for_other_failures(monkeypatch, reason):
+    context = _tool_context()
+    context.goal["variables"]["payment_fallback"] = "bank"
+    monkeypatch.setattr(
+        agent_tools,
+        "_save_script_result",
+        lambda ctx, name, runner, variables: (
+            pytest.fail("bank fallback must not run")
+            if name == "bank_payment"
+            else {"tool": name, "passed": False, "summary": {"reason": reason}}
+        ),
+    )
+    assert agent_tools._pay_order(context, {})["passed"] is False
+
+
+def test_order_payment_falls_back_for_exact_english_insufficient_balance(monkeypatch):
+    calls = []
+    context = _tool_context()
+    context.goal["variables"]["payment_fallback"] = "bank"
+
+    def fake_save(ctx, name, runner, variables):
+        calls.append(name)
+        if name == "balance_payment":
+            return {"tool": name, "passed": False, "message": "InSuFfIcIeNt BaLaNcE", "summary": {}}
+        return {"tool": name, "passed": True, "summary": {"finance_passed": True}}
+
+    monkeypatch.setattr(agent_tools, "_save_script_result", fake_save)
+    assert agent_tools._pay_order(context, {})["passed"] is True
+    assert calls == ["balance_payment", "bank_payment"]
+
+
+def test_order_payment_explicit_bank_mode_calls_bank_once(monkeypatch):
+    calls = []
+    context = _tool_context()
+    context.goal["variables"].update({"order_payment_mode": "bank", "payment_fallback": "bank"})
+
+    def fake_save(ctx, name, runner, variables):
+        calls.append((name, variables))
+        return {"tool": name, "passed": True, "summary": {"finance_passed": True}}
+
+    monkeypatch.setattr(agent_tools, "_save_script_result", fake_save)
+    result = agent_tools._pay_order(context, {})
+    assert result["passed"] is True
+    assert len(calls) == 1
+    assert calls[0][0] == "bank_payment"
+    assert calls[0][1]["finance_confirm"] is True
+
+
+def test_order_payment_fallback_disabled_returns_original_balance_failure(monkeypatch):
+    context = _tool_context()
+    failure = {"tool": "balance_payment", "passed": False, "summary": {"reason": "浣欓涓嶈冻"}}
+    monkeypatch.setattr(agent_tools, "_save_script_result", lambda *args, **kwargs: failure)
+    assert agent_tools._pay_order(context, {}) is failure
+
+
+def test_order_payment_bank_fallback_failure_retains_sanitized_summaries(monkeypatch):
+    context = _tool_context()
+    context.goal["variables"]["payment_fallback"] = "bank"
+
+    def fake_save(ctx, name, runner, variables):
+        if name == "balance_payment":
+            return {"tool": name, "passed": False, "summary": {"reason": "浣欓涓嶈冻", "code": 402}}
+        return {"tool": name, "passed": False, "summary": {"message": "bank rejected", "access_token": "BANK-SECRET"}}
+
+    monkeypatch.setattr(agent_tools, "_save_script_result", fake_save)
+    result = agent_tools._pay_order(context, {})
+    assert result["passed"] is False
+    assert result["summary"]["payment_fallback_reason"] == "insufficient_balance"
+    assert result["summary"]["initial_payment_failure"] == {"reason": "浣欓涓嶈冻", "code": 402}
+    assert result["summary"]["final_payment_failure"] == {"message": "bank rejected"}
+    assert "BANK-SECRET" not in json.dumps(result, ensure_ascii=False)
+
+
+def test_porder_payment_fallback_uses_bank_with_finance_confirmation(monkeypatch):
+    calls = []
+    context = _tool_context()
+    context.goal["variables"].update({"porder_payment_mode": "balance_first", "payment_fallback": "bank"})
+
+    def fake_save(ctx, name, runner, variables):
+        calls.append((name, variables))
+        if name == "porder_balance_payment":
+            return {"tool": name, "passed": False, "summary": {"error": "鍙敤浣欓涓嶈冻"}}
+        return {"tool": name, "passed": True, "summary": {"finance_passed": True}}
+
+    monkeypatch.setattr(agent_tools, "_save_script_result", fake_save)
+    result = agent_tools._pay_porder(context, {})
+    assert result["passed"] is True
+    assert [name for name, _ in calls] == ["porder_balance_payment", "porder_bank_payment"]
+    assert calls[1][1]["finance_confirm"] is True
+
+
+def test_order_payment_fallback_sanitizes_sensitive_initial_failure(monkeypatch):
+    context = _tool_context()
+    context.goal["variables"]["payment_fallback"] = "bank"
+
+    def fake_save(ctx, name, runner, variables):
+        if name == "balance_payment":
+            return {
+                "tool": name,
+                "passed": False,
+                "summary": {
+                    "reason": "浣欓涓嶈冻",
+                    "password": "PASSWORD-SECRET",
+                    "nested": {"access_token": "TOKEN-SECRET", "message": "safe"},
+                },
+            }
+        return {"tool": name, "passed": True, "summary": {"finance_passed": True}}
+
+    monkeypatch.setattr(agent_tools, "_save_script_result", fake_save)
+    result = agent_tools._pay_order(context, {})
+    serialized = json.dumps(result["summary"], ensure_ascii=False)
+    assert "PASSWORD-SECRET" not in serialized
+    assert "TOKEN-SECRET" not in serialized
+    assert result["summary"]["initial_payment_failure"]["nested"] == {"message": "safe"}
+
+
+def test_order_payment_does_not_fallback_from_unstructured_or_uncertain_result(monkeypatch):
+    context = _tool_context()
+    context.goal["variables"]["payment_fallback"] = "bank"
+    failures = iter([
+        {"tool": "balance_payment", "passed": False, "payload": {"reason": "浣欓涓嶈冻"}, "summary": {}},
+        {"tool": "balance_payment", "passed": False, "mutation_uncertain": True, "summary": {"reason": "浣欓涓嶈冻"}},
+    ])
+
+    def fake_save(ctx, name, runner, variables):
+        if name == "bank_payment":
+            pytest.fail("bank fallback must not run")
+        return next(failures)
+
+    monkeypatch.setattr(agent_tools, "_save_script_result", fake_save)
+    assert agent_tools._pay_order(context, {})["passed"] is False
+    assert agent_tools._pay_order(context, {})["passed"] is False
 
 
 def test_confirm_guards_duplicate_and_same_environment_concurrency(monkeypatch):
