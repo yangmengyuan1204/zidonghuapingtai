@@ -43,7 +43,7 @@ def _normalize_field_name(name: Any) -> str:
 
 def _is_sensitive_field(name: Any) -> bool:
     text = _normalize_field_name(name)
-    return text in _SENSITIVE_FIELD_NAMES or text.endswith("_password") or text.endswith("_token")
+    return text in _SENSITIVE_FIELD_NAMES or text == "code" or text.endswith(("_code", "_password", "_token"))
 
 
 def sanitize_headers(headers: dict[str, Any] | None) -> dict[str, str]:

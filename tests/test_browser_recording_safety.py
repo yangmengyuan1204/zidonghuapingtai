@@ -138,3 +138,30 @@ def test_sanitize_url_removes_userinfo_and_preserves_ipv6_port():
     assert safe_url.startswith("https://[2001:db8::1]:8443/orders?")
     assert "query-secret" not in safe_url
     assert query == {"token": "[REDACTED]", "order_sn": "ORDER-1"}
+
+
+def test_all_normalized_code_suffixes_are_redacted_in_query_and_nested_json():
+    session = make_session("capturing")
+    request = FakeRequest()
+    request.url = (
+        "https://example.test/verify?otpCode=otp-secret&mfaCode=mfa-secret"
+        "&totpCode=totp-secret&order_sn=ORDER-1"
+    )
+    request.post_data = json.dumps({
+        "order_sn": "ORDER-1",
+        "verification": {
+            "otpCode": "otp-secret",
+            "mfaCode": "mfa-secret",
+            "totpCode": "totp-secret",
+        },
+    })
+
+    browser_session._on_request_sync(session, request)
+
+    event = session.events[0]
+    serialized = json.dumps(event, ensure_ascii=False)
+    for secret in ("otp-secret", "mfa-secret", "totp-secret"):
+        assert secret not in serialized
+    assert all(event["query"][field] == "[REDACTED]" for field in ("otpCode", "mfaCode", "totpCode"))
+    body = json.loads(event["body"])
+    assert all(body["verification"][field] == "[REDACTED]" for field in ("otpCode", "mfaCode", "totpCode"))
