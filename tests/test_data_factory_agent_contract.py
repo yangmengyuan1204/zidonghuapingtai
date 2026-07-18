@@ -14,7 +14,7 @@ def test_minimal_new_order_uses_confirmed_business_defaults():
     assert result.customer_ids == ["300001"]
     assert result.customer_source == "bound_account"
     assert result.variables == {
-        "keyword": "琛ｆ湇",
+        "keyword": "衣服",
         "shop_type": "1688",
         "order_shop_count": 1,
         "order_per_shop": 1,
@@ -45,7 +45,7 @@ def test_resume_order_does_not_receive_new_order_defaults():
 def test_normalize_goal_applies_compiled_new_order_defaults_before_clarifying():
     status, goal, question = agent_service._normalize_goal(
         {"status": "ready", "goal": {"mode": "new", "variables": {}}},
-        [{"role": "user", "content": "甯垜閫犱竴涓鍗昤"}],
+        [{"role": "user", "content": "帮我造一个订单"}],
         compile_context={"bound_customer_ids": ["300001"]},
     )
 
@@ -66,7 +66,7 @@ def test_normalize_goal_applies_compiled_new_order_defaults_before_clarifying():
             "payment_fallback",
         )
     } == {
-        "keyword": "琛ｆ湇",
+        "keyword": "衣服",
         "shop_type": "1688",
         "order_shop_count": 1,
         "order_per_shop": 1,

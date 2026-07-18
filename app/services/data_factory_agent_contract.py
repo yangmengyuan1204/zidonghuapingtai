@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 
 NEW_ORDER_DEFAULTS: tuple[tuple[str, Any], ...] = (
-    ("keyword", "琛ｆ湇"),
+    ("keyword", "衣服"),
     ("shop_type", "1688"),
     ("order_shop_count", 1),
     ("order_per_shop", 1),
