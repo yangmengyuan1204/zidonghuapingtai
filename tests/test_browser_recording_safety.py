@@ -1,5 +1,6 @@
 import asyncio
 import json
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -246,3 +247,22 @@ def test_events_to_har_preserves_only_sanitized_values():
     assert "secret" not in serialized
     assert "authorization" not in serialized.lower()
     assert "cookie" not in serialized.lower()
+
+
+def test_checkpoint_routes_are_in_route_contract_baseline():
+    expected = json.loads(
+        Path(__file__).with_name("route_contract_expected.json").read_text(encoding="utf-8-sig")
+    )
+    contracts = {(item["method"], item["path"], item["name"]) for item in expected}
+
+    assert ("GET", "/api/browser-record/sessions/{session_id}", "session_state") in contracts
+    assert (
+        "POST",
+        "/api/browser-record/sessions/{session_id}/checkpoint/start",
+        "start_checkpoint",
+    ) in contracts
+    assert (
+        "POST",
+        "/api/browser-record/sessions/{session_id}/checkpoint/stop",
+        "stop_checkpoint",
+    ) in contracts

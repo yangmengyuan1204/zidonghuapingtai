@@ -91,6 +91,21 @@
   },
   {
     "method": "GET",
+    "path": "/api/browser-record/sessions/{session_id}",
+    "name": "session_state"
+  },
+  {
+    "method": "POST",
+    "path": "/api/browser-record/sessions/{session_id}/checkpoint/start",
+    "name": "start_checkpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/browser-record/sessions/{session_id}/checkpoint/stop",
+    "name": "stop_checkpoint"
+  },
+  {
+    "method": "GET",
     "path": "/api/browser-record/sessions/{session_id}/events",
     "name": "list_events"
   },
