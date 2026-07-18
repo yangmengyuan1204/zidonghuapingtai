@@ -422,6 +422,8 @@ def order_purchase_candidates(order_data: Dict[str, Any]) -> list[Dict[str, Any]
         confirm_num = detail.get("confirm_num") if detail.get("confirm_num") not in (None, "") else purchase.get("confirm_num")
         confirm_price = detail.get("confirm_price") if detail.get("confirm_price") not in (None, "") else purchase.get("confirm_price")
         confirm_freight = detail.get("confirm_freight") if detail.get("confirm_freight") not in (None, "") else purchase.get("confirm_freight")
+        price = price if price not in (None, "") else confirm_price
+        freight = freight if freight not in (None, "") else confirm_freight
         candidates.append(
             {
                 "order_purchase_id": purchase_id,

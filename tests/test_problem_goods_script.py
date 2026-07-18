@@ -286,6 +286,11 @@ def test_follow_list_candidates_accept_flat_child_fields():
     assert rows[0]["sorting"] == 2
     assert rows[0]["purchase_no"] == "20260718161716"
     assert rows[0]["max_submit_num"] == 1
+    assert rows[0]["confirm_num"] == 1
+    assert rows[0]["confirm_price"] == "11.00"
+    assert rows[0]["confirm_freight"] == "3.00"
+    assert rows[0]["price"] == "11.00"
+    assert rows[0]["freight"] == "3.00"
 
 
 def test_candidates_mark_fully_stored_purchase_unavailable():
