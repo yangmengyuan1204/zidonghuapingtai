@@ -79,10 +79,14 @@ def reduce_intent_fields(state: Dict[str, Any], message: str) -> Dict[str, Any]:
     if order_sn_match:
         resolve("order_sn", order_sn_match.group(1), order_sn_match.group(0))
 
-    # --- 番号提取（"1番" / "第2番"）---
-    item_index_match = re.search(r"(?:第\s*)?(\d+)\s*番", text)
+    # --- 问题商品番号提取（仅显式选择，不把“2番商品”误判成第2番）---
+    item_index_match = re.search(
+        r"第\s*(\d+)\s*番|(\d+)\s*番(?=.{0,8}(?:提出|处理|提|退)(?:问题产品|问题商品))",
+        text,
+    )
     if item_index_match:
-        resolve("item_index", int(item_index_match.group(1)), item_index_match.group(0))
+        item_index = item_index_match.group(1) or item_index_match.group(2)
+        resolve("item_index", int(item_index), item_index_match.group(0))
 
     # --- 问题产品操作识别 ---
     problem_goods_patterns = (
@@ -96,6 +100,17 @@ def reduce_intent_fields(state: Dict[str, Any], message: str) -> Dict[str, Any]:
             resolve("problem_goods_op", label, pg_match.group(0))
             break
 
+    if item_index_match:
+        resolve("problem_scope", "item", item_index_match.group(0))
+    else:
+        all_scope = re.search(
+            r"(?:全部|所有)(?:商品|问题产品|问题商品)|(?:每|各)番|分别(?:处理|提出|退)|"
+            r"(?:两|2)番(?:商品)?都(?:处理|提出|提|退)|(?:全部|所有|都)处理",
+            text,
+        )
+        if all_scope:
+            resolve("problem_scope", "all", all_scope.group(0))
+
     per_shop_phrase = re.search(
         rf"(?:每(?:个)?店(?:铺)?|店铺各|各店(?:铺)?)(?:有|包含|要求)?({_COUNT_TOKEN})(?:个|种|款|件)?(?:商品|货品|sku)",
         text,
@@ -107,6 +122,8 @@ def reduce_intent_fields(state: Dict[str, Any], message: str) -> Dict[str, Any]:
         text,
         re.IGNORECASE,
     ):
+        if candidate.start() > 0 and text[candidate.start() - 1] == "第":
+            continue
         if per_shop_phrase and candidate.start() >= per_shop_phrase.start() and candidate.end() <= per_shop_phrase.end():
             continue
         item_count = candidate
@@ -189,18 +206,35 @@ def reduce_intent_fields(state: Dict[str, Any], message: str) -> Dict[str, Any]:
             )
 
     quantity_all = re.search(
-        r"(?:全部|所有|全)(?:商品)?(?:金额|数量).{0,12}(?:退|退款)|(?:商品)?数量.{0,8}(?:全部|全|都)(?:给)?退",
+        r"(?:全部|所有|全)(?:商品)?(?:金额|数量).{0,12}(?:退|退款)|"
+        r"(?:问题产品|问题商品|商品)?数量.{0,8}(?:全部|全|都)(?:给)?退|"
+        r"(?:问题产品|问题商品|商品)?数量(?:(?:改|变)(?:成|为)?|成|为|=|:)?0",
         text,
     )
     if quantity_all:
         resolve("problem_refund_quantity", "all", quantity_all.group(0))
 
     freight_all = re.search(
-        r"(?:国内运费|运费).{0,10}(?:全部|全|都)?(?:给)?退|(?:全部|全|都)退.{0,8}(?:国内运费|运费)",
+        r"(?:国内运费|运费).{0,10}(?:全部|全|都)?(?:给)?退|"
+        r"(?:全部|全|都)退.{0,8}(?:国内运费|运费)|"
+        r"(?:国内运费|运费)(?:(?:改|变)(?:成|为)?|成|为|=|:)?0",
         text,
     )
     if freight_all:
         resolve("problem_refund_freight", "all", freight_all.group(0))
+
+    full_refund = re.search(r"(?<!数量)(?<!运费)(?:全部退|全退)(?:了)?", text)
+    if full_refund:
+        resolve("problem_refund_quantity", "all", full_refund.group(0))
+        resolve("problem_refund_freight", "all", full_refund.group(0))
+        resolve("problem_preserve_price", True, full_refund.group(0))
+    explicit_unit_price = refund_unit_price or unit_price
+    if (
+        explicit_unit_price
+        and "problem_goods_op" in fields
+        and (not full_refund or explicit_unit_price.start() > full_refund.start())
+    ):
+        resolve("problem_preserve_price", False, explicit_unit_price.group(0))
 
     # --- 支付方式提取 ---
     payment_mode_match = re.search(
@@ -237,6 +271,15 @@ def reduce_intent_fields(state: Dict[str, Any], message: str) -> Dict[str, Any]:
     unchanged = re.search(r"(?:其他|其它|剩下|其余).{0,4}(?:不变|别改|不要改)", text)
     if unchanged:
         resolve("preserve_unspecified", True, unchanged.group(0))
+
+    pending_fields = result.get("pending_fields")
+    latest_scope = fields.get("problem_scope")
+    if (
+        isinstance(pending_fields, dict)
+        and isinstance(latest_scope, dict)
+        and latest_scope.get("message_index") == message_index
+    ):
+        pending_fields.pop("problem_scope", None)
 
     result["turn_count"] = message_index + 1
     return result

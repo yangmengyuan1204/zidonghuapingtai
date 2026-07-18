@@ -1145,9 +1145,9 @@ def test_problem_goods_only_instruction_discards_hallucinated_advance_node():
         ],
     )
 
-    assert status == "awaiting_confirmation"
-    assert question == ""
-    assert [item["type"] for item in goal["operations"]] == ["problem_goods"]
+    assert status == "clarifying"
+    assert goal == {}
+    assert question == "订单包含多个商品，请说明处理第几番或全部商品。"
 
 
 def test_model_item_count_without_user_evidence_falls_back_to_one_item():

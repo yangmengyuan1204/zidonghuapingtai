@@ -23,7 +23,11 @@ from ..database import SessionLocal
 from ..functional_testing.model_client import call_local_model_json
 from ..models import AiConfig, Env, Project
 from .data_factory_agent_intent import reduce_intent_fields
-from .data_factory_agent_contract import compile_contract_defaults
+from .data_factory_agent_contract import (
+    compile_contract_defaults,
+    problem_goods_clarification,
+    read_deterministic_problem_fields,
+)
 from .data_factory_agent_prompts import (
     SYSTEM_PROMPT,
     SYSTEM_PROMPT_ACTION,
@@ -55,12 +59,15 @@ UNSUPPORTED_CAPABILITIES = {
     "取消订单": "新增受控订单取消工具",
 }
 IGNORED_MODEL_VARIABLE_KEYS = {
+    "item_index",
     "pricing_mode",
     "pricing",
     "item_count",
+    "problem_scope",
     "options",
     "problem_refund_quantity",
     "problem_refund_freight",
+    "problem_preserve_price",
 }
 TERMINAL_STATUSES = {"succeeded", "failed", "blocked", "cancelled"}
 SESSION_STATUSES = {
@@ -531,6 +538,10 @@ def _clarification_field(question: str) -> str:
     text = str(question or "").lower()
     if "option" in text or "附加服务" in text:
         return "options"
+    if "第几番" in text or "全部商品" in text:
+        return "problem_scope"
+    if "问题产品" in text or "问题商品" in text:
+        return "problem_goods"
     if "数量" in text or "商品数" in text:
         return "quantity"
     if "价格" in text or "总价" in text or "单价" in text:
@@ -554,6 +565,7 @@ def _update_pending_fields(
     field_name = _clarification_field(question)
     labels = {
         "options": "附加服务",
+        "problem_scope": "问题产品范围",
         "quantity": "商品数量",
         "pricing": "价格口径",
         "problem_goods": "问题产品处理方式",
@@ -627,6 +639,8 @@ def _explicit_count_intent(source_text: str) -> tuple[Dict[str, Any], str]:
         text,
         re.IGNORECASE,
     ):
+        if candidate.start() > 0 and text[candidate.start() - 1] == "第":
+            continue
         if per_shop_match and candidate.start() >= per_shop_match.start() and candidate.end() <= per_shop_match.end():
             continue
         total_item_match = candidate
@@ -982,8 +996,6 @@ def _problem_goods_intent(source_text: str) -> tuple[Dict[str, Any], str]:
         if not quantity_mode:
             quantity_mode = "keep"
 
-    if not quantity_mode and freight_mode == "keep" and price_adjustment_mode == "keep":
-        return {}, "请明确问题产品需要修改数量、单价还是国内运费。"
     return {
         "type": "problem_goods",
         "action": "create_and_process",
@@ -1147,6 +1159,7 @@ def _normalize_goal(
                 str(message.get("content") or ""),
             )
     resolved_fields = conversation_intent.get("resolved_fields") or {}
+    deterministic_problem_fields = read_deterministic_problem_fields(resolved_fields)
     corrections: list[Dict[str, Any]] = []
     evidence: Dict[str, str] = {}
 
@@ -1156,6 +1169,21 @@ def _normalize_goal(
             problem_operation = {}
         else:
             return "clarifying", {}, problem_question
+    if problem_operation:
+        problem_scope = str(deterministic_problem_fields.get("problem_scope") or "")
+        if problem_scope == "all":
+            problem_operation["scope"] = "all_candidates"
+        elif problem_scope == "item":
+            problem_operation["scope"] = "selected_item"
+            problem_operation["item_index"] = deterministic_problem_fields.get("item_index")
+        if deterministic_problem_fields.get("problem_refund_quantity") == "all":
+            problem_operation["quantity_refund_mode"] = "all"
+            problem_operation["quantity_refund_value"] = None
+        if deterministic_problem_fields.get("problem_refund_freight") == "all":
+            problem_operation["freight_refund_mode"] = "all"
+        if deterministic_problem_fields.get("problem_preserve_price") is True:
+            problem_operation["price_adjustment_mode"] = "keep"
+            problem_operation["price_adjustment_value"] = None
     order_options = _explicit_order_option_intent(source_text)
 
     unhandled = _raw_unhandled_requests(raw_goal)
@@ -1165,7 +1193,12 @@ def _normalize_goal(
         if re.search(r"忽略|未支持|无法执行", str(item))
     ]
     if problem_operation:
-        supported_problem_words = re.compile(r"问题产品|问题商品|商品金额|数量|运费|退款|退了|全退|半退|改0|清零|option|附加服务", re.IGNORECASE)
+        supported_problem_words = re.compile(
+            r"问题产品|问题商品|商品金额|数量|运费|退款|退了|全退|半退|改0|清零|"
+            r"(?:单价|价格|报价).{0,8}(?:(?:改|变)(?:成|为)?|调整为|=|:)\d+(?:\.\d+)?|"
+            r"全部处理|所有商品|每番|各番|分别处理|option|附加服务",
+            re.IGNORECASE,
+        )
         unhandled = [item for item in unhandled if not supported_problem_words.search(item)]
         ignored = [item for item in ignored if not supported_problem_words.search(item)]
     if order_options:
@@ -1383,6 +1416,23 @@ def _normalize_goal(
         if variables.get("order_shop_count") and variables.get("order_per_shop")
         else 0
     )
+    if problem_operation:
+        has_problem_change = any(
+            name in deterministic_problem_fields
+            for name in ("problem_refund_quantity", "problem_refund_freight")
+        ) or any(
+            str(problem_operation.get(name) or "keep") != "keep"
+            for name in ("quantity_refund_mode", "freight_refund_mode", "price_adjustment_mode")
+        )
+        problem_contract_question = problem_goods_clarification(
+            problem_requested=True,
+            problem_fields=deterministic_problem_fields,
+            item_count=expected_items or None,
+            existing_order=mode != "new",
+            has_explicit_change=has_problem_change,
+        )
+        if problem_contract_question and not force_ready:
+            return "clarifying", {}, problem_contract_question
     price_source, price_question = _explicit_price_intent(source_text, raw_goal, raw_variables)
     latest_pricing = resolved_fields.get("pricing") if isinstance(resolved_fields, dict) else None
     if isinstance(latest_pricing, dict) and isinstance(latest_pricing.get("value"), dict):
@@ -1398,7 +1448,7 @@ def _normalize_goal(
         )
     if price_question and not force_ready:
         return "clarifying", {}, price_question
-    if mode != "new" and price_source.get("source") in {"default", "legacy_model"}:
+    if problem_operation and price_source.get("refund_context"):
         variables.pop("offer_price", None)
         variables.pop("offer_unit_prices", None)
         pricing = {
@@ -1409,6 +1459,31 @@ def _normalize_goal(
             "effective_goods_total": "",
             "includes_fees": False,
             "evidence": "",
+        }
+    elif mode != "new" and price_source.get("source") in {"default", "legacy_model"}:
+        variables.pop("offer_price", None)
+        variables.pop("offer_unit_prices", None)
+        pricing = {
+            "mode": "preserve_existing",
+            "mode_label": "保持原订单价格",
+            "requested_goods_total": "",
+            "effective_unit_prices": [],
+            "effective_goods_total": "",
+            "includes_fees": False,
+            "evidence": "",
+        }
+    elif mode == "resume_order" and price_source.get("mode") == "uniform_unit":
+        unit_price = _decimal_value(price_source.get("amount"), "商品单价")
+        variables["offer_price"] = unit_price
+        variables.pop("offer_unit_prices", None)
+        pricing = {
+            "mode": "uniform_unit",
+            "mode_label": "统一商品单价",
+            "requested_goods_total": "",
+            "effective_unit_prices": [unit_price],
+            "effective_goods_total": "",
+            "includes_fees": False,
+            "evidence": str(price_source.get("evidence") or ""),
         }
     else:
         if not expected_items or not variables.get("order_item_num"):

@@ -16,6 +16,17 @@ NEW_ORDER_DEFAULTS: tuple[tuple[str, Any], ...] = (
     ("payment_fallback", "bank"),
 )
 
+PROBLEM_SCOPE_CLARIFICATION = "订单包含多个商品，请说明处理第几番或全部商品。"
+PROBLEM_CHANGE_CLARIFICATION = "请说明问题产品需要修改数量、单价或国内运费，以及目标值。"
+_DETERMINISTIC_PROBLEM_FIELDS = (
+    "problem_goods_op",
+    "problem_scope",
+    "item_index",
+    "problem_refund_quantity",
+    "problem_refund_freight",
+    "problem_preserve_price",
+)
+
 
 @dataclass(frozen=True)
 class ContractDefaultsResult:
@@ -34,6 +45,39 @@ def _numeric_customer_ids(values: Any) -> list[str]:
         if customer_id.isdigit() and customer_id not in result:
             result.append(customer_id)
     return result
+
+
+def read_deterministic_problem_fields(resolved_fields: Any) -> Dict[str, Any]:
+    source = resolved_fields if isinstance(resolved_fields, dict) else {}
+    result: Dict[str, Any] = {}
+    evidence: Dict[str, str] = {}
+    for name in _DETERMINISTIC_PROBLEM_FIELDS:
+        item = source.get(name)
+        if not isinstance(item, dict) or "value" not in item:
+            continue
+        result[name] = copy.deepcopy(item["value"])
+        evidence[name] = str(item.get("evidence") or "")
+    if evidence:
+        result["evidence"] = evidence
+    return result
+
+
+def problem_goods_clarification(
+    *,
+    problem_requested: bool,
+    problem_fields: Dict[str, Any],
+    item_count: int | None,
+    existing_order: bool,
+    has_explicit_change: bool,
+) -> str:
+    if not problem_requested:
+        return ""
+    scope = str(problem_fields.get("problem_scope") or "")
+    if not scope and (existing_order or item_count is None or item_count > 1):
+        return PROBLEM_SCOPE_CLARIFICATION
+    if not has_explicit_change:
+        return PROBLEM_CHANGE_CLARIFICATION
+    return ""
 
 
 def compile_contract_defaults(
