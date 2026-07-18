@@ -23,7 +23,29 @@ async def create_session(payload: Dict[str, Any]) -> Dict[str, Any]:
         session_id = await browser_session.start_session(start_url)
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"浏览器启动失败: {exc}") from exc
-    return {"session_id": session_id}
+    return {"session_id": session_id, "status": "login_ready"}
+
+
+def _session_action(action, session_id: str) -> Dict[str, Any]:
+    try:
+        return action(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.get("/sessions/{session_id}")
+def session_state(session_id: str) -> Dict[str, Any]:
+    return _session_action(browser_session.get_session_state, session_id)
+
+
+@router.post("/sessions/{session_id}/checkpoint/start")
+def start_checkpoint(session_id: str) -> Dict[str, Any]:
+    return _session_action(browser_session.start_checkpoint, session_id)
+
+
+@router.post("/sessions/{session_id}/checkpoint/stop")
+def stop_checkpoint(session_id: str) -> Dict[str, Any]:
+    return _session_action(browser_session.stop_checkpoint, session_id)
 
 
 @router.get("/sessions/{session_id}/events")
@@ -65,6 +87,15 @@ async def save_session(
     name = (payload.get("name") or "").strip()
     if not name:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="流程名称不能为空")
+    try:
+        session_state = browser_session.get_session_state(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    if session_state["status"] != "frozen":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请先停止并冻结当前检查点",
+        )
     description = payload.get("description") or ""
     events = browser_session.get_events(session_id)
     if not events:

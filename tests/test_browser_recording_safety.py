@@ -2,7 +2,11 @@ import asyncio
 import json
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
+from app.database import get_db
+from app.routers import browser_record
 from app.services import browser_session
 
 
@@ -165,3 +169,80 @@ def test_all_normalized_code_suffixes_are_redacted_in_query_and_nested_json():
     assert all(event["query"][field] == "[REDACTED]" for field in ("otpCode", "mfaCode", "totpCode"))
     body = json.loads(event["body"])
     assert all(body["verification"][field] == "[REDACTED]" for field in ("otpCode", "mfaCode", "totpCode"))
+
+
+class FakeDb:
+    def add(self, value):
+        raise AssertionError("save guard must stop before database writes")
+
+    def flush(self):
+        raise AssertionError("save guard must stop before database writes")
+
+    def commit(self):
+        raise AssertionError("save guard must stop before database writes")
+
+
+def route_client():
+    app = FastAPI()
+    app.include_router(browser_record.router)
+    app.dependency_overrides[get_db] = lambda: FakeDb()
+    return TestClient(app)
+
+
+def test_checkpoint_routes_expose_safe_state(monkeypatch):
+    monkeypatch.setattr(browser_session, "get_session_state", lambda session_id: {
+        "session_id": session_id, "status": "login_ready", "event_count": 0,
+    })
+    monkeypatch.setattr(browser_session, "start_checkpoint", lambda session_id: {
+        "session_id": session_id, "status": "capturing", "event_count": 0,
+    })
+    monkeypatch.setattr(browser_session, "stop_checkpoint", lambda session_id: {
+        "session_id": session_id, "status": "frozen", "event_count": 2,
+    })
+    client = route_client()
+
+    assert client.get("/api/browser-record/sessions/S1").json()["status"] == "login_ready"
+    assert client.post("/api/browser-record/sessions/S1/checkpoint/start").json()["status"] == "capturing"
+    stopped = client.post("/api/browser-record/sessions/S1/checkpoint/stop").json()
+    assert stopped == {"session_id": "S1", "status": "frozen", "event_count": 2}
+
+
+def test_checkpoint_route_returns_404_for_missing_session(monkeypatch):
+    def missing(_session_id):
+        raise ValueError("会话不存在: missing")
+
+    monkeypatch.setattr(browser_session, "start_checkpoint", missing)
+    response = route_client().post("/api/browser-record/sessions/missing/checkpoint/start")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "会话不存在: missing"
+
+
+def test_save_rejects_non_frozen_session_before_database_write(monkeypatch):
+    monkeypatch.setattr(browser_session, "get_session_state", lambda session_id: {
+        "session_id": session_id, "status": "capturing", "event_count": 1,
+    })
+    response = route_client().post(
+        "/api/browser-record/sessions/S1/save",
+        json={"name": "不得保存"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "请先停止并冻结当前检查点"
+
+
+def test_events_to_har_preserves_only_sanitized_values():
+    har = browser_record._events_to_har([{
+        "method": "POST",
+        "url": "https://example.test/order.rollback?token=%5BREDACTED%5D",
+        "query": {"token": "[REDACTED]"},
+        "headers": {"content-type": "application/json"},
+        "body": json.dumps({"password": "[REDACTED]", "order_sn": "ORDER-1"}),
+        "response_status": 200,
+        "response_body": {"token": "[REDACTED]", "status": "wait_offer"},
+        "started_at": "2026-07-18T12:00:00",
+    }])
+    serialized = json.dumps(har, ensure_ascii=False)
+    assert "ORDER-1" in serialized
+    assert "wait_offer" in serialized
+    assert "secret" not in serialized
+    assert "authorization" not in serialized.lower()
+    assert "cookie" not in serialized.lower()
