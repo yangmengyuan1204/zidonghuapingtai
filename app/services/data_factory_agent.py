@@ -2155,16 +2155,6 @@ def _pause_agent_session(
         session = _SESSIONS.get(session_id)
         if not session:
             return
-        if session_status == "clarifying":
-            lifetime = session.clarification_counts.get("_global", 0) + 1
-            session.clarification_counts["_global"] = lifetime
-            if lifetime >= MAX_LIFETIME_CLARIFICATIONS:
-                session.status = "blocked"
-                session.question = ""
-                session.result = {"reason": f"已反复补充信息{lifetime}次仍无法完成执行。请新建任务并更详细描述需求，或联系管理员检查数据环境。", "state": sanitize_observation(result.get("state") or session.runtime_state)}
-                session.updated_at = datetime.now()
-                session.events.append(_event("blocked", "会话级别追问次数已达上限，已停止避免无限交互"))
-                return
         session.status = session_status
         session.question = question
         session.result = sanitize_observation(result)
@@ -2323,18 +2313,6 @@ def _run_agent_session(session_id: str) -> None:
                 with _STORE_LOCK:
                     session = _SESSIONS.get(session_id)
                     if session:
-                        lifetime = session.clarification_counts.get("_global", 0) + 1
-                        session.clarification_counts["_global"] = lifetime
-                        if lifetime >= MAX_LIFETIME_CLARIFICATIONS:
-                            session.status = "blocked"
-                            session.question = ""
-                            session.result = {"reason": f"已反复补充信息{lifetime}次仍无法完成。请新建任务并更详细描述需求。"}
-                            session.updated_at = datetime.now()
-                            session.events.append(_event("blocked", "会话级别追问次数已达上限"))
-                            final_status = "blocked"
-                            final_result = session.result
-                            _finalize_session(db, session_id, final_status, final_result, context)
-                            return
                         session.status = "clarifying"
                         session.question = action["reason"] or "执行需要改变已确认目标，请补充新的要求后重新确认。"
                         session.plan_version += 1
