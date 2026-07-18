@@ -98,3 +98,43 @@ def test_form_body_is_sanitized_without_losing_business_fields():
     assert "target_status=wait_offer" in body
     assert "secret" not in body
     assert "password=%5BREDACTED%5D" in body
+
+
+def test_camel_case_and_alias_sensitive_fields_are_redacted_from_events():
+    session = make_session("capturing")
+    request = FakeRequest()
+    request.url = (
+        "https://example.test/order.rollback?order_sn=ORDER-1&accessToken=access-secret"
+        "&refreshToken=refresh-secret&smsCode=sms-secret&phoneNumber=phone-secret"
+    )
+    request.post_data = json.dumps({
+        "order_sn": "ORDER-1",
+        "accessToken": "access-secret",
+        "refreshToken": "refresh-secret",
+        "smsCode": "sms-secret",
+        "phoneNumber": "phone-secret",
+    })
+
+    browser_session._on_request_sync(session, request)
+
+    event = session.events[0]
+    serialized = json.dumps(event, ensure_ascii=False)
+    for secret in ("access-secret", "refresh-secret", "sms-secret", "phone-secret"):
+        assert secret not in serialized
+    assert event["query"]["order_sn"] == "ORDER-1"
+    assert all(event["query"][field] == "[REDACTED]" for field in (
+        "accessToken", "refreshToken", "smsCode", "phoneNumber",
+    ))
+    assert json.loads(event["body"])["phoneNumber"] == "[REDACTED]"
+
+
+def test_sanitize_url_removes_userinfo_and_preserves_ipv6_port():
+    safe_url, query = browser_session.sanitize_url(
+        "https://record-user:record-password@[2001:db8::1]:8443/orders?token=query-secret&order_sn=ORDER-1"
+    )
+
+    assert "record-user" not in safe_url
+    assert "record-password" not in safe_url
+    assert safe_url.startswith("https://[2001:db8::1]:8443/orders?")
+    assert "query-secret" not in safe_url
+    assert query == {"token": "[REDACTED]", "order_sn": "ORDER-1"}

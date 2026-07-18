@@ -7,12 +7,13 @@
 import asyncio
 import json
 import os
+import re
 import shutil
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
 from playwright.async_api import async_playwright
@@ -25,16 +26,23 @@ _SESSION_TIMEOUT = 30 * 60
 _CLEANUP_INTERVAL = 5 * 60
 _SAFE_HEADER_NAMES = {"accept", "content-type", "x-requested-with"}
 _SENSITIVE_FIELD_NAMES = {
-    "access_token", "authorization", "captcha", "code", "compute_token",
-    "cookie", "mobile", "otp", "passwd", "password", "phone", "pwd",
-    "refresh_token", "token", "usertoken",
+    "access_token", "auth_code", "authorization", "captcha", "captcha_code", "code", "compute_token",
+    "cookie", "mobile", "mobile_no", "mobile_number", "mobile_phone", "otp", "passwd", "password",
+    "phone", "phone_no", "phone_number", "pwd", "refresh_token", "sms_captcha", "sms_code", "tel",
+    "telephone", "token", "user_token", "usertoken", "validation_code", "verification_code", "verify_code",
 }
 _REDACTED = "[REDACTED]"
 _MAX_CAPTURE_TEXT = 100_000
 
 
+def _normalize_field_name(name: Any) -> str:
+    text = str(name or "").strip().replace("-", "_")
+    text = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", text)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", text).lower()
+
+
 def _is_sensitive_field(name: Any) -> bool:
-    text = str(name or "").strip().lower().replace("-", "_")
+    text = _normalize_field_name(name)
     return text in _SENSITIVE_FIELD_NAMES or text.endswith("_password") or text.endswith("_token")
 
 
@@ -92,7 +100,15 @@ def sanitize_url(url: str) -> tuple[str, dict[str, str]]:
     pairs = parse_qsl(parsed.query, keep_blank_values=True)
     safe_pairs = [(key, _REDACTED if _is_sensitive_field(key) else value[:1000]) for key, value in pairs]
     safe_query = urlencode(safe_pairs)
-    safe_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, safe_query, ""))
+    hostname = parsed.hostname or ""
+    if ":" in hostname and not hostname.startswith("["):
+        hostname = f"[{hostname}]"
+    try:
+        port = parsed.port
+    except ValueError:
+        port = None
+    safe_netloc = f"{hostname}:{port}" if port is not None else hostname
+    safe_url = urlunsplit((parsed.scheme, safe_netloc, parsed.path, safe_query, ""))
     return safe_url, dict(safe_pairs)
 
 
