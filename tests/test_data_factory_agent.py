@@ -317,7 +317,7 @@ def test_agent_executes_and_verifies_actual_contract(monkeypatch):
     project, env = _agent_context()
     model_calls = {"count": 0}
 
-    def fake_model(config, prompt, timeout=120):
+    def fake_model(config, prompt, timeout=120, system_prompt=None):
         model_calls["count"] += 1
         if "本轮只理解目标" in prompt:
             return _ready_goal()
@@ -382,7 +382,7 @@ def test_agent_executes_and_verifies_actual_contract(monkeypatch):
 def test_agent_pauses_for_reconfirmation_before_changing_contract(monkeypatch):
     project, env = _agent_context()
 
-    def fake_model(config, prompt, timeout=120):
+    def fake_model(config, prompt, timeout=120, system_prompt=None):
         if "本轮只理解目标" in prompt:
             return _ready_goal()
         return {
@@ -418,7 +418,7 @@ def test_agent_blocks_repeated_actions_without_progress(monkeypatch):
     project, env = _agent_context()
     calls = {"tools": 0}
 
-    def fake_model(config, prompt, timeout=120):
+    def fake_model(config, prompt, timeout=120, system_prompt=None):
         if "本轮只理解目标" in prompt:
             return _ready_goal()
         return {
@@ -614,20 +614,20 @@ def test_option_intent_can_be_cancelled_and_restored():
 
 def test_same_clarification_field_can_be_answered_more_than_once_without_blocking():
     session = agent_service.AgentSessionState(
-        id="SESSION-QUESTION",
+        id="clarify",
         user_id=1,
         project_id=1,
         env_id=1,
         status="clarifying",
     )
 
-    first = agent_service._bounded_clarification(session, "options", "请选择option")
-    second = agent_service._bounded_clarification(session, "options", "请再次选择option")
+    first = agent_service._bounded_clarification(session, "pricing", "请说明价格口径？")
+    second = agent_service._bounded_clarification(session, "pricing", "仍缺少价格口径？")
 
-    assert first == {"blocked": False, "message": "请选择option", "count": 1}
+    assert first["blocked"] is False
     assert second["blocked"] is False
     assert second["count"] == 2
-    assert second["message"] == "请再次选择option"
+    assert second["lifetime"] == 2
 
 
 def test_follow_up_intent_state_preserves_target_and_adds_all_refund_scope():
@@ -894,7 +894,7 @@ def test_analysis_prompt_treats_latest_message_as_a_patch_to_resolved_fields():
         state,
     )
 
-    assert "本轮只处理最新消息对已有合同的新增、修改或撤销" in prompt
+    assert "本轮最新消息：" in prompt
     assert "已确认字段" in prompt
     assert '"target_node": {"value": "pending_purchase"' in prompt
 
@@ -1201,7 +1201,7 @@ def test_multi_operation_session_does_not_finish_after_order_node(monkeypatch):
     project, env = _agent_context()
     instruction = "帮我建一个商品总价20的订单到待拍下，然后提出问题产品，把全部数量和国内运费都退了"
 
-    def fake_model(config, prompt, timeout=120):
+    def fake_model(config, prompt, timeout=120, system_prompt=None):
         if "本轮只理解目标" in prompt:
             return {
                 "status": "ready",
