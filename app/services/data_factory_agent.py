@@ -1048,6 +1048,12 @@ def _raw_unhandled_requests(raw_goal: Dict[str, Any]) -> list[str]:
 
 def _problem_request_is_covered(value: str, evidence_values: list[str]) -> bool:
     remaining = _compact_semantic_text(value)
+    remaining = re.sub(
+        r"(?:option|附加服务).{0,12}(?:全退|都退|全部退(?:光)?|清零|(?:(?:改|变)(?:成|为)?|成|为|=|:)?0)",
+        "",
+        remaining,
+        flags=re.IGNORECASE,
+    )
     for evidence in sorted(
         {_compact_semantic_text(item) for item in evidence_values if _compact_semantic_text(item)},
         key=len,
@@ -1063,15 +1069,11 @@ def _problem_request_is_covered(value: str, evidence_values: list[str]) -> bool:
         r"数量.{0,8}(?:全部|全|都)(?:给)?退",
         r"(?:国内运费|运费).{0,8}(?:全部|全|都)?(?:给)?退",
         r"(?:全部|全|都)退.{0,8}(?:国内运费|运费)",
+        r"(?:退|退款).{0,15}(?:全部|全)(?:国内运费|运费)",
+        r"(?:只)?退.{0,5}(?:国内运费|运费)",
     )
     for pattern in supported_problem_patterns:
         remaining = re.sub(pattern, "", remaining)
-    remaining = re.sub(
-        r"(?:option|附加服务)(?:也)?(?:(?:改|变)(?:成|为)?|清零|=|:)?0",
-        "",
-        remaining,
-        flags=re.IGNORECASE,
-    )
     remaining = re.sub(r"问题产品|问题商品", "", remaining)
     remaining = re.sub(
         r"(?:然后|之后|后|并且|并|同时|再|把|这些|这个|和|与|、|也|都|,|。|；|;)",

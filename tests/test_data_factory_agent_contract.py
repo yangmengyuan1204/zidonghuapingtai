@@ -363,6 +363,12 @@ def test_new_order_selected_second_item_passes_late_scope_gate():
         ("退款2件", "退款2件"),
         ("退一半，国内运费保持不变", "国内运费保持不变"),
         ("数量不退，单价改成0", "数量不退"),
+        ("只退国内运费", "只退国内运费"),
+        ("退款全部国内运费", "退款全部国内运费"),
+        ("退一半，附加服务全退", "附加服务全退"),
+        ("退一半，附加服务都退", "附加服务都退"),
+        ("退一半，附加服务全部退光", "附加服务全部退光"),
+        ("退一半，附加服务清零", "附加服务清零"),
     ],
 )
 def test_supported_problem_expression_does_not_remain_unhandled(instruction, unhandled):
