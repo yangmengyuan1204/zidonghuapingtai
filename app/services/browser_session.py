@@ -12,7 +12,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, parse_qsl, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
 from playwright.async_api import async_playwright
@@ -23,6 +23,77 @@ _STATIC_EXT = (".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".woff", 
 _SESSION_TIMEOUT = 30 * 60
 # 清理任务扫描间隔（5 分钟）
 _CLEANUP_INTERVAL = 5 * 60
+_SAFE_HEADER_NAMES = {"accept", "content-type", "x-requested-with"}
+_SENSITIVE_FIELD_NAMES = {
+    "access_token", "authorization", "captcha", "code", "compute_token",
+    "cookie", "mobile", "otp", "passwd", "password", "phone", "pwd",
+    "refresh_token", "token", "usertoken",
+}
+_REDACTED = "[REDACTED]"
+_MAX_CAPTURE_TEXT = 100_000
+
+
+def _is_sensitive_field(name: Any) -> bool:
+    text = str(name or "").strip().lower().replace("-", "_")
+    return text in _SENSITIVE_FIELD_NAMES or text.endswith("_password") or text.endswith("_token")
+
+
+def sanitize_headers(headers: dict[str, Any] | None) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for name, value in (headers or {}).items():
+        lowered = str(name).strip().lower()
+        if lowered in _SAFE_HEADER_NAMES:
+            result[lowered] = str(value)[:1000]
+    return result
+
+
+def sanitize_mapping(value: Any, *, depth: int = 0) -> Any:
+    if depth >= 8:
+        return "[MAX_DEPTH]"
+    if isinstance(value, dict):
+        return {
+            str(key): (_REDACTED if _is_sensitive_field(key) else sanitize_mapping(item, depth=depth + 1))
+            for key, item in list(value.items())[:200]
+        }
+    if isinstance(value, list):
+        return [sanitize_mapping(item, depth=depth + 1) for item in value[:200]]
+    if isinstance(value, str):
+        return value[:_MAX_CAPTURE_TEXT]
+    if isinstance(value, (int, float, bool)) or value is None:
+        return value
+    return str(value)[:_MAX_CAPTURE_TEXT]
+
+
+def sanitize_body(text: str, content_type: str) -> str:
+    raw = str(text or "")[:_MAX_CAPTURE_TEXT]
+    lowered = str(content_type or "").lower()
+    if not raw:
+        return ""
+    if "json" in lowered:
+        parsed = _try_parse_json(raw)
+        return json.dumps(sanitize_mapping(parsed), ensure_ascii=False) if parsed is not None else "[INVALID_JSON_OMITTED]"
+    if "application/x-www-form-urlencoded" in lowered:
+        pairs = parse_qsl(raw, keep_blank_values=True)
+        sanitized = [(key, _REDACTED if _is_sensitive_field(key) else value[:_MAX_CAPTURE_TEXT]) for key, value in pairs]
+        return urlencode(sanitized)
+    return "[UNSUPPORTED_BODY_OMITTED]"
+
+
+def sanitize_response_body(text: str, content_type: str) -> Any:
+    raw = str(text or "")[:_MAX_CAPTURE_TEXT]
+    if "json" not in str(content_type or "").lower():
+        return "[NON_JSON_RESPONSE_OMITTED]" if raw else ""
+    parsed = _try_parse_json(raw)
+    return sanitize_mapping(parsed) if parsed is not None else "[INVALID_JSON_RESPONSE_OMITTED]"
+
+
+def sanitize_url(url: str) -> tuple[str, dict[str, str]]:
+    parsed = urlsplit(str(url or ""))
+    pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    safe_pairs = [(key, _REDACTED if _is_sensitive_field(key) else value[:1000]) for key, value in pairs]
+    safe_query = urlencode(safe_pairs)
+    safe_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, safe_query, ""))
+    return safe_url, dict(safe_pairs)
 
 
 class _Session:
@@ -34,6 +105,7 @@ class _Session:
         self.context = context
         self.page = page
         self.events: list[dict] = []
+        self.state = "login_ready"
         self.last_activity: float = time.time()
 
 
@@ -154,29 +226,56 @@ def _try_parse_json(text: str):
         return None
 
 
+def get_session_state(session_id: str) -> dict[str, Any]:
+    session = _SESSIONS.get(session_id)
+    if not session:
+        raise ValueError(f"会话不存在: {session_id}")
+    return {"session_id": session_id, "status": session.state, "event_count": len(session.events)}
+
+
+def start_checkpoint(session_id: str) -> dict[str, Any]:
+    session = _SESSIONS.get(session_id)
+    if not session:
+        raise ValueError(f"会话不存在: {session_id}")
+    session.events.clear()
+    session.state = "capturing"
+    session.last_activity = time.time()
+    return get_session_state(session_id)
+
+
+def stop_checkpoint(session_id: str) -> dict[str, Any]:
+    session = _SESSIONS.get(session_id)
+    if not session:
+        raise ValueError(f"会话不存在: {session_id}")
+    session.state = "frozen"
+    session.last_activity = time.time()
+    return get_session_state(session_id)
+
+
 def _on_request_sync(session: _Session, request: Any) -> None:
     """同步处理 request 事件：收集请求信息追加到事件列表。"""
+    if session.state != "capturing":
+        return
     if not _is_interesting_request(request):
         return
     try:
-        url = request.url or ""
-        parsed = urlsplit(url)
-        query = {k: (v[0] if v else "") for k, v in parse_qs(parsed.query).items()}
         try:
-            headers = dict(request.headers) if request.headers else {}
+            raw_headers = dict(request.headers) if request.headers else {}
         except Exception:
-            headers = {}
+            raw_headers = {}
         try:
-            body = request.post_data or ""
+            post_data = request.post_data or ""
         except Exception:
-            body = ""
+            post_data = ""
+        safe_url, safe_query = sanitize_url(request.url or "")
+        content_type = str(raw_headers.get("content-type") or raw_headers.get("Content-Type") or "")
         event = {
             "method": request.method or "GET",
-            "url": url,
-            "path": parsed.path or "",
-            "query": query,
-            "headers": headers,
-            "body": body,
+            "url": safe_url,
+            "path": urlsplit(safe_url).path or "",
+            "query": safe_query,
+            "headers": sanitize_headers(raw_headers),
+            "body": sanitize_body(post_data, content_type),
             "response_status": None,
             "response_body": None,
             "started_at": datetime.now().isoformat(),
@@ -204,9 +303,10 @@ async def _on_response_async(session: _Session, response: Any) -> None:
         event["response_status"] = response.status
         try:
             # 限制 10 秒，避免大响应或流式响应阻塞
+            response_headers = dict(response.headers) if response.headers else {}
+            content_type = str(response_headers.get("content-type") or response_headers.get("Content-Type") or "")
             text = await asyncio.wait_for(response.text(), timeout=10)
-            parsed_json = _try_parse_json(text)
-            event["response_body"] = parsed_json if parsed_json is not None else text
+            event["response_body"] = sanitize_response_body(text, content_type)
         except Exception:
             event["response_body"] = ""
         session.last_activity = time.time()
