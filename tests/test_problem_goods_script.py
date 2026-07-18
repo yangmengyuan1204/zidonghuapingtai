@@ -308,6 +308,104 @@ def test_candidates_mark_fully_stored_purchase_unavailable():
     assert rows[0]["can_submit"] is False
 
 
+def _candidate_gateway(monkeypatch, responses):
+    gateway = object.__new__(ProblemGoodsGateway)
+    gateway.variables = {"customer_id": "300001"}
+    gateway.log = {}
+    gateway._path = lambda key, default: default
+
+    def request(path, fields, action, mutation):
+        response = responses[path]
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    monkeypatch.setattr(gateway, "_admin_request", request)
+    return gateway
+
+
+def _order_detail_payload(purchase_id=15328208, sorting=1):
+    return {
+        "success": True,
+        "data": {
+            "order_detail": [
+                {
+                    "id": 14052980 + sorting,
+                    "sorting": sorting,
+                    "confirm_num": 1,
+                    "order_purchase": [
+                        {
+                            "id": purchase_id,
+                            "order_detail_id": 14052980 + sorting,
+                            "possible_num": 1,
+                            "storage_num": 0,
+                        }
+                    ],
+                }
+            ]
+        },
+    }
+
+
+def test_gateway_prefers_order_detail_candidates(monkeypatch):
+    gateway = _candidate_gateway(monkeypatch, {"/order.detail": _order_detail_payload()})
+
+    rows = gateway.list_purchase_candidates("2026071816165891-300001")
+
+    assert [row["order_purchase_id"] for row in rows] == [15328208]
+    assert gateway.log["candidate_sources"]["order_detail"]["count"] == 1
+
+
+def test_gateway_merges_and_deduplicates_fallback_sources(monkeypatch):
+    duplicate = _order_detail_payload()["data"]["order_detail"][0]["order_purchase"][0]
+    gateway = _candidate_gateway(
+        monkeypatch,
+        {
+            "/order.detail": {"success": True, "data": {"order_detail": []}},
+            "/purchase.purchaseList": {"success": True, "data": {"data": [{"order_purchase": [duplicate]}]}},
+            "/follow.followList": {
+                "success": True,
+                "data": {"data": [{
+                    "order_sn": "2026071816165891-300001",
+                    "list": [
+                        {**duplicate, "order_purchase_id": duplicate["id"]},
+                        {"order_purchase_id": 15328209, "order_detail_id": 14052982, "sorting": 2, "possible_num": 1, "storage_num": 0},
+                    ],
+                }]},
+            },
+        },
+    )
+
+    rows = gateway.list_purchase_candidates("2026071816165891-300001")
+
+    assert [row["order_purchase_id"] for row in rows] == [15328208, 15328209]
+
+
+def test_gateway_returns_empty_when_one_source_succeeds_empty(monkeypatch):
+    error = ProblemGoodsError("temporary failure")
+    gateway = _candidate_gateway(
+        monkeypatch,
+        {
+            "/order.detail": {"success": True, "data": {"order_detail": []}},
+            "/purchase.purchaseList": error,
+            "/follow.followList": error,
+        },
+    )
+
+    assert gateway.list_purchase_candidates("2026071816165891-300001") == []
+
+
+def test_gateway_raises_when_all_candidate_sources_fail(monkeypatch):
+    error = ProblemGoodsError("temporary failure")
+    gateway = _candidate_gateway(
+        monkeypatch,
+        {"/order.detail": error, "/purchase.purchaseList": error, "/follow.followList": error},
+    )
+
+    with pytest.raises(ProblemGoodsError, match="候选采购记录查询失败"):
+        gateway.list_purchase_candidates("2026071816165891-300001")
+
+
 def test_available_option_catalog_keeps_unique_option_templates():
     rows = available_option_catalog(
         {

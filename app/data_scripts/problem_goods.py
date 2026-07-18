@@ -451,6 +451,23 @@ def order_purchase_candidates(order_data: Dict[str, Any]) -> list[Dict[str, Any]
     return candidates
 
 
+def merge_purchase_candidates(*groups: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+    merged: Dict[int, Dict[str, Any]] = {}
+    for group in groups:
+        for candidate in group:
+            purchase_id = int(candidate.get("order_purchase_id") or 0)
+            if not purchase_id:
+                continue
+            current = merged.get(purchase_id)
+            if current is None:
+                merged[purchase_id] = dict(candidate)
+                continue
+            for key, value in candidate.items():
+                if current.get(key) in (None, "", []) and value not in (None, "", []):
+                    current[key] = value
+    return list(merged.values())
+
+
 def available_option_catalog(payload: Dict[str, Any]) -> list[Dict[str, Any]]:
     data: Any = payload.get("data")
     if isinstance(data, dict):
@@ -576,26 +593,77 @@ class ProblemGoodsGateway:
         return flatten_problem_rows(payload)
 
     def list_purchase_candidates(self, order_sn: str) -> list[Dict[str, Any]]:
-        payload = self._admin_request(
-            self._path("purchase_list", "/purchase.purchaseList"),
+        source_log: Dict[str, Dict[str, Any]] = {}
+        successful_sources = 0
+
+        def query(source: str, path_key: str, default_path: str, fields: Dict[str, Any]) -> list[Dict[str, Any]]:
+            nonlocal successful_sources
+            try:
+                payload = self._admin_request(
+                    self._path(path_key, default_path),
+                    fields,
+                    f"查询问题产品候选（{source}）",
+                    mutation=False,
+                )
+                if not _api_success(payload):
+                    raise ProblemGoodsApiError(f"查询问题产品候选（{source}）", payload)
+                successful_sources += 1
+                rows = order_purchase_candidates(payload)
+                source_log[source] = {"success": True, "count": len(rows)}
+                return rows
+            except ProblemGoodsError as exc:
+                source_log[source] = {"success": False, "error": str(exc)}
+                return []
+
+        order_detail_rows = query(
+            "order_detail",
+            "admin_order_detail",
+            "/order.detail",
+            {"order_sn": order_sn},
+        )
+        if order_detail_rows:
+            self.log["candidate_sources"] = source_log
+            return order_detail_rows
+
+        purchase_rows = query(
+            "purchase_list",
+            "admin_purchase_list",
+            "/purchase.purchaseList",
             {
                 "page": 1,
                 "pageSize": 100,
                 "status": "全部",
                 "dateStart": "",
                 "dateEnd": "",
-                "user_id": self.variables.get("customer_id") or "",
+                "user_id": "",
                 "order_sn": order_sn,
                 "g_id": "",
                 "is_urgent": "",
                 "overdue": "",
             },
-            "查询订单采购记录",
-            mutation=False,
         )
-        if not _api_success(payload):
-            raise ProblemGoodsApiError("查询订单采购记录", payload)
-        return order_purchase_candidates(payload)
+        follow_rows = query(
+            "follow_list",
+            "admin_follow_list",
+            "/follow.followList",
+            {
+                "page": 1,
+                "pageSize": 100,
+                "status": "0",
+                "dateStart": "",
+                "dateEnd": "",
+                "user_id": "",
+                "order_sn": order_sn,
+                "express_no": "",
+                "purchase_no": "",
+                "order_part": "",
+                "realname": "",
+            },
+        )
+        self.log["candidate_sources"] = source_log
+        if not successful_sources:
+            raise ProblemGoodsError("候选采购记录查询失败")
+        return merge_purchase_candidates(purchase_rows, follow_rows)
 
     def list_available_options(self) -> list[Dict[str, Any]]:
         payload = self._client_request(
