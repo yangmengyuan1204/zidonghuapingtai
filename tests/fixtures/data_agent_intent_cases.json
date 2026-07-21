@@ -1,0 +1,170 @@
+{
+  "explicit_matrix": {
+    "instruction_template": "帮我创建订单，{shape}，{price}，{target}",
+    "targets": [
+      {"id": "target_order_wait_pay", "text": "做到待付款", "target_node": "order_offered"},
+      {"id": "target_quote_wait_pay", "text": "报价完等付款", "target_node": "order_offered"},
+      {"id": "target_before_payment", "text": "做到付款前", "target_node": "order_offered"},
+      {"id": "target_pending_purchase", "text": "做到待拍单", "target_node": "pending_purchase"},
+      {"id": "target_order_paid", "text": "做到已付款", "target_node": "order_paid"},
+      {"id": "target_purchase_wait_pay", "text": "做到采购待财务付款", "target_node": "purchase_wait_pay"},
+      {"id": "target_shelf_stored", "text": "做到上架入库", "target_node": "shelf_stored"},
+      {"id": "target_delivery_created", "text": "做到配送单提出", "target_node": "warehouse_delivery_created"},
+      {"id": "target_porder_offered", "text": "做到配送单报价", "target_node": "porder_offered"},
+      {"id": "target_porder_paid", "text": "做到配送单支付完成", "target_node": "porder_paid"}
+    ],
+    "shapes": [
+      {
+        "id": "shape_1x1x1",
+        "text": "1个店1种商品每种1件",
+        "expected": {"shop_count": 1, "per_shop": 1, "quantity": 1}
+      },
+      {
+        "id": "shape_2x1x2",
+        "text": "2个店每店1种商品每种2件",
+        "expected": {"shop_count": 2, "per_shop": 1, "quantity": 2}
+      },
+      {
+        "id": "shape_1x3x4",
+        "text": "1个店3种商品每种4件",
+        "expected": {"shop_count": 1, "per_shop": 3, "quantity": 4}
+      }
+    ],
+    "prices": [
+      {"id": "price_goods_total", "text": "商品总价60元", "expected": {"mode": "goods_total", "amount": "60"}},
+      {"id": "price_uniform_unit", "text": "每种商品单价10元", "expected": {"mode": "uniform_unit", "amount": "10"}}
+    ]
+  },
+  "fixed_cases": [
+    {
+      "id": "ambiguous_problem_scope",
+      "instruction": "帮我创建订单，1个店2种商品每种1件，商品总价60元，做到待拍单，然后提出问题产品，数量全部退",
+      "expected_status": "clarifying",
+      "question_contains": "第几番"
+    },
+    {
+      "id": "ambiguous_problem_change",
+      "instruction": "帮我创建订单，1个店2种商品每种1件，商品总价60元，做到待拍单，然后处理第1番问题产品",
+      "expected_status": "clarifying",
+      "question_contains": "目标值"
+    },
+    {
+      "id": "ambiguous_price_basis",
+      "instruction": "帮我创建订单，1个店1种商品每种1件，价格100元，做到待付款",
+      "expected_status": "clarifying",
+      "question_contains": "总价还是每件单价"
+    },
+    {
+      "id": "conflicting_order_and_porder",
+      "instruction": "继续订单2026071715475684-300001和配送单P20260717001",
+      "candidate": {"status": "ready", "goal": {"mode": "resume_order", "order_sn": "2026071715475684-300001", "porder_sn": "P20260717001", "variables": {}}},
+      "expected_status": "clarifying",
+      "question_contains": "订单号和配送单号"
+    },
+    {
+      "id": "conflicting_targets",
+      "instruction": "帮我创建订单，1个店1种商品每种1件，商品总价60元，既做到待付款又做到待拍单",
+      "expected_status": "clarifying",
+      "question_contains": "目标"
+    },
+    {
+      "id": "ambiguous_single_problem_product",
+      "instruction": "帮我创建订单，1个店3种商品每种1件，商品总价60元，做到待拍单，然后处理一个问题产品，数量全部退",
+      "expected_status": "clarifying",
+      "question_contains": "第几番"
+    },
+    {
+      "id": "missing_problem_quantity_value",
+      "instruction": "订单2026071715475684-300001第1番提出问题产品，数量改一个",
+      "candidate": {"status": "ready", "goal": {"mode": "resume_order", "order_sn": "2026071715475684-300001", "variables": {}}},
+      "expected_status": "clarifying",
+      "question_contains": "目标值"
+    },
+    {
+      "id": "missing_problem_freight_value",
+      "instruction": "订单2026071715475684-300001第1番提出问题产品，国内运费调整一下",
+      "candidate": {"status": "ready", "goal": {"mode": "resume_order", "order_sn": "2026071715475684-300001", "variables": {}}},
+      "expected_status": "clarifying",
+      "question_contains": "目标值"
+    },
+    {
+      "id": "missing_problem_price_value",
+      "instruction": "订单2026071715475684-300001第1番提出问题产品，单价修改一下",
+      "candidate": {"status": "ready", "goal": {"mode": "resume_order", "order_sn": "2026071715475684-300001", "variables": {}}},
+      "expected_status": "clarifying",
+      "question_contains": "目标值"
+    },
+    {
+      "id": "vague_process_order",
+      "instruction": "把订单处理一下",
+      "candidate": {"status": "clarifying", "question": "请说明希望把订单处理到哪个目标状态。", "goal": {}},
+      "expected_status": "clarifying",
+      "question_contains": "目标"
+    },
+    {
+      "id": "vague_help",
+      "instruction": "帮我",
+      "candidate": {"status": "clarifying", "question": "请说明需要创建或继续处理什么测试数据。", "goal": {}},
+      "expected_status": "clarifying",
+      "question_contains": "请说明"
+    },
+    {
+      "id": "resume_order_without_sn",
+      "instruction": "继续这个订单",
+      "candidate": {"status": "clarifying", "question": "请提供需要继续执行的订单号。", "goal": {"mode": "resume_order", "variables": {}}},
+      "expected_status": "clarifying",
+      "question_contains": "订单号"
+    },
+    {
+      "id": "resume_porder_without_sn",
+      "instruction": "继续这个配送单",
+      "candidate": {"status": "clarifying", "question": "请提供需要继续执行的配送单号。", "goal": {"mode": "resume_porder", "variables": {}}},
+      "expected_status": "clarifying",
+      "question_contains": "配送单号"
+    },
+    {
+      "id": "conflicting_invalid_order_numbers",
+      "instruction": "继续订单ABC12345或订单XYZ98765",
+      "candidate": {"status": "ready", "goal": {"mode": "resume_order", "variables": {}, "unhandled_requests": ["识别到两个订单号ABC12345和XYZ98765，无法确定使用哪一个"]}},
+      "expected_status": "clarifying",
+      "question_contains": "两个订单号"
+    },
+    {
+      "id": "conflicting_customer_change",
+      "instruction": "把客户300001改成300002",
+      "candidate": {"status": "ready", "goal": {"mode": "new", "variables": {}, "unhandled_requests": ["客户300001改成300002不属于造数合同"]}},
+      "expected_status": "clarifying",
+      "question_contains": "客户"
+    },
+    {
+      "id": "conflicting_quantity",
+      "instruction": "帮我创建订单，1个店1种商品，每种商品数量2件、每种商品数量3件，商品总价60元，做到待付款",
+      "expected_status": "clarifying",
+      "question_contains": "数量"
+    },
+    {
+      "id": "conflicting_price_modes",
+      "instruction": "帮我创建订单，1个店1种商品每种1件，商品总价60元，每种商品单价10元，做到待付款",
+      "expected_status": "clarifying",
+      "question_contains": "总价与单价"
+    },
+    {
+      "id": "blocked_delete_order",
+      "instruction": "删除订单2026071715475684-300001",
+      "expected_status": "blocked",
+      "question_contains": "删除订单"
+    },
+    {
+      "id": "blocked_sql",
+      "instruction": "执行任意SQL修改订单状态：UPDATE orders SET status='paid'",
+      "expected_status": "blocked",
+      "question_contains": "SQL"
+    },
+    {
+      "id": "blocked_external_url",
+      "instruction": "调用外部URL https://example.com 修改订单",
+      "expected_status": "blocked",
+      "question_contains": "URL"
+    }
+  ]
+}
