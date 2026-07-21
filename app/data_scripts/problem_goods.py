@@ -410,13 +410,21 @@ def order_purchase_candidates(order_data: Dict[str, Any]) -> list[Dict[str, Any]
     seen: set[int] = set()
     for detail, purchase in pairs:
         try:
-            purchase_id = int(purchase.get("id") or purchase.get("order_purchase_id") or 0)
-            detail_id = int(detail.get("id") or purchase.get("order_detail_id") or 0)
-            possible_num = int(purchase.get("possible_num") or 0)
-            storage_num = int(purchase.get("storage_num") or 0)
-        except (TypeError, ValueError):
+            purchase_value = purchase.get("id")
+            if purchase_value in (None, ""):
+                purchase_value = purchase.get("order_purchase_id")
+            detail_value = detail.get("id")
+            if detail_value in (None, ""):
+                detail_value = purchase.get("order_detail_id")
+            possible_value = purchase.get("possible_num")
+            storage_value = purchase.get("storage_num")
+            purchase_id = _integer(purchase_value if purchase_value not in (None, "") else 0, "采购记录ID", positive=True)
+            detail_id = _integer(detail_value if detail_value not in (None, "") else 0, "订单详情ID", positive=True)
+            possible_num = _integer(possible_value if possible_value not in (None, "") else 0, "可提交数量")
+            storage_num = _integer(storage_value if storage_value not in (None, "") else 0, "已入库数量")
+        except ProblemGoodsError:
             continue
-        if not purchase_id or not detail_id or purchase_id in seen:
+        if purchase_id in seen:
             continue
         seen.add(purchase_id)
         max_submit_num = max(0, possible_num - storage_num)
@@ -459,10 +467,8 @@ def merge_purchase_candidates(*groups: list[Dict[str, Any]]) -> list[Dict[str, A
     for group in groups:
         for candidate in group:
             try:
-                purchase_id = int(candidate.get("order_purchase_id") or 0)
-            except (TypeError, ValueError):
-                continue
-            if not purchase_id:
+                purchase_id = _integer(candidate.get("order_purchase_id"), "采购记录ID", positive=True)
+            except ProblemGoodsError:
                 continue
             current = merged.get(purchase_id)
             if current is None:

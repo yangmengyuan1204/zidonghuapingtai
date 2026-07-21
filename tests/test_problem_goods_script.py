@@ -310,24 +310,34 @@ def test_candidates_mark_fully_stored_purchase_unavailable():
 
 
 def test_order_purchase_candidates_skip_malformed_id_and_quantity_records():
-    payload = {"data": {"order_detail": [{
-        "id": 14052983,
-        "order_purchase": [
-            {"id": "bad-id", "order_detail_id": 14052983, "possible_num": 1, "storage_num": 0},
-            {"id": 15328211, "order_detail_id": 14052983, "possible_num": "bad-num", "storage_num": 0},
-            {"id": 15328212, "order_detail_id": 14052983, "possible_num": 2, "storage_num": 0},
-        ],
-    }]}}
+    payload = {"data": {"order_detail": [
+        {"id": -1, "order_purchase": [{"id": 15328210, "possible_num": 1, "storage_num": 0}]},
+        {"id": 14052983, "order_purchase": [
+            {"id": -1, "possible_num": 1, "storage_num": 0},
+            {"id": True, "possible_num": 1, "storage_num": 0},
+            {"id": 15328211, "possible_num": -1, "storage_num": 0},
+            {"id": 15328212, "possible_num": 1.5, "storage_num": 0},
+            {"id": 15328213, "possible_num": 1, "storage_num": float("inf")},
+            {"id": 15328214, "possible_num": True, "storage_num": 0},
+            {"id": 15328215, "possible_num": "1.0", "storage_num": "0.0"},
+        ]},
+    ]}}
 
     rows = order_purchase_candidates(payload)
 
-    assert [row["order_purchase_id"] for row in rows] == [15328212]
+    assert [row["order_purchase_id"] for row in rows] == [15328215]
+    assert rows[0]["possible_num"] == 1
 
 
 def test_merge_purchase_candidates_skips_malformed_id_and_fills_empty_fields():
     rows = merge_purchase_candidates(
-        [{"order_purchase_id": "bad-id"}, {"order_purchase_id": 15328213, "purchase_no": "", "sorting": None}],
-        [{"order_purchase_id": 15328213, "purchase_no": "P-13", "sorting": 3}],
+        [
+            {"order_purchase_id": "bad-id"}, {"order_purchase_id": -1},
+            {"order_purchase_id": True}, {"order_purchase_id": 1.5},
+            {"order_purchase_id": float("inf")},
+            {"order_purchase_id": 15328213, "purchase_no": "", "sorting": None},
+        ],
+        [{"order_purchase_id": "15328213.0", "purchase_no": "P-13", "sorting": 3}],
     )
 
     assert rows == [{"order_purchase_id": 15328213, "purchase_no": "P-13", "sorting": 3}]
@@ -388,7 +398,7 @@ def test_gateway_prefers_order_detail_candidates(monkeypatch):
 def test_gateway_uses_successful_fallback_when_primary_candidates_are_malformed(monkeypatch):
     malformed_primary = {"success": True, "data": {"order_detail": [{
         "id": 14052981,
-        "order_purchase": [{"id": "bad-id", "possible_num": 1, "storage_num": 0}],
+        "order_purchase": [{"id": 15328216, "possible_num": 1.5, "storage_num": 0}],
     }]}}
     gateway = _candidate_gateway(
         monkeypatch,
