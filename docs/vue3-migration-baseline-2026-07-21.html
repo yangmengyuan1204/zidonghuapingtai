@@ -1,0 +1,1660 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vue 3 迁移基线分析报告 · 2026-07-21</title>
+<style>
+  :root {
+    --bg: #f6f7fb;
+    --surface: #ffffff;
+    --line: #e6e8ef;
+    --text: #1a1d26;
+    --muted: #6b7280;
+    --accent: #6366f1;
+    --accent-light: #818cf8;
+    --accent-bg: rgba(99, 102, 241, 0.08);
+    --warn: #f59e0b;
+    --warn-bg: rgba(245, 158, 11, 0.10);
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.08);
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.10);
+    --code-bg: #0f172a;
+    --code-text: #e2e8f0;
+    --radius: 10px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    line-height: 1.65;
+    letter-spacing: 0.01em;
+    -webkit-font-smoothing: antialiased;
+  }
+  .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+
+  /* 侧边导航 */
+  .toc {
+    position: sticky; top: 0; align-self: start;
+    height: 100vh; overflow-y: auto;
+    padding: 24px 16px;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    font-size: 13.5px;
+  }
+  .toc h2 { margin: 0 0 12px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc ol { list-style: none; padding: 0; margin: 0; }
+  .toc li { margin: 2px 0; }
+  .toc a {
+    display: block; padding: 6px 12px;
+    color: var(--text); text-decoration: none;
+    border-radius: 6px; transition: all 0.15s ease;
+  }
+  .toc a:hover { background: var(--accent-bg); color: var(--accent); }
+  .toc a.active { background: var(--accent); color: #fff; }
+
+  /* 主内容 */
+  main { padding: 32px 40px 80px; max-width: 1200px; }
+  header.page-head {
+    margin-bottom: 32px; padding-bottom: 24px;
+    border-bottom: 2px solid var(--accent);
+  }
+  header.page-head h1 {
+    margin: 0 0 8px; font-size: 28px; font-weight: 700;
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  header.page-head p { margin: 0; color: var(--muted); font-size: 14px; }
+  header.page-head .meta { margin-top: 12px; font-size: 12px; color: var(--muted); }
+
+  section { margin-bottom: 40px; scroll-margin-top: 20px; }
+  h2 {
+    margin: 0 0 16px; font-size: 22px; font-weight: 700;
+    padding-bottom: 10px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: #fff; font-size: 15px; font-weight: 700;
+  }
+  h3 { margin: 24px 0 12px; font-size: 16px; font-weight: 700; color: var(--text); }
+  h4 { margin: 16px 0 8px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  p { margin: 8px 0; }
+
+  /* 卡片 */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin: 12px 0;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* 警告框 */
+  .alert {
+    padding: 14px 18px; border-radius: var(--radius);
+    margin: 12px 0; border-left: 4px solid;
+    font-size: 14px;
+  }
+  .alert.danger { background: var(--danger-bg); border-color: var(--danger); color: #991b1b; }
+  .alert.warn { background: var(--warn-bg); border-color: var(--warn); color: #92400e; }
+  .alert.info { background: var(--accent-bg); border-color: var(--accent); color: #3730a3; }
+  .alert.success { background: var(--success-bg); border-color: var(--success); color: #065f46; }
+  .alert strong { display: block; margin-bottom: 4px; font-size: 14px; }
+  .alert code { background: rgba(0,0,0,0.06); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+
+  /* 表格 */
+  .table-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f8fafc; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  tr:hover td { background: rgba(99, 102, 241, 0.02); }
+  td code { background: rgba(99, 102, 241, 0.08); color: var(--accent); padding: 1px 6px; border-radius: 4px; font-size: 12.5px; font-family: 'JetBrains Mono', 'Consolas', monospace; }
+
+  /* 代码块 */
+  pre {
+    background: var(--code-bg); color: var(--code-text);
+    padding: 16px 20px; border-radius: var(--radius);
+    overflow-x: auto; font-size: 13px; line-height: 1.6;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    margin: 12px 0;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  li code { background: rgba(99, 102, 241, 0.08); color: var(--accent); padding: 1px 6px; border-radius: 4px; font-size: 13px; font-family: 'JetBrains Mono', Consolas, monospace; }
+
+  /* 徽章 */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 600;
+    margin-left: 6px;
+  }
+  .badge.danger { background: var(--danger-bg); color: var(--danger); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  .badge.info { background: var(--accent-bg); color: var(--accent); }
+  .badge.success { background: var(--success-bg); color: var(--success); }
+
+  /* 折叠 */
+  details {
+    margin: 12px 0; padding: 0;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); overflow: hidden;
+  }
+  details summary {
+    padding: 12px 18px; cursor: pointer;
+    font-weight: 600; font-size: 14px;
+    list-style: none; user-select: none;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::after { content: '▸'; color: var(--muted); transition: transform 0.2s; }
+  details[open] summary::after { transform: rotate(90deg); }
+  details summary:hover { background: #f8fafc; }
+  details .content { padding: 0 18px 16px; }
+
+  /* 网格 */
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+
+  /* 统计卡 */
+  .stat {
+    padding: 16px 20px;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .stat .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat .value { font-size: 24px; font-weight: 700; margin-top: 4px; color: var(--accent); }
+
+  /* 复选框列表 */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 6px 0 6px 28px; position: relative;
+    font-size: 14px;
+  }
+  .checklist li::before {
+    content: ''; position: absolute; left: 0; top: 9px;
+    width: 16px; height: 16px; border: 2px solid var(--line);
+    border-radius: 4px; background: var(--surface);
+  }
+  .checklist li:hover::before { border-color: var(--accent); }
+
+  /* 风险等级 */
+  .risk-high { color: var(--danger); font-weight: 600; }
+  .risk-mid { color: var(--warn); font-weight: 600; }
+  .risk-low { color: var(--success); font-weight: 600; }
+
+  /* 时间线 */
+  .phase {
+    display: grid; grid-template-columns: 80px 1fr 120px;
+    gap: 16px; padding: 14px 18px;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); margin: 8px 0;
+    align-items: center;
+  }
+  .phase .num {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 18px;
+  }
+  .phase .title { font-weight: 600; font-size: 15px; }
+  .phase .desc { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .phase .duration { text-align: right; color: var(--muted); font-size: 12px; }
+
+  footer {
+    margin-top: 60px; padding: 24px 0;
+    border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 12px; text-align: center;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .toc { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+    main { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<aside class="toc">
+  <h2>报告目录</h2>
+  <ol>
+    <li><a href="#sec-0">0. 阻塞问题</a></li>
+    <li><a href="#sec-1">1. 入口与页面结构</a></li>
+    <li><a href="#sec-2">2. 页面功能清单</a></li>
+    <li><a href="#sec-3">3. 交互事件</a></li>
+    <li><a href="#sec-4">4. API 接口</a></li>
+    <li><a href="#sec-5">5. 本地存储</a></li>
+    <li><a href="#sec-6">6. DOM 操作</a></li>
+    <li><a href="#sec-7">7. 公共依赖</a></li>
+    <li><a href="#sec-8">8. Vue 组件拆分</a></li>
+    <li><a href="#sec-9">9. 高丢失风险点</a></li>
+    <li><a href="#sec-10">10. 分阶段迁移</a></li>
+    <li><a href="#sec-11">11. 功能基线清单</a></li>
+    <li><a href="#sec-12">12. 不确定点</a></li>
+  </ol>
+</aside>
+
+<main>
+<header class="page-head">
+  <h1>Vue 3 迁移基线分析报告</h1>
+  <p>原生 HTML/CSS/JavaScript 项目渐进式迁移到 Vue 3 · 行为与视觉等价迁移</p>
+  <div class="meta">生成日期：2026-07-21 · 分析范围：static/ + app/routers/ · 模式：只读分析</div>
+</header>
+
+<section id="sec-0">
+  <h2><span class="num">0</span>当前工作区关键阻塞问题</h2>
+  <div class="alert danger">
+    <strong>后端无法启动 — 必须先修复</strong>
+    <code>app/routers/__init__.py</code> 第 14 行导入 <code>.functional_tasks</code>，但该文件不存在；实际文件已重命名为 <code>requirement_verifications.py</code>（未提交）。
+  </div>
+  <div class="alert warn">
+    <strong>大量未提交改动</strong>
+    工作区有 30+ 个未提交文件，包括 <code>static/app.js</code>、<code>static/index.html</code>、<code>app/main.py</code> 等。迁移前必须先确认这些改动的归属。
+  </div>
+  <div class="alert warn">
+    <strong>后端可疑 bug</strong>
+    <code>app/routers/data_scripts.py:615</code> 调用 <code>fetch_oem_full_quote</code>，但 <code>app/data_scripts/__init__.py</code> 未导出此函数（疑似 NameError）。
+  </div>
+</section>
+
+<section id="sec-1">
+  <h2><span class="num">1</span>项目入口、页面结构和跳转关系</h2>
+
+  <h3>1.1 入口</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>入口</th><th>路径</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>主入口</td><td><code>GET /</code> → <code>static/index.html</code></td><td>SPA 单页应用</td></tr>
+        <tr><td>自愈记录页</td><td><code>static/admin/heal-logs.html</code></td><td>独立页面，<code>&lt;a href="/"&gt;</code> 返回主页</td></tr>
+        <tr><td>操作模板管理页</td><td><code>static/admin/templates.html</code></td><td>独立页面，<code>&lt;a href="/"&gt;</code> 返回主页</td></tr>
+        <tr><td>健康检查</td><td><code>GET /health</code></td><td>后端健康检查</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>1.2 SPA 结构</h3>
+  <p><code>index.html</code> 极简：单个 <code>&lt;div id="app"&gt;</code> + <code>&lt;div id="toast"&gt;</code> + <code>&lt;dialog id="modal"&gt;</code>。13 个 JS 文件按顺序加载（顺序敏感，决定覆盖链）。</p>
+  <pre><code>data-factory-agent.js → ai-config.js → app.js → requirement-verification.js →
+requirement-verification-v2.js → problem-goods.js → test-record-rerun.js →
+full-flow.js → test-record-report.js → case-generation.js →
+requirement-pack.js → test-status.js → quick-start.js</code></pre>
+
+  <h3>1.3 视图与跳转</h3>
+  <p><strong>机制</strong>：自定义 <code>state.view</code> 字段 + <code>renderShell()</code> 全量重渲染 + <code>renderCurrentView()</code> 派发。<strong>无 hash 路由、无 history 路由</strong>。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>视图 key</th><th>标签</th><th>渲染函数</th><th>adminOnly</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td><code>dashboard</code></td><td>工作台总览</td><td><code>renderDashboard()</code></td><td>否</td><td>默认视图</td></tr>
+        <tr><td><code>projects</code></td><td>项目空间</td><td><code>renderProjects()</code></td><td>否</td><td>含环境、账号档案子区</td></tr>
+        <tr><td><code>apiCases</code></td><td>接口用例库</td><td><code>renderApiCases()</code></td><td>否</td><td>—</td></tr>
+        <tr><td><code>dataScripts</code></td><td>数据工厂</td><td><code>renderDataScripts()</code> / <code>renderDataScriptEditor()</code></td><td>否</td><td>由 <code>state.factory.editing</code> 决定</td></tr>
+        <tr><td><code>caseGeneration</code></td><td>AI用例生成</td><td><code>window.renderCaseGeneration()</code></td><td>否</td><td><span class="badge danger">已禁用</span>被 requirement-verification.js 删除</td></tr>
+        <tr><td><code>functionalTests</code></td><td>功能验证中心</td><td><code>renderFunctionalTests()</code></td><td>否</td><td><span class="badge warn">被覆盖</span>requirement-pack.js 重写为 <code>renderRequirementPacks</code></td></tr>
+        <tr><td><code>requirementVerification</code></td><td>需求验证中心</td><td><code>window.renderRequirementVerification()</code></td><td>否</td><td><span class="badge info">动态插入</span>requirement-verification.js 运行时修改 views 数组</td></tr>
+        <tr><td><code>uiCases</code></td><td>UI自动化</td><td><code>renderUiCases()</code></td><td>否</td><td>被 app.js 末尾重新赋值覆盖</td></tr>
+        <tr><td><code>records</code></td><td>执行报告</td><td><code>renderRecords()</code></td><td>否</td><td>执行后自动跳转</td></tr>
+        <tr><td><code>users</code></td><td>权限中心</td><td><code>renderUsers()</code></td><td>是</td><td>仅 admin 可见</td></tr>
+        <tr><td><code>envs</code></td><td>（隐藏）</td><td><code>renderEnvs()</code></td><td>否</td><td>不在导航栏</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>跳转方式</strong>：侧边栏 <code>#mainNav</code> click 事件代理 → 修改 <code>state.view</code> → <code>renderShell()</code>。代码内主动跳转（如执行后跳 records）也是同样方式。</p>
+</section>
+
+<section id="sec-2">
+  <h2><span class="num">2</span>每个页面的现有功能清单</h2>
+
+  <details open>
+    <summary>2.1 登录页</summary>
+    <div class="content">
+      <ul>
+        <li>用户名/密码表单</li>
+        <li>"记住密码"复选框（密码 base64 存储，<span class="risk-high">安全风险</span>）</li>
+        <li>主题切换（4 主题：shuimo/qingxuan/xiaolan/zhuanye）</li>
+        <li>调用 <code>POST /api/auth/login</code>，成功后存 token 到 localStorage</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.2 工作台总览（dashboard）</summary>
+    <div class="content">
+      <ul>
+        <li>项目下拉筛选（<code>localStorage.projectId</code> 持久化）</li>
+        <li>5 个统计卡片：项目数、环境数、接口用例数、UI 用例数、执行记录数</li>
+        <li>最近 10 条执行记录列表</li>
+        <li>调用 <code>GET /api/dashboard?project_id=</code></li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.3 项目空间（projects）</summary>
+    <div class="content">
+      <ul>
+        <li>项目 CRUD（admin 才能增删改）</li>
+        <li>环境列表 CRUD（<code>/api/envs</code>，含 global_headers/global_vars/timeout）</li>
+        <li>测试账号档案 CRUD（<code>/api/test-accounts</code>，含敏感变量加密）</li>
+        <li>账号绑定（<code>PUT /api/test-account-bindings</code>，支持 project/ui_case/functional_task/functional_case）</li>
+        <li>项目级 AI 配置入口（<code>window.GlobalAiConfig.open()</code>）</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.4 接口用例库（apiCases）</summary>
+    <div class="content">
+      <ul>
+        <li>项目+环境双筛选</li>
+        <li>用例 CRUD（method/url/headers/params/body/assert_rule）</li>
+        <li>单条执行（<code>POST /api/api-cases/{id}/execute</code>）</li>
+        <li>批量勾选 + 批量执行（<code>POST /api/api-cases/batch-execute</code>，数据工厂核心入口，变量回写共享）</li>
+        <li>复制用例</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.5 数据工厂（dataScripts）— 最复杂的功能区</summary>
+    <div class="content">
+      <h4>a) 数据脚本列表</h4>
+      <ul>
+        <li>active/hidden/deleted 三 tab（<code>localStorage.dataScriptTab</code>）</li>
+        <li>17 个内置脚本：shopping_cart、order_quote、balance_payment、bank_payment、purchase_to_shelf、purchase_to_shelf_chain、direct_box_to_shelf、warehouse_delivery、porder_balance_payment、porder_bank_payment、full_flow、resume_order_flow、resume_porder_flow、material_generation、balance_recharge、problem_goods、oem_*（7 个 OEM 脚本）</li>
+        <li>用户自定义 flow（存 localStorage <code>dataFactoryFlows</code>）</li>
+        <li>拖拽排序（HTML5 Drag API）</li>
+        <li>隐藏/删除/恢复（localStorage 持久化）</li>
+        <li>复制 order_sn/purchase_no/porder_sn</li>
+      </ul>
+      <h4>b) 数据脚本编辑器</h4>
+      <ul>
+        <li>项目/环境选择</li>
+        <li>变量 JSON 编辑（textarea）</li>
+        <li>关联接口用例列表（增删、上下移动）</li>
+        <li>保存为 flow</li>
+      </ul>
+      <h4>c) 脚本执行表单</h4>
+      <ul>
+        <li>通用表单（<code>openForm</code>，schema 驱动）</li>
+        <li>订单报价专用表单（含 option 预览）</li>
+        <li>OEM 询价全流程表单（动态工厂 URL 行 + SKU 行）</li>
+        <li>OEM 样品单/样品全流程/大货单表单（含图片上传、SKU 表）</li>
+        <li>问题产品处理表单（<code>window.ProblemGoodsUI.open()</code>）</li>
+        <li>进度弹窗 + 结果弹窗</li>
+        <li>多客户批量执行（<code>runMultiCustomerFlow</code>）</li>
+        <li>订单 option 预览（<code>POST /api/data-scripts/order-quote/options-preview</code>）</li>
+      </ul>
+      <h4>d) 数据智能体面板</h4>
+      <ul>
+        <li><code>window.DataFactoryAgent.mount()</code> 挂载</li>
+        <li>创建会话（<code>POST /api/data-scripts/agent/sessions</code>）</li>
+        <li>目标理解 → 用户确认 → 执行循环</li>
+        <li>轮询会话状态、追加消息、确认 plan、取消、授权、修改 goal</li>
+        <li>仅 admin 可用，且硬编码限制 <code>projectName === "日本站测试"</code></li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.6 AI 用例生成（caseGeneration）— 当前禁用</summary>
+    <div class="content">
+      <div class="alert warn"><strong>视图被禁用</strong>被 <code>requirement-verification.js</code> 从 views 数组中删除，实际不可见。但代码仍在 <code>case-generation.js</code> 中，迁移时需保留以备恢复。</div>
+      <ul>
+        <li>工作区（<code>/api/case-generation/workspace</code>）</li>
+        <li>截图上传 + OCR 识别 + 校对</li>
+        <li>需求笔记 CRUD</li>
+        <li>AI 生成用例</li>
+        <li>用例编辑、状态流转、批量状态更新</li>
+        <li>统计</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.7 功能验证中心（functionalTests）— 被多重覆盖</summary>
+    <div class="content">
+      <div class="alert warn"><strong>视图被覆盖</strong>被 <code>requirement-pack.js</code> 覆盖为 <code>renderRequirementPacks</code>；同时 <code>quick-start.js</code> 和 <code>test-status.js</code> 也覆盖此函数。最终生效取决于加载顺序。</div>
+      <ul>
+        <li>任务列表（<code>/api/functional-tasks</code>）</li>
+        <li>任务详情：上下文编辑、Axure 上传、截图上传、扫描页面、生成测试点、补充需求</li>
+        <li>测试点编辑、UI 步骤生成、试跑检查、执行</li>
+        <li>执行进度弹窗（轮询 <code>/api/functional-executions/{job_id}</code>）</li>
+        <li>执行日志、截图查看</li>
+        <li>失败诊断（<code>POST /api/functional-runs/{id}/diagnose</code>）</li>
+        <li>一键修复定位器（<code>POST /api/functional-runs/{id}/heal</code>）</li>
+        <li>影响项分析、数据核对规则</li>
+        <li>SSE 流式执行进度（<code>/api/functional-executions/{id}/events</code>）</li>
+        <li>工作流状态、时间线、修复计划</li>
+        <li>"AI 准备测试包"和"快捷开始(演示)"按钮（quick-start.js 注入）</li>
+        <li>状态统计卡 + 行内状态选择器 + 批量标记栏（test-status.js 通过 MutationObserver 注入）</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.8 需求验证中心（requirementVerification）</summary>
+    <div class="content">
+      <p>由 <code>requirement-verification.js</code> 动态注册，替代 caseGeneration 和 functionalTests。</p>
+      <ul>
+        <li>任务列表 + 关键词/状态/归档/排序筛选</li>
+        <li>任务详情：材料（文本+截图）、需求分析、澄清问题、验证项</li>
+        <li>数据准备（造数步骤配置）</li>
+        <li>目标页面编辑</li>
+        <li>公式编辑器（变量、表达式、舍入、币种）</li>
+        <li>数据源、业务记忆</li>
+        <li>学习会话（边测边教）：捕获检查点、选择检查点、保存规则</li>
+        <li>相似任务、继承、跨项目建议</li>
+        <li>执行：预检、启动、暂停、恢复、取消、人工接管浏览器、复跑</li>
+        <li>缺陷草稿、效率统计</li>
+        <li>49 个后端接口支撑</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.9 UI 自动化（uiCases）</summary>
+    <div class="content">
+      <ul>
+        <li>用例 CRUD（<code>/api/ui-cases</code>）</li>
+        <li>普通执行（<code>POST /api/ui-cases/{id}/execute</code>）</li>
+        <li><strong>可视化执行</strong>（<code>POST /api/ui-cases/{id}/visual-execute</code> + 轮询 <code>GET /api/ui-executions/{run_id}</code>）<br>此功能在 app.js 末尾通过重新赋值 <code>openUiExecuteForm</code> 实现</li>
+        <li><strong>UI 用例录制</strong>（<code>POST /api/ui-record/sessions</code> + 轮询 events + 保存）<br>此功能在 app.js 末尾通过重新赋值 <code>renderUiCases</code> 实现，新增 <code>#recordUiCase</code> 按钮</li>
+        <li>失败时定位器自愈（自动）</li>
+        <li>批量 heal（<code>POST /api/ui-cases/{id}/heal-steps</code>）</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.10 执行报告（records）</summary>
+    <div class="content">
+      <ul>
+        <li>项目 + 类型（api/ui）筛选</li>
+        <li>分页（page/page_size=20）</li>
+        <li>列表显示：用例名、类型、状态、耗时、创建时间</li>
+        <li>操作：再次执行（<code>window.TestRecordRerun.open</code>）、查看日志、下载报告、查看截图</li>
+        <li>DeepSeek 数据智能体记录使用专用渲染（<code>window.DataFactoryAgent.renderRecordSummary</code>）</li>
+        <li>脚本执行记录显示脚本身份和接口名（test-record-report.js 增强）</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.11 权限中心（users）</summary>
+    <div class="content">
+      <ul>
+        <li>用户 CRUD（<code>/api/users</code>）</li>
+        <li>角色：admin / user</li>
+        <li>删除保护：不能删自己、至少保留一个 admin</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.12 admin 自愈记录页（heal-logs.html）</summary>
+    <div class="content">
+      <ul>
+        <li>用例 ID 筛选</li>
+        <li>分页（page_size=20）</li>
+        <li>自愈记录列表：旧/新定位器、状态徽章、AI 徽章</li>
+        <li>展开详情：step_action、AI prompt、AI response、截图</li>
+        <li>确认应用 / 驳回 / 撤销确认</li>
+        <li>调用 <code>/api/locator-heal-logs</code></li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.13 admin 操作模板管理页（templates.html）</summary>
+    <div class="content">
+      <ul>
+        <li>项目筛选</li>
+        <li>模板 CRUD（<code>/api/action-templates</code>）</li>
+        <li>步骤编辑器（动态增删行）</li>
+        <li>触发关键词（每行一个）</li>
+        <li>测试运行（<code>GET /api/action-templates/{id}/test-run</code>）</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.14 实时浏览器录制（liveRecorder）</summary>
+    <div class="content">
+      <ul>
+        <li>起始 URL 表单（<code>POST /api/browser-record/sessions</code>）</li>
+        <li>录制中弹窗：实时事件列表（轮询 <code>GET /api/browser-record/sessions/{id}/events</code>）</li>
+        <li>保存（<code>POST /api/browser-record/sessions/{id}/save</code>）</li>
+        <li>取消（<code>DELETE /api/browser-record/sessions/{id}</code>）</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>2.15 HAR 录制流程（flowRecorder）</summary>
+    <div class="content">
+      <ul>
+        <li>上传 HAR 文件预览（<code>POST /api/flow-recorder/upload</code>）</li>
+        <li>保存为流程（<code>POST /api/flow-recorder/save</code>）</li>
+        <li>流程列表、详情、删除</li>
+        <li>执行流程（<code>POST /api/flow-recorder/{id}/execute</code>）</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<section id="sec-3">
+  <h2><span class="num">3</span>所有按钮、表单、弹窗、分页、筛选和交互事件</h2>
+
+  <h3>3.1 交互事件总览</h3>
+  <div class="grid-3">
+    <div class="stat"><div class="label">顶层 addEventListener</div><div class="value">200+</div></div>
+    <div class="stat"><div class="label">内联 onclick（app.js）</div><div class="value">0</div></div>
+    <div class="stat"><div class="label">表单 submit</div><div class="value">20+</div></div>
+    <div class="stat"><div class="label">HTML5 拖拽</div><div class="value">1</div></div>
+    <div class="stat"><div class="label">MutationObserver</div><div class="value">1</div></div>
+    <div class="stat"><div class="label">轮询定时器</div><div class="value">6+</div></div>
+  </div>
+
+  <h3>3.2 表单清单</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>表单 ID</th><th>字段</th><th>验证</th></tr></thead>
+      <tbody>
+        <tr><td><code>#loginForm</code></td><td>username, password, rememberPwd</td><td>HTML5 required</td></tr>
+        <tr><td><code>#modalForm</code></td><td>动态字段（openForm 通用）</td><td>字段 required</td></tr>
+        <tr><td><code>#orderQuoteRunForm</code></td><td>fields + <code>__save_defaults</code></td><td>parseJsonText 容错</td></tr>
+        <tr><td><code>#oemSampleOrderForm</code></td><td>order_sn, SKU 勾选</td><td>至少勾选一个 SKU</td></tr>
+        <tr><td><code>#oemFullInquiryFlowForm</code></td><td>OEM 字段 + 动态工厂/SKU</td><td>parseJsonText 容错</td></tr>
+        <tr><td><code>#oemSampleFullFlowForm</code></td><td>order_sn + SKU</td><td>先查询询价单</td></tr>
+        <tr><td><code>#oemBulkOrderForm</code></td><td>order_sn + SKU + warehouse_city</td><td>至少勾选一个 SKU</td></tr>
+        <tr><td><code>#flowRecorderPreviewForm</code></td><td>name, description</td><td>必填名称</td></tr>
+        <tr><td><code>#axureUploadForm</code></td><td>file</td><td>文件必选</td></tr>
+        <tr><td><code>#functionalScreenshotUploadForm</code></td><td>截图文件</td><td>至少选一张</td></tr>
+        <tr><td><code>#functionalScanForm</code></td><td>扫描配置</td><td>启用时必填 URL/账号/密码</td></tr>
+        <tr><td><code>#functionalExecuteForm</code></td><td>账号/变量</td><td>无显式验证</td></tr>
+        <tr><td><code>#uiExecuteForm</code></td><td>账号/变量 + <code>headed</code></td><td>无显式验证</td></tr>
+        <tr><td><code>#liveRecorderStartForm</code></td><td>start_url</td><td>必填 URL</td></tr>
+        <tr><td><code>#uiRecordSaveForm</code></td><td>assertion_text</td><td>无显式验证</td></tr>
+        <tr><td><code>#templateForm</code>（admin）</td><td>name, description, project_id, trigger_keywords, steps</td><td>HTML5 required</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3.3 弹窗清单（共 1 个全局 <code>&lt;dialog id="modal"&gt;</code>，所有弹窗共享）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>弹窗函数</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><code>openForm(title, fields, values, onSubmit, submitLabel)</code></td><td>通用模态表单</td></tr>
+        <tr><td><code>showFactoryResult(result)</code></td><td>脚本结果</td></tr>
+        <tr><td><code>openScriptProgress(title, initialMessage)</code></td><td>进度弹窗</td></tr>
+        <tr><td><code>openFunctionalExecutionModal({...})</code></td><td>功能执行参数</td></tr>
+        <tr><td><code>renderFunctionalExecutionProgress(job)</code></td><td>功能执行进度</td></tr>
+        <tr><td><code>showFunctionalCaseDetail(item)</code></td><td>测试点详情</td></tr>
+        <tr><td><code>showFunctionalRunLog(item)</code></td><td>执行日志</td></tr>
+        <tr><td><code>showFunctionalRunScreenshots(item)</code></td><td>执行截图</td></tr>
+        <tr><td><code>diagnoseFunctionalRun(runId)</code></td><td>失败诊断</td></tr>
+        <tr><td><code>showLog(item)</code></td><td>执行记录日志（被覆盖）</td></tr>
+        <tr><td><code>openFunctionalScanForm(task)</code></td><td>扫描登录配置</td></tr>
+        <tr><td><code>openFunctionalScreenshotUpload(taskId)</code></td><td>截图上传</td></tr>
+        <tr><td><code>openAxureUpload(taskId)</code></td><td>Axure 上传</td></tr>
+        <tr><td><code>flowRecorderOpenPreviewDialog</code> 等</td><td>录制流程</td></tr>
+        <tr><td><code>liveRecorderOpenStartDialog</code> 等</td><td>实时录制</td></tr>
+        <tr><td><code>renderUiVisualExecution(run, item)</code></td><td>UI 可视化执行</td></tr>
+        <tr><td><code>openUiRecordSaveDialog()</code></td><td>UI 录制保存</td></tr>
+        <tr><td><code>renderUiRecordSessionDialog(session)</code></td><td>UI 录制中</td></tr>
+        <tr><td><code>openGlobalAiConfig()</code></td><td>全局 AI 配置</td></tr>
+        <tr><td><code>openRunScriptForm(flow)</code></td><td>数据脚本执行入口（按 scriptType 派发）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3.4 分页与筛选</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>位置</th><th>状态变量</th><th>分页大小</th></tr></thead>
+      <tbody>
+        <tr><td>执行记录（app.js <code>renderRecords</code>）</td><td><code>state.filters.recordPage</code></td><td>20</td></tr>
+        <tr><td>admin 自愈记录（heal-logs.html）</td><td><code>currentPage</code> / <code>totalPages</code></td><td>20</td></tr>
+        <tr><td>后端 <code>/api/test-records</code></td><td><code>page</code>/<code>page_size</code> query</td><td>可配置</td></tr>
+        <tr><td>后端 <code>/api/locator-heal-logs</code></td><td><code>page</code>/<code>page_size</code> query</td><td>可配置</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>筛选器</th><th>状态变量</th><th>持久化</th></tr></thead>
+      <tbody>
+        <tr><td>全局项目筛选</td><td><code>state.filters.projectId</code></td><td>localStorage <code>projectId</code></td></tr>
+        <tr><td>接口用例环境筛选</td><td><code>state.filters.envId</code></td><td>不持久化</td></tr>
+        <tr><td>执行记录类型筛选</td><td><code>state.filters.recordType</code></td><td>不持久化</td></tr>
+        <tr><td>数据脚本 tab</td><td><code>state.dataScriptTab</code></td><td>localStorage <code>dataScriptTab</code></td></tr>
+        <tr><td>需求验证关键词/状态/归档/排序</td><td><code>rvState.*</code></td><td>localStorage <code>verificationArchivedFilter</code>/<code>verificationSort</code></td></tr>
+        <tr><td>需求验证项目/任务</td><td><code>rvState.projectId</code>/<code>rvState.taskId</code></td><td>localStorage <code>verificationProjectId</code>/<code>verificationTaskId</code></td></tr>
+        <tr><td>AI 用例生成项目</td><td>—</td><td>localStorage <code>caseGenerationProjectId</code></td></tr>
+        <tr><td>功能测试任务</td><td><code>state.functionalTaskId</code></td><td>localStorage <code>functionalTaskId</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="sec-4">
+  <h2><span class="num">4</span>所有接口地址、请求方法、请求参数和响应字段</h2>
+
+  <div class="grid-3">
+    <div class="stat"><div class="label">接口总数</div><div class="value">178</div></div>
+    <div class="stat"><div class="label">路由文件</div><div class="value">20</div></div>
+    <div class="stat"><div class="label">认证机制</div><div class="value">JWT Bearer</div></div>
+  </div>
+
+  <h3>4.1 按业务域汇总</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>业务域</th><th>接口数</th><th>路径前缀</th><th>认证</th></tr></thead>
+      <tbody>
+        <tr><td>认证与用户</td><td>4</td><td><code>/api/auth</code> / <code>/api/users</code></td><td>公开 + admin</td></tr>
+        <tr><td>项目与环境</td><td>7</td><td><code>/api/projects</code> / <code>/api/envs</code></td><td>用户/admin</td></tr>
+        <tr><td>测试账号</td><td>6</td><td><code>/api/test-accounts</code> / <code>/api/test-account-bindings</code></td><td>用户/admin</td></tr>
+        <tr><td>接口用例</td><td>6</td><td><code>/api/api-cases</code></td><td>用户/admin</td></tr>
+        <tr><td>UI 用例</td><td>8</td><td><code>/api/ui-cases</code> / <code>/api/ui-executions</code></td><td>用户/admin</td></tr>
+        <tr><td>数据脚本</td><td>30+</td><td><code>/api/data-scripts</code> / <code>/api/oem</code></td><td>用户/admin</td></tr>
+        <tr><td>数据智能体</td><td>7</td><td><code>/api/data-scripts/agent/sessions</code></td><td>admin</td></tr>
+        <tr><td>功能测试任务</td><td>30+</td><td><code>/api/functional-tasks</code> 等</td><td>用户/admin</td></tr>
+        <tr><td>需求验证</td><td>49</td><td><code>/api/requirement-verifications</code></td><td>用户/admin</td></tr>
+        <tr><td>AI 用例生成</td><td>22</td><td><code>/api/case-generation</code></td><td>用户/admin</td></tr>
+        <tr><td>执行记录</td><td>7</td><td><code>/api/test-records</code> / <code>/api/files</code></td><td>用户</td></tr>
+        <tr><td>HAR 录制</td><td>6</td><td><code>/api/flow-recorder</code></td><td><span class="risk-high">无认证</span></td></tr>
+        <tr><td>实时浏览器录制</td><td>5</td><td><code>/api/browser-record</code></td><td><span class="risk-high">无认证</span></td></tr>
+        <tr><td>UI 用例录制</td><td>4</td><td><code>/api/ui-record</code></td><td>admin</td></tr>
+        <tr><td>操作模板</td><td>5</td><td><code>/api/action-templates</code></td><td>用户/admin</td></tr>
+        <tr><td>定位器自愈记录</td><td>3</td><td><code>/api/locator-heal-logs</code></td><td>用户/admin</td></tr>
+        <tr><td>AI 配置</td><td>3</td><td><code>/api/ai-config</code></td><td>admin</td></tr>
+        <tr><td>仪表盘</td><td>1</td><td><code>/api/dashboard</code></td><td>用户</td></tr>
+        <tr><td>代理请求</td><td>1</td><td><code>/api/proxy/request</code></td><td>用户</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <details>
+    <summary>4.2 完整 API 路径速查表（按路径字母排序，共 178 个）</summary>
+    <div class="content">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>方法</th><th>路径</th><th>用途</th><th>文件:行</th></tr></thead>
+          <tbody>
+            <tr><td>GET</td><td><code>/api/action-templates</code></td><td>列操作模板</td><td>action_templates.py:22</td></tr>
+            <tr><td>POST</td><td><code>/api/action-templates</code></td><td>创建模板</td><td>action_templates.py:34</td></tr>
+            <tr><td>PUT</td><td><code>/api/action-templates/{template_id}</code></td><td>更新模板</td><td>action_templates.py:59</td></tr>
+            <tr><td>DELETE</td><td><code>/api/action-templates/{template_id}</code></td><td>删除模板</td><td>action_templates.py:81</td></tr>
+            <tr><td>GET</td><td><code>/api/action-templates/{template_id}/test-run</code></td><td>试跑模板</td><td>action_templates.py:93</td></tr>
+            <tr><td>GET</td><td><code>/api/ai-config</code></td><td>取 AI 配置</td><td>ai_config.py:18</td></tr>
+            <tr><td>PUT</td><td><code>/api/ai-config</code></td><td>更新 AI 配置</td><td>ai_config.py:23</td></tr>
+            <tr><td>POST</td><td><code>/api/ai-config/test</code></td><td>测试 AI 连通</td><td>ai_config.py:60</td></tr>
+            <tr><td>GET</td><td><code>/api/api-cases</code></td><td>列接口用例</td><td>api_cases.py:24</td></tr>
+            <tr><td>POST</td><td><code>/api/api-cases</code></td><td>创建用例</td><td>api_cases.py:39</td></tr>
+            <tr><td>PUT</td><td><code>/api/api-cases/{case_id}</code></td><td>更新用例</td><td>api_cases.py:59</td></tr>
+            <tr><td>DELETE</td><td><code>/api/api-cases/{case_id}</code></td><td>删除用例</td><td>api_cases.py:85</td></tr>
+            <tr><td>POST</td><td><code>/api/api-cases/{case_id}/execute</code></td><td>执行用例</td><td>api_cases.py:96</td></tr>
+            <tr><td>POST</td><td><code>/api/api-cases/batch-execute</code></td><td>批量执行</td><td>api_cases.py:128</td></tr>
+            <tr><td>POST</td><td><code>/api/auth/login</code></td><td>登录</td><td>auth.py:17</td></tr>
+            <tr><td>GET</td><td><code>/api/auth/me</code></td><td>当前用户</td><td>auth.py:29</td></tr>
+            <tr><td>POST</td><td><code>/api/browser-record/sessions</code></td><td>启动浏览器会话</td><td>browser_record.py:16</td></tr>
+            <tr><td>GET</td><td><code>/api/browser-record/sessions/{session_id}/events</code></td><td>取事件</td><td>browser_record.py:29</td></tr>
+            <tr><td>POST</td><td><code>/api/browser-record/sessions/{session_id}/navigate</code></td><td>跳转</td><td>browser_record.py:36</td></tr>
+            <tr><td>DELETE</td><td><code>/api/browser-record/sessions/{session_id}</code></td><td>关闭会话</td><td>browser_record.py:51</td></tr>
+            <tr><td>POST</td><td><code>/api/browser-record/sessions/{session_id}/save</code></td><td>保存为流程</td><td>browser_record.py:58</td></tr>
+            <tr><td>GET</td><td><code>/api/case-generation/workspace</code></td><td>取工作区</td><td>case_generation.py:78</td></tr>
+            <tr><td>POST</td><td><code>/api/case-generation/workspace/upload-screenshots</code></td><td>工作区上传截图</td><td>case_generation.py:88</td></tr>
+            <tr><td>POST</td><td><code>/api/case-generation/workspace/requirement-notes</code></td><td>工作区新增需求</td><td>case_generation.py:137</td></tr>
+            <tr><td>POST</td><td><code>/api/case-generation/workspace/generate-cases</code></td><td>工作区生成用例</td><td>case_generation.py:163</td></tr>
+            <tr><td>POST</td><td><code>/api/case-generation/workspace/cases/batch-status</code></td><td>工作区批量改状态</td><td>case_generation.py:173</td></tr>
+            <tr><td>GET</td><td><code>/api/case-generation/tasks</code></td><td>列任务</td><td>case_generation.py:189</td></tr>
+            <tr><td>POST</td><td><code>/api/case-generation/tasks</code></td><td>创建任务</td><td>case_generation.py:201</td></tr>
+            <tr><td>GET</td><td><code>/api/case-generation/tasks/{task_id}</code></td><td>任务详情</td><td>case_generation.py:228</td></tr>
+            <tr><td>PUT</td><td><code>/api/case-generation/tasks/{task_id}</code></td><td>更新任务</td><td>case_generation.py:237</td></tr>
+            <tr><td>DELETE</td><td><code>/api/case-generation/tasks/{task_id}</code></td><td>删除任务</td><td>case_generation.py:262</td></tr>
+            <tr><td>POST</td><td><code>/api/case-generation/tasks/{task_id}/upload-screenshots</code></td><td>任务上传截图</td><td>case_generation.py:285</td></tr>
+            <tr><td>POST</td><td><code>/api/case-generation/tasks/{task_id}/requirement-notes</code></td><td>任务新增需求</td><td>case_generation.py:440</td></tr>
+            <tr><td>POST</td><td><code>/api/case-generation/tasks/{task_id}/generate-cases</code></td><td>任务生成用例</td><td>case_generation.py:512</td></tr>
+            <tr><td>POST</td><td><code>/api/case-generation/tasks/{task_id}/cases/batch-status</code></td><td>任务批量改状态</td><td>case_generation.py:574</td></tr>
+            <tr><td>GET</td><td><code>/api/case-generation/tasks/{task_id}/cases/stats</code></td><td>用例统计</td><td>case_generation.py:585</td></tr>
+            <tr><td>GET</td><td><code>/api/case-generation/screenshots/{screenshot_id}/file</code></td><td>截图文件</td><td>case_generation.py:334</td></tr>
+            <tr><td>GET</td><td><code>/api/case-generation/screenshots/{screenshot_id}/impact</code></td><td>影响范围</td><td>case_generation.py:344</td></tr>
+            <tr><td>POST</td><td><code>/api/case-generation/screenshots/{screenshot_id}/analyze</code></td><td>分析截图</td><td>case_generation.py:354</td></tr>
+            <tr><td>PUT</td><td><code>/api/case-generation/screenshots/{screenshot_id}/ocr-text</code></td><td>修正 OCR</td><td>case_generation.py:378</td></tr>
+            <tr><td>DELETE</td><td><code>/api/case-generation/screenshots/{screenshot_id}</code></td><td>删截图</td><td>case_generation.py:398</td></tr>
+            <tr><td>PUT</td><td><code>/api/case-generation/requirement-notes/{note_id}</code></td><td>更新需求</td><td>case_generation.py:466</td></tr>
+            <tr><td>DELETE</td><td><code>/api/case-generation/requirement-notes/{note_id}</code></td><td>删需求</td><td>case_generation.py:488</td></tr>
+            <tr><td>PUT</td><td><code>/api/case-generation/cases/{case_id}</code></td><td>更新用例</td><td>case_generation.py:522</td></tr>
+            <tr><td>DELETE</td><td><code>/api/case-generation/cases/{case_id}</code></td><td>删用例</td><td>case_generation.py:543</td></tr>
+            <tr><td>PUT</td><td><code>/api/case-generation/cases/{case_id}/status</code></td><td>改状态</td><td>case_generation.py:557</td></tr>
+            <tr><td>GET</td><td><code>/api/dashboard</code></td><td>仪表盘</td><td>dashboard.py:18</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/agent/sessions</code></td><td>创建智能体</td><td>data_factory_agent.py:29</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/agent/sessions/{session_id}/messages</code></td><td>发消息</td><td>data_factory_agent.py:45</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/agent/sessions/{session_id}/confirm</code></td><td>确认 plan</td><td>data_factory_agent.py:55</td></tr>
+            <tr><td>GET</td><td><code>/api/data-scripts/agent/sessions/{session_id}</code></td><td>读会话</td><td>data_factory_agent.py:65</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/agent/sessions/{session_id}/permission</code></td><td>恢复权限</td><td>data_factory_agent.py:73</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/agent/sessions/{session_id}/cancel</code></td><td>取消会话</td><td>data_factory_agent.py:91</td></tr>
+            <tr><td>PATCH</td><td><code>/api/data-scripts/agent/sessions/{session_id}/goal</code></td><td>编辑 goal</td><td>data_factory_agent.py:99</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/shopping-cart</code></td><td>购物车脚本</td><td>data_scripts.py:98</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/order-quote</code></td><td>订单报价</td><td>data_scripts.py:114</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/order-quote/options-preview</code></td><td>选项预览</td><td>data_scripts.py:129</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/balance-payment</code></td><td>余额支付</td><td>data_scripts.py:143</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/bank-payment</code></td><td>银行支付</td><td>data_scripts.py:158</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/purchase-to-shelf</code></td><td>采购到上架</td><td>data_scripts.py:173</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/purchase-to-shelf-chain</code></td><td>采购到上架链路</td><td>data_scripts.py:202</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/direct-box-to-shelf</code></td><td>箱到货架</td><td>data_scripts.py:217</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/warehouse-delivery</code></td><td>仓库发货</td><td>data_scripts.py:232</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/porder-balance-payment</code></td><td>采购单余额支付</td><td>data_scripts.py:247</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/porder-bank-payment</code></td><td>采购单银行支付</td><td>data_scripts.py:262</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/full-flow</code></td><td>全流程</td><td>data_scripts.py:277</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/resume-order-flow</code></td><td>恢复订单流程</td><td>data_scripts.py:292</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/resume-porder-flow</code></td><td>恢复采购单流程</td><td>data_scripts.py:307</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/material-generation</code></td><td>物料生成</td><td>data_scripts.py:322</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/material-order</code></td><td>物料下单</td><td>data_scripts.py:338</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/balance-recharge</code></td><td>余额充值</td><td>data_scripts.py:357</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/balance-adjustment</code></td><td>余额调整（admin）</td><td>data_scripts.py:372</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/problem-goods/inspect</code></td><td>问题商品检查</td><td>data_scripts.py:402</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/problem-goods/options</code></td><td>问题商品选项</td><td>data_scripts.py:416</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/problem-goods</code></td><td>问题商品脚本</td><td>data_scripts.py:430</td></tr>
+            <tr><td>GET</td><td><code>/api/data-scripts/latest-order-sn</code></td><td>取最新 order_sn</td><td>data_scripts.py:457</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/oem-new-inquiry</code></td><td>OEM 新询价</td><td>data_scripts.py:489</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/oem-sample-order</code></td><td>OEM 样品下单</td><td>data_scripts.py:504</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/oem-sample-admin-flow</code></td><td>OEM 样品后台</td><td>data_scripts.py:519</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/oem-full-inquiry-flow</code></td><td>OEM 完整询价</td><td>data_scripts.py:534</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/oem-sample-full-flow</code></td><td>OEM 样品全流程</td><td>data_scripts.py:549</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/oem-bulk-order</code></td><td>OEM 大货单</td><td>data_scripts.py:564</td></tr>
+            <tr><td>POST</td><td><code>/api/data-scripts/oem-sample-balance-pay</code></td><td>OEM 样品余额支付</td><td>data_scripts.py:579</td></tr>
+            <tr><td>GET</td><td><code>/api/envs</code></td><td>列环境</td><td>envs.py:20</td></tr>
+            <tr><td>POST</td><td><code>/api/envs</code></td><td>创建环境</td><td>envs.py:38</td></tr>
+            <tr><td>PUT</td><td><code>/api/envs/{env_id}</code></td><td>更新环境</td><td>envs.py:50</td></tr>
+            <tr><td>DELETE</td><td><code>/api/envs/{env_id}</code></td><td>删环境</td><td>envs.py:71</td></tr>
+            <tr><td>GET</td><td><code>/api/files/screenshot</code></td><td>按路径取截图</td><td>test_records.py:73</td></tr>
+            <tr><td>POST</td><td><code>/api/flow-recorder/upload</code></td><td>上传 HAR</td><td>flow_recorder.py:17</td></tr>
+            <tr><td>POST</td><td><code>/api/flow-recorder/save</code></td><td>保存流程</td><td>flow_recorder.py:51</td></tr>
+            <tr><td>GET</td><td><code>/api/flow-recorder/list</code></td><td>列流程</td><td>flow_recorder.py:79</td></tr>
+            <tr><td>GET</td><td><code>/api/flow-recorder/{flow_id}</code></td><td>流程详情</td><td>flow_recorder.py:95</td></tr>
+            <tr><td>DELETE</td><td><code>/api/flow-recorder/{flow_id}</code></td><td>删流程</td><td>flow_recorder.py:136</td></tr>
+            <tr><td>POST</td><td><code>/api/flow-recorder/{flow_id}/execute</code></td><td>回放流程</td><td>flow_recorder.py:147</td></tr>
+            <tr><td>GET</td><td><code>/api/locator-heal-logs</code></td><td>列 heal 记录</td><td>locator_heal_logs.py:18</td></tr>
+            <tr><td>PUT</td><td><code>/api/locator-heal-logs/{log_id}</code></td><td>确认记录</td><td>locator_heal_logs.py:51</td></tr>
+            <tr><td>POST</td><td><code>/api/locator-heal-logs/{log_id}/apply</code></td><td>应用 heal</td><td>locator_heal_logs.py:64</td></tr>
+            <tr><td>GET</td><td><code>/api/oem/inquiry-full</code></td><td>询价详情</td><td>data_scripts.py:594</td></tr>
+            <tr><td>GET</td><td><code>/api/oem/goods-class-list</code></td><td>商品分类</td><td>data_scripts.py:619</td></tr>
+            <tr><td>GET</td><td><code>/api/oem/option-list</code></td><td>OEM option</td><td>data_scripts.py:643</td></tr>
+            <tr><td>POST</td><td><code>/api/oem/upload-image</code></td><td>OEM 图片上传</td><td>data_scripts.py:667</td></tr>
+            <tr><td>POST</td><td><code>/api/proxy/request</code></td><td>代理 HTTP 请求</td><td>proxy.py:20</td></tr>
+            <tr><td>GET</td><td><code>/api/projects</code></td><td>列项目</td><td>projects.py:33</td></tr>
+            <tr><td>POST</td><td><code>/api/projects</code></td><td>创建项目</td><td>projects.py:91</td></tr>
+            <tr><td>PUT</td><td><code>/api/projects/{project_id}</code></td><td>更新项目</td><td>projects.py:106</td></tr>
+            <tr><td>DELETE</td><td><code>/api/projects/{project_id}</code></td><td>删项目</td><td>projects.py:124</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications</code></td><td>列验证任务</td><td>requirement_verifications.py:151</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications</code></td><td>创建任务</td><td>requirement_verifications.py:250</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/data-script-catalog</code></td><td>脚本目录</td><td>requirement_verifications.py:239</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/{task_id}</code></td><td>任务详情</td><td>requirement_verifications.py:286</td></tr>
+            <tr><td>PUT</td><td><code>/api/requirement-verifications/{task_id}</code></td><td>更新任务</td><td>requirement_verifications.py:295</td></tr>
+            <tr><td>DELETE</td><td><code>/api/requirement-verifications/{task_id}</code></td><td>删任务</td><td>requirement_verifications.py:332</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/{task_id}/materials</code></td><td>添加文本材料</td><td>requirement_verifications.py:358</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/{task_id}/materials/upload</code></td><td>上传截图材料</td><td>requirement_verifications.py:388</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/{task_id}/analyze</code></td><td>分析需求</td><td>requirement_verifications.py:454</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/{task_id}/items/batch-confirm</code></td><td>批量确认项</td><td>requirement_verifications.py:528</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/{task_id}/preflight</code></td><td>运行前预检</td><td>requirement_verifications.py:845</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/{task_id}/runs</code></td><td>启动执行</td><td>requirement_verifications.py:863</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/{task_id}/learning-sessions</code></td><td>启动学习</td><td>requirement_verifications.py:1002</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/{task_id}/similar</code></td><td>相似任务</td><td>requirement_verifications.py:1083</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/{task_id}/diff</code></td><td>需求差异</td><td>requirement_verifications.py:1092</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/{task_id}/boundary-combinations</code></td><td>边界组合</td><td>requirement_verifications.py:1102</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/{task_id}/cross-project-suggestions</code></td><td>跨项目建议</td><td>requirement_verifications.py:1111</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/{task_id}/inherit</code></td><td>继承任务</td><td>requirement_verifications.py:1120</td></tr>
+            <tr><td>PUT</td><td><code>/api/requirement-verifications/clarifications/{clarification_id}</code></td><td>回答澄清</td><td>requirement_verifications.py:464</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/clarifications/{clarification_id}/confirm</code></td><td>确认澄清</td><td>requirement_verifications.py:477</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/clarifications/{clarification_id}/defer</code></td><td>推迟澄清</td><td>requirement_verifications.py:489</td></tr>
+            <tr><td>PUT</td><td><code>/api/requirement-verifications/items/{item_id}</code></td><td>更新验证项</td><td>requirement_verifications.py:501</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/projects/{project_id}/formulas</code></td><td>公式列表</td><td>requirement_verifications.py:561</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/projects/{project_id}/formulas</code></td><td>创建公式</td><td>requirement_verifications.py:572</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/projects/{project_id}/data-sources</code></td><td>数据源列表</td><td>requirement_verifications.py:688</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/projects/{project_id}/data-sources</code></td><td>创建数据源</td><td>requirement_verifications.py:699</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/projects/{project_id}/memories</code></td><td>业务记忆列表</td><td>requirement_verifications.py:766</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/projects/{project_id}/memories</code></td><td>创建记忆</td><td>requirement_verifications.py:777</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/projects/{project_id}/templates/copy</code></td><td>复制模板</td><td>requirement_verifications.py:1130</td></tr>
+            <tr><td>PUT</td><td><code>/api/requirement-verifications/formulas/{formula_id}</code></td><td>更新公式</td><td>requirement_verifications.py:610</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/formulas/{formula_id}/confirm</code></td><td>确认公式</td><td>requirement_verifications.py:644</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/formulas/{formula_id}/preview</code></td><td>预览公式</td><td>requirement_verifications.py:660</td></tr>
+            <tr><td>PUT</td><td><code>/api/requirement-verifications/data-sources/{source_id}</code></td><td>更新数据源</td><td>requirement_verifications.py:728</td></tr>
+            <tr><td>PUT</td><td><code>/api/requirement-verifications/memories/{memory_id}</code></td><td>更新记忆</td><td>requirement_verifications.py:804</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/memories/{memory_id}/confirm</code></td><td>确认记忆</td><td>requirement_verifications.py:827</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/materials/{material_id}/ocr</code></td><td>重跑 OCR</td><td>requirement_verifications.py:428</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/materials/{material_id}/file</code></td><td>材料截图文件</td><td>requirement_verifications.py:442</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/runs/{run_id}</code></td><td>取执行记录</td><td>requirement_verifications.py:885</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/runs/{run_id}/pause</code></td><td>暂停</td><td>requirement_verifications.py:917</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/runs/{run_id}/resume</code></td><td>恢复</td><td>requirement_verifications.py:929</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/runs/{run_id}/cancel</code></td><td>取消</td><td>requirement_verifications.py:941</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/runs/{run_id}/open-browser</code></td><td>人工接管浏览器</td><td>requirement_verifications.py:954</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/runs/{run_id}/retry</code></td><td>复跑</td><td>requirement_verifications.py:968</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/run-items/{run_item_id}/confirm</code></td><td>确认执行项</td><td>requirement_verifications.py:897</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/run-items/{run_item_id}/defect-draft</code></td><td>缺陷草稿</td><td>requirement_verifications.py:1142</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/learning-sessions/{session_id}</code></td><td>取学习会话</td><td>requirement_verifications.py:1021</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/learning-sessions/{session_id}/events</code></td><td>保存学习事件</td><td>requirement_verifications.py:1035</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/learning-sessions/{session_id}/select-checkpoint</code></td><td>选检查点</td><td>requirement_verifications.py:1045</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/learning-sessions/{session_id}/capture-checkpoint</code></td><td>捕获检查点</td><td>requirement_verifications.py:1055</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/learning-sessions/{session_id}/save</code></td><td>保存学习规则</td><td>requirement_verifications.py:1064</td></tr>
+            <tr><td>POST</td><td><code>/api/requirement-verifications/learning-sessions/{session_id}/cancel</code></td><td>取消学习</td><td>requirement_verifications.py:1074</td></tr>
+            <tr><td>GET</td><td><code>/api/requirement-verifications/stats/efficiency</code></td><td>效率统计</td><td>requirement_verifications.py:1151</td></tr>
+            <tr><td>GET</td><td><code>/api/test-accounts</code></td><td>列账号档案</td><td>test_accounts.py:24</td></tr>
+            <tr><td>POST</td><td><code>/api/test-accounts</code></td><td>创建账号档案</td><td>test_accounts.py:39</td></tr>
+            <tr><td>PUT</td><td><code>/api/test-accounts/{account_id}</code></td><td>更新账号档案</td><td>test_accounts.py:68</td></tr>
+            <tr><td>DELETE</td><td><code>/api/test-accounts/{account_id}</code></td><td>删账号档案</td><td>test_accounts.py:86</td></tr>
+            <tr><td>DELETE</td><td><code>/api/test-accounts/{account_id}/browser-session</code></td><td>清浏览器会话</td><td>test_accounts.py:100</td></tr>
+            <tr><td>PUT</td><td><code>/api/test-account-bindings</code></td><td>更新绑定</td><td>test_accounts.py:117</td></tr>
+            <tr><td>GET</td><td><code>/api/test-records</code></td><td>列测试记录</td><td>test_records.py:21</td></tr>
+            <tr><td>GET</td><td><code>/api/test-records/{record_id}</code></td><td>取记录</td><td>test_records.py:53</td></tr>
+            <tr><td>GET</td><td><code>/api/test-records/{record_id}/report</code></td><td>报告文件</td><td>test_records.py:61</td></tr>
+            <tr><td>GET</td><td><code>/api/test-records/{record_id}/screenshot</code></td><td>截图文件</td><td>test_records.py:67</td></tr>
+            <tr><td>GET</td><td><code>/api/test-records/{record_id}/re-execute</code></td><td>取重跑上下文</td><td>test_records.py:78</td></tr>
+            <tr><td>POST</td><td><code>/api/test-records/{record_id}/re-execute</code></td><td>确认重跑</td><td>test_records.py:88</td></tr>
+            <tr><td>GET</td><td><code>/api/ui-cases</code></td><td>列 UI 用例</td><td>ui_cases.py:230</td></tr>
+            <tr><td>POST</td><td><code>/api/ui-cases</code></td><td>创建用例</td><td>ui_cases.py:316</td></tr>
+            <tr><td>PUT</td><td><code>/api/ui-cases/{case_id}</code></td><td>更新用例</td><td>ui_cases.py:331</td></tr>
+            <tr><td>DELETE</td><td><code>/api/ui-cases/{case_id}</code></td><td>删用例</td><td>ui_cases.py:349</td></tr>
+            <tr><td>POST</td><td><code>/api/ui-cases/{case_id}/heal-steps</code></td><td>批量 heal</td><td>ui_cases.py:361</td></tr>
+            <tr><td>POST</td><td><code>/api/ui-cases/{case_id}/execute</code></td><td>执行用例</td><td>ui_cases.py:393</td></tr>
+            <tr><td>POST</td><td><code>/api/ui-cases/{case_id}/visual-execute</code></td><td>可视化执行</td><td>ui_cases.py:420</td></tr>
+            <tr><td>GET</td><td><code>/api/ui-executions/{run_id}</code></td><td>取 visual 执行状态</td><td>ui_cases.py:477</td></tr>
+            <tr><td>POST</td><td><code>/api/ui-record/sessions</code></td><td>启动 UI 录制</td><td>ui_record.py:24</td></tr>
+            <tr><td>GET</td><td><code>/api/ui-record/sessions/{session_id}/events</code></td><td>取录制事件</td><td>ui_record.py:52</td></tr>
+            <tr><td>POST</td><td><code>/api/ui-record/sessions/{session_id}/save</code></td><td>保存为 UiCase</td><td>ui_record.py:63</td></tr>
+            <tr><td>DELETE</td><td><code>/api/ui-record/sessions/{session_id}</code></td><td>取消录制</td><td>ui_record.py:97</td></tr>
+            <tr><td>GET</td><td><code>/api/users</code></td><td>列用户</td><td>users.py:22</td></tr>
+            <tr><td>POST</td><td><code>/api/users</code></td><td>创建用户</td><td>users.py:27</td></tr>
+            <tr><td>PUT</td><td><code>/api/users/{user_id}</code></td><td>更新用户</td><td>users.py:43</td></tr>
+            <tr><td>DELETE</td><td><code>/api/users/{user_id}</code></td><td>删用户</td><td>users.py:72</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+
+  <h3>4.3 认证机制</h3>
+  <ul>
+    <li><strong>JWT</strong>，<code>Authorization: Bearer &lt;token&gt;</code> 请求头</li>
+    <li><code>app/security.py</code> 实现（未读取内部细节）</li>
+    <li>登录速率限制：<code>_check_login_rate_limit</code> / <code>_record_login_attempt</code>（在 <code>core/utils.py</code>）</li>
+    <li>缓存：<code>auth/me</code> 120s，<code>projects</code> 60s，<code>envs</code> 30s</li>
+    <li>admin 校验：<code>require_admin</code> 依赖</li>
+  </ul>
+</section>
+
+<section id="sec-5">
+  <h2><span class="num">5</span>localStorage、sessionStorage、Cookie 和全局变量</h2>
+
+  <h3>5.1 localStorage 全部 key（18 个）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>key</th><th>用途</th><th>读写位置</th></tr></thead>
+      <tbody>
+        <tr><td><code>token</code></td><td>JWT 令牌</td><td>app.js 多处</td></tr>
+        <tr><td><code>savedUsername</code></td><td>记住账号</td><td>app.js renderLogin</td></tr>
+        <tr><td><code>savedPassword</code></td><td>记住密码（<span class="risk-high">base64 编码，非加密</span>）</td><td>app.js renderLogin</td></tr>
+        <tr><td><code>theme</code></td><td>主题（shuimo/qingxuan/xiaolan/zhuanye）</td><td>app.js initTheme</td></tr>
+        <tr><td><code>projectId</code></td><td>当前项目 ID</td><td>多文件共享</td></tr>
+        <tr><td><code>factoryFlowId</code> / <code>factoryProjectId</code> / <code>factoryEnvId</code> / <code>factoryCaseIds</code> / <code>factoryVariables</code></td><td>数据工厂草稿</td><td>app.js</td></tr>
+        <tr><td><code>dataScriptTab</code></td><td>数据工厂 tab</td><td>app.js</td></tr>
+        <tr><td><code>functionalTaskId</code></td><td>功能测试当前任务</td><td>app.js / requirement-pack.js</td></tr>
+        <tr><td><code>dataFactoryFlows</code></td><td>所有数据脚本 flow 数组</td><td>app.js</td></tr>
+        <tr><td><code>dataFactoryDeletedBuiltins</code> / <code>dataFactoryDeletedFlows</code> / <code>dataFactoryHiddenFlows</code> / <code>dataFactoryHiddenBuiltins</code></td><td>数据脚本隐藏/删除管理</td><td>app.js</td></tr>
+        <tr><td><code>dataScriptCustomerIds</code></td><td>数据脚本全局客户 ID</td><td>app.js / data-factory-agent.js</td></tr>
+        <tr><td><code>functionalScanAuth:{origin}</code> 或 <code>functionalScanAuth:{taskId}</code></td><td>功能测试扫描登录配置（含可选密码）</td><td>app.js / quick-start.js</td></tr>
+        <tr><td><code>caseGenerationProjectId</code></td><td>AI 用例生成项目</td><td>case-generation.js</td></tr>
+        <tr><td><code>verificationProjectId</code> / <code>verificationTaskId</code> / <code>verificationArchivedFilter</code> / <code>verificationSort</code></td><td>需求验证状态</td><td>requirement-verification.js</td></tr>
+        <tr><td><code>verificationLearningSession:{taskId}</code></td><td>验证学习会话 ID</td><td>requirement-verification-v2.js</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>5.2 sessionStorage（2 个）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>key</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><code>dataFactoryAgentSessionId</code></td><td>数据智能体会话 ID（data-factory-agent.js）</td></tr>
+        <tr><td><code>verificationWaitingNotice:{runId}:{count}</code></td><td>验证等待提示已展示标记（requirement-verification-v2.js）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>5.3 Cookie</h3>
+  <p><strong>未使用</strong>。认证通过 <code>Authorization</code> header。</p>
+
+  <h3>5.4 全局变量（顶层声明或 <code>window.*</code>）</h3>
+  <p><strong>核心状态</strong>：</p>
+  <ul>
+    <li><code>state</code>（app.js 行 1）：<code>{token, user, view, filters, selectedApiIds, factory, dataScriptTab, functionalTaskId}</code></li>
+    <li><code>views</code>（app.js 行 1）：视图配置数组（被 requirement-verification.js 运行时修改）</li>
+    <li><code>_projectsCache</code>：项目列表缓存</li>
+    <li><code>rvState</code>（requirement-verification.js 行 16）：需求验证状态</li>
+    <li><code>liveRecorderState</code> / <code>uiVisualExecutionState</code> / <code>uiRecordState</code>：录制/执行轮询状态</li>
+  </ul>
+  <p><strong>全局函数</strong>：app.js 中有 <strong>150+ 个顶层 <code>function</code> 声明</strong>，全部全局可见。所有事件绑定通过 <code>addEventListener</code> 引用，无内联 <code>onclick</code>。</p>
+
+  <h3>5.5 <code>window.*</code> 挂载（外部 JS 文件暴露的 API）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>挂载</th><th>来源文件</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><code>window.GlobalAiConfig = {mount, open}</code></td><td>ai-config.js</td><td>全局 AI 配置</td></tr>
+        <tr><td><code>window.renderCaseGeneration</code></td><td>case-generation.js</td><td>AI 用例生成视图渲染</td></tr>
+        <tr><td><code>window.DataFactoryAgent = {mount, progressHtml, renderRecordSummary}</code></td><td>data-factory-agent.js</td><td>数据智能体</td></tr>
+        <tr><td><code>window.ProblemGoodsUI = {open}</code></td><td>problem-goods.js</td><td>问题产品处理</td></tr>
+        <tr><td><code>window.renderFunctionalTests</code></td><td>被 quick-start.js / requirement-pack.js 覆盖</td><td>功能测试视图</td></tr>
+        <tr><td><code>window._originalRenderFunctionalTests</code></td><td>quick-start.js</td><td>备份原函数</td></tr>
+        <tr><td><code>window.renderRequirementVerification</code></td><td>requirement-verification.js</td><td>需求验证视图</td></tr>
+        <tr><td><code>window.RequirementVerificationV2 = {renderSections, renderRunWorkspace, bind}</code></td><td>requirement-verification-v2.js</td><td>需求验证 V2</td></tr>
+        <tr><td><code>window.TestRecordRerun = {open}</code></td><td>test-record-rerun.js</td><td>测试记录重跑</td></tr>
+        <tr><td><code>window.TestStatusModule</code> / <code>_testStatusInit</code> / <code>_testStatusRefresh</code></td><td>test-status.js</td><td>功能测试状态增强</td></tr>
+        <tr><td><code>window.refreshTestRecordList</code></td><td>app.js 暴露</td><td>让外部 JS 触发记录刷新</td></tr>
+        <tr><td><code>window.runSavedFlow</code> / <code>window.recordColumns</code> / <code>window.showLog</code></td><td>被 test-record-report.js 覆盖</td><td>测试记录增强</td></tr>
+        <tr><td><code>window.__fullFlowDataScriptLoaded</code> / <code>__testRecordReportLoaded</code></td><td>full-flow.js / test-record-report.js</td><td>防重复加载标记</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="sec-6">
+  <h2><span class="num">6</span>直接 DOM 操作和事件监听的位置</h2>
+
+  <h3>6.1 DOM 操作模式</h3>
+  <ul>
+    <li><strong>渲染</strong>：几乎全部使用 <code>element.innerHTML = "..."</code> 模板字符串拼接（200+ 处）</li>
+    <li><strong>少量 <code>createElement</code></strong>：拖拽排序、动态表单行</li>
+    <li><strong><code>document.querySelector</code> / <code>getElementById</code></strong>：1000+ 处</li>
+    <li><strong><code>dataset</code> 读取</strong>：事件代理模式核心，通过 <code>data-*</code> 属性传递参数</li>
+    <li><strong><code>classList.toggle</code></strong>：主题切换、tab 激活态</li>
+  </ul>
+
+  <h3>6.2 关键 DOM 容器</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>容器 ID</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><code>#app</code></td><td>全部视图渲染入口</td></tr>
+        <tr><td><code>#toast</code></td><td>全局 toast</td></tr>
+        <tr><td><code>#modal</code></td><td>全局模态框（<code>&lt;dialog&gt;</code>）</td></tr>
+        <tr><td><code>#content</code></td><td>renderShell 内的主内容区</td></tr>
+        <tr><td><code>#mainNav</code></td><td>侧边栏导航</td></tr>
+        <tr><td><code>#healList</code> / <code>#pagination</code></td><td>admin 自愈页</td></tr>
+        <tr><td><code>#templateList</code></td><td>admin 模板页</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.3 事件代理模式</h3>
+  <p>几乎所有视图采用相同模式：</p>
+  <pre><code>container.addEventListener("click", (e) =&gt; {
+  const btn = e.target.closest("[data-xxx]");
+  if (!btn) return;
+  const id = btn.dataset.id;
+  // 处理逻辑
+});</code></pre>
+
+  <h3>6.4 重复绑定风险点</h3>
+  <ul>
+    <li><code>bindUploadButtons</code> 通过 <code>data-bound</code> 标记防重复</li>
+    <li>各视图每次 <code>renderShell</code> 都重新绑定，依赖 DOM 重建</li>
+    <li><code>liveRecorderHandleClose</code> 使用 <code>{ once: true }</code> + 手动 remove</li>
+  </ul>
+</section>
+
+<section id="sec-7">
+  <h2><span class="num">7</span>页面依赖的公共 JS、CSS、图片和第三方库</h2>
+
+  <h3>7.1 第三方库</h3>
+  <div class="alert success">
+    <strong>前端零第三方 JS 库</strong>
+    无 Vue / React / jQuery / Chart.js / Lodash 等。仅使用浏览器原生 API。
+  </div>
+
+  <h3>7.2 CSS</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>文件</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><code>/static/styles.css</code></td><td>全局样式（CSS 变量主题系统，4 主题）</td></tr>
+        <tr><td>Google Fonts</td><td><code>Noto Serif SC</code>（外链）</td></tr>
+        <tr><td>admin 页内联 <code>&lt;style&gt;</code></td><td>admin 页面专属样式</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>7.3 图片</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>文件</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><code>/static/anime_bg.png</code></td><td>xiaolan 主题背景图（styles.css 行 121-123 引用）</td></tr>
+        <tr><td>内联 SVG data URI</td><td>侧边栏下拉箭头、登录页装饰图案</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>7.4 公共 JS 文件依赖关系</h3>
+  <pre><code>app.js (核心，3530 行)
+  ├─ ai-config.js          (mount 时注入 options)
+  ├─ case-generation.js    (renderCurrentView 委托)
+  ├─ data-factory-agent.js (renderDataScripts 内挂载)
+  ├─ problem-goods.js      (openRunScriptForm 内调用)
+  ├─ requirement-verification.js    (覆盖 renderCurrentView + 修改 views)
+  │   └─ requirement-verification-v2.js (通过 window.RequirementVerificationV2)
+  ├─ requirement-pack.js   (覆盖 renderFunctionalTests + openFunctionalTaskForm)
+  ├─ quick-start.js        (覆盖 renderFunctionalTests)
+  ├─ test-status.js        (覆盖 renderFunctionalTests + MutationObserver)
+  ├─ full-flow.js          (覆盖 openRunScriptForm + runSavedFlow + ensureWarehouseDeliveryScript)
+  ├─ test-record-report.js (覆盖 runSavedFlow + recordColumns + showLog)
+  └─ test-record-rerun.js  (bindRecordActions 内调用 window.TestRecordRerun.open)</code></pre>
+
+  <h3>7.5 加载顺序敏感的覆盖链（最高风险）</h3>
+  <div class="alert danger">
+    <strong>8 处函数覆盖链 — 迁移最高风险点</strong>
+  </div>
+  <ol>
+    <li><strong><code>renderFunctionalTests</code> 覆盖链</strong>：app.js 原始 → quick-start.js（保存 <code>_originalRenderFunctionalTests</code>）→ requirement-pack.js（重写为 <code>renderRequirementPacks</code>）→ test-status.js（MutationObserver 增强）</li>
+    <li><strong><code>runSavedFlow</code> 覆盖链</strong>：app.js → full-flow.js → test-record-report.js</li>
+    <li><strong><code>showLog</code> 覆盖链</strong>：app.js → app.js 末尾 Promise.then（DataFactoryAgent 专用渲染）→ test-record-report.js</li>
+    <li><strong><code>openRunScriptForm</code> 覆盖链</strong>：app.js → full-flow.js</li>
+    <li><strong><code>openUiExecuteForm</code> 覆盖</strong>：app.js 行 731 声明 → app.js 行 3146 重新赋值（改为可视化执行）</li>
+    <li><strong><code>renderUiCases</code> 覆盖</strong>：app.js 行 731 声明 → app.js 行 3411 重新赋值（新增录制按钮）</li>
+    <li><strong><code>saveTestAccountBinding</code> / <code>openTestAccountForm</code> 覆盖</strong>：app.js 末尾 Promise.then 包装（清缓存）</li>
+    <li><strong><code>mergeStoredCustomerIds</code> / <code>withCustomerLoginInputs</code> / <code>customerScriptFields</code> 覆盖</strong>：app.js 行 113 → app.js 行 1095/1102/1113（日本站专用逻辑）</li>
+  </ol>
+</section>
+
+<section id="sec-8">
+  <h2><span class="num">8</span>可拆分的 Vue 组件（保持现有 UI 结构）</h2>
+
+  <h3>8.1 布局组件</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Vue 组件</th><th>对应现有函数</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>AppLayout.vue</code></td><td><code>renderShell()</code></td><td>侧边栏 + 顶栏 + 主内容区</td></tr>
+        <tr><td><code>Sidebar.vue</code></td><td>renderShell 内 sidebar 部分</td><td>导航 + 项目选择器 + 角色徽章</td></tr>
+        <tr><td><code>Topbar.vue</code></td><td>renderShell 内 topbar 部分</td><td>标题 + 主题切换 + AI 配置按钮</td></tr>
+        <tr><td><code>Toast.vue</code></td><td><code>#toast</code></td><td>全局通知</td></tr>
+        <tr><td><code>ModalDialog.vue</code></td><td><code>#modal</code> <code>&lt;dialog&gt;</code></td><td>通用模态框封装</td></tr>
+        <tr><td><code>ThemeProvider.vue</code></td><td>initTheme IIFE</td><td>主题切换</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>8.2 视图组件（路由级）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Vue 组件</th><th>对应现有函数</th></tr></thead>
+      <tbody>
+        <tr><td><code>views/LoginView.vue</code></td><td><code>renderLogin()</code></td></tr>
+        <tr><td><code>views/DashboardView.vue</code></td><td><code>renderDashboard()</code></td></tr>
+        <tr><td><code>views/ProjectsView.vue</code></td><td><code>renderProjects()</code></td></tr>
+        <tr><td><code>views/ApiCasesView.vue</code></td><td><code>renderApiCases()</code></td></tr>
+        <tr><td><code>views/DataScriptsView.vue</code></td><td><code>renderDataScripts()</code></td></tr>
+        <tr><td><code>views/DataScriptEditorView.vue</code></td><td><code>renderDataScriptEditor()</code></td></tr>
+        <tr><td><code>views/RequirementVerificationView.vue</code></td><td><code>renderRequirementVerification()</code></td></tr>
+        <tr><td><code>views/UiCasesView.vue</code></td><td><code>renderUiCases()</code></td></tr>
+        <tr><td><code>views/RecordsView.vue</code></td><td><code>renderRecords()</code></td></tr>
+        <tr><td><code>views/UsersView.vue</code></td><td><code>renderUsers()</code></td></tr>
+        <tr><td><code>views/CaseGenerationView.vue</code></td><td><code>renderCaseGeneration()</code>（当前禁用）</td></tr>
+        <tr><td><code>views/FunctionalTestsView.vue</code></td><td><code>renderFunctionalTests()</code> / <code>renderRequirementPacks()</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>8.3 业务子组件</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Vue 组件</th><th>对应现有函数</th></tr></thead>
+      <tbody>
+        <tr><td><code>ProjectForm.vue</code></td><td><code>projectForm()</code></td></tr>
+        <tr><td><code>EnvForm.vue</code></td><td><code>envForm()</code></td></tr>
+        <tr><td><code>TestAccountForm.vue</code></td><td><code>openTestAccountForm()</code></td></tr>
+        <tr><td><code>AccountBindingForm.vue</code></td><td><code>openAccountBindingForm()</code></td></tr>
+        <tr><td><code>ApiCaseForm.vue</code></td><td><code>apiCaseForm()</code></td></tr>
+        <tr><td><code>UiCaseForm.vue</code></td><td><code>uiCaseForm()</code></td></tr>
+        <tr><td><code>OpenForm.vue</code></td><td><code>openForm()</code> 通用表单</td></tr>
+        <tr><td><code>DataFactoryPanel.vue</code></td><td>DataFactoryAgent.mount</td></tr>
+        <tr><td><code>ProblemGoodsDialog.vue</code></td><td>ProblemGoodsUI.open</td></tr>
+        <tr><td><code>OrderQuoteRunForm.vue</code></td><td><code>openOrderQuoteRunForm()</code></td></tr>
+        <tr><td><code>OemSampleOrderForm.vue</code></td><td><code>openOemSampleOrderRunForm()</code></td></tr>
+        <tr><td><code>OemFullInquiryFlowForm.vue</code></td><td><code>openOemFullInquiryFlowRunForm()</code></td></tr>
+        <tr><td><code>OemSampleFullFlowForm.vue</code></td><td><code>openOemSampleFullFlowRunForm()</code></td></tr>
+        <tr><td><code>OemBulkOrderForm.vue</code></td><td><code>openOemBulkOrderRunForm()</code></td></tr>
+        <tr><td><code>ScriptProgressDialog.vue</code></td><td><code>openScriptProgress()</code></td></tr>
+        <tr><td><code>ScriptResultDialog.vue</code></td><td><code>showFactoryResult()</code></td></tr>
+        <tr><td><code>FunctionalExecutionModal.vue</code></td><td><code>openFunctionalExecutionModal()</code></td></tr>
+        <tr><td><code>FunctionalExecutionProgress.vue</code></td><td><code>renderFunctionalExecutionProgress()</code></td></tr>
+        <tr><td><code>PreflightReport.vue</code></td><td><code>renderPreflightReport()</code></td></tr>
+        <tr><td><code>FunctionalDiagnosis.vue</code></td><td><code>renderFunctionalDiagnosis()</code></td></tr>
+        <tr><td><code>FunctionalScreenshotUpload.vue</code></td><td><code>openFunctionalScreenshotUpload()</code></td></tr>
+        <tr><td><code>FunctionalScanForm.vue</code></td><td><code>openFunctionalScanForm()</code></td></tr>
+        <tr><td><code>LiveRecorderDialog.vue</code></td><td>liveRecorder* 系列</td></tr>
+        <tr><td><code>UiVisualExecutionDialog.vue</code></td><td><code>renderUiVisualExecution()</code></td></tr>
+        <tr><td><code>UiRecordDialog.vue</code></td><td><code>renderUiRecordSessionDialog()</code> + <code>openUiRecordSaveDialog()</code></td></tr>
+        <tr><td><code>FlowRecorderDialog.vue</code></td><td>flowRecorder* 系列</td></tr>
+        <tr><td><code>RecordColumns.vue</code></td><td><code>recordColumns()</code> + <code>bindRecordActions()</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>8.4 通用工具组件</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Vue 组件</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><code>DataTable.vue</code></td><td><code>renderTable()</code> 通用表格</td></tr>
+        <tr><td><code>Pagination.vue</code></td><td>分页</td></tr>
+        <tr><td><code>Badge.vue</code></td><td><code>badge()</code> 状态徽章</td></tr>
+        <tr><td><code>ActionMenu.vue</code></td><td><code>actionMenu()</code> 折叠菜单</td></tr>
+        <tr><td><code>FormField.vue</code></td><td><code>renderFormField()</code> 单字段</td></tr>
+        <tr><td><code>ThemePicker.vue</code></td><td>主题选择器</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>8.5 Composables（替代全局函数）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Composable</th><th>替代内容</th></tr></thead>
+      <tbody>
+        <tr><td><code>useApi()</code></td><td><code>api()</code> 调用封装 + 401 跳转</td></tr>
+        <tr><td><code>useAuth()</code></td><td><code>state.user</code> + <code>isAdmin()</code> + 登录/登出</td></tr>
+        <tr><td><code>useToast()</code></td><td><code>showToast()</code></td></tr>
+        <tr><td><code>useModal()</code></td><td><code>modalEl</code> + <code>openForm()</code></td></tr>
+        <tr><td><code>useTheme()</code></td><td>主题读写</td></tr>
+        <tr><td><code>useProjects()</code></td><td><code>getProjects()</code> + <code>_projectsCache</code></td></tr>
+        <tr><td><code>useState()</code></td><td>全局 <code>state</code> 对象（Pinia 更合适）</td></tr>
+        <tr><td><code>useLocalStorage()</code></td><td>18 个 key 的统一管理</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="alert info">
+    <strong>强烈建议引入 Pinia</strong>
+    管理全局状态，替代 <code>state</code> 对象 + 18 个 localStorage key 的散落读写。
+  </div>
+</section>
+
+<section id="sec-9">
+  <h2><span class="num">9</span>迁移过程中最可能丢失功能的位置</h2>
+
+  <h3>9.1 极高风险（几乎一定会丢）<span class="risk-high">[高]</span></h3>
+
+  <div class="alert danger">
+    <strong>1. app.js 末尾 3484-3530 行的"补丁式覆盖"（5 处）</strong>
+    <ul>
+      <li><code>saveTestAccountBinding</code> / <code>openTestAccountForm</code> 包装（清缓存）</li>
+      <li><code>showLog</code> 重写（DataFactoryAgent 专用渲染）</li>
+      <li><code>openUiExecuteForm</code> 重写（可视化执行）</li>
+      <li><code>renderUiCases</code> 重写（新增录制按钮）</li>
+    </ul>
+    迁移时容易只看主体函数，遗漏这些末尾补丁。
+  </div>
+
+  <div class="alert danger">
+    <strong>2. 13 个 JS 文件的加载顺序依赖</strong>
+    <ul>
+      <li><code>renderFunctionalTests</code> 被 3 个文件覆盖</li>
+      <li><code>runSavedFlow</code> 被 2 个文件覆盖</li>
+      <li><code>openRunScriptForm</code> 被 full-flow.js 覆盖</li>
+      <li><code>showLog</code> 被 2 处覆盖</li>
+    </ul>
+    Vue 化后无全局函数覆盖机制，必须用组件组合/插件机制重新设计。
+  </div>
+
+  <div class="alert danger">
+    <strong>3. <code>requirement-verification.js</code> 运行时修改 <code>views</code> 数组</strong>
+    删除 <code>caseGeneration</code> / <code>functionalTests</code>，插入 <code>requirementVerification</code>。<br>
+    Vue Router 化后，路由表是静态的，需要用路由守卫或动态路由 addRoute 复刻。
+  </div>
+
+  <div class="alert danger">
+    <strong>4. <code>test-status.js</code> 的 MutationObserver</strong>
+    监听 <code>#app</code> 子树变化，自动注入状态卡。<br>
+    Vue 是数据驱动，无 DOM 子树变化概念，需改为组件插槽或 watcher。
+  </div>
+
+  <div class="alert danger">
+    <strong>5. 数据脚本 schema 驱动表单</strong>
+    <code>SCRIPT_PARAM_SCHEMAS</code> + <code>scriptParamFields()</code> + <code>isPorderShipmentFlow()</code>（基于名称的隐式映射）。<br>
+    <code>porder_shipment</code> 通过脚本名包含"配送单"+"出货"动态映射。<br>
+    Vue 化后需保留这套 schema 机制，否则表单字段会错乱。
+  </div>
+
+  <h3>9.2 高风险 <span class="risk-mid">[中]</span></h3>
+
+  <div class="alert warn">
+    <strong>6. 18 个 localStorage key 的读写时机</strong>
+    特别是 <code>factoryVariables</code>（JSON 字符串）、<code>functionalScanAuth:{origin}</code>（含密码）、<code>dataFactoryFlows</code>（数组）。迁移时容易漏掉某个 key 或读写时机不对。
+  </div>
+
+  <div class="alert warn">
+    <strong>7. 拖拽排序（数据脚本 flow）</strong>
+    HTML5 Drag API + <code>flow.order</code> 字段重写。Vue 化后建议用 vuedraggable，但要保留 order 持久化逻辑。
+  </div>
+
+  <div class="alert warn">
+    <strong>8. 文件上传</strong>
+    多处使用 <code>FormData</code> 直连 <code>fetch</code>（绕过 <code>api()</code> 的 JSON 序列化）。涉及：截图、Axure、HAR、OEM 图片。需保留 <code>Authorization</code> header 手动注入。
+  </div>
+
+  <div class="alert warn">
+    <strong>9. 轮询定时器（6+ 处）</strong>
+    <code>liveRecorderState.pollTimer</code> / <code>uiVisualExecutionState.pollTimer</code> / <code>uiRecordState.pollTimer</code> / functional execution / verification learning / dataFactoryAgent。<br>
+    Vue 化后需在 <code>onUnmounted</code> 清理，否则内存泄漏。
+  </div>
+
+  <div class="alert warn">
+    <strong>10. SSE 流式执行进度</strong>
+    requirement-pack.js 行 58 <code>streamFunctionalExecutionProgress</code>。需保留 EventSource 处理逻辑。
+  </div>
+
+  <div class="alert warn">
+    <strong>11. 主题切换</strong>
+    4 主题，CSS 变量 + <code>data-theme</code> 属性。xiaolan 主题依赖 <code>/static/anime_bg.png</code>。Vue 化后需保留 <code>data-theme</code> 切换机制。
+  </div>
+
+  <h3>9.3 中风险 <span class="risk-low">[较低]</span></h3>
+
+  <ul>
+    <li><strong><code>escapeHtml</code> 的不一致使用</strong>：部分位置未转义（如行 1908-1910 直接拼接 <code>data.url</code> 到 <code>&lt;img src&gt;</code>）。Vue 模板默认转义，但 <code>v-html</code> 不会，需逐处检查</li>
+    <li><strong>数据智能体硬编码限制</strong>：<code>data-factory-agent.js</code> 行 541 <code>projectName === "日本站测试"</code>。迁移时容易忽略此业务约束</li>
+    <li><strong><code>btoa/atob</code> 密码存储</strong>：安全风险，迁移时建议改为不存储或加密存储。但用户可能依赖此功能，需确认</li>
+    <li><strong><code>openRunScriptForm</code> 内的 <code>builtInTypes</code> 列表</strong>：与 <code>BUILTIN_DATA_SCRIPT_TYPES</code> 完全相同的手写列表。迁移时需统一为单一数据源</li>
+    <li><strong>OEM 表单内的 <code>OEM_INQUIRY_STATUS_MAP</code> 重复定义</strong>：app.js 行 2142 和 2248 各一份。迁移时需抽取为顶层常量</li>
+    <li><strong><code>bindUploadButtons</code> 的 <code>data-bound</code> 标记</strong>：Vue 化后用 <code>@change</code> 绑定，无此问题，但需确认所有上传入口都已迁移</li>
+    <li><strong>admin 独立 HTML 页面</strong>：heal-logs.html / templates.html 是独立 HTML，非 SPA 部分。迁移时需决定：合并到 SPA 还是保留独立页</li>
+  </ul>
+
+  <h3>9.4 低风险但易遗漏</h3>
+  <ul>
+    <li><strong><code>window.refreshTestRecordList</code> 暴露</strong>：让外部 JS 文件能触发记录列表刷新。Vue 化后需用事件总线或 Pinia action 替代</li>
+    <li><strong><code>Promise.resolve().then()</code> 异步覆盖</strong>：app.js 末尾的微任务延迟覆盖。Vue 化后无此问题，但需理解原意</li>
+    <li><strong><code>liveRecorderHandleClose</code> 的 <code>{ once: true }</code> + 手动 remove</strong>：Vue 化后用 <code>@close</code> 绑定，无此问题</li>
+    <li><strong><code>escapeRegex</code> / <code>formulaExpressionToReadable</code> 等工具函数</strong>：requirement-verification.js 内部，需保留</li>
+  </ul>
+</section>
+
+<section id="sec-10">
+  <h2><span class="num">10</span>建议的分阶段迁移顺序</h2>
+  <p>按"风险从低到高、依赖从浅到深"排序，每阶段都能独立验证。</p>
+
+  <div class="phase">
+    <div class="num">0</div>
+    <div>
+      <div class="title">准备工作</div>
+      <div class="desc">修复 functional_tasks 导入问题 · 确认 30+ 个未提交改动归属 · 引入 Vue 3 + Vite + Pinia + Vue Router 工程到 <code>frontend/</code> · 配置构建输出到 <code>static/dist/</code> · 保留 <code>static/</code> 旧文件作为回退</div>
+    </div>
+    <div class="duration">1-2 天</div>
+  </div>
+
+  <div class="phase">
+    <div class="num">1</div>
+    <div>
+      <div class="title">工作台总览（dashboard）</div>
+      <div class="desc">只读统计视图，无写入交互，API 单一 <code>GET /api/dashboard/overview</code>。迁移后用 Pinia store + computed 计算卡片数据，验证 5 个统计卡片与最近记录列表渲染一致</div>
+    </div>
+    <div class="duration">2-3 天</div>
+  </div>
+
+  <div class="phase">
+    <div class="num">2</div>
+    <div>
+      <div class="title">项目空间（projects）</div>
+      <div class="desc">标准 CRUD + 切换当前项目写入 localStorage。验证新增/编辑/删除/切换项目后侧边栏项目选择器与 <code>state.projectId</code> 联动，验证切换项目后所有页面数据刷新</div>
+    </div>
+    <div class="duration">3-4 天</div>
+  </div>
+
+  <div class="phase">
+    <div class="num">3</div>
+    <div>
+      <div class="title">环境管理（envs）</div>
+      <div class="desc">依赖项目空间，CRUD + 敏感字段（密钥、token）展示脱敏。验证环境列表随项目切换刷新、编辑环境后用例引用的环境名称同步更新</div>
+    </div>
+    <div class="duration">2-3 天</div>
+  </div>
+
+  <div class="phase">
+    <div class="num">4</div>
+    <div>
+      <div class="title">测试账号（test_accounts）</div>
+      <div class="desc">含 Fernet 加密存储 + 账号绑定用例 + 脱敏展示。验证新增/编辑/删除/复制密码、绑定用例、解除绑定、批量导出脱敏数据。注意 <code>account_config</code> JSON 字段结构</div>
+    </div>
+    <div class="duration">4-5 天</div>
+  </div>
+
+  <div class="phase">
+    <div class="num">5</div>
+    <div>
+      <div class="title">API 用例管理（api_cases）</div>
+      <div class="desc">CRUD + 单条执行 + 批量执行 + SSE 进度 + 执行记录跳转。验证表单字段（method/url/headers/body/assertions/variables）、批量选择、执行进度条、结果展示</div>
+    </div>
+    <div class="duration">5-7 天</div>
+  </div>
+
+  <div class="phase">
+    <div class="num">6</div>
+    <div>
+      <div class="title">UI 用例管理 + 定位器自愈（ui_cases + locator_heal）</div>
+      <div class="desc">CRUD + 步骤编辑器 + Playwright 执行 + AI 定位器修复 + 重跑。验证步骤拖拽排序、变量提取、截图回看、定位器修复日志确认/应用。本项目核心高价值功能，务必完整迁移</div>
+    </div>
+    <div class="duration">8-10 天</div>
+  </div>
+
+  <div class="phase">
+    <div class="num">7</div>
+    <div>
+      <div class="title">测试记录与报告（test_records）</div>
+      <div class="desc">只读列表 + 筛选 + 详情 + 重跑。验证 <code>kind</code> 字段筛选（data_agent/data_agent_tool/api/ui）、时间范围筛选、详情展开日志、重跑触发新记录</div>
+    </div>
+    <div class="duration">3-4 天</div>
+  </div>
+
+  <div class="phase">
+    <div class="num">8</div>
+    <div>
+      <div class="title">数据脚本 + 数据工厂智能体（data_scripts + data_factory_agent）</div>
+      <div class="desc">脚本目录展示、单脚本执行表单（动态字段）、智能体会话（目标理解→确认→执行循环→工具调用→校验）。验证 SSE 流式输出、工具调用展开、JSON 4 层容错解析、会话状态机</div>
+    </div>
+    <div class="duration">7-9 天</div>
+  </div>
+
+  <div class="phase">
+    <div class="num">9</div>
+    <div>
+      <div class="title">需求验证中心（requirement_verification）</div>
+      <div class="desc">最复杂模块，覆盖 <code>views</code> 数组、<code>renderCurrentView</code>、状态机（11 种状态）、计算公式编辑器、目标页面编辑器、数据准备配置、人工确认流、归档/排序/筛选。务必逐功能对照基线清单验证</div>
+    </div>
+    <div class="duration">10-14 天</div>
+  </div>
+
+  <div class="phase">
+    <div class="num">10</div>
+    <div>
+      <div class="title">用例生成 + 功能测试 + AI 配置 + 浏览器录制 + 流程录制</div>
+      <div class="desc">剩余模块收尾：case_generation（需求→截图→用例）、functional_tests（已被 requirement_verification 替代但保留兼容）、ai_config（含 heal 配置）、browser_record、flow_recorder、ui_record。注意 requirement-verification.js 删除 caseGeneration/functionalTests 视图的副作用</div>
+    </div>
+    <div class="duration">6-8 天</div>
+  </div>
+
+  <div class="phase total">
+    <div class="num">Σ</div>
+    <div>
+      <div class="title">总预估</div>
+      <div class="desc">不含准备工作和回归测试，纯开发约 50-67 天。建议每个 phase 完成后做基线清单回归</div>
+    </div>
+    <div class="duration">50-67 天</div>
+  </div>
+</section>
+
+<section id="sec-11">
+  <h2><span class="num">11</span>现有功能基线清单（供迁移后逐项验证）</h2>
+  <p>下面按业务域分组，列出迁移后必须逐一验证的功能点。每项默认"未验证"，验证通过打勾。</p>
+
+  <h3>11.1 认证与权限</h3>
+  <ul class="checklist">
+    <li>登录页用户名 + 密码登录，错误密码返回 401</li>
+    <li>登录成功后写入 JWT 到 localStorage <code>token</code></li>
+    <li>所有 API 请求自动带 <code>Authorization: Bearer &lt;token&gt;</code></li>
+    <li>token 失效后跳转回登录页</li>
+    <li>非管理员访问管理功能时按钮隐藏（<code>isAdmin()</code> 返回 false）</li>
+    <li>管理员能看到用户管理、删除按钮、归档/恢复按钮</li>
+    <li>退出登录清除 localStorage 中 token 和用户信息</li>
+  </ul>
+
+  <h3>11.2 工作台总览（dashboard）</h3>
+  <ul class="checklist">
+    <li>5 个统计卡片：项目数、环境数、API 用例数、UI 用例数、测试账号数</li>
+    <li>最近 10 条测试记录列表，含状态徽章</li>
+    <li>未登录跳转登录页</li>
+    <li>切换项目后统计数据自动刷新</li>
+  </ul>
+
+  <h3>11.3 项目空间（projects）</h3>
+  <ul class="checklist">
+    <li>项目列表表格展示名称、描述、用例数、创建时间</li>
+    <li>新增项目弹窗：名称、描述、OEM 标识</li>
+    <li>编辑项目：名称、描述可改</li>
+    <li>删除项目二次确认</li>
+    <li>切换当前项目写入 localStorage <code>projectId</code></li>
+    <li>切换项目后所有依赖项目的页面数据刷新</li>
+    <li>项目下拉选择器在 topbar 显示当前项目名</li>
+  </ul>
+
+  <h3>11.4 环境管理（envs）</h3>
+  <ul class="checklist">
+    <li>环境列表表格：名称、Base URL、密钥（脱敏）、描述</li>
+    <li>新增环境弹窗：名称、Base URL、密钥、描述</li>
+    <li>编辑环境</li>
+    <li>删除环境（无关联用例时才允许）</li>
+    <li>切换项目后环境列表刷新</li>
+    <li>密钥字段在列表中显示为 ***，编辑时回填实际值</li>
+  </ul>
+
+  <h3>11.5 测试账号（test_accounts）</h3>
+  <ul class="checklist">
+    <li>账号列表：用户名、站点、角色、绑定用例数、创建时间</li>
+    <li>新增账号弹窗：用户名、密码、站点、角色、account_config JSON</li>
+    <li>编辑账号</li>
+    <li>删除账号</li>
+    <li>复制密码到剪贴板</li>
+    <li>密码字段 Fernet 加密存储，列表脱敏</li>
+    <li>绑定用例：选择用例后建立绑定关系</li>
+    <li>解除绑定</li>
+    <li>account_config 动态字段表单</li>
+  </ul>
+
+  <h3>11.6 API 用例管理（api_cases）</h3>
+  <ul class="checklist">
+    <li>用例列表：名称、方法、URL、所属项目、更新时间</li>
+    <li>新增用例弹窗：名称、方法、URL、Headers、Body、断言、变量</li>
+    <li>编辑用例</li>
+    <li>删除用例</li>
+    <li>单条执行：发送请求 → 展示响应状态、响应头、响应体</li>
+    <li>批量执行：多选用例 → 批量执行 → 进度条 → 结果汇总</li>
+    <li>执行中 SSE 流式推送进度</li>
+    <li>执行完成跳转到测试记录详情</li>
+    <li>断言编辑器：支持状态码、响应体 JSONPath、响应头</li>
+    <li>变量提取：从响应中提取变量供后续用例使用</li>
+  </ul>
+
+  <h3>11.7 UI 用例管理（ui_cases）</h3>
+  <ul class="checklist">
+    <li>用例列表：名称、步骤数、所属项目、更新时间</li>
+    <li>新增用例：名称、描述、步骤列表</li>
+    <li>步骤编辑器：动作类型、定位器、值、描述</li>
+    <li>步骤拖拽排序（HTML5 Drag API）</li>
+    <li>编辑用例</li>
+    <li>删除用例</li>
+    <li>单条执行：Playwright 启动浏览器 → 执行步骤 → 截图</li>
+    <li>批量执行：多选用例 → 顺序执行 → 结果汇总</li>
+    <li>执行中实时展示当前步骤</li>
+    <li>失败时截图保存并可回看</li>
+    <li>变量提取：从页面元素提取变量</li>
+    <li>定位器自愈：执行失败时 AI 推断新定位器 → 验证唯一性 → 应用或记录</li>
+    <li>定位器修复日志页（admin 可见）：查看历史修复记录、确认应用、删除</li>
+  </ul>
+
+  <h3>11.8 测试记录与报告（test_records）</h3>
+  <ul class="checklist">
+    <li>记录列表：时间、类型（kind）、用例名、状态、耗时</li>
+    <li>按 kind 筛选：data_agent / data_agent_tool / api / ui</li>
+    <li>按时间范围筛选</li>
+    <li>按用例名关键字搜索</li>
+    <li>详情展开：请求/响应、步骤日志、截图、断言结果</li>
+    <li>重跑：从历史记录触发新执行</li>
+    <li>test-record-report.js 注入脚本身份徽章</li>
+    <li>test-record-rerun.js 重跑按钮逻辑</li>
+  </ul>
+
+  <h3>11.9 数据脚本（data_scripts）</h3>
+  <ul class="checklist">
+    <li>三 tab 切换：脚本目录、flow 配置、客户 ID 管理</li>
+    <li>脚本目录列表：script_type、名称、风险等级、说明</li>
+    <li>点击脚本打开执行表单</li>
+    <li>动态字段表单：根据 scriptParamFields(scriptType) 生成</li>
+    <li>字段类型支持：text/number/select/textarea/checkbox/section/hidden</li>
+    <li>敏感字段（password/token/secret/cookie）脱敏展示</li>
+    <li>执行：发送请求 → 进度弹窗 → 结果展示</li>
+    <li>flow 持久化：8 个 localStorage key 保存拖拽顺序</li>
+    <li>拖拽排序：HTML5 Drag API 重排 flow 步骤</li>
+    <li>客户 ID 管理逻辑（mergeStoredCustomerIds / withCustomerLoginInputs）</li>
+    <li>OEM 专用脚本表单：order_quote / sample_order / full_inquiry / sample_full_flow / bulk_order / problem_goods</li>
+    <li>full-flow 脚本：direct_box / full_flow / resume_order / resume_porder</li>
+  </ul>
+
+  <h3>11.10 数据工厂智能体（data_factory_agent）</h3>
+  <ul class="checklist">
+    <li>会话列表：任务名、状态、创建时间</li>
+    <li>新建会话：自然语言描述目标</li>
+    <li>目标理解阶段：AI 解析目标 → 待确认状态</li>
+    <li>用户确认目标：可编辑后确认或重新描述</li>
+    <li>执行循环：AI 决策下一步 → 调用工具 → 校验目标</li>
+    <li>工具调用展开：显示工具名、入参、输出、日志</li>
+    <li>SSE 流式推送执行进度</li>
+    <li>权限请求：高风险操作需用户授权</li>
+    <li>取消会话</li>
+    <li>goal 编辑：执行中可修改目标</li>
+    <li>轮询会话状态（pollTimer）</li>
+    <li>JSON 4 层容错解析（尾随逗号、单引号、markdown 块、括号匹配）</li>
+    <li>记录摘要专用渲染（kind=data_agent / data_agent_tool）</li>
+    <li>硬编码限制 projectName === "日本站测试"（需确认是否保留）</li>
+  </ul>
+
+  <h3>11.11 AI 配置（ai_config）</h3>
+  <ul class="checklist">
+    <li>配置表单：API Key、Base URL、模型名、温度、超时</li>
+    <li>heal_enabled 开关：是否启用定位器自愈</li>
+    <li>heal_confidence_threshold 阈值滑块：0.0-1.0</li>
+    <li>heal_enabled=0 或 threshold=0.0 必须能正确保存（用 is not None 判断）</li>
+    <li>配置序列化与存储</li>
+    <li>配置更新后立即生效（无需重启）</li>
+    <li>latest_ai_config 工具函数读取最新配置</li>
+  </ul>
+
+  <h3>11.12 需求验证中心（requirement_verification）</h3>
+  <ul class="checklist">
+    <li>任务列表：名称、状态徽章、验证项/通过/失败/阻塞计数、更新时间</li>
+    <li>归档筛选：active / archived</li>
+    <li>排序：updated_desc / updated_asc / name_asc</li>
+    <li>关键字搜索</li>
+    <li>新建任务：名称、需求描述、目标页面编辑器</li>
+    <li>目标页面编辑器：name / role / url 三字段，可增删行</li>
+    <li>任务详情：材料、分析、澄清、验证项、执行控制多区块</li>
+    <li>状态机：plan_generated / materials_ready / ready / waiting_confirmation / paused / cancelling / cancelled / preflighting / data_preparing / data_validating / browser_preparing / needs_review</li>
+    <li>数据准备配置：data_setup.steps 数组，每步含 script_type / env_id / variables / enabled</li>
+    <li>数据准备结果展示：status + steps 详情 + 合并输出</li>
+    <li>计算公式编辑器：variables / expression / rounding_mode / scale / rounding_stage / currency</li>
+    <li>公式变量按钮插入 [变量名]</li>
+    <li>公式可读化：min/max/abs/round 中文转换，× ÷ 符号</li>
+    <li>公式反向解析：可读表达式 → 执行表达式</li>
+    <li>舍入模式：HALF_UP / HALF_EVEN / DOWN / UP / FLOOR / CEILING</li>
+    <li>舍入阶段：final / per_item</li>
+    <li>币种：CNY/JPY/USD/EUR/GBP/HKD/KRW/AUD/CAD/SGD</li>
+    <li>验证项类型：page / data / state / amount / permission / exception / manual</li>
+    <li>验证级别：auto / supervised / manual</li>
+    <li>执行控制：启动 / 暂停 / 取消 / 恢复</li>
+    <li>人工确认流：waiting_confirmation 状态下需用户答复</li>
+    <li>归档 / 恢复（admin）</li>
+    <li>删除（admin）</li>
+    <li>覆盖 views 数组：删除 caseGeneration / functionalTests，插入 requirementVerification</li>
+    <li>覆盖 renderCurrentView：requirementVerification 视图走专用渲染</li>
+    <li>rvState 状态对象：projectId / taskId / keyword / status / archived / sort</li>
+    <li>localStorage 持久化：verificationProjectId / verificationTaskId / verificationArchivedFilter / verificationSort</li>
+    <li>pollTimer 轮询任务状态</li>
+  </ul>
+
+  <h3>11.13 录制功能（flow_recorder + browser_record + ui_record）</h3>
+  <ul class="checklist">
+    <li>flow_recorder：HAR 文件上传、解析、保存为 flow、执行</li>
+    <li>flow 列表展示与编辑</li>
+    <li>browser_record：浏览器录制会话管理</li>
+    <li>录制中实时展示已录制步骤</li>
+    <li>停止录制后保存为 UI 用例</li>
+    <li>ui_record：单页 UI 操作录制</li>
+    <li>liveRecorder 弹窗：{ once: true } 事件 + 手动 remove</li>
+    <li>录制弹窗关闭时清理事件监听</li>
+  </ul>
+
+  <h3>11.14 用户管理与其他（users + action_templates + locator_heal_logs + proxy）</h3>
+  <ul class="checklist">
+    <li>用户列表（admin）：用户名、角色、创建时间</li>
+    <li>新增用户：用户名、密码、角色（admin/user）</li>
+    <li>编辑用户：修改角色、重置密码</li>
+    <li>删除用户</li>
+    <li>操作模板管理（admin）：action_templates CRUD</li>
+    <li>操作模板：name / action_type / defaults JSON</li>
+    <li>定位器修复日志（admin）：locator_heal_logs 列表</li>
+    <li>日志详情：step_action / ai_prompt / ai_response / auto_applied</li>
+    <li>确认应用修复 / 删除日志</li>
+    <li>代理接口（proxy）：转发外部请求</li>
+    <li>代理支持的方法白名单（PROXY_ALLOWED_METHODS）</li>
+    <li>代理是否允许私有 URL（PROXY_ALLOW_PRIVATE_URLS）</li>
+    <li>代理最大重定向次数（PROXY_MAX_REDIRECTS）</li>
+    <li>主题切换：shuimo / qingxuan / xiaolan / zhuanye 4 主题</li>
+    <li>主题写入 localStorage 并持久化</li>
+    <li>xiaolan 主题依赖 /static/anime_bg.png 背景图</li>
+    <li>MutationObserver 自动注入（test-status.js）</li>
+    <li>test-status 增强功能：在测试记录页自动注入徽章</li>
+  </ul>
+</section>
+
+<section id="sec-12">
+  <h2><span class="num">12</span>不确定点（需用户确认）</h2>
+  <p>下面 20 个点在阅读代码时未能完全确认，迁移前必须与用户对齐。</p>
+  <ol class="checklist">
+    <li><strong>functional_tasks 路由导入失败</strong>：app/routers/__init__.py:14 导入 .functional_tasks，但实际文件已重命名为 requirement_verifications.py 且未提交。迁移时是否删除该导入？</li>
+    <li><strong>fetch_oem_full_quote 未导出</strong>：app/routers/data_scripts.py:615 调用该函数，但 app/data_scripts/__init__.py 未导出。是遗漏还是死代码？</li>
+    <li><strong>30+ 个未提交文件</strong>：包括 static/app.js、static/index.html、app/main.py 等。这些是用户已有改动还是历史遗留？迁移前必须先提交或清理</li>
+    <li><strong>caseGeneration / functionalTests 视图被删除</strong>：requirement-verification.js 运行时从 views 数组删除这两个视图。迁移后是否彻底移除这两个模块，还是保留兼容？</li>
+    <li><strong>日本站硬编码</strong>：data_factory_agent 中 projectName === "日本站测试" 限制。迁移时是否保留？</li>
+    <li><strong>客户 ID 管理逻辑</strong>：mergeStoredCustomerIds / withCustomerLoginInputs / customerScriptFields 是否仅日本站使用？</li>
+    <li><strong>4 主题系统</strong>：是否全部保留？xiaolan 依赖 anime_bg.png，迁移后是否保留背景图？</li>
+    <li><strong>admin 独立 HTML 页面</strong>：static/admin/ 下是否有独立 HTML？迁移后是否废弃？</li>
+    <li><strong>requirement-verification-v2.js 与 requirement-verification.js 关系</strong>：v2 是新版还是实验版本？迁移用哪个？</li>
+    <li><strong>test-status.js 的 MutationObserver</strong>：注入逻辑较隐晦，是否有副作用？迁移后是否还需要？</li>
+    <li><strong>6+ 个轮询定时器</strong>：pollTimer 散落在多个文件，是否有内存泄漏风险？迁移后统一用 Pinia action 还是保留？</li>
+    <li><strong>SSE 流式执行</strong>：data_factory_agent 和 api_cases 批量执行都用 SSE，迁移后用 EventSource 还是 fetch+ReadableStream？</li>
+    <li><strong>window.* 全局函数挂载</strong>：refreshTestRecordList 等暴露给外部 JS。迁移后用事件总线还是 Pinia action？</li>
+    <li><strong>8 处函数覆盖链</strong>：renderFunctionalTests 被 3 个文件覆盖等。迁移后是否还需要这种覆盖机制？</li>
+    <li><strong>OEM_INQUIRY_STATUS_MAP 等业务常量</strong>：散落在 JS 文件中，迁移时是否抽取为独立常量文件？</li>
+    <li><strong>account_config JSON 字段结构</strong>：不同站点的字段差异较大，迁移时是否做 schema 约束？</li>
+    <li><strong>FlowRecorder 的 HAR 解析</strong>：解析逻辑在 flow_recorder.py 后端还是前端？迁移时是否需要重写？</li>
+    <li><strong>liveRecorder 的浏览器实时控制</strong>：通过 WebSocket 还是轮询？迁移时协议是否保留？</li>
+    <li><strong>定位器自愈的 AI 置信度阈值默认值</strong>：当前默认 0.0 还是其他？迁移时是否调整？</li>
+    <li><strong>数据库迁移机制</strong>：app/core/utils.py 的 migration 配置是否完整？新增表/字段时如何处理？</li>
+  </ol>
+</section>
+
+<footer>
+  <p>本报告基于 <code>d:\A_zidonghuapingtai</code> 工作区 <strong>2026-07-21</strong> 状态生成。迁移前请先解决 section 0 的 3 个阻塞问题，并逐项确认 section 12 的 20 个不确定点。</p>
+  <p>生成工具：Trae IDE + using-superpowers 技能 · 数据来源：项目代码静态扫描 + 子代理并行分析</p>
+</footer>
+
+</main>
+</div>
+
+</body>
+</html>

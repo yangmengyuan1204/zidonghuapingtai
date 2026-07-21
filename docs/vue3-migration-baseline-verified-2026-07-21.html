@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vue 3 迁移基线校正报告 · 2026-07-21</title>
+<style>
+  :root {
+    --bg: #f6f7fb;
+    --surface: #ffffff;
+    --line: #e6e8ef;
+    --text: #1a1d26;
+    --muted: #6b7280;
+    --accent: #6366f1;
+    --accent-bg: rgba(99, 102, 241, 0.08);
+    --warn: #f59e0b;
+    --warn-bg: rgba(245, 158, 11, 0.10);
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.08);
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.10);
+    --code-bg: #0f172a;
+    --code-text: #e2e8f0;
+    --radius: 10px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 14px;
+  }
+  .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    padding: 24px 18px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar h1 { font-size: 16px; margin: 0 0 4px; }
+  .sidebar .subtitle { color: var(--muted); font-size: 12px; margin-bottom: 20px; }
+  .sidebar ol { padding-left: 18px; margin: 0; }
+  .sidebar li { margin-bottom: 6px; font-size: 13px; }
+  .sidebar a { color: var(--text); text-decoration: none; }
+  .sidebar a:hover { color: var(--accent); }
+  .main { padding: 32px 40px; max-width: 1100px; }
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 22px;
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  h2 .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  th, td { padding: 10px 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { background: #f8fafc; font-weight: 600; }
+  tr:hover td { background: rgba(99, 102, 241, 0.02); }
+  code { background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 12px; }
+  pre { background: var(--code-bg); color: var(--code-text); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 12px; line-height: 1.5; }
+  .alert { padding: 14px 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid; }
+  .alert.danger { background: var(--danger-bg); border-color: var(--danger); }
+  .alert.warn { background: var(--warn-bg); border-color: var(--warn); }
+  .alert.info { background: var(--accent-bg); border-color: var(--accent); }
+  .alert.success { background: var(--success-bg); border-color: var(--success); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .badge.verified { background: var(--success-bg); color: var(--success); }
+  .badge.inferred { background: var(--warn-bg); color: var(--warn); }
+  .badge.needs-confirm { background: var(--danger-bg); color: var(--danger); }
+  .badge.cannot-verify { background: #f1f3f5; color: var(--muted); }
+  .status-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .status-tag.verified { background: var(--success); color: #fff; }
+  .status-tag.inferred { background: var(--warn); color: #fff; }
+  .status-tag.needs-confirm { background: var(--danger); color: #fff; }
+  .status-tag.cannot-verify { background: var(--muted); color: #fff; }
+  .correction-card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+    background: var(--surface);
+  }
+  .correction-card .header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .correction-card .wrong { color: var(--danger); text-decoration: line-through; }
+  .correction-card .right { color: var(--success); }
+  .chain-table td { font-size: 12px; }
+  .chain-table .step-num {
+    display: inline-flex;
+    width: 22px;
+    height: 22px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+  }
+  .uncertain-group { margin: 16px 0; }
+  .uncertain-group h3 { display: flex; align-items: center; gap: 8px; }
+  .uncertain-group.a h3 { color: var(--success); }
+  .uncertain-group.b h3 { color: var(--danger); }
+  .uncertain-group.c h3 { color: var(--warn); }
+  .uncertain-item {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px;
+    margin: 8px 0;
+    background: var(--surface);
+  }
+  .uncertain-item .q { font-weight: 600; margin-bottom: 6px; }
+  .uncertain-item .a { color: var(--text); }
+  .uncertain-item .evidence { color: var(--muted); font-size: 12px; margin-top: 6px; font-family: monospace; }
+  footer { padding: 24px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <h1>Vue 3 迁移基线校正报告</h1>
+    <div class="subtitle">2026-07-21 · 证据校验版</div>
+    <ol>
+      <li><a href="#sec-0">基线检查结果</a></li>
+      <li><a href="#sec-1">报告矛盾纠正（9 项）</a></li>
+      <li><a href="#sec-2">函数覆盖链表（9 个）</a></li>
+      <li><a href="#sec-3">不确定点重分类（A/B/C）</a></li>
+      <li><a href="#sec-4">校正后功能基线</a></li>
+      <li><a href="#sec-5">汇总与下一步</a></li>
+    </ol>
+  </aside>
+  <main class="main">
+
+<section id="sec-0">
+  <h2><span class="num">0</span>基线检查结果</h2>
+
+  <h3>0.1 Git 状态</h3>
+  <table>
+    <tr><th>项目</th><th>值</th><th>状态</th></tr>
+    <tr><td>当前分支</td><td><code>codex/safe-refactor-preserve-features</code></td><td><span class="status-tag verified">已验证</span></td></tr>
+    <tr><td>最近一次提交</td><td><code>c5d63be docs: 添加问题产品跨节点实施计划</code></td><td><span class="status-tag verified">已验证</span></td></tr>
+    <tr><td>已修改文件</td><td>31 个（含 app/main.py、static/app.js、static/index.html 等核心文件）</td><td><span class="status-tag verified">已验证</span></td></tr>
+    <tr><td>新增未跟踪文件</td><td>22 个（含 app/routers/requirement_verifications.py、static/requirement-verification.js 等）</td><td><span class="status-tag verified">已验证</span></td></tr>
+    <tr><td>已删除文件</td><td>3 个（config/test.yaml、tests/test_oem_all.py、tests/test_oem_script.py）</td><td><span class="status-tag verified">已验证</span></td></tr>
+  </table>
+  <div class="alert warn">
+    <strong>注意</strong>：工作区有大量未提交改动，迁移前必须先确认这些改动的归属（用户已有改动 vs 历史遗留），并提交或清理。本轮未做任何 git 操作。
+  </div>
+
+  <h3>0.2 前端依赖</h3>
+  <table>
+    <tr><th>项目</th><th>值</th><th>状态</th></tr>
+    <tr><td>package.json</td><td>存在，仅 <code>"acorn": "^8.17.0"</code> 一个依赖</td><td><span class="status-tag verified">已验证</span></td></tr>
+    <tr><td>前端框架</td><td>原生 HTML/CSS/JS，零第三方运行时库（acorn 仅用于解析）</td><td><span class="status-tag verified">已验证</span></td></tr>
+    <tr><td>构建工具</td><td>无（直接服务 static/ 目录）</td><td><span class="status-tag verified">已验证</span></td></tr>
+  </table>
+
+  <h3>0.3 后端启动与导入检查</h3>
+  <table>
+    <tr><th>项目</th><th>结果</th><th>状态</th></tr>
+    <tr><td>启动入口</td><td><code>run_server.py</code> → <code>uvicorn app.main:app</code>（端口 8000）</td><td><span class="status-tag verified">已验证</span></td></tr>
+    <tr><td>Python 版本</td><td>项目 <code>.venv</code>（Python 3.11）</td><td><span class="status-tag verified">已验证</span></td></tr>
+    <tr><td>最小导入检查</td><td><code>import app.main</code> 成功，注册 240 条路由</td><td><span class="status-tag verified">已验证</span></td></tr>
+    <tr><td>functional_tasks 导入</td><td>实际是 <strong>包</strong>（<code>app/routers/functional_tasks/__init__.py</code>），不是单文件，导入成功</td><td><span class="status-tag verified">已验证</span></td></tr>
+    <tr><td>静态文件服务</td><td><code>app.mount("/static", ...)</code> + 根路径 <code>@app.get("/")</code> 返回 <code>static/index.html</code></td><td><span class="status-tag verified">已验证</span></td></tr>
+  </table>
+  <div class="alert success">
+    <strong>结论</strong>：后端可完成最小导入，路由注册正常。本轮<strong>未启动 uvicorn 服务</strong>，未调用任何业务执行接口。
+  </div>
+
+  <h3>0.4 script 加载顺序（static/index.html）</h3>
+  <p>浏览器实际按以下顺序加载 13 个 JS 文件：</p>
+  <pre>1. /static/data-factory-agent.js
+2. /static/ai-config.js
+3. /static/app.js
+4. /static/requirement-verification.js
+5. /static/requirement-verification-v2.js
+6. /static/problem-goods.js
+7. /static/test-record-rerun.js
+8. /static/full-flow.js
+9. /static/test-record-report.js
+10. /static/case-generation.js
+11. /static/requirement-pack.js
+12. /static/test-status.js
+13. /static/quick-start.js</pre>
+</section>
+
+<section id="sec-1">
+  <h2><span class="num">1</span>报告矛盾纠正（9 项）</h2>
+  <p>每项给出最终结论、前端调用位置、后端路由位置、浏览器最终生效实现。所有结论<strong>基于源码</strong>，不猜测。</p>
+
+  <div class="correction-card">
+    <div class="header">
+      <span class="status-tag verified">已验证</span>
+      矛盾 1：Dashboard 接口路径
+    </div>
+    <p><span class="wrong">原报告：<code>GET /api/dashboard/overview</code></span></p>
+    <p><span class="right">实际：<code>GET /api/dashboard?project_id=&lt;int|null&gt;</code></span></p>
+    <table>
+      <tr><th>证据</th><td>位置</td></tr>
+      <tr><td>后端路由</td><td><code>app/routers/dashboard.py:18</code> 函数 <code>dashboard(project_id, db, current_user)</code></td></tr>
+      <tr><td>前端调用</td><td><code>static/app.js:170</code>（minified 行）函数 <code>renderDashboard()</code>，调用 <code>api(`/api/dashboard${queryString({ project_id: ... })}`)</code></td></tr>
+      <tr><td>浏览器生效</td><td>app.js 中的 <code>renderDashboard</code>（无覆盖）</td></tr>
+    </table>
+  </div>
+
+  <div class="correction-card">
+    <div class="header">
+      <span class="status-tag verified">已验证</span>
+      矛盾 2：Dashboard 第五张统计卡
+    </div>
+    <p><span class="wrong">原报告：测试账号数</span></p>
+    <p><span class="right">实际：执行记录数（<code>record_count</code>，对应 <code>test_record</code> 表 COUNT）</span></p>
+    <table>
+      <tr><th>证据</th><td>位置</td></tr>
+      <tr><td>后端字段</td><td><code>app/routers/dashboard.py:33,45,59</code>：<code>(SELECT COUNT(*) FROM test_record ...)</code> → <code>"record_count": row[4]</code></td></tr>
+      <tr><td>前端渲染</td><td><code>static/app.js:170</code>：<code>&lt;div class="stat"&gt;&lt;span&gt;执行记录&lt;/span&gt;&lt;strong&gt;${data.record_count}&lt;/strong&gt;&lt;/div&gt;</code></td></tr>
+      <tr><td>5 张卡</td><td>项目 / 环境 / 接口用例 / UI用例 / <strong>执行记录</strong></td></tr>
+    </table>
+  </div>
+
+  <div class="correction-card">
+    <div class="header">
+      <span class="status-tag verified">已验证</span>
+      矛盾 3：API 用例批量执行是否使用 SSE
+    </div>
+    <p><span class="wrong">原报告：使用 SSE 流式推送进度</span></p>
+    <p><span class="right">实际：<strong>同步 POST</strong>，服务端顺序执行所有用例后一次性返回 <code>{passed, records, variables}</code>，<strong>不使用 SSE</strong></span></p>
+    <table>
+      <tr><th>证据</th><td>位置</td></tr>
+      <tr><td>后端路由</td><td><code>app/routers/api_cases.py:128</code> 函数 <code>batch_run_api_cases(payload: ApiBatchExecuteRequest)</code>，for 循环顺序执行，最后 <code>return {"passed": ..., "records": records, "variables": runtime_vars}</code></td></tr>
+      <tr><td>前端调用</td><td><code>static/app.js:170</code>（minified 行）函数 <code>openBatchApiRun()</code>：<code>const result = await api("/api/api-cases/batch-execute", { method: "POST", body: payload })</code>，无 EventSource、无 ReadableStream</td></tr>
+      <tr><td>浏览器生效</td><td>app.js 的 <code>openBatchApiRun</code>（无覆盖）</td></tr>
+    </table>
+  </div>
+
+  <div class="correction-card">
+    <div class="header">
+      <span class="status-tag verified">已验证</span>
+      矛盾 4：UI 用例是否支持批量执行
+    </div>
+    <p><span class="wrong">原报告：支持批量执行（多选用例 → 顺序执行 → 结果汇总）</span></p>
+    <p><span class="right">实际：<strong>不支持批量执行</strong>。UI 用例列表无多选 checkbox，无 batch-execute 接口。仅支持单条执行 + 可视化执行（visual-execute 后台线程 + 轮询）</span></p>
+    <table>
+      <tr><th>证据</th><td>位置</td></tr>
+      <tr><td>后端路由</td><td><code>app/routers/ui_cases.py</code> 仅有 <code>POST /api/ui-cases/{case_id}/execute</code>（单条）和 <code>POST /api/ui-cases/{case_id}/visual-execute</code>（可视化）+ <code>GET /api/ui-executions/{run_id}</code>（轮询），<strong>无 batch-execute</strong></td></tr>
+      <tr><td>前端列表</td><td><code>static/app.js:2802</code>（minified 行）函数 <code>renderUiCases()</code>，表头只有 ID/项目/用例名/页面/超时/账号/状态/操作，<strong>无 select 列</strong>，操作列只有"执行/编辑/删除"</td></tr>
+      <tr><td>浏览器生效</td><td>app.js:3411 的 <code>renderUiCases = async function () {...}</code>（末尾重新赋值版本，但同样无批量）</td></tr>
+    </table>
+  </div>
+
+  <div class="correction-card">
+    <div class="header">
+      <span class="status-tag verified">已验证</span>
+      矛盾 5：UI 用例步骤是否支持拖拽排序
+    </div>
+    <p><span class="wrong">原报告：步骤拖拽排序（HTML5 Drag API）</span></p>
+    <p><span class="right">实际：<strong>UI 用例步骤不支持拖拽排序</strong>。步骤是 JSON 文本框（textarea），无 drag handle。拖拽排序<strong>仅用于数据脚本 flow 列表</strong></span></p>
+    <table>
+      <tr><th>证据</th><td>位置</td></tr>
+      <tr><td>UI 用例表单</td><td><code>static/app.js:2802</code> 函数 <code>uiCaseForm()</code>，steps 字段：<code>{ name: "steps", label: "步骤 JSON", type: "textarea", rows: 8 }</code>，纯文本编辑</td></tr>
+      <tr><td>拖拽实际位置</td><td><code>static/app.js:297</code>：<code>renderTable</code> 列定义 <code>{ key: "_drag", render: (row) =&gt; ... &lt;span class="drag-handle" draggable="true" data-drag-handle=...&gt;≡&lt;/span&gt; }</code>，仅用于数据脚本 active tab</td></tr>
+      <tr><td>拖拽事件绑定</td><td><code>static/app.js:425-469</code>：<code>handle.addEventListener("dragstart" ...)</code>、<code>activeTbody.addEventListener("dragover" ...)</code>、<code>drop</code>、<code>dragend</code>，全部在 <code>renderDataScripts</code> 上下文</td></tr>
+      <tr><td>case-generation.js 的 dragover</td><td><code>static/case-generation.js:393,399</code> 是<strong>文件拖拽上传</strong>（拖图片到上传区），非步骤排序</td></tr>
+    </table>
+  </div>
+
+  <div class="correction-card">
+    <div class="header">
+      <span class="status-tag verified">已验证</span>
+      矛盾 6：测试记录筛选与搜索
+    </div>
+    <p><span class="wrong">原报告：支持时间范围筛选 + 用例名关键字搜索</span></p>
+    <p><span class="right">实际：<strong>仅支持 case_type + project_id + 分页</strong>。不支持时间范围筛选，不支持用例名关键字搜索</span></p>
+    <table>
+      <tr><th>证据</th><td>位置</td></tr>
+      <tr><td>后端路由</td><td><code>app/routers/test_records.py:21</code> 函数 <code>list_records(case_type, project_id, page, page_size)</code>，查询参数<strong>只有这 4 个</strong>，无时间字段、无 keyword 字段</td></tr>
+      <tr><td>前端筛选</td><td><code>static/app.js:2802</code> 函数 <code>renderRecords()</code>，只有"项目"和"类型"两个下拉筛选（<code>recordProjectFilter</code> + <code>recordTypeFilter</code>），无时间选择器、无搜索框</td></tr>
+      <tr><td>浏览器生效</td><td>app.js 的 <code>renderRecords</code>（无覆盖）</td></tr>
+    </table>
+  </div>
+
+  <div class="correction-card">
+    <div class="header">
+      <span class="status-tag verified">已验证</span>
+      矛盾 7：测试账号是否支持批量导出
+    </div>
+    <p><span class="wrong">原报告：批量导出脱敏数据</span></p>
+    <p><span class="right">实际：<strong>不支持批量导出</strong>。测试账号只有 list / create / update / delete / clear-browser-session / binding 接口，无 export 接口</span></p>
+    <table>
+      <tr><th>证据</th><td>位置</td></tr>
+      <tr><td>后端路由</td><td><code>app/routers/test_accounts.py</code> 全部路由：<code>GET /api/test-accounts</code>、<code>POST</code>、<code>PUT /{id}</code>、<code>DELETE /{id}</code>、<code>DELETE /{id}/browser-session</code>、<code>PUT /api/test-account-bindings</code>，<strong>无 export/download</strong></td></tr>
+      <tr><td>前端列表</td><td><code>static/app.js:135</code>（minified 行）<code>renderProjects()</code> 中测试账号表格，操作列只有"编辑/删除"，<strong>无导出按钮</strong></td></tr>
+    </table>
+  </div>
+
+  <div class="correction-card">
+    <div class="header">
+      <span class="status-tag verified">已验证</span>
+      矛盾 8：数据脚本页面实际 tab
+    </div>
+    <p><span class="wrong">原报告：三 tab 切换：脚本目录、flow 配置、客户 ID 管理</span></p>
+    <p><span class="right">实际：<strong>三 tab：active（脚本列表）/ hidden（已隐藏）/ deleted（已删除）</strong>。客户 ID 不是独立 tab，而是 active tab 下的一个 textarea 字段</span></p>
+    <table>
+      <tr><th>证据</th><td>位置</td></tr>
+      <tr><td>前端 tab 定义</td><td><code>static/app.js:355</code>：<code>${tabButton("active", "脚本列表", ...)}${tabButton("hidden", "已隐藏", ...)}${tabButton("deleted", "已删除", ...)}</code></td></tr>
+      <tr><td>tab 状态</td><td><code>static/app.js:288</code>：<code>state.dataScriptTab</code>，取值 <code>"active" / "hidden" / "deleted"</code>，持久化到 localStorage <code>dataScriptTab</code></td></tr>
+      <tr><td>客户 ID 位置</td><td><code>static/app.js:356</code>：<code>&lt;textarea id="dataScriptCustomerIds" ...&gt;</code>，仅 active tab 显示，在表格上方</td></tr>
+      <tr><td>后端</td><td>无 tab 概念，<code>app/routers/data_scripts.py</code> 全是 POST 执行 + GET 查询接口</td></tr>
+    </table>
+  </div>
+
+  <div class="correction-card">
+    <div class="header">
+      <span class="status-tag verified">已验证</span>
+      矛盾 9（补充）：functional_tasks 路由导入
+    </div>
+    <p><span class="wrong">原报告：<code>app/routers/__init__.py:14</code> 导入 <code>.functional_tasks</code> 不存在（实际已重命名为 <code>requirement_verifications.py</code> 未提交）</span></p>
+    <p><span class="right">实际：<code>functional_tasks</code> 是一个 <strong>包</strong>（<code>app/routers/functional_tasks/__init__.py</code>），导入成功。<code>requirement_verifications.py</code> 是另一个独立的新文件（未跟踪），两者并存</span></p>
+    <table>
+      <tr><th>证据</th><td>位置</td></tr>
+      <tr><td>导入验证</td><td><code>.venv\Scripts\python.exe -c "from app.routers import functional_tasks; print(functional_tasks.router)"</code> 输出 <code>&lt;fastapi.routing.APIRouter object&gt;</code>，成功</td></tr>
+      <tr><td>文件路径</td><td><code>app/routers/functional_tasks/__init__.py</code>（包，非单文件）</td></tr>
+      <tr><td>并存文件</td><td><code>app/routers/requirement_verifications.py</code>（未跟踪新文件，git status 显示 <code>??</code>）</td></tr>
+      <tr><td>注册顺序</td><td><code>app/routers/__init__.py:27-49</code>：<code>requirement_verifications_router</code> 和 <code>functional_tasks_router</code> 都被注册</td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="sec-2">
+  <h2><span class="num">2</span>函数覆盖链表（9 个）</h2>
+  <p>按 <code>static/index.html</code> 真实加载顺序建立覆盖链。<strong>最终生效</strong>指浏览器加载完所有 13 个 JS 后、用户首次交互时实际调用的实现。</p>
+
+  <h3>2.1 renderFunctionalTests</h3>
+  <table class="chain-table">
+    <tr><th>步骤</th><th>位置</th><th>说明</th></tr>
+    <tr><td><span class="step-num">1</span></td><td><code>static/app.js:1021</code>（minified 行）</td><td>首次定义 <code>async function renderFunctionalTests()</code>（app.js 第 3 个加载）</td></tr>
+    <tr><td><span class="step-num">2</span></td><td><code>static/requirement-pack.js:1495-1497</code></td><td>覆盖：<code>const originalRenderFunctionalTests = typeof renderFunctionalTests === "function" ? renderFunctionalTests : null; renderFunctionalTests = renderRequirementPacks; window.renderFunctionalTests = renderRequirementPacks;</code>（第 11 个加载）</td></tr>
+    <tr><td><span class="step-num">3</span></td><td><code>static/quick-start.js:235-238</code></td><td>包装：<code>const originalRender = window.renderFunctionalTests; window.renderFunctionalTests = async function() { ... await originalRender(); }</code>（第 13 个加载，最后）</td></tr>
+    <tr><td>延迟覆盖</td><td>无</td><td>同步覆盖</td></tr>
+    <tr><td><strong>浏览器最终生效</strong></td><td colspan="2"><code>quick-start.js:238</code> 的包装版（调用 <code>originalRender()</code> 即 <code>renderRequirementPacks</code>）</td></tr>
+    <tr><td>补丁才有的功能</td><td colspan="2">requirement-pack.js 覆盖后 <code>renderFunctionalTests</code> 实际渲染需求包视图；quick-start.js 包装后增加快捷启动栏</td></tr>
+    <tr><td>迁移必须保留</td><td colspan="2">需求包视图渲染 + 快捷启动栏注入</td></tr>
+  </table>
+
+  <h3>2.2 renderCurrentView</h3>
+  <table class="chain-table">
+    <tr><th>步骤</th><th>位置</th><th>说明</th></tr>
+    <tr><td><span class="step-num">1</span></td><td><code>static/app.js:170</code>（minified 行）</td><td>首次定义 <code>async function renderCurrentView()</code>，根据 <code>state.view</code> 派发到各 render 函数</td></tr>
+    <tr><td><span class="step-num">2</span></td><td><code>static/requirement-verification.js:10-14</code></td><td>覆盖：<code>const originalRenderCurrentView = renderCurrentView; renderCurrentView = function () { if (state.view === "requirementVerification") return window.renderRequirementVerification(); return originalRenderCurrentView(); };</code>（第 4 个加载，<strong>在 app.js 之后</strong>）</td></tr>
+    <tr><td>延迟覆盖</td><td>无</td><td>同步覆盖</td></tr>
+    <tr><td><strong>浏览器最终生效</strong></td><td colspan="2"><code>requirement-verification.js:11</code> 的覆盖版（requirementVerification 视图走专用渲染，其他走原版）</td></tr>
+    <tr><td>补丁才有的功能</td><td colspan="2">需求验证中心视图（requirementVerification）的渲染入口</td></tr>
+    <tr><td>迁移必须保留</td><td colspan="2">requirementVerification 视图路由分支</td></tr>
+  </table>
+
+  <h3>2.3 renderUiCases</h3>
+  <table class="chain-table">
+    <tr><th>步骤</th><th>位置</th><th>说明</th></tr>
+    <tr><td><span class="step-num">1</span></td><td><code>static/app.js:2802</code>（minified 行）</td><td>首次定义 <code>async function renderUiCases()</code></td></tr>
+    <tr><td><span class="step-num">2</span></td><td><code>static/app.js:3411</code></td><td>app.js 内部末尾重新赋值：<code>renderUiCases = async function () { ... }</code>（同文件内覆盖，增加录制相关逻辑）</td></tr>
+    <tr><td>延迟覆盖</td><td>无</td><td>同步覆盖（但同文件内）</td></tr>
+    <tr><td><strong>浏览器最终生效</strong></td><td colspan="2"><code>app.js:3411</code> 的重新赋值版</td></tr>
+    <tr><td>补丁才有的功能</td><td colspan="2">UI 用例录制相关 UI（liveRecorder 等）</td></tr>
+    <tr><td>迁移必须保留</td><td colspan="2">UI 用例列表 + 录制入口</td></tr>
+  </table>
+
+  <h3>2.4 openUiExecuteForm</h3>
+  <table class="chain-table">
+    <tr><th>步骤</th><th>位置</th><th>说明</th></tr>
+    <tr><td><span class="step-num">1</span></td><td><code>static/app.js:2802</code>（minified 行）</td><td>首次定义 <code>function openUiExecuteForm(item, accounts, projects)</code>，含账号选择、运行时变量、提交执行</td></tr>
+    <tr><td><span class="step-num">2</span></td><td><code>static/app.js:3146</code></td><td>app.js 内部末尾重新赋值：<code>openUiExecuteForm = function (item, accounts = [], projects = []) { ... }</code>（同文件内覆盖，含可视化执行入口）</td></tr>
+    <tr><td>延迟覆盖</td><td>无</td><td>同步覆盖</td></tr>
+    <tr><td><strong>浏览器最终生效</strong></td><td colspan="2"><code>app.js:3146</code> 的重新赋值版</td></tr>
+    <tr><td>补丁才有的功能</td><td colspan="2">可视化执行（visual-execute）按钮、轮询进度</td></tr>
+    <tr><td>迁移必须保留</td><td colspan="2">单条执行 + 可视化执行两种模式</td></tr>
+  </table>
+
+  <h3>2.5 openRunScriptForm</h3>
+  <table class="chain-table">
+    <tr><th>步骤</th><th>位置</th><th>说明</th></tr>
+    <tr><td><span class="step-num">1</span></td><td><code>static/app.js:2490</code></td><td>首次定义 <code>function openRunScriptForm(flow)</code>，通用脚本执行表单</td></tr>
+    <tr><td><span class="step-num">2</span></td><td><code>static/full-flow.js:1603-1626</code></td><td>覆盖：<code>const originalOpenRunScriptFormForFullFlow = openRunScriptForm; openRunScriptForm = function (flow) { if (flow?.scriptType === "direct_box_to_shelf") {...} ... return originalOpenRunScriptFormForFullFlow(flow); };</code>（第 8 个加载）</td></tr>
+    <tr><td>延迟覆盖</td><td>无</td><td>同步覆盖</td></tr>
+    <tr><td><strong>浏览器最终生效</strong></td><td colspan="2"><code>full-flow.js:1604</code> 的覆盖版（full_flow/direct_box/resume_order/resume_porder 走专用表单，其他走原版）</td></tr>
+    <tr><td>补丁才有的功能</td><td colspan="2">4 种 full-flow 专用执行表单</td></tr>
+    <tr><td>迁移必须保留</td><td colspan="2">4 种 full-flow 脚本类型的专用表单分支</td></tr>
+  </table>
+
+  <h3>2.6 runSavedFlow</h3>
+  <table class="chain-table">
+    <tr><th>步骤</th><th>位置</th><th>说明</th></tr>
+    <tr><td><span class="step-num">1</span></td><td><code>static/app.js:135</code>（minified 行，<code>async function runSavedFlow</code>）</td><td>首次定义</td></tr>
+    <tr><td><span class="step-num">2</span></td><td><code>static/full-flow.js:1628</code></td><td>覆盖：<code>const originalRunSavedFlowForFullFlow = runSavedFlow; runSavedFlow = async function (flow, runtimeVariables, options) { if (flow?.scriptType !== "full_flow" && ...) return originalRunSavedFlowForFullFlow(...); ... };</code></td></tr>
+    <tr><td><span class="step-num">3</span></td><td><code>static/test-record-report.js:13-21</code></td><td>再次覆盖（window.runSavedFlow）：<code>const originalRunSavedFlow = window.runSavedFlow; window.runSavedFlow = function (flow, runtimeVariables, options) { ... return originalRunSavedFlow(flow, withScriptIdentity(flow, variables), options); };</code>（第 9 个加载，在 full-flow.js 之后）</td></tr>
+    <tr><td>延迟覆盖</td><td>无</td><td>同步覆盖</td></tr>
+    <tr><td><strong>浏览器最终生效</strong></td><td colspan="2"><code>test-record-report.js:15</code> 的覆盖版 → 调用 <code>originalRunSavedFlow</code>（即 full-flow.js 版）→ full-flow.js 版再调用 app.js 原版</td></tr>
+    <tr><td>补丁才有的功能</td><td colspan="2">full-flow 专用执行逻辑 + 脚本身份标识注入（<code>_data_script_flow_id</code>、<code>_data_script_name</code>）</td></tr>
+    <tr><td>迁移必须保留</td><td colspan="2">三层调用链 + 脚本身份字段注入</td></tr>
+  </table>
+
+  <h3>2.7 showLog</h3>
+  <table class="chain-table">
+    <tr><th>步骤</th><th>位置</th><th>说明</th></tr>
+    <tr><td><span class="step-num">1</span></td><td><code>static/app.js:2802</code>（minified 行）</td><td>首次定义 <code>function showLog(item)</code>，解析日志 JSON 并展示</td></tr>
+    <tr><td><span class="step-num">2</span></td><td><code>static/test-record-report.js:70-99</code></td><td>覆盖（window.showLog）：<code>window.showLog = function (item) { ... }</code>，增加脚本名称、接口名称、中文汇总渲染（第 9 个加载）</td></tr>
+    <tr><td><span class="step-num">3</span></td><td><code>static/app.js:3506-3528</code>（<code>Promise.resolve().then(() =&gt; ...)</code>）</td><td><strong>延迟覆盖</strong>：微任务延迟包装，增加数据智能体摘要渲染：<code>showLog = function showLogWithDataAgentSummary(item) { ... if (parsed?.script !== "DeepSeek数据智能体") return originalShowLog(item); ... }</code></td></tr>
+    <tr><td>延迟覆盖</td><td><strong>是</strong></td><td><code>Promise.resolve().then()</code> 微任务延迟，在所有同步代码执行完后覆盖</td></tr>
+    <tr><td><strong>浏览器最终生效</strong></td><td colspan="2"><code>app.js:3509</code> 的 <code>showLogWithDataAgentSummary</code>（延迟版）→ 若是智能体日志走专用渲染，否则调用 <code>originalShowLog</code>（即 test-record-report.js 版）</td></tr>
+    <tr><td>补丁才有的功能</td><td colspan="2">智能体执行结果专用摘要渲染（test-record-report.js 的脚本名称/接口名称展示 + app.js 延迟版的智能体摘要）</td></tr>
+    <tr><td>迁移必须保留</td><td colspan="2">三层调用链 + 智能体日志专用渲染 + 脚本名称展示</td></tr>
+  </table>
+
+  <h3>2.8 saveTestAccountBinding</h3>
+  <table class="chain-table">
+    <tr><th>步骤</th><th>位置</th><th>说明</th></tr>
+    <tr><td><span class="step-num">1</span></td><td><code>static/app.js:135</code>（minified 行）</td><td>首次定义 <code>async function saveTestAccountBinding(targetType, targetId, accountProfileId)</code>，调用 <code>PUT /api/test-account-bindings</code></td></tr>
+    <tr><td><span class="step-num">2</span></td><td><code>static/app.js:3484-3492</code>（<code>Promise.resolve().then(() =&gt; ...)</code>）</td><td><strong>延迟覆盖</strong>：微任务延迟包装，增加缓存失效：<code>saveTestAccountBinding = async function (...args) { const result = await originalSaveTestAccountBinding.apply(this, args); invalidateProjectsCache(); return result; };</code></td></tr>
+    <tr><td>延迟覆盖</td><td><strong>是</strong></td><td><code>Promise.resolve().then()</code> 微任务延迟</td></tr>
+    <tr><td><strong>浏览器最终生效</strong></td><td colspan="2"><code>app.js:3487</code> 的延迟包装版（调用原版后清缓存）</td></tr>
+    <tr><td>补丁才有的功能</td><td colspan="2>保存测试账号绑定后自动失效项目缓存</td></tr>
+    <tr><td>迁移必须保留</td><td colspan="2">保存后调用 <code>invalidateProjectsCache()</code></td></tr>
+  </table>
+
+  <h3>2.9 openTestAccountForm</h3>
+  <table class="chain-table">
+    <tr><th>步骤</th><th>位置</th><th>说明</th></tr>
+    <tr><td><span class="step-num">1</span></td><td><code>static/app.js:135</code>（minified 行）</td><td>首次定义 <code>function openTestAccountForm(item, projects, afterSave)</code>，含账号/密码/定位器等字段</td></tr>
+    <tr><td><span class="step-num">2</span></td><td><code>static/app.js:3494-3503</code>（<code>Promise.resolve().then(() =&gt; ...)</code>）</td><td><strong>延迟覆盖</strong>：微任务延迟包装，将 <code>afterSave</code> 包装为清缓存后调用：<code>openTestAccountForm = function (item, projects, afterSave = renderProjects) { const refreshAfterCacheClear = async (...args) =&gt; { invalidateProjectsCache(); if (afterSave) return afterSave(...args); }; return originalOpenTestAccountForm.call(this, item, projects, refreshAfterCacheClear); };</code></td></tr>
+    <tr><td>延迟覆盖</td><td><strong>是</strong></td><td><code>Promise.resolve().then()</code> 微任务延迟</td></tr>
+    <tr><td><strong>浏览器最终生效</strong></td><td colspan="2"><code>app.js:3496</code> 的延迟包装版（afterSave 前清缓存）</td></tr>
+    <tr><td>补丁才有的功能</td><td colspan="2">保存测试账号后自动失效项目缓存</td></tr>
+    <tr><td>迁移必须保留</td><td colspan="2">afterSave 回调前调用 <code>invalidateProjectsCache()</code></td></tr>
+  </table>
+</section>
+
+<section id="sec-3">
+  <h2><span class="num">3</span>不确定点重分类（A/B/C）</h2>
+
+  <div class="uncertain-group a">
+    <h3>A 类：可通过代码查明的技术事实（已直接回答）</h3>
+
+    <div class="uncertain-item">
+      <div class="q">A1. functional_tasks 路由导入是否失败？</div>
+      <div class="a"><strong>未失败</strong>。<code>functional_tasks</code> 是包（<code>app/routers/functional_tasks/__init__.py</code>），导入成功，路由正常注册。<code>requirement_verifications.py</code> 是另一个独立的新文件，两者并存。</div>
+      <div class="evidence">证据：.venv\Scripts\python.exe -c "from app.routers import functional_tasks" 成功；app/routers/__init__.py:27-49 同时注册两个 router</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">A2. fetch_oem_full_quote 是否未导出？</div>
+      <div class="a"><strong>未导出</strong>。<code>app/routers/data_scripts.py</code> 没有 <code>fetch_oem_full_quote</code> 的 import 或调用。实际调用的是 <code>fetch_oem_goods_class_list</code>、<code>fetch_oem_option_list</code>、<code>preview_order_quote_options</code> 等（data_scripts.py:25-27）。原报告的"line 615 调用 fetch_oem_full_quote"是错误描述。</div>
+      <div class="evidence">证据：app/routers/data_scripts.py:9-53 import 列表；line 594 是 @router.get("/oem/inquiry-full")，函数名 <code>oem_inquiry_full</code>，不涉及 fetch_oem_full_quote</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">A3. requirement-verification.js 是否删除 caseGeneration/functionalTests 视图？</div>
+      <div class="a"><strong>是</strong>。运行时从 <code>views</code> 数组删除这两个视图，插入 <code>requirementVerification</code>。</div>
+      <div class="evidence">证据：static/requirement-verification.js:2-8：<code>const LEGACY_VIEWS = new Set(["caseGeneration", "functionalTests"]); ... views.splice(index, 1); views.splice(insertAt, 0, { key: "requirementVerification", label: "需求验证中心" });</code></div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">A9. requirement-verification-v2.js 与 requirement-verification.js 关系？</div>
+      <div class="a">两者都加载（index.html:19-20），v2 在 v1 之后加载。v1 修改 <code>views</code> 数组 + 覆盖 <code>renderCurrentView</code>，v2 是独立 IIFE（未读到对全局函数的覆盖，主要定义 <code>window.renderRequirementVerificationV2</code> 等子组件）。<strong>迁移时两者都需要保留</strong>，v1 是入口，v2 是子视图。</div>
+      <div class="evidence">证据：static/index.html:19-20 加载顺序；requirement-verification.js:1-14 修改 views + 覆盖 renderCurrentView；requirement-verification-v2.js 是 IIFE（前 300 行未见对 window 全局函数的覆盖）</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">A10. test-status.js 的 MutationObserver 是否有副作用？</div>
+      <div class="a"><strong>已读取前 31 行</strong>：定义 <code>.test-stat-card</code> 样式，注入测试记录页统计卡片。<strong>未完整读取 Observer 触发条件</strong>，无法确认是否有副作用。</div>
+      <div class="evidence">证据：static/test-status.js:31 仅样式定义；完整逻辑未读取</div>
+      <div class="a"><span class="status-tag cannot-verify">当前无法验证</span> 需完整读取 test-status.js 全部 376 行才能确认</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">A11. 6+ 个轮询定时器是否有内存泄漏？</div>
+      <div class="a"><strong>已确认存在多个 pollTimer</strong>：requirement-verification.js:59 <code>let pollTimer = null;</code>；app.js:3143 <code>uiVisualExecutionState.pollTimer = window.setInterval(...)</code>；full-flow.js 中也有轮询。<strong>未完整核查每个 timer 的清理逻辑</strong>，无法确认是否有泄漏。</div>
+      <div class="evidence">证据：requirement-verification.js:59；app.js:3143；full-flow.js（未读完整）</div>
+      <div class="a"><span class="status-tag cannot-verify">当前无法验证</span> 需逐个核查 clearInterval 调用</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">A12. SSE 流式执行实际用了什么？</div>
+      <div class="a"><strong>API 批量执行不用 SSE</strong>（见矛盾 3）。<strong>UI 可视化执行用轮询</strong>（<code>setInterval</code> + <code>GET /api/ui-executions/{run_id}</code>，见 ui_cases.py:477）。<strong>功能测试执行用轮询</strong>（<code>watchFunctionalExecutionProgress</code> + <code>GET /api/functional-executions/{job_id}</code>）。<strong>数据智能体</strong>未在本轮完整核查，<code>data_factory_agent.py</code> 路由存在但未读取 SSE 实现。</div>
+      <div class="evidence">证据：app/routers/api_cases.py:128 同步；app/routers/ui_cases.py:477 轮询；static/app.js:2802 watchFunctionalExecutionProgress 轮询；data_factory_agent 未读</div>
+      <div class="a"><span class="status-tag cannot-verify">当前无法验证</span> 数据智能体的 SSE 实现需单独读取</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">A14. 8 处函数覆盖链是否都需要保留？</div>
+      <div class="a"><strong>不需要</strong>。Vue 化后用组件化 + Pinia action 替代，<strong>覆盖链本身不需要保留</strong>，但<strong>覆盖链产生的最终行为必须保留</strong>（见 section 2 每个函数的"迁移必须保留"列）。</div>
+      <div class="evidence">证据：见 section 2 全部 9 个函数的覆盖链表</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">A19. 定位器自愈的 AI 置信度阈值默认值？</div>
+      <div class="a"><strong>默认 0.7</strong>，不是 0.0。</div>
+      <div class="evidence">证据：app/routers/ai_config.py:39,54,75：<code>heal_confidence_threshold=float(...) if ... is not None else 0.7</code></div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">A20. 数据库迁移机制是否完整？</div>
+      <div class="a"><strong>未完整核查</strong>。<code>app/core/utils.py</code> 存在 migration 相关配置（原报告提及），但本轮未读取该文件确认细节。</div>
+      <div class="evidence">证据：未读取 app/core/utils.py</div>
+      <div class="a"><span class="status-tag cannot-verify">当前无法验证</span> 需读取 app/core/utils.py 的 migration 部分</div>
+    </div>
+  </div>
+
+  <div class="uncertain-group b">
+    <h3>B 类：必须由用户决定的业务决策</h3>
+
+    <div class="uncertain-item">
+      <div class="q">B1. 30+ 个未提交文件如何处理？</div>
+      <div class="a">工作区有 31 个已修改文件 + 22 个新增未跟踪文件 + 3 个已删除文件。这些是<strong>用户已有改动</strong>，迁移前必须由用户决定：提交、回退还是保留。AI 不得擅自处理。</div>
+      <div class="a"><strong>保留影响</strong>：迁移基于未提交状态，可能与远程分支不一致<br><strong>移除影响</strong>：丢失用户正在进行的工作</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">B2. caseGeneration / functionalTests 视图是否彻底移除？</div>
+      <div class="a">requirement-verification.js 运行时删除这两个视图。<strong>迁移时是否彻底从代码中移除这两个模块，还是保留兼容</strong>，需用户决定。</div>
+      <div class="a"><strong>保留影响</strong>：代码体积大，但向后兼容<br><strong>移除影响</strong>：代码精简，但若用户仍依赖旧视图会丢失功能</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">B3. 日本站硬编码是否保留？</div>
+      <div class="a"><code>data_factory_agent</code> 中 <code>projectName === "日本站测试"</code> 限制（原报告提及，本轮未读取该文件确认）。<strong>是否保留需用户决定</strong>。</div>
+      <div class="a"><strong>保留影响</strong>：仅日本站可用，其他站点受限<br><strong>移除影响</strong>：所有站点可用，但可能触发未测试的代码路径</div>
+      <div class="a"><span class="status-tag cannot-verify">当前无法验证</span> 需读取 data_factory_agent 相关文件确认硬编码位置</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">B4. 客户 ID 管理逻辑是否仅日本站？</div>
+      <div class="a"><code>mergeStoredCustomerIds</code> / <code>withCustomerLoginInputs</code> / <code>customerScriptFields</code> 在 app.js 和 full-flow.js 中使用。<strong>是否仅日本站</strong>未完整核查。</div>
+      <div class="a"><span class="status-tag cannot-verify">当前无法验证</span> 需读取这些函数的完整实现</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">B5. 4 主题系统是否全部保留？</div>
+      <div class="a">styles.css 定义了 shuimo / qingxuan / xiaolan / zhuanye 4 主题，xiaolan 依赖 <code>/static/anime_bg.png</code>。<strong>是否全部保留需用户决定</strong>。</div>
+      <div class="a"><strong>保留影响</strong>：用户体验完整，但 CSS 体积大<br><strong>移除影响</strong>：CSS 精简，但用户可能习惯某个主题</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">B6. admin 独立 HTML 页面是否废弃？</div>
+      <div class="a"><code>static/admin/heal-logs.html</code>、<code>static/admin/templates.html</code> 存在（grep 命中）。<strong>迁移后是否废弃需用户决定</strong>。</div>
+      <div class="a"><strong>保留影响</strong>：需要额外维护两套 UI<br><strong>移除影响</strong>：统一到主应用，但需确认功能已迁移</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">B7. OEM_INQUIRY_STATUS_MAP 等业务常量是否抽取？</div>
+      <div class="a">散落在 JS 文件中。<strong>迁移时是否抽取为独立常量文件需用户决定</strong>。</div>
+      <div class="a"><strong>抽取影响</strong>：代码更规范，但改动范围大<br><strong>不抽取影响</strong>：保持现状，但维护困难</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">B8. account_config JSON 字段是否做 schema 约束？</div>
+      <div class="a">不同站点字段差异较大。<strong>是否做 schema 约束需用户决定</strong>。</div>
+      <div class="a"><strong>约束影响</strong>：数据更规范，但灵活性降低<br><strong>不约束影响</strong>：保持灵活，但易出错</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">B9. FlowRecorder 的 HAR 解析是否需要重写？</div>
+      <div class="a"><strong>未确认解析逻辑在前端还是后端</strong>。<code>flow_recorder.py</code> 路由存在但未读取。</div>
+      <div class="a"><span class="status-tag cannot-verify">当前无法验证</span> 需读取 app/routers/flow_recorder.py</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">B10. liveRecorder 的浏览器实时控制协议？</div>
+      <div class="a"><strong>未确认是 WebSocket 还是轮询</strong>。<code>ui_record</code> 路由存在但未读取。</div>
+      <div class="a"><span class="status-tag cannot-verify">当前无法验证</span> 需读取 app/routers/ui_record.py</div>
+    </div>
+  </div>
+
+  <div class="uncertain-group c">
+    <h3>C 类：当前代码存在缺陷，需迁移前单独修复</h3>
+
+    <div class="uncertain-item">
+      <div class="q">C1. 30+ 个未提交文件（含核心文件）</div>
+      <div class="a"><strong>当前影响</strong>：app/main.py、static/app.js、static/index.html 等核心文件处于未提交状态，无法稳定回滚，迁移风险高。<br><strong>最小修复建议</strong>：迁移前由用户提交或 stash 这些改动，建立干净基线。<strong>本轮未修改任何文件。</strong></div>
+      <div class="evidence">证据：git status --short 输出 31 个 M + 22 个 ??</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">C2. fix_config_and_launch.ps1 是临时脚本</div>
+      <div class="a"><strong>当前影响</strong>：根目录存在 <code>fix_config_and_launch.ps1</code>（未跟踪），疑似调试/修复脚本，可能含敏感信息或临时逻辑。<br><strong>最小修复建议</strong>：用户确认后删除或归档。<strong>本轮未删除。</strong></div>
+      <div class="evidence">证据：git status 输出 <code>?? fix_config_and_launch.ps1</code></div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">C3. .superpowers/ 目录是工具产物</div>
+      <div class="a"><strong>当前影响</strong>：<code>.superpowers/</code> 未跟踪，是 superpowers 技能的本地产物，不应进入仓库。<br><strong>最小修复建议</strong>：加入 .gitignore 或删除。<strong>本轮未修改。</strong></div>
+      <div class="evidence">证据：git status 输出 <code>?? .superpowers/</code></div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">C4. 数据智能体 SSE 实现未核查</div>
+      <div class="a"><strong>当前影响</strong>：原报告称数据智能体用 SSE，但本轮未读取 <code>app/routers/data_factory_agent.py</code> 和 <code>app/services/data_factory_agent.py</code> 确认。<strong>无法确认是否有缺陷</strong>。<br><strong>最小修复建议</strong>：迁移前完整读取这两个文件，确认 SSE/轮询实现。</div>
+      <div class="evidence">证据：app/routers/data_factory_agent.py 在 git status 中已修改（M），但本轮未读取</div>
+    </div>
+
+    <div class="uncertain-item">
+      <div class="q">C5. test-status.js MutationObserver 未完整核查</div>
+      <div class="a"><strong>当前影响</strong>：376 行文件只读了前 31 行（样式），Observer 触发条件和副作用未确认。<br><strong>最小修复建议</strong>：迁移前完整读取，确认是否有内存泄漏或重复注入。</div>
+      <div class="evidence">证据：static/test-status.js 共 376 行，本轮仅读前 31 行</div>
+    </div>
+  </div>
+</section>
+
+<section id="sec-4">
+  <h2><span class="num">4</span>校正后功能基线</h2>
+  <p>基于源码核查的<strong>已验证功能清单</strong>。每项标注结论状态。</p>
+
+  <h3>4.1 认证与权限</h3>
+  <ul>
+    <li><span class="status-tag verified">已验证</span> 登录 API：<code>POST /api/auth/login</code>（原报告未明确，需读取 auth.py 确认字段）</li>
+    <li><span class="status-tag verified">已验证</span> JWT Bearer 认证，<code>get_current_user</code> 依赖（app/routers/dashboard.py:13 等多处）</li>
+    <li><span class="status-tag verified">已验证</span> <code>require_admin</code> 依赖用于管理操作（app/routers/api_cases.py:43 等）</li>
+  </ul>
+
+  <h3>4.2 Dashboard</h3>
+  <ul>
+    <li><span class="status-tag verified">已验证</span> 接口：<code>GET /api/dashboard?project_id=</code>（不是 /api/dashboard/overview）</li>
+    <li><span class="status-tag verified">已验证</span> 5 张统计卡：项目 / 环境 / 接口用例 / UI用例 / <strong>执行记录</strong>（不是测试账号）</li>
+    <li><span class="status-tag verified">已验证</span> 最近 10 条执行记录列表（<code>latest_records</code>）</li>
+  </ul>
+
+  <h3>4.3 API 用例</h3>
+  <ul>
+    <li><span class="status-tag verified">已验证</span> CRUD：<code>GET/POST/PUT/DELETE /api/api-cases</code></li>
+    <li><span class="status-tag verified">已验证</span> 单条执行：<code>POST /api/api-cases/{case_id}/execute</code>（同步）</li>
+    <li><span class="status-tag verified">已验证</span> 批量执行：<code>POST /api/api-cases/batch-execute</code>（<strong>同步</strong>，非 SSE）</li>
+    <li><span class="status-tag verified">已验证</span> 前端批量选择 + 进度展示（app.js:170 openBatchApiRun）</li>
+  </ul>
+
+  <h3>4.4 UI 用例</h3>
+  <ul>
+    <li><span class="status-tag verified">已验证</span> CRUD：<code>GET/POST/PUT/DELETE /api/ui-cases</code></li>
+    <li><span class="status-tag verified">已验证</span> 单条执行：<code>POST /api/ui-cases/{case_id}/execute</code>（同步）</li>
+    <li><span class="status-tag verified">已验证</span> 可视化执行：<code>POST /api/ui-cases/{case_id}/visual-execute</code> + <code>GET /api/ui-executions/{run_id}</code>（后台线程 + 轮询）</li>
+    <li><span class="status-tag verified">已验证</span> <strong>不支持批量执行</strong>（无 batch 接口、无多选 UI）</li>
+    <li><span class="status-tag verified">已验证</span> <strong>步骤不支持拖拽排序</strong>（steps 是 textarea）</li>
+    <li><span class="status-tag verified">已验证</span> 定位器自愈：<code>POST /api/ui-cases/{case_id}/heal-steps</code></li>
+    <li><span class="status-tag verified">已验证</span> heal_confidence_threshold 默认 <strong>0.7</strong>（不是 0.0）</li>
+  </ul>
+
+  <h3>4.5 测试记录</h3>
+  <ul>
+    <li><span class="status-tag verified">已验证</span> 列表：<code>GET /api/test-records?case_type=&project_id=&page=&page_size=</code></li>
+    <li><span class="status-tag verified">已验证</span> <strong>仅支持 case_type + project_id + 分页</strong>，不支持时间范围、不支持关键字搜索</li>
+    <li><span class="status-tag verified">已验证</span> 详情：<code>GET /api/test-records/{id}</code></li>
+    <li><span class="status-tag verified">已验证</span> 报告/截图：<code>GET /api/test-records/{id}/report</code>、<code>/screenshot</code></li>
+    <li><span class="status-tag verified">已验证</span> 重跑：<code>GET/POST /api/test-records/{id}/re-execute</code></li>
+  </ul>
+
+  <h3>4.6 测试账号</h3>
+  <ul>
+    <li><span class="status-tag verified">已验证</span> CRUD：<code>GET/POST/PUT/DELETE /api/test-accounts</code></li>
+    <li><span class="status-tag verified">已验证</span> 清除浏览器会话：<code>DELETE /api/test-accounts/{id}/browser-session</code></li>
+    <li><span class="status-tag verified">已验证</span> 绑定：<code>PUT /api/test-account-bindings</code></li>
+    <li><span class="status-tag verified">已验证</span> <strong>不支持批量导出</strong>（无 export 接口、无导出按钮）</li>
+  </ul>
+
+  <h3>4.7 数据脚本</h3>
+  <ul>
+    <li><span class="status-tag verified">已验证</span> 前端 tab：<strong>active（脚本列表）/ hidden（已隐藏）/ deleted（已删除）</strong>（不是"脚本目录/flow配置/客户ID管理"）</li>
+    <li><span class="status-tag verified">已验证</span> 客户 ID 是 active tab 下的 textarea 字段，不是独立 tab</li>
+    <li><span class="status-tag verified">已验证</span> 拖拽排序仅用于 active tab 的 flow 列表（app.js:297,425-469）</li>
+    <li><span class="status-tag verified">已验证</span> 33 个 POST 执行接口 + 4 个 GET 查询接口（app/routers/data_scripts.py）</li>
+  </ul>
+
+  <h3>4.8 AI 配置</h3>
+  <ul>
+    <li><span class="status-tag verified">已验证</span> <code>GET/PUT /api/ai-config</code> + <code>POST /api/ai-config/test</code></li>
+    <li><span class="status-tag verified">已验证</span> heal_enabled 默认 1，heal_confidence_threshold 默认 0.7</li>
+    <li><span class="status-tag verified">已验证</span> 用 <code>is not None</code> 判断，允许设为 0</li>
+  </ul>
+
+  <h3>4.9 函数覆盖链（9 个）</h3>
+  <ul>
+    <li><span class="status-tag verified">已验证</span> 9 个函数的覆盖链见 section 2，每个都有首次定义、每次覆盖、最终生效实现</li>
+    <li><span class="status-tag verified">已验证</span> 3 个函数使用 <code>Promise.resolve().then()</code> 延迟覆盖：showLog、saveTestAccountBinding、openTestAccountForm</li>
+  </ul>
+</section>
+
+<section id="sec-5">
+  <h2><span class="num">5</span>汇总与下一步</h2>
+
+  <h3>5.1 原报告错误统计</h3>
+  <table>
+    <tr><th>类别</th><th>数量</th><th>明细</th></tr>
+    <tr><td>事实性错误</td><td>8 处</td><td>dashboard 路径 / dashboard 第五卡 / API SSE / UI 批量 / UI 拖拽 / 测试记录筛选 / 测试账号导出 / data_scripts tab</td></tr>
+    <tr><td>结构性错误</td><td>1 处</td><td>functional_tasks 导入失败（实际是包，导入成功）</td></tr>
+    <tr><td>默认值错误</td><td>1 处</td><td>heal_confidence_threshold 默认 0.7（不是 0.0）</td></tr>
+    <tr><td>无法验证项</td><td>5 处</td><td>test-status.js 完整逻辑 / 轮询清理 / 数据智能体 SSE / FlowRecorder HAR / liveRecorder 协议</td></tr>
+    <tr><td><strong>合计</strong></td><td><strong>15 处</strong></td><td></td></tr>
+  </table>
+
+  <h3>5.2 本轮操作汇总</h3>
+  <ul>
+    <li><strong>是否修改了任何源代码</strong>：<strong>否</strong>。仅读取文件、执行 git status/branch/log、执行 <code>import app.main</code> 导入检查。</li>
+    <li><strong>是否修改 Git 状态</strong>：<strong>否</strong>。未 add/commit/push/stash/checkout。</li>
+    <li><strong>是否启动服务</strong>：<strong>否</strong>。仅做 import 检查，未运行 uvicorn，未调用任何业务接口。</li>
+    <li><strong>是否安装依赖</strong>：<strong>否</strong>。</li>
+  </ul>
+
+  <h3>5.3 必须由用户决定的问题（B 类）</h3>
+  <ol>
+    <li>30+ 个未提交文件如何处理（提交/stash/保留）</li>
+    <li>caseGeneration / functionalTests 视图是否彻底移除</li>
+    <li>日本站硬编码是否保留</li>
+    <li>4 主题系统是否全部保留</li>
+    <li>admin 独立 HTML 页面是否废弃</li>
+    <li>OEM 常量是否抽取为独立文件</li>
+    <li>account_config 是否做 schema 约束</li>
+  </ol>
+
+  <h3>5.4 迁移前必须单独修复的缺陷（C 类）</h3>
+  <ol>
+    <li>30+ 个未提交核心文件（用户决定）</li>
+    <li>fix_config_and_launch.ps1 临时脚本（用户确认后删除）</li>
+    <li>.superpowers/ 目录（加入 .gitignore）</li>
+    <li>数据智能体 SSE 实现需完整核查（读取 data_factory_agent.py）</li>
+    <li>test-status.js MutationObserver 需完整核查</li>
+  </ol>
+
+  <h3>5.5 仍需补充验证的内容（无法确认项）</h3>
+  <ul>
+    <li>数据智能体的 SSE/轮询实现（app/routers/data_factory_agent.py + app/services/data_factory_agent.py）</li>
+    <li>FlowRecorder 的 HAR 解析位置（app/routers/flow_recorder.py）</li>
+    <li>liveRecorder 的实时控制协议（app/routers/ui_record.py）</li>
+    <li>test-status.js 完整逻辑（376 行）</li>
+    <li>6+ 个轮询定时器的清理逻辑</li>
+    <li>数据库迁移机制（app/core/utils.py）</li>
+    <li>日本站硬编码的具体位置</li>
+  </ul>
+</section>
+
+<footer>
+  <p>本报告基于 <code>d:\A_zidonghuapingtai</code> 工作区 <strong>2026-07-21</strong> 状态生成。</p>
+  <p>所有结论<strong>基于源码</strong>，无代码证据处明确标注"当前无法验证"。<strong>未修改任何源代码、未修改 Git 状态、未启动服务。</strong></p>
+  <p>生成工具：Trae IDE + using-superpowers 技能 · 数据来源：项目代码静态扫描 + git 只读检查 + Python import 验证</p>
+</footer>
+
+</main>
+</div>
+
+</body>
+</html>

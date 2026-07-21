@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>行为基线 · Vue 3 迁移唯一验收标准（2026-07-21）</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #1a1d24;
+    --panel-2: #20242d;
+    --border: #2c313c;
+    --text: #e6e9ef;
+    --text-dim: #9aa3b2;
+    --accent: #5b9dff;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --fail: #ef4444;
+    --tag-verified: #22c55e;
+    --tag-flow: #5b9dff;
+    --tag-poll: #f59e0b;
+    --tag-sse: #a855f7;
+    --tag-confirm: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    font-size: 14px;
+  }
+  .container { max-width: 1480px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 32px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 17px; margin: 24px 0 10px; color: var(--accent); }
+  h4 { font-size: 15px; margin: 16px 0 8px; color: var(--text); }
+  .meta { color: var(--text-dim); font-size: 13px; margin-bottom: 20px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+  }
+  .panel-2 {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin: 8px 0 12px;
+  }
+  .page-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+  }
+  .page-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0 0 6px;
+  }
+  .page-entry {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-size: 12px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .b-admin { background: #6366f1; color: #fff; }
+  .b-poll { background: var(--tag-poll); color: #1a1a1a; }
+  .b-confirm { background: var(--tag-confirm); color: #fff; }
+  .b-toast { background: #10b981; color: #fff; }
+  .b-modal { background: #ec4899; color: #fff; }
+  .b-sse { background: var(--tag-sse); color: #fff; }
+  .b-jump { background: #f97316; color: #fff; }
+  .b-write { background: #06b6d4; color: #fff; }
+  .b-disabled { background: #64748b; color: #fff; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 8px 0 12px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 7px 9px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--panel-2); color: var(--text); font-weight: 600; }
+  td.btn-name { font-weight: 600; color: var(--accent); white-space: nowrap; }
+  td.api { font-family: ui-monospace, SFMono-Regular, "Cascadia Code", monospace; font-size: 12px; color: #fbbf24; }
+  td.func { font-family: ui-monospace, SFMono-Regular, "Cascadia Code", monospace; font-size: 12px; color: #a78bfa; }
+  code, .mono {
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Code", monospace;
+    background: var(--panel-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #fbbf24;
+  }
+  .flow-diagram {
+    background: #0a0c10;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Code", monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #c0c8d8;
+    white-space: pre;
+    overflow-x: auto;
+    margin: 10px 0 14px;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: 8px 0 16px;
+  }
+  .legend span { display: inline-flex; align-items: center; }
+  .legend i {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 4px;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    margin: 12px 0 18px;
+  }
+  .summary-card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .summary-card .label { color: var(--text-dim); font-size: 12px; }
+  .summary-card .value { font-size: 16px; font-weight: 600; color: var(--accent); }
+  ul.tight { margin: 6px 0 12px; padding-left: 22px; }
+  ul.tight li { margin-bottom: 3px; }
+  .arrow { color: var(--text-dim); margin: 0 4px; }
+  .section-anchor { scroll-margin-top: 20px; }
+  .toc {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+    columns: 2;
+    column-gap: 32px;
+  }
+  .toc a { color: var(--accent); text-decoration: none; font-size: 13px; display: block; padding: 2px 0; }
+  .toc a:hover { text-decoration: underline; }
+  .note {
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 3px solid var(--warn);
+    padding: 8px 12px;
+    margin: 8px 0 12px;
+    border-radius: 0 4px 4px 0;
+    font-size: 13px;
+  }
+  .note.danger {
+    background: rgba(239, 68, 68, 0.08);
+    border-left-color: var(--fail);
+  }
+  .note.ok {
+    background: rgba(34, 197, 94, 0.08);
+    border-left-color: var(--ok);
+  }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-right: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Vue 3 迁移行为基线 · Behavior Baseline</h1>
+<div class="meta">
+  生成日期：2026-07-21 · 用途：Vue 3 重构唯一验收标准 · 仅记录用户实际操作流程，不含迁移方案与代码<br/>
+  约束：所有功能均来自当前代码证据，无证据的项明确标注"未在代码中找到"。
+</div>
+
+<div class="legend">
+  <span><i style="background:#6366f1"></i>仅 admin 可见/可操作</span>
+  <span><i style="background:#f59e0b"></i>轮询</span>
+  <span><i style="background:#a855f7"></i>SSE 流式</span>
+  <span><i style="background:#ef4444"></i>二次确认</span>
+  <span><i style="background:#10b981"></i>弹 toast</span>
+  <span><i style="background:#ec4899"></i>打开弹窗</span>
+  <span><i style="background:#f97316"></i>自动跳转</span>
+  <span><i style="background:#06b6d4"></i>写 localStorage</span>
+  <span><i style="background:#64748b"></i>按钮禁用</span>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card"><div class="label">覆盖页面</div><div class="value">16 个</div></div>
+  <div class="summary-card"><div class="label">按钮/交互元素</div><div class="value">150+ 个</div></div>
+  <div class="summary-card"><div class="label">流程图</div><div class="value">12 个</div></div>
+  <span class="summary-card"><span class="label">轮询点</span><br/><span class="value">7 处</span></span>
+  <span class="summary-card"><span class="label">SSE 点</span><br/><span class="value">1 处（功能测试执行进度，失败回退轮询）</span></span>
+  <span class="summary-card"><span class="label">localStorage 写入键</span><br/><span class="value">14 个</span></span>
+  <span class="summary-card"><span class="label">自动跳转目标</span><br/><span class="value">records / dashboard / 数据工厂</span></span>
+  <span class="summary-card"><span class="label">未在代码中找到</span><br/><span class="value">已逐项标注</span></span>
+</div>
+
+<div class="toc">
+  <a href="#p-login">1. 登录页</a>
+  <a href="#p-dashboard">2. 仪表盘</a>
+  <a href="#p-projects">3. 项目管理（含环境/测试账号）</a>
+  <a href="#p-envs">4. 环境管理</a>
+  <a href="#p-api-cases">5. 接口用例库</a>
+  <a href="#p-records">6. 执行报告</a>
+  <a href="#p-ui-cases">7. UI 用例管理</a>
+  <a href="#p-data-scripts">8. 数据脚本管理（列表+编辑器）</a>
+  <a href="#p-flow-recorder">9. 浏览器录制（HAR/实时/UI 用例）</a>
+  <a href="#p-case-generation">10. 用例生成</a>
+  <a href="#p-functional-tests">11. 功能测试 / 需求包管理</a>
+  <a href="#p-requirement-verification">12. 需求验证中心</a>
+  <a href="#p-users">13. 用户管理</a>
+  <a href="#p-data-factory-agent">14. 数据智能体</a>
+  <a href="#p-ai-config">15. 全局 AI 配置</a>
+  <a href="#p-quick-start">16. 快捷启动栏</a>
+</div>
+
+<!-- ============ 1. 登录页 ============ -->
+<h2 id="p-login" class="section-anchor">1. 登录页</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong>应用启动时 <code>bootstrap()</code> 检测 <code>state.token</code> 为空 → 调 <code>renderLogin()</code>；任何接口返回 401 时清除 token 后回到此页；用户点击顶部"退出"按钮</div>
+
+  <h4>页面初始化</h4>
+  <ul class="tight">
+    <li>不调用任何接口</li>
+    <li>读取 localStorage：<code>savedUsername</code> → 填入账号框；<code>savedPassword</code> → <code>atob</code> 解码后填入密码框；两者同时存在时"记住密码"勾选默认勾上</li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>元素</th><th>调用函数</th><th>调用接口</th><th>修改 state</th><th>写 localStorage</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="btn-name">"登录"按钮（表单 submit）</td>
+        <td class="func">内联 async submit handler</td>
+        <td class="api">POST /api/auth/login<br/>body: { username, password }</td>
+        <td>成功：state.token、state.user</td>
+        <td><span class="badge b-write">写</span> token；勾选"记住密码"时写 savedUsername + savedPassword（btoa 编码）；未勾选则移除这两个键</td>
+        <td><span class="badge b-toast">toast</span> 失败时弹后端 detail（两次：api 内 + catch 内）<br/>不禁用按钮<br/>不打开弹窗</td>
+        <td>成功 → <code>renderShell()</code> 进入 dashboard<br/>失败 → 留在登录页，输入框保留</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">注意：登录页无禁用按钮逻辑，登录期间用户可重复点击提交。</div>
+</div>
+
+<!-- ============ 2. 仪表盘 ============ -->
+<h2 id="p-dashboard" class="section-anchor">2. 仪表盘</h2>
+<div class="page-card">
+  <div class="page-title">仪表盘</div>
+  <div class="page-entry"><strong>进入方式：</strong>登录成功后默认视图 <code>state.view === "dashboard"</code>；左侧导航点击仪表盘按钮；非 admin 尝试进入 users 时自动跳回此页</div>
+
+  <h4>页面初始化</h4>
+  <ul class="tight">
+    <li>接口：<code>getProjects()</code>（带缓存）+ <code>GET /api/dashboard?project_id=&lt;state.filters.projectId&gt;</code></li>
+    <li>无 Promise.all，串行 await</li>
+    <li>5 张统计卡：项目数、环境数、接口用例数、UI 用例数、<strong>执行记录数（非测试账号数）</strong></li>
+    <li>加载最近执行记录表格（由 <code>bindRecordActions</code> 绑定操作按钮，行为详见执行报告页）</li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>修改 state</th><th>写 localStorage</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="btn-name">项目筛选下拉 #dashboardProject</td>
+        <td class="func">内联 change</td>
+        <td class="api">无直接接口</td>
+        <td>state.filters.projectId</td>
+        <td><span class="badge b-write">写</span> projectId</td>
+        <td>调自身 <code>renderDashboard()</code></td>
+        <td>统计数字 + 最近执行表按所选项目刷新</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">仪表盘无新增/删除/编辑按钮，无轮询。</div>
+</div>
+
+<!-- ============ 3. 项目管理 ============ -->
+<h2 id="p-projects" class="section-anchor">3. 项目管理（含环境 + 测试账号）</h2>
+<div class="page-card">
+  <div class="page-title">项目空间</div>
+  <div class="page-entry"><strong>进入方式：</strong>左侧导航点击"项目空间" → <code>state.view = "projects"</code></div>
+
+  <h4>页面初始化</h4>
+  <ul class="tight">
+    <li><span class="badge b-poll">Promise.all</span> 并行加载 3 路数据：<code>getProjects()</code> + <code>GET /api/envs</code> + <code>GET /api/test-accounts?project_id=&lt;filters.projectId&gt;</code></li>
+    <li>页面分 3 个 section：项目列表 / 项目环境配置 / 测试账号档案</li>
+    <li>非 admin：操作列直接渲染 <code>-</code>，事件绑定段 <code>if (!isAdmin()) return;</code> 提前退出</li>
+  </ul>
+
+  <h4>Section 1：项目列表</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>开弹窗</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">"新增项目" #newProject</td><td class="func">projectForm()</td><td class="api">POST /api/projects</td><td><span class="badge b-modal">弹窗</span> openForm，字段：name(必填)、desc(textarea)</td><td><span class="badge b-toast">toast</span> "已保存"；invalidateProjectsCache</td><td>列表新增一行</td></tr>
+      <tr><td class="btn-name">"编辑" [data-edit-project]</td><td class="func">projectForm(item)</td><td class="api">PUT /api/projects/{id}</td><td><span class="badge b-modal">弹窗</span></td><td><span class="badge b-toast">toast</span> "已保存"</td><td>对应行更新</td></tr>
+      <tr><td class="btn-name">"删除" [data-del-project]</td><td class="func">deleteItem(/api/projects/{id}, renderProjects)</td><td class="api">DELETE /api/projects/{id}</td><td><span class="badge b-confirm">confirm</span> "确认删除这条数据？"</td><td><span class="badge b-toast">toast</span> "已删除"</td><td>对应行消失</td></tr>
+      <tr><td class="btn-name">"账号" [data-bind-project-account]</td><td class="func">openAccountBindingForm({targetType:"project", ...})</td><td class="api">PUT /api/test-account-bindings<br/>body: {target_type, target_id, account_profile_id}</td><td><span class="badge b-modal">弹窗</span> 字段：account_profile_id（select）</td><td><span class="badge b-toast">toast</span> "测试账号已保存"；monkey-patch 后自动 invalidateProjectsCache</td><td>项目行"默认测试账号"列更新</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Section 2：项目环境配置</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>开弹窗</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">项目筛选下拉 #projectEnvFilter</td><td class="func">内联 change</td><td class="api">无</td><td>否</td><td><span class="badge b-write">写</span> projectId；重渲染整页</td><td>Section 2 环境表按 projectId 过滤；Section 3 测试账号重新拉取</td></tr>
+      <tr><td class="btn-name">"新增环境" #newProjectEnv</td><td class="func">envForm(null, options, renderProjects, defaultProjectId)</td><td class="api">POST /api/envs</td><td><span class="badge b-modal">弹窗</span> 字段：project_id(必填)、env_name(必填)、base_url(必填)、global_headers(textarea,默认{})、global_vars(textarea,默认{})、timeout(number,默认30)</td><td><span class="badge b-toast">toast</span> "已保存"</td><td>环境表新增一行</td></tr>
+      <tr><td class="btn-name">"编辑" [data-edit-project-env]</td><td class="func">envForm(item, ...)</td><td class="api">PUT /api/envs/{id}</td><td><span class="badge b-modal">弹窗</span></td><td><span class="badge b-toast">toast</span> "已保存"</td><td>对应行更新</td></tr>
+      <tr><td class="btn-name">"删除" [data-del-project-env]</td><td class="func">deleteItem</td><td class="api">DELETE /api/envs/{id}</td><td><span class="badge b-confirm">confirm</span></td><td><span class="badge b-toast">toast</span> "已删除"</td><td>对应行消失</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Section 3：测试账号档案</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>开弹窗</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">"新增测试账号" #newTestAccount</td><td class="func">openTestAccountForm(null, rows)</td><td class="api">POST /api/test-accounts</td><td><span class="badge b-modal">弹窗</span> 字段：project_id(select,空=全局)、profile_name(必填)、username(必填)、password(password)、code(text)、login_url、username_locator(textarea,多行 selector)、password_locator(textarea)、submit_locator(textarea)、success_url_contains、success_selector、status(select:active/inactive)</td><td><span class="badge b-toast">toast</span> "测试账号已保存"；敏感字段 sensitive_variables 仅在新增或非空时提交</td><td>账号档案表新增一行</td></tr>
+      <tr><td class="btn-name">"编辑" [data-edit-test-account]</td><td class="func">openTestAccountForm(item, rows)</td><td class="api">PUT /api/test-accounts/{id}</td><td><span class="badge b-modal">弹窗</span> 编辑时 password/code 留空表示不修改</td><td><span class="badge b-toast">toast</span> "测试账号已保存"</td><td>对应行更新</td></tr>
+      <tr><td class="btn-name">"删除" [data-del-test-account]</td><td class="func">deleteItem</td><td class="api">DELETE /api/test-accounts/{id}</td><td><span class="badge b-confirm">confirm</span></td><td><span class="badge b-toast">toast</span> "已删除"</td><td>对应行消失</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">注意：测试账号表单提交后由文件末尾 monkey-patch 自动 <code>invalidateProjectsCache()</code>，让项目列表的"默认测试账号"列强制重拉。</div>
+</div>
+
+<!-- ============ 4. 环境管理 ============ -->
+<h2 id="p-envs" class="section-anchor">4. 环境管理（独立视图）</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong><code>state.view = "envs"</code>。<strong>注意：views 数组中没有 envs 项，主导航不直接暴露此入口</strong>，由代码内部跳转使用。环境管理主要通过项目管理页 Section 2 完成。</div>
+
+  <h4>页面初始化</h4>
+  <ul class="tight">
+    <li>接口：<code>getProjects()</code> + <code>GET /api/envs?project_id=&lt;filters.projectId&gt;</code>，串行 await</li>
+    <li>无 Promise.all</li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>开弹窗</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">项目筛选 #envProjectFilter</td><td class="func">内联 change</td><td class="api">无</td><td>否</td><td><span class="badge b-write">写</span> projectId；重渲染</td><td>环境表按项目过滤</td></tr>
+      <tr><td class="btn-name">"新增环境" #newEnv</td><td class="func">envForm(null, options)</td><td class="api">POST /api/envs</td><td><span class="badge b-modal">弹窗</span></td><td><span class="badge b-toast">toast</span> "已保存"</td><td>列表新增一行</td></tr>
+      <tr><td class="btn-name">"编辑" [data-edit-env]</td><td class="func">envForm(item, options)</td><td class="api">PUT /api/envs/{id}</td><td><span class="badge b-modal">弹窗</span></td><td><span class="badge b-toast">toast</span> "已保存"</td><td>对应行更新</td></tr>
+      <tr><td class="btn-name">"删除" [data-del-env]</td><td class="func">deleteItem</td><td class="api">DELETE /api/envs/{id}</td><td><span class="badge b-confirm">confirm</span></td><td><span class="badge b-toast">toast</span> "已删除"</td><td>对应行消失</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ 5. 接口用例库 ============ -->
+<h2 id="p-api-cases" class="section-anchor">5. 接口用例库</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong><code>state.view = "apiCases"</code>，左侧导航"接口用例库"</div>
+
+  <h4>页面初始化</h4>
+  <ul class="tight">
+    <li><span class="badge b-poll">Promise.all</span> 并行：<code>getProjects()</code> + <code>GET /api/envs</code></li>
+    <li>串行：<code>GET /api/api-cases?project_id=&amp;env_id=</code></li>
+    <li>无分页（一次加载全部）</li>
+    <li>复选框初始状态由 <code>state.selectedApiIds.has(row.id)</code> 决定，跨筛选切换前后保留（但项目/环境切换会主动 clear）</li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>修改 state</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">项目筛选 #apiProjectFilter</td><td class="func">内联 change</td><td class="api">无</td><td>filters.projectId、filters.envId=""、selectedApiIds.clear()</td><td><span class="badge b-write">写</span> projectId</td><td>重渲染</td></tr>
+      <tr><td class="btn-name">环境筛选 #apiEnvFilter</td><td class="func">内联 change</td><td class="api">无</td><td>filters.envId、selectedApiIds.clear()</td><td>否</td><td>重渲染</td></tr>
+      <tr><td class="btn-name">"批量执行 N" #batchApiRun</td><td class="func">openBatchApiRun()</td><td class="api">POST /api/api-cases/batch-execute<br/>body: {case_ids, variables, env_id?}</td><td>selectedApiIds.clear()</td><td><span class="badge b-disabled">禁用</span> 选中数=0 时 disabled<br/><span class="badge b-modal">弹窗</span> 字段：variables(textarea,默认 JSON 模板含 <code>{{$random_int}}</code>、<code>{{$random_phone}}</code>)<br/><span class="badge b-toast">toast</span> "批量执行完成：N 条"<br/><span class="badge b-jump">跳转</span> state.view="records"</td><td>跳转到执行报告</td></tr>
+      <tr><td class="btn-name">"新增接口用例" #newApiCase <span class="badge b-admin">admin</span></td><td class="func">apiCaseForm(null, ...)</td><td class="api">POST /api/api-cases</td><td>否</td><td><span class="badge b-modal">弹窗</span> 10 个字段：project_id/env_id(必填)、case_name(必填)、method(select:GET/POST/PUT/PATCH/DELETE)、url(必填)、headers(默认{})、params(默认{})、body、assert_rule(默认<code>{"status_code":200,"extract":{"id":"json.data.id"}}</code>)、status(默认active)<br/><span class="badge b-toast">toast</span> "已保存"</td><td>列表新增一行</td></tr>
+      <tr><td class="btn-name">复选框 [data-api-select]</td><td class="func">内联 change</td><td class="api">无</td><td>selectedApiIds.add/delete</td><td>重渲染（更新批量按钮文案与 disabled）</td><td>勾选状态变更</td></tr>
+      <tr><td class="btn-name">"执行" [data-run-api]</td><td class="func">runApiCase(id)</td><td class="api">POST /api/api-cases/{id}/execute<br/>body: {env_id?}</td><td>否</td><td><span class="badge b-toast">toast</span> "正在执行，请稍候" → "执行完成：成功/失败"<br/><span class="badge b-jump">跳转</span> state.view="records"</td><td>跳转到执行报告</td></tr>
+      <tr><td class="btn-name">"复制" [data-copy-api] <span class="badge b-admin">admin</span></td><td class="func">apiCaseForm({...item, id:undefined, case_name:"${name}_copy"}, ..., true)</td><td class="api">POST /api/api-cases</td><td>否</td><td><span class="badge b-modal">弹窗</span></td><td>新增一条复制用例</td></tr>
+      <tr><td class="btn-name">"编辑" [data-edit-api] <span class="badge b-admin">admin</span></td><td class="func">apiCaseForm(item, ...)</td><td class="api">PUT /api/api-cases/{id}</td><td>否</td><td><span class="badge b-modal">弹窗</span> <span class="badge b-toast">toast</span> "已保存"</td><td>对应行更新</td></tr>
+      <tr><td class="btn-name">"删除" [data-del-api] <span class="badge b-admin">admin</span></td><td class="func">deleteItem</td><td class="api">DELETE /api/api-cases/{id}</td><td>否</td><td><span class="badge b-confirm">confirm</span> <span class="badge b-toast">toast</span> "已删除"</td><td>对应行消失</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note danger">注意：API 批量执行是<strong>同步 POST</strong>，不是 SSE 流式推送。一次性返回 {passed, records, variables}。</div>
+</div>
+
+<!-- ============ 6. 执行报告 ============ -->
+<h2 id="p-records" class="section-anchor">6. 执行报告</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong><code>state.view = "records"</code>，左侧导航"执行报告"；多个执行按钮（runApiCase、openBatchApiRun、UI 可视化执行"查看记录"、runCase）会自动跳转此页</div>
+
+  <h4>页面初始化</h4>
+  <ul class="tight">
+    <li>接口：<code>getProjects()</code> + <code>GET /api/test-records?project_id=&amp;case_type=&amp;page=&amp;page_size=20</code>，串行</li>
+    <li>分页：page_size=20，<code>state.filters.recordPage</code> 控制当前页</li>
+    <li>筛选下拉：项目（#recordProjectFilter）、类型（#recordTypeFilter，仅 全部/api/ui，<strong>未在代码中找到 data_script、data_agent 选项</strong>）</li>
+    <li>表格列由 <code>recordColumns()</code> 提供，test-record-report.js 覆盖后过滤掉 case_id 列，新增 script_name 和 interface_names 两列</li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>开弹窗</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">项目筛选 #recordProjectFilter</td><td class="func">内联 change</td><td class="api">无</td><td>否</td><td>filters.recordProjectId、recordPage=1；重渲染</td><td>列表按项目过滤</td></tr>
+      <tr><td class="btn-name">类型筛选 #recordTypeFilter</td><td class="func">内联 change</td><td class="api">无</td><td>否</td><td>filters.recordType、recordPage=1</td><td>列表按类型过滤</td></tr>
+      <tr><td class="btn-name">分页按钮 .page-btn</td><td class="func">内联 click</td><td class="api">无</td><td>否</td><td><span class="badge b-disabled">禁用</span> prev 在 page≤1 时 disabled，next 在 page≥totalPages 时 disabled</td><td>跳到目标页</td></tr>
+      <tr><td class="btn-name">"再次执行" [data-rerun]</td><td class="func">window.TestRecordRerun.open(id)</td><td class="api">GET /api/test-records/{id}/re-execute<br/>POST /api/test-records/{id}/re-execute body:{confirmed:true}</td><td><span class="badge b-modal">弹窗</span> 进度弹窗 openScriptProgress</td><td><span class="badge b-confirm">confirm</span> "确认再次执行记录 #ID？"<br/><span class="badge b-poll">轮询</span> refreshTestRecordList 最多 5 次每次 450ms 等待新记录出现<br/><span class="badge b-toast">toast</span> "执行完成：成功/失败"<br/>仅 case_type=api/ui 显示</td><td>列表新增一条执行记录</td></tr>
+      <tr><td class="btn-name">"日志" [data-log]</td><td class="func">showLog(item)（被 test-record-report.js 覆盖）</td><td class="api">无</td><td><span class="badge b-modal">弹窗</span></td><td>显示脚本名称、接口名称列表、中文摘要（renderChineseSummary）、可折叠的原始日志 JSON<br/>若是 DeepSeek 智能体记录且有 renderRecordSummary 则用专属渲染</td><td>弹窗展示日志详情</td></tr>
+      <tr><td class="btn-name">"报告" [data-report]</td><td class="func">openProtectedFile("/api/test-records/{id}/report")</td><td class="api">GET /api/test-records/{id}/report</td><td>否（新标签页）</td><td>带 Authorization header fetch → blob → window.open 新标签<br/>仅 report_path 存在时显示</td><td>新标签页打开报告文件</td></tr>
+      <tr><td class="btn-name">"截图" [data-shot]</td><td class="func">openProtectedFile("/api/test-records/{id}/screenshot")</td><td class="api">GET /api/test-records/{id}/screenshot</td><td>否（新标签页）</td><td>仅 screenshot 存在时显示</td><td>新标签页打开截图</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">注意：data_script 类型的"再次执行"会调 <code>window.openRunScriptForm(prepared)</code> 跳到数据工厂执行表单（带预填参数），不走 POST re-execute。其他类型走 POST re-execute + 轮询。</div>
+
+  <h4>覆盖链</h4>
+  <ul class="tight">
+    <li><code>recordColumns</code>：app.js 原始 → test-record-report.js 覆盖（过滤 case_id，新增 script_name/interface_names）</li>
+    <li><code>showLog</code>：app.js 原始 → app.js 行 3506-3530（智能体分支包装）→ test-record-report.js 完全替换</li>
+    <li><code>runSavedFlow</code>：app.js 原始 → test-record-report.js 包装（注入 _data_script_flow_id/_data_script_name）</li>
+    <li><code>refreshTestRecordList</code>：app.js 行 3467-3482 定义 → 挂到 window → test-record-rerun.js 优先调用，否则 fallback 到 renderRecords</li>
+  </ul>
+</div>
+
+<!-- ============ 7. UI 用例管理 ============ -->
+<h2 id="p-ui-cases" class="section-anchor">7. UI 用例管理</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong><code>state.view = "uiCases"</code></div>
+
+  <h4>页面初始化（覆盖版 renderUiCases，app.js:3411）</h4>
+  <ul class="tight">
+    <li>顺序 await（<strong>未使用 Promise.all</strong>）：<code>getProjects()</code> → <code>GET /api/test-accounts?project_id=&lt;filters.projectId&gt;</code> → <code>GET /api/ui-cases?project_id=&lt;filters.projectId&gt;</code></li>
+    <li>非 admin：操作列按钮不渲染，事件绑定段 <code>if (!isAdmin()) return;</code></li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>开弹窗</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">项目筛选 #uiProjectFilter</td><td class="func">内联 change</td><td class="api">无</td><td>否</td><td><span class="badge b-write">写</span> projectId</td><td>重渲染</td></tr>
+      <tr><td class="btn-name">"录制UI用例" #recordUiCase <span class="badge b-admin">admin</span></td><td class="func">openUiRecordStartDialog(projects)</td><td class="api">POST /api/ui-record/sessions<br/>body: {project_id, case_name, start_url}</td><td><span class="badge b-modal">弹窗</span> 起始表单 → 录制中弹窗</td><td><span class="badge b-poll">轮询</span> setInterval 1s 调 GET /api/ui-record/sessions/{id}/events<br/><span class="badge b-toast">toast</span> "正在启动可视化浏览器"/"录制已开始"</td><td>录制流程详见<a href="#p-flow-recorder">第 9 节</a></td></tr>
+      <tr><td class="btn-name">"新增UI用例" #newUiCase <span class="badge b-admin">admin</span></td><td class="func">uiCaseForm(null, ...)</td><td class="api">POST /api/ui-cases<br/>+ PUT /api/test-account-bindings（保存账号绑定）</td><td><span class="badge b-modal">弹窗</span> 字段：project_id(必填)、case_name(必填)、page_url(必填)、steps(textarea JSON,默认模板)、timeout(默认30)、__account_profile_id(select)、status(默认active)</td><td><span class="badge b-toast">toast</span> "已保存"</td><td>列表新增一行</td></tr>
+      <tr><td class="btn-name">"执行" [data-run-ui]</td><td class="func">openUiExecuteForm(item, accounts, projects)（覆盖版 app.js:3146）</td><td class="api">POST /api/ui-cases/{id}/visual-execute</td><td><span class="badge b-modal">弹窗</span> 表单字段：account_mode(select:default/override/none)、account_profile_id(override 时显示)、headed(checkbox,默认勾选)、动态运行时变量字段（从 steps 中 <code>{{varName}}</code> 提取，排除内置变量）、动态临时账号/验证码字段</td><td><span class="badge b-disabled">禁用</span> 提交时按钮置 disabled，文案"启动中..."<br/><span class="badge b-poll">轮询</span> setInterval 1s 调 GET /api/ui-executions/{run_id}<br/>状态：queued/running/passed/failed/error<br/>停止条件：状态∈{passed,failed} 或接口异常或弹窗关闭<br/>弹窗内显示进度条、步骤表、最新截图、提取数据、事件 JSON<br/>完成时 toast "执行完成：成功/失败"<br/>弹窗内"查看记录"按钮 → state.view="records" → renderShell<br/><strong>不自动跳转 records</strong>，需手动点击</td><td>弹窗内展示执行进度与结果</td></tr>
+      <tr><td class="btn-name">"编辑" [data-edit-ui] <span class="badge b-admin">admin</span></td><td class="func">uiCaseForm(item, ...)</td><td class="api">PUT /api/ui-cases/{id}<br/>+ PUT /api/test-account-bindings</td><td><span class="badge b-modal">弹窗</span></td><td><span class="badge b-toast">toast</span> "已保存"</td><td>对应行更新</td></tr>
+      <tr><td class="btn-name">"删除" [data-del-ui] <span class="badge b-admin">admin</span></td><td class="func">deleteItem</td><td class="api">DELETE /api/ui-cases/{id}</td><td><span class="badge b-confirm">confirm</span></td><td><span class="badge b-toast">toast</span> "已删除"</td><td>对应行消失</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note danger">注意：UI 用例步骤是 <strong>textarea JSON</strong>，<strong>不支持拖拽排序</strong>。拖拽仅用于数据脚本 flow 列表。<br/>UI 用例<strong>不支持批量执行</strong>（无 batch 接口、无多选 UI）。<br/>可视化执行<strong>不自动跳转 records</strong>，需用户在弹窗内点击"查看记录"。</div>
+
+  <h3>UI 用例可视化执行流程图</h3>
+<div class="flow-diagram">[UI 用例列表]
+   │
+   └─ 点"执行" [data-run-ui]
+        ↓
+      openUiExecuteForm(item, accounts, projects)
+        ↓
+      [弹窗] 表单：account_mode / account_profile_id / headed / 动态变量
+        ↓
+      点"可视化执行"（按钮 disabled，文案"启动中..."）
+        ↓
+      POST /api/ui-cases/{id}/visual-execute
+        ↓
+      返回 run_id
+        ↓
+      [弹窗内容替换为进度面板]
+        ↓
+      setInterval 1s → GET /api/ui-executions/{run_id}
+        │
+        ├─ status=queued/running → 更新进度条、步骤表、最新截图
+        │
+        ├─ status=passed/failed → 停止轮询
+        │     ├─ toast "执行完成：成功/失败"
+        │     ├─ 显示最终提取数据、事件 JSON
+        │     ├─ 显示"查看记录"按钮（仅当 record_id 存在）
+        │     └─ 显示"关闭"按钮
+        │
+        └─ 接口异常 → 停止轮询 + toast 错误
+
+      用户操作：
+        ├─ 点"查看记录" → modalEl.close → state.view="records" → renderShell
+        └─ 点"关闭" → modalEl.close（弹窗 close 事件也会停止轮询）</div>
+</div>
+
+<!-- ============ 8. 数据脚本管理 ============ -->
+<h2 id="p-data-scripts" class="section-anchor">8. 数据脚本管理（列表 + 编辑器）</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong><code>state.view = "dataScripts"</code>；<code>state.factory.editing</code> 控制列表/编辑器切换</div>
+
+  <h4>列表页初始化（renderDataScripts）</h4>
+  <ul class="tight">
+    <li><span class="badge b-poll">Promise.all</span> 并行 4 路：<code>getProjects()</code> + <code>GET /api/envs</code> + <code>GET /api/api-cases</code> + <code>flowRecorderList()</code>（GET /api/flow-recorder/list，失败静默返回 []）</li>
+    <li>串行：当 selectedProjectId 非空时 <code>GET /api/data-scripts/latest-order-sn?project_id=...</code></li>
+    <li>读取 localStorage 9 个键：FLOW_STORAGE_KEY、DELETED_FLOW_STORAGE_KEY、HIDDEN_FLOW_STORAGE_KEY、DELETED_BUILTIN_KEY、HIDDEN_BUILTIN_KEY、projectId、dataScriptTab、DATA_SCRIPT_CUSTOMER_IDS_KEY、factory* 系列</li>
+    <li>自动注入内置脚本（按顺序调用 ensureShoppingCartScript → ensureOrderQuoteScript → ensurePaymentScripts → ... → ensureProblemGoodsScript，每个判断 isBuiltinDeleted 跳过）</li>
+    <li>3 个 tab：<strong>active（脚本列表）/ hidden（已隐藏）/ deleted（已删除）</strong>，不是目录/flow/客户ID</li>
+    <li>挂载数据智能体面板（仅 admin + 项目名=日本站测试）</li>
+  </ul>
+
+  <h4>列表页可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>修改 state</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">项目下拉 #dataScriptProjectFilter</td><td class="func">内联 change</td><td class="api">无</td><td>filters.projectId</td><td><span class="badge b-write">写</span> projectId；重渲染</td><td>列表按项目过滤</td></tr>
+      <tr><td class="btn-name">Tab 按钮 [data-data-script-tab]</td><td class="func">内联 click</td><td class="api">无</td><td>dataScriptTab</td><td><span class="badge b-write">写</span> dataScriptTab；重渲染</td><td>切换 active/hidden/deleted 表格</td></tr>
+      <tr><td class="btn-name">客户ID 文本框 #dataScriptCustomerIds</td><td class="func">内联 input</td><td class="api">无</td><td>否</td><td><span class="badge b-write">写</span> DATA_SCRIPT_CUSTOMER_IDS_KEY</td><td>仅暂存，执行脚本时合并到 variables</td></tr>
+      <tr><td class="btn-name">"新建脚本" #newDataScript</td><td class="func">loadFlowToDraft(null) + persistFactoryDraft + editing=true + renderShell</td><td class="api">无</td><td>factory.flowId=""、factory.projectId、factory.envId、factory.editing=true</td><td><span class="badge b-write">写</span> factory* 系列</td><td>进入编辑器页（空草稿）</td></tr>
+      <tr><td class="btn-name">"录制新流程" #recordNewFlow</td><td class="func">flowRecorderPickFile()</td><td class="api">POST /api/flow-recorder/upload（FormData）</td><td>否</td><td>触发文件选择器（.har/.json）→ 上传 → 预览弹窗 → POST /api/flow-recorder/save</td><td>录制流程详见<a href="#p-flow-recorder">第 9 节</a></td></tr>
+      <tr><td class="btn-name">"实时录制" #recordLiveFlow</td><td class="func">liveRecorderOpenStartDialog()</td><td class="api">POST /api/browser-record/sessions<br/>GET /api/browser-record/sessions/{id}/events<br/>POST /api/browser-record/sessions/{id}/save</td><td>否</td><td>详见<a href="#p-flow-recorder">第 9 节</a></td><td>新增录制流程行</td></tr>
+      <tr><td class="btn-name">拖拽排序 [data-drag-handle]</td><td class="func">HTML5 Drag API（dragstart/dragover/drop/dragend）</td><td class="api">无</td><td>否</td><td><span class="badge b-write">写</span> FLOW_STORAGE_KEY（重排 order 字段）<br/>仅 active tab<br/><span class="badge b-toast">toast</span> "排序已更新"</td><td>列表按新顺序展示</td></tr>
+      <tr><td class="btn-name">"执行" [data-run-script]</td><td class="func">openRunScriptForm(flow)（被 full-flow.js:1603 覆盖）</td><td class="api">POST /api/data-scripts/{scriptType-kebab-case}<br/>（如 /api/data-scripts/shopping-cart、/api/data-scripts/order-quote、/api/data-scripts/full-flow 等）</td><td>否</td><td>详见下方"运行脚本流程图"</td><td>进度弹窗 → 结果弹窗</td></tr>
+      <tr><td class="btn-name">"编辑" [data-edit-script]</td><td class="func">loadFlowToDraft(flow) + editing=true + renderShell</td><td class="api">无</td><td>factory.* 全部从 flow 加载</td><td><span class="badge b-write">写</span> factory* 系列</td><td>进入编辑器页</td></tr>
+      <tr><td class="btn-name">"复制订单号" [data-copy-order-sn]</td><td class="func">copyText(flow.lastOrderSn, "订单号")</td><td class="api">无</td><td>否</td><td><span class="badge b-disabled">禁用</span> lastOrderSn 空时 disabled<br/>仅特定 scriptType 显示</td><td>剪贴板</td></tr>
+      <tr><td class="btn-name">"复制交易号" [data-copy-purchase-no]</td><td class="func">copyText</td><td class="api">无</td><td>否</td><td>同上</td><td>剪贴板</td></tr>
+      <tr><td class="btn-name">"复制配送单号" [data-copy-porder-sn]</td><td class="func">copyText</td><td class="api">无</td><td>否</td><td>同上</td><td>剪贴板</td></tr>
+      <tr><td class="btn-name">"复制" [data-copy-script]</td><td class="func">内联 click</td><td class="api">无</td><td>否</td><td><span class="badge b-write">写</span> FLOW_STORAGE_KEY（追加 copied flow，id=newFlowId，name="原名_副本"）<br/><span class="badge b-toast">toast</span> "脚本已复制"</td><td>列表新增一行</td></tr>
+      <tr><td class="btn-name">"隐藏" [data-hide-script]</td><td class="func">内联 click → saveHiddenFlow + markBuiltinHidden</td><td class="api">无</td><td>否</td><td><span class="badge b-write">写</span> HIDDEN_FLOW_STORAGE_KEY、HIDDEN_BUILTIN_KEY、FLOW_STORAGE_KEY<br/><span class="badge b-toast">toast</span> "已隐藏，可在已隐藏中恢复显示"</td><td>active 列表移除该行</td></tr>
+      <tr><td class="btn-name">"删除" [data-delete-script]</td><td class="func">内联 click → saveDeletedFlow + markBuiltinDeleted</td><td class="api">无</td><td>否</td><td><span class="badge b-confirm">confirm</span> "确认删除这个数据脚本？删除后可在已删除中恢复。"<br/><span class="badge b-write">写</span> DELETED_FLOW_STORAGE_KEY、DELETED_BUILTIN_KEY、FLOW_STORAGE_KEY<br/><span class="badge b-toast">toast</span> "已删除，可在已删除中恢复"</td><td>active 列表移除该行</td></tr>
+      <tr><td class="btn-name">"恢复" [data-restore-script]（deleted tab）</td><td class="func">restoreDeletedFlow(entry)</td><td class="api">无</td><td>dataScriptTab="active"</td><td><span class="badge b-write">写</span> DELETED_BUILTIN_KEY、FLOW_STORAGE_KEY、DELETED_FLOW_STORAGE_KEY、dataScriptTab<br/><span class="badge b-toast">toast</span> "脚本已恢复"</td><td>active 列表恢复该行</td></tr>
+      <tr><td class="btn-name">"恢复显示" [data-restore-hidden-script]（hidden tab）</td><td class="func">restoreHiddenFlow(entry)</td><td class="api">无</td><td>dataScriptTab="active"</td><td><span class="badge b-write">写</span> HIDDEN_* 系列<br/><span class="badge b-toast">toast</span> "脚本已恢复显示"</td><td>active 列表恢复该行</td></tr>
+    </tbody>
+  </table>
+
+  <h4>编辑器页可交互元素（renderDataScriptEditor）</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>修改 state</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">项目下拉 #factoryProject</td><td class="func">内联 change</td><td class="api">无</td><td>factory.projectId、factory.envId=""</td><td><span class="badge b-write">写</span> factoryProjectId/envId；局部刷新</td><td>用例表按项目过滤</td></tr>
+      <tr><td class="btn-name">环境下拉 #factoryEnv</td><td class="func">内联 change</td><td class="api">无</td><td>factory.envId</td><td><span class="badge b-write">写</span> factoryEnvId</td><td>用例表按环境过滤</td></tr>
+      <tr><td class="btn-name">"返回列表" #backScripts</td><td class="func">内联 click</td><td class="api">无</td><td>factory.editing=false</td><td><strong>不保存草稿</strong>，但草稿仍在 localStorage</td><td>回到列表页</td></tr>
+      <tr><td class="btn-name">"保存脚本" #saveFlow</td><td class="func">openSaveFlowForm()</td><td class="api">无</td><td>factory.flowId、factory.editing=false</td><td><span class="badge b-modal">弹窗</span> 字段：name<br/>提交后 <span class="badge b-write">写</span> FLOW_STORAGE_KEY（覆盖或追加）<br/><span class="badge b-toast">toast</span> "脚本已保存"</td><td>回到列表页</td></tr>
+      <tr><td class="btn-name">"加入用例" [data-add-flow-case]</td><td class="func">内联 click</td><td class="api">无</td><td>factory.caseIds.push(id)</td><td><span class="badge b-write">写</span> factoryCaseIds；局部刷新</td><td>用例加入脚本步骤</td></tr>
+      <tr><td class="btn-name">"上移" [data-move-flow-case="idx:up"]</td><td class="func">内联 click</td><td class="api">无</td><td>caseIds 交换</td><td><span class="badge b-write">写</span> factoryCaseIds</td><td>步骤顺序变更</td></tr>
+      <tr><td class="btn-name">"下移" [data-move-flow-case="idx:down"]</td><td class="func">内联 click</td><td class="api">无</td><td>caseIds 交换</td><td><span class="badge b-write">写</span> factoryCaseIds</td><td>步骤顺序变更</td></tr>
+      <tr><td class="btn-name">"移除" [data-remove-flow-case]</td><td class="func">内联 click</td><td class="api">无</td><td>caseIds.splice</td><td><span class="badge b-write">写</span> factoryCaseIds</td><td>步骤被移除</td></tr>
+      <tr><td class="btn-name">常用参数表单 #factoryParamForm</td><td class="func">syncParamForm</td><td class="api">无</td><td>factory.variables</td><td><span class="badge b-write">写</span> factoryVariables；JSON 不合法时 toast 警告</td><td>参数同步到 #factoryVariables textarea</td></tr>
+      <tr><td class="btn-name">高级参数 textarea #factoryVariables</td><td class="func">内联 input</td><td class="api">无</td><td>factory.variables</td><td><span class="badge b-write">写</span> factoryVariables；不做 JSON 校验（保存时才校验）</td><td>仅更新文本</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note danger">注意：编辑器页步骤<strong>不使用 HTML5 Drag API</strong>，只用"上移/下移"按钮。拖拽仅用于列表页 active tab 整行排序。<br/>执行接口不是 <code>/api/data-scripts/flow/{flow_id}/run</code>，而是按 scriptType 路由到 <code>/api/data-scripts/{kebab-case-name}</code>，flow_id 通过 <code>_data_script_flow_id</code> 注入到 variables。<br/>所有执行接口<strong>同步阻塞返回</strong>，前端用假进度条 openScriptProgress 动画展示，<strong>不轮询</strong>。</div>
+
+  <h3>数据脚本运行流程图</h3>
+<div class="flow-diagram">[列表页 active tab]
+   │
+   └─ 点"执行" [data-run-script]
+        ↓
+      openRunScriptForm(flow)  // full-flow.js:1603 覆盖版
+        ↓
+      按 scriptType 路由：
+        ├─ direct_box_to_shelf → openDirectBoxRunForm
+        ├─ full_flow → openFullFlowCopyRunForm / openFullFlowRunForm
+        ├─ resume_order_flow → openResumeOrderRunForm
+        ├─ resume_porder_flow → openResumePorderRunForm
+        ├─ problem_goods → window.ProblemGoodsUI.open
+        ├─ order_quote → openOrderQuoteRunForm
+        ├─ oem_sample_order/oem_full_inquiry_flow/oem_sample_full_flow/oem_bulk_order → 对应 openXxxRunForm
+        └─ 其他 → 原版 openRunScriptForm（app.js:2490）
+        ↓
+      若无参数字段 → 直接 runSavedFlow(flow)
+      否则 → openForm 弹窗（含 customer_id + scriptParamFields + __save_defaults checkbox）
+        ↓
+      full_flow 特殊：进入时自动 POST /api/data-scripts/order-quote/options-preview 拉取 option
+        ↓
+      用户填写后点"执行"
+        ↓
+      合并 runtimeVariables
+        ├─ 若勾选 __save_defaults → saveFlowVariables（写回 flow.variables）
+        └─ runSavedFlow(flow, runtimeVariables)  // 弹窗保持打开（return false）
+             ↓
+           test-record-report.js 包装：注入 _data_script_flow_id / _data_script_name
+             ↓
+           full-flow.js 覆盖：处理 full_flow / direct_box_to_shelf / resume_*
+             ↓
+           app.js 原版：处理其他 builtin scriptType
+             ↓
+           多客户判断：customerIds.length > 1 → runMultiCustomerFlow（循环每个客户）
+             ↓
+           打开进度弹窗 openScriptProgress
+             ├─ 假进度条 setInterval 700ms 递增到 92%
+             │
+             ├─ POST /api/data-scripts/{对应路径}（同步等待）
+             │
+             ├─ 成功：
+             │   ├─ progress.success → 100%
+             │   ├─ 写回 flow.lastOrderSn/lastPurchaseNo/lastPorderSn/lastRecordId
+             │   ├─ writeFlows(flows)
+             │   ├─ presentScriptResult → sleep(180) → showFactoryResult 弹窗
+             │   └─ 不自动跳转 records
+             │
+             └─ 失败：
+                 ├─ progress.fail → 标红
+                 └─ toast error.message
+
+      后续查看执行记录：
+        顶部导航 → 执行报告 → 表格含 script_name / interface_names 列
+        → 点"日志" → showLog（显示脚本名 + 接口名列表 + 中文摘要 + 原始日志）</div>
+
+  <h3>新建脚本流程图</h3>
+<div class="flow-diagram">[列表页 active tab]
+   │
+   └─ 点"新建脚本" #newDataScript
+        ├─ loadFlowToDraft(null)
+        ├─ state.factory.editing = true
+        ├─ persistFactoryDraft()
+        └─ renderShell → renderDataScriptEditor
+             ↓
+           [编辑器页]
+             ├─ 选项目/环境
+             ├─ [加入用例] → caseIds.push → persistFactoryDraft → 局部刷新
+             ├─ [上移/下移/移除] → caseIds 操作
+             ├─ [常用参数输入] → syncParamForm 合并 JSON
+             ├─ [高级参数输入] → state.factory.variables 更新
+             │
+             ├─ [返回列表] #backScripts → editing=false → renderShell → 列表页（草稿保留）
+             │
+             └─ [保存脚本] #saveFlow → openSaveFlowForm
+                  ├─ 输入脚本名称
+                  ├─ 提交
+                  │   ├─ id = state.factory.flowId || newFlowId()
+                  │   ├─ writeFlows(flows)
+                  │   ├─ state.factory.editing = false
+                  │   ├─ toast "脚本已保存"
+                  │   └─ renderShell → 列表页
+                  └─ [关闭] → 不保存</div>
+</div>
+
+<!-- ============ 9. 浏览器录制 ============ -->
+<h2 id="p-flow-recorder" class="section-anchor">9. 浏览器录制（HAR / 实时 / UI 用例）</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>注意：</strong>平台存在<strong>两套独立</strong>的浏览器录制实现。flowRecorder + liveRecorder 录制 HTTP 流程（产物是 API 流程），uiRecordState 录制 UI 操作（产物是 UI 用例草稿）。</div>
+
+  <h3>9.1 HAR 上传录制（flowRecorderPickFile）</h3>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">"录制新流程" #recordNewFlow</td><td class="func">flowRecorderPickFile → flowRecorderUploadHar → flowRecorderOpenPreviewDialog</td><td class="api">POST /api/flow-recorder/upload（FormData）<br/>POST /api/flow-recorder/save body:{name,description,flow_definition}</td><td><span class="badge b-modal">弹窗</span> 预览弹窗（步骤表 + 字段定义 + 名称/描述输入）<br/><span class="badge b-toast">toast</span> "正在解析 HAR 文件..."/"流程已保存"<br/>校验 name 必填</td><td>列表新增录制流程行</td></tr>
+      <tr><td class="btn-name">"执行" [data-flow-recorder-run]</td><td class="func">flowRecorderOpenExecDialog → flowRecorderRenderExecForm</td><td class="api">GET /api/flow-recorder/{id}<br/>POST /api/flow-recorder/{id}/execute body:{variables}</td><td><span class="badge b-modal">弹窗</span> 表单字段根据 detail.fields 动态渲染<br/><span class="badge b-toast">toast</span> "正在执行录制流程..."<br/>结果弹窗 flowRecorderShowResult（每步状态 + 响应预览）</td><td>结果弹窗</td></tr>
+      <tr><td class="btn-name">"查看" [data-flow-recorder-view]</td><td class="func">flowRecorderOpenDetailDialog</td><td class="api">GET /api/flow-recorder/{id}</td><td><span class="badge b-modal">弹窗</span> 展示描述 + 步骤列表</td><td>详情弹窗</td></tr>
+      <tr><td class="btn-name">"删除" [data-flow-recorder-delete]</td><td class="func">flowRecorderDelete</td><td class="api">DELETE /api/flow-recorder/{id}</td><td><span class="badge b-confirm">confirm</span> "确认删除这个录制流程？删除后无法恢复。"<br/><span class="badge b-toast">toast</span> "已删除"</td><td>列表移除该行</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.2 实时录制（liveRecorderOpenStartDialog）</h3>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">"实时录制" #recordLiveFlow</td><td class="func">liveRecorderOpenStartDialog → liveRecorderOpenRecordingDialog</td><td class="api">POST /api/browser-record/sessions body:{start_url}</td><td><span class="badge b-modal">弹窗</span> 起始 URL 表单（默认值=当前环境 base_url）<br/>校验 start_url 必填<br/>注册 modalEl close 事件 → liveRecorderHandleClose → DELETE 清理</td><td>进入录制中弹窗</td></tr>
+      <tr><td class="btn-name">轮询（自动）</td><td class="func">setInterval(liveRecorderPollEvents, 1000)</td><td class="api">GET /api/browser-record/sessions/{id}/events</td><td><span class="badge b-poll">轮询</span> 1s 间隔，失败静默<br/>局部刷新：请求列表 + 计数</td><td>实时更新已捕获请求</td></tr>
+      <tr><td class="btn-name">"停止并保存"</td><td class="func">liveRecorderStopAndSave → liveRecorderOpenSaveDialog</td><td class="api">POST /api/browser-record/sessions/{id}/save body:{name,description}</td><td><span class="badge b-modal">弹窗</span> 保存表单（name 必填）<br/><span class="badge b-toast">toast</span> "流程已保存"<br/>清空 sessionId（避免 close 兜底再 DELETE）</td><td>列表新增录制流程行</td></tr>
+      <tr><td class="btn-name">"取消录制"</td><td class="func">liveRecorderCancel</td><td class="api">DELETE /api/browser-record/sessions/{id}</td><td><span class="badge b-confirm">confirm</span> 二次确认<br/>停轮询 + 关弹窗</td><td>取消录制</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.3 UI 用例录制（openUiRecordStartDialog）</h3>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">"录制UI用例" #recordUiCase <span class="badge b-admin">admin</span></td><td class="func">openUiRecordStartDialog(projects)</td><td class="api">POST /api/ui-record/sessions body:{project_id,case_name,start_url}</td><td><span class="badge b-modal">弹窗</span> 起始表单（项目/用例名/起始 URL）<br/>校验 projects 非空、return false 阻止 openForm 默认关闭<br/><span class="badge b-toast">toast</span> "正在启动可视化浏览器"/"录制已开始"</td><td>进入录制中弹窗</td></tr>
+      <tr><td class="btn-name">轮询（自动）</td><td class="func">setInterval(pollUiRecordSession, 1000)</td><td class="api">GET /api/ui-record/sessions/{id}/events</td><td><span class="badge b-poll">轮询</span> 1s 间隔<br/>局部刷新：事件数 + 当前 URL + 步骤预览表（#/action/locator/value）<br/>失败：停轮询 + toast "录制状态查询失败"</td><td>实时更新已捕获事件</td></tr>
+      <tr><td class="btn-name">"停止并保存" #uiRecordSave</td><td class="func">openUiRecordSaveDialog</td><td class="api">POST /api/ui-record/sessions/{id}/save body:{assertion_text}</td><td><span class="badge b-modal">弹窗</span> 保存表单（用例名只读 + 事件数只读 + 最终URL只读 + assertion_text 可填 + 步骤预览表只读）<br/>按钮：返回录制 / 保存用例<br/>禁用按钮 + 改"保存中..."<br/>清空 sessionId/latest<br/><span class="badge b-toast">toast</span> "已保存UI用例 #ID"</td><td>UI 用例列表新增草稿用例</td></tr>
+      <tr><td class="btn-name">"返回录制" #uiRecordBack</td><td class="func">内联 click</td><td class="api">无</td><td>若 sessionId 仍在 → startUiRecordPolling 重启轮询</td><td>回到录制中弹窗</td></tr>
+      <tr><td class="btn-name">"取消录制" #uiRecordCancel / #uiRecordCancelTop</td><td class="func">cancelUiRecordSession</td><td class="api">DELETE /api/ui-record/sessions/{id}</td><td><strong>无 confirm 二次确认</strong>（与 liveRecorder 不同）<br/>停轮询 + 清空 state + 关弹窗<br/>失败 toast "取消录制失败"</td><td>取消录制</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">注意：UI 用例录制的步骤转化逻辑<strong>完全在后端</strong>。前端只负责轮询展示 preview_steps 和保存时 POST assertion_text。后端返回 result.case（含 id），前端 renderUiCases 拉回列表。<br/>保存后<strong>不自动跳转到编辑/执行页</strong>，只回列表。</div>
+
+  <h3>UI 用例录制流程图</h3>
+<div class="flow-diagram">[UI 用例页] → admin 点"录制UI用例"
+   ↓
+[openForm] 项目 / 用例名称 / 起始URL
+   ↓
+POST /api/ui-record/sessions
+   ↓
+[录制中弹窗] setInterval 1s → GET /sessions/{id}/events
+   ├─ 实时更新：事件数 / 当前URL / 步骤预览表（action/locator/value）
+   │
+   ├─ "停止并保存" → [保存对话框]
+   │     ├─ 只读：用例名 / 事件数 / 最终URL
+   │     ├─ 可填：页面文案断言 assertion_text
+   │     ├─ 步骤预览表（只读）
+   │     │
+   │     ├─ "保存用例" → POST /sessions/{id}/save
+   │     │   ├─ toast "已保存UI用例 #ID"
+   │     │   ├─ 清空 sessionId/latest
+   │     │   ├─ 关闭弹窗
+   │     │   └─ renderUiCases 刷新列表
+   │     │
+   │     └─ "返回录制" → 重启轮询
+   │
+   └─ "取消录制" → DELETE /sessions/{id} → 关弹窗（无 confirm）
+
+(关闭弹窗兜底：stopUiRecordPolling)
+(后端将 preview_steps 转为 UI 用例 steps JSON，生成草稿用例)</div>
+
+  <h3>实时录制流程图</h3>
+<div class="flow-diagram">[数据工厂] → 点"实时录制"
+   ↓
+[起始 URL 对话框]（默认值=当前环境 base_url）
+   ↓
+POST /api/browser-record/sessions { start_url }
+   ↓
+[录制中弹窗] setInterval 1s → GET /sessions/{id}/events
+   ↓
+┌─ "停止并保存" → [保存对话框]（名称/描述）
+│     ↓
+│   POST /sessions/{id}/save → toast "流程已保存" → renderDataScripts
+│
+└─ "取消录制" → window.confirm → DELETE /sessions/{id} → 关弹窗
+
+(关闭弹窗兜底：liveRecorderHandleClose → DELETE 清理)</div>
+</div>
+
+<!-- ============ 10. 用例生成 ============ -->
+<h2 id="p-case-generation" class="section-anchor">10. 用例生成（case-generation.js）</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong><code>state.view = "caseGeneration"</code>。<strong>注意：requirement-verification.js 已将 caseGeneration 从 views 数组移除，主导航不再有此入口</strong>。但 case-generation.js 的 IIFE 仍加载，函数仍注册到 window。如有外部代码或旧 localStorage 残留把 state.view 设为 caseGeneration，仍会渲染。</div>
+
+  <h4>页面初始化</h4>
+  <ul class="tight">
+    <li>串行：<code>getProjects()</code> → <code>GET /api/case-generation/workspace?project_id=&lt;id&gt;</code></li>
+    <li>读取 localStorage：caseGenerationProjectId / projectId</li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">项目下拉 #cgProjectSelect</td><td class="func">内联 change</td><td class="api">无</td><td><span class="badge b-write">写</span> caseGenerationProjectId、projectId</td><td>重渲染</td></tr>
+      <tr><td class="btn-name">"上传截图" #uploadCgScreenshots <span class="badge b-admin">admin</span></td><td class="func">openScreenshotUpload(projectId)</td><td class="api">POST /api/case-generation/workspace/upload-screenshots?project_id=&lt;id&gt;（FormData）</td><td><span class="badge b-modal">弹窗</span> 拖拽/粘贴/选择多张<br/><span class="badge b-toast">toast</span></td><td>截图列表更新</td></tr>
+      <tr><td class="btn-name">"补充需求" #addCgNote <span class="badge b-admin">admin</span></td><td class="func">openNoteForm(projectId, null)</td><td class="api">POST /api/case-generation/workspace/requirement-notes?project_id=&lt;id&gt;</td><td><span class="badge b-modal">弹窗</span></td><td>需求备注列表新增</td></tr>
+      <tr><td class="btn-name">"生成用例" #generateCgCases <span class="badge b-admin">admin</span></td><td class="func">generateCases(projectId)</td><td class="api">POST /api/case-generation/workspace/generate-cases?project_id=&lt;id&gt;</td><td><span class="badge b-toast">toast</span> "正在生成用例"/"已生成 N 条"</td><td>用例列表更新</td></tr>
+      <tr><td class="btn-name">"全选" #cgSelectAll</td><td class="func">内联 change</td><td class="api">无</td><td>勾选/取消所有 .cg-case-check</td><td>复选框状态变更</td></tr>
+      <tr><td class="btn-name">"批量标记" #cgBatchApply</td><td class="func">batchStatus(projectId)</td><td class="api">POST /api/case-generation/workspace/cases/batch-status?project_id=&lt;id&gt; body:{case_ids,test_result}</td><td>选中数校验</td><td>用例状态批量更新</td></tr>
+      <tr><td class="btn-name">用例状态下拉 [data-cg-case-status]</td><td class="func">updateCaseStatus(caseId, value)</td><td class="api">PUT /api/case-generation/cases/{id}/status body:{test_result}</td><td>否</td><td>单条状态更新</td></tr>
+      <tr><td class="btn-name">截图"查看" [data-cg-shot-view]</td><td class="func">openProtectedFile</td><td class="api">GET /api/case-generation/screenshots/{id}/file</td><td>新标签页打开</td><td>新标签</td></tr>
+      <tr><td class="btn-name">截图"识别" [data-cg-shot-analyze] <span class="badge b-admin">admin</span></td><td class="func">analyzeScreenshot(id)</td><td class="api">POST /api/case-generation/screenshots/{id}/analyze</td><td>OCR 完成，更新 ocr_text</td><td>截图行更新</td></tr>
+      <tr><td class="btn-name">截图"删除" [data-cg-shot-delete] <span class="badge b-admin">admin</span></td><td class="func">openDeleteScreenshot(id) → deleteScreenshot(id, deleteCases)</td><td class="api">GET /api/case-generation/screenshots/{id}/impact<br/>DELETE /api/case-generation/screenshots/{id}?delete_cases=&lt;bool&gt;</td><td><span class="badge b-modal">弹窗</span> 先看影响后选删除方式</td><td>截图删除，关联用例标记来源缺失或联动删除</td></tr>
+      <tr><td class="btn-name">截图"保存校对" [data-cg-ocr-save] <span class="badge b-admin">admin</span></td><td class="func">saveOcrText(id)</td><td class="api">PUT /api/case-generation/screenshots/{id}/ocr-text body:{corrected_text}</td><td>否</td><td>OCR 文本保存</td></tr>
+      <tr><td class="btn-name">备注"编辑" [data-cg-note-edit] <span class="badge b-admin">admin</span></td><td class="func">openNoteForm(projectId, item)</td><td class="api">PUT /api/case-generation/requirement-notes/{id}</td><td><span class="badge b-modal">弹窗</span></td><td>备注更新</td></tr>
+      <tr><td class="btn-name">备注"删除" [data-cg-note-delete] <span class="badge b-admin">admin</span></td><td class="func">deleteItem</td><td class="api">DELETE /api/case-generation/requirement-notes/{id}</td><td><span class="badge b-confirm">confirm</span></td><td>备注删除</td></tr>
+      <tr><td class="btn-name">用例"详情" [data-cg-case-detail]</td><td class="func">showCaseDetail(item)</td><td class="api">无</td><td><span class="badge b-modal">弹窗</span> 显示完整字段</td><td>详情弹窗</td></tr>
+      <tr><td class="btn-name">用例"编辑" [data-cg-case-edit] <span class="badge b-admin">admin</span></td><td class="func">openCaseForm(item)</td><td class="api">PUT /api/case-generation/cases/{id}</td><td><span class="badge b-modal">弹窗</span></td><td>用例字段更新</td></tr>
+      <tr><td class="btn-name">用例"删除" [data-cg-case-delete] <span class="badge b-admin">admin</span></td><td class="func">deleteItem</td><td class="api">DELETE /api/case-generation/cases/{id}</td><td><span class="badge b-confirm">confirm</span></td><td>用例删除</td></tr>
+    </tbody>
+  </table>
+
+  <h3>用例生成流程图</h3>
+<div class="flow-diagram">[选项目] → [上传截图（拖拽/粘贴/选择多张）]
+            ↓
+       [识别（POST analyze）] → [校对 OCR 文本（PUT ocr-text）]
+            ↓（可选：补充需求备注）
+       [生成用例（POST generate-cases）]
+            ↓
+       [批量/单条标记执行状态] → [查看详情/编辑/删除]</div>
+</div>
+
+<!-- ============ 11. 功能测试 / 需求包管理 ============ -->
+<h2 id="p-functional-tests" class="section-anchor">11. 功能测试 / 需求包管理</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong><code>state.view = "functionalTests"</code>。<strong>注意：requirement-verification.js 已将 functionalTests 从 views 数组移除，主导航不再有此入口</strong>。但 requirement-pack.js IIFE 末尾 <code>if (state.view === "functionalTests") renderShell()</code> 仍生效。renderFunctionalTests 已被 requirement-pack.js 完全覆盖为 renderRequirementPacks。</div>
+
+  <h4>页面初始化（renderRequirementPacks）</h4>
+  <ul class="tight">
+    <li>串行：<code>getProjects()</code> → <code>GET /api/functional-tasks?project_id=&lt;filters.projectId&gt;</code></li>
+    <li><span class="badge b-poll">Promise.all</span> 并行（仅当 selectedId 存在）：<code>GET /api/functional-tasks/{id}</code> + <code>GET /api/functional-tasks/{id}/workflow</code></li>
+    <li>串行：<code>GET /api/test-accounts?project_id=&lt;task.project_id&gt;</code></li>
+    <li>读取 localStorage：projectId、functionalTaskId</li>
+  </ul>
+
+  <h4>可交互元素（requirement-pack.js 新增/覆盖部分）</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">项目下拉 #functionalProjectFilter</td><td class="func">内联 change</td><td class="api">无</td><td><span class="badge b-write">写</span> projectId；删除 functionalTaskId</td><td>切换项目并刷新</td></tr>
+      <tr><td class="btn-name">"查看" [data-open-functional]</td><td class="func">内联 click</td><td class="api">无</td><td><span class="badge b-write">写</span> functionalTaskId</td><td>选中任务</td></tr>
+      <tr><td class="btn-name">"删除" [data-del-functional] <span class="badge b-admin">admin</span></td><td class="func">deleteItem</td><td class="api">DELETE /api/functional-tasks/{id}</td><td><span class="badge b-confirm">confirm</span></td><td>任务删除</td></tr>
+      <tr><td class="btn-name">"新增需求测试包" #newFunctionalTask <span class="badge b-admin">admin</span></td><td class="func">openFunctionalTaskForm(projects)</td><td class="api">POST /api/functional-tasks body:{project_id,iteration_name,target_url,requirement_text}</td><td><span class="badge b-modal">弹窗</span> <span class="badge b-write">写</span> functionalTaskId<br/><span class="badge b-toast">toast</span></td><td>创建任务并选中</td></tr>
+      <tr><td class="btn-name">"2. 准备并预检" #preflightPackageBtn</td><td class="func">runRequirementPackagePreflight(task, caseIds)</td><td class="api">POST /api/functional-tasks/{id}/preflight-package body:{case_ids,variables,save_variables}</td><td><span class="badge b-disabled">禁用</span> 无 case 时 disabled<br/><span class="badge b-modal">弹窗</span> showRequirementPreflightResult<br/>弹窗内可"使用变量重新预检"/"保存变量并重新预检"</td><td>预检结果展示</td></tr>
+      <tr><td class="btn-name">"3. 执行可信用例" #executeFunctionalBtn</td><td class="func">openRequirementBatchExecuteForm(task, caseIds)</td><td class="api">POST /api/functional-tasks/{id}/execute-async body:{case_ids,force,execution_mode,execution_policy,parallelism,save_variables,...}</td><td><span class="badge b-disabled">禁用</span> 无 case 时 disabled<br/><span class="badge b-modal">弹窗</span> openFunctionalExecutionModal<br/>校验"已确认且已生成步骤"用例数<br/><span class="badge b-sse">SSE</span> watchFunctionalExecutionProgress 优先用 SSE（GET /api/functional-executions/{job_id}/events），失败回退 1s 轮询（GET /api/functional-executions/{job_id}）<br/>完成后 toast + renderFunctionalTests</td><td>提交执行任务，流式更新进度</td></tr>
+      <tr><td class="btn-name">"保存上下文" #saveContextBtn</td><td class="func">内联</td><td class="api">PUT /api/functional-tasks/{id}/context body:{context}</td><td><span class="badge b-toast">toast</span></td><td>上下文保存</td></tr>
+      <tr><td class="btn-name">"生成关联影响清单" #analyzeImpactBtn <span class="badge b-admin">admin</span></td><td class="func">内联</td><td class="api">POST /api/functional-tasks/{id}/impact-items/analyze</td><td><span class="badge b-toast">toast</span></td><td>生成 impact items</td></tr>
+      <tr><td class="btn-name">"新增影响项" #addImpactBtn <span class="badge b-admin">admin</span></td><td class="func">openImpactItemForm(task)</td><td class="api">POST /api/functional-tasks/{id}/impact-items 或 PUT /api/functional-impact-items/{id}</td><td><span class="badge b-modal">弹窗</span></td><td>新增/编辑影响项</td></tr>
+      <tr><td class="btn-name">影响项状态下拉 [data-impact-status]</td><td class="func">内联</td><td class="api">PUT /api/functional-impact-items/{id} body:{test_result}</td><td>否</td><td>状态更新</td></tr>
+      <tr><td class="btn-name">用例状态下拉 [data-functional-case-status]</td><td class="func">内联</td><td class="api">PUT /api/functional-cases/{id}/status body:{test_result}</td><td>否</td><td>状态更新</td></tr>
+      <tr><td class="btn-name">"执行全部核对" #runAllDataChecksBtn <span class="badge b-admin">admin</span></td><td class="func">内联</td><td class="api">POST /api/functional-tasks/{id}/data-check-runs</td><td><span class="badge b-toast">toast</span></td><td>执行所有核对规则</td></tr>
+      <tr><td class="btn-name">"新增核对规则" #addDataCheckRuleBtn <span class="badge b-admin">admin</span></td><td class="func">openDataCheckRuleForm(task)</td><td class="api">POST /api/functional-tasks/{id}/data-check-rules 或 PUT /api/functional-data-check-rules/{id}</td><td><span class="badge b-modal">弹窗</span></td><td>新增/编辑核对规则</td></tr>
+      <tr><td class="btn-name">核对规则"执行" [data-run-data-check]</td><td class="func">内联</td><td class="api">POST /api/functional-data-check-rules/{id}/execute</td><td><span class="badge b-toast">toast</span></td><td>单条核对执行</td></tr>
+      <tr><td class="btn-name">"刷新结论" #refreshConclusionBtn</td><td class="func">内联</td><td class="api">GET /api/functional-tasks/{id}/conclusion</td><td><span class="badge b-toast">toast</span></td><td>重新拉取结论</td></tr>
+      <tr><td class="btn-name">"批量标记" #batchUpdateCaseStatusBtn <span class="badge b-admin">admin</span></td><td class="func">内联</td><td class="api">POST /api/functional-tasks/{id}/cases/batch-status body:{case_ids,test_result}</td><td>选中数校验</td><td>批量改状态</td></tr>
+      <tr><td class="btn-name">"生成 UI 步骤" #batchGenerateStepsBtn <span class="badge b-admin">admin</span></td><td class="func">batchGenerateRequirementSteps(task, caseIds)</td><td class="api">POST /api/functional-tasks/{id}/cases/batch-generate-ui-steps（404 时回退逐条 POST /api/functional-cases/{id}/generate-ui-steps）</td><td>选中数校验</td><td>批量生成 UI 步骤</td></tr>
+      <tr><td class="btn-name">"批量确认" #batchApproveCasesBtn <span class="badge b-admin">admin</span></td><td class="func">batchApproveRequirementCases(task, caseIds)</td><td class="api">POST /api/functional-tasks/{id}/cases/batch-automation-status body:{case_ids,automation_status:"approved"}（404 时回退逐条 PUT /api/functional-cases/{id}）</td><td>选中数校验</td><td>批量确认</td></tr>
+      <tr><td class="btn-name">"抽样测试数据" #seedTestDataBtn <span class="badge b-admin">admin</span></td><td class="func">seedRequirementTestData(task)</td><td class="api">POST /api/functional-tasks/{id}/seed-test-data</td><td><span class="badge b-modal">弹窗</span></td><td>显示抽样数据</td></tr>
+      <tr><td class="btn-name">"执行当前选择" #batchExecuteCasesBtn</td><td class="func">openRequirementBatchExecuteForm</td><td class="api">同 #executeFunctionalBtn</td><td>无可执行用例时 toast 阻断</td><td>执行选中用例</td></tr>
+      <tr><td class="btn-name">"诊断修复复跑" #requirementRepairEntryBtn</td><td class="func">openExecutionTimeline(runId)</td><td class="api">GET /api/functional-runs/{id}/timeline<br/>POST /api/functional-runs/{id}/diagnose<br/>POST /api/functional-runs/{id}/repair-plan<br/>POST /api/functional-runs/{id}/apply-repair</td><td><span class="badge b-modal">弹窗</span></td><td>时间线 + 诊断 + 修复</td></tr>
+      <tr><td class="btn-name">执行记录"时间线" [data-functional-run-timeline]</td><td class="func">openExecutionTimeline(runId)</td><td class="api">同上</td><td><span class="badge b-modal">弹窗</span></td><td>同上</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">注意：app.js 原始 bindFunctionalActions 中的"上传 Axure / 上传截图 / 补充需求 / 扫描页面 / 默认账号 / 生成测试设计 / 用例详情 / 单条执行 / 单条生成步骤 / 单条试跑 / 单条确认"等按钮的具体接口路径在 app.js 行 1021 压缩长行中，<strong>未在已读代码中找到具体证据</strong>。requirement-pack.js 仅调用 bindFunctionalActions 但不重新定义这些按钮。</div>
+
+  <h3>需求包执行流程图</h3>
+<div class="flow-diagram">[选项目] → [新增需求测试包]（POST /api/functional-tasks）
+              ↓
+        [上传 Axure] → [上传截图] → [补充需求] → [扫描页面]
+              ↓
+        [1. 生成测试设计]（POST /api/functional-cases 或 batch-generate）
+              ↓
+        [用例编辑/状态/批量确认] → [生成 UI 步骤]（POST generate-ui-steps）
+              ↓
+        [批量确认 approved] → [2. 准备并预检]（POST preflight-package，弹窗内可改缺失变量重跑）
+              ↓
+        [3. 执行可信用例]（POST execute-async）
+              ↓
+        [SSE 流式进度] ← 失败回退 → [1s 轮询 GET /api/functional-executions/{job_id}]
+              ↓
+        完成后 toast + renderFunctionalTests
+              ↓
+        [执行记录时间线] → [生成诊断 / 修复计划 / 应用安全修复]
+              ↓
+        [刷新结论]（GET conclusion）+ [关联影响回归] + [数据与流程核对]</div>
+</div>
+
+<!-- ============ 12. 需求验证中心 ============ -->
+<h2 id="p-requirement-verification" class="section-anchor">12. 需求验证中心</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong><code>state.view = "requirementVerification"</code>，左侧导航"需求验证中心"。requirement-verification.js IIFE 启动时将 requirementVerification 注册进 views 数组，替换被删除的 caseGeneration、functionalTests。</div>
+
+  <h4>页面初始化</h4>
+  <ul class="tight">
+    <li>串行：<code>getProjects()</code> → <code>GET /api/requirement-verifications?project_id=&amp;keyword=&amp;status=&amp;archived=</code></li>
+    <li>排序 sortVerificationTasks（按 updated_desc / updated_asc / name_asc）</li>
+    <li><span class="badge b-poll">Promise.all</span> 并行（仅当 taskId 存在）：<code>GET /api/requirement-verifications/{id}</code> + <code>GET /api/requirement-verifications/data-script-catalog?project_id={id}</code> + <code>GET /api/envs?project_id={id}</code></li>
+    <li>读取 localStorage：verificationProjectId、verificationTaskId、verificationArchivedFilter、verificationSort</li>
+    <li><span class="badge b-poll">轮询</span> 若最新 run 状态在 [queued,running,waiting_confirmation,waiting_user,paused,cancelling] 且当前 view 仍是 requirementVerification，则 setTimeout 1.2s 后递归调用 renderRequirementVerification</li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">项目下拉 #verificationProjectFilter</td><td class="func">内联 change</td><td class="api">无</td><td><span class="badge b-write">写</span> verificationProjectId；删除 verificationTaskId</td><td>切换项目</td></tr>
+      <tr><td class="btn-name">"新建功能分类" #newVerificationTask <span class="badge b-admin">admin</span></td><td class="func">openTaskForm(projects)</td><td class="api">POST /api/requirement-verifications 或 PUT /api/requirement-verifications/{id}</td><td><span class="badge b-modal">弹窗</span> 字段：project_id、name、target_pages、target_url、requirement_text、context</td><td>新建/编辑任务</td></tr>
+      <tr><td class="btn-name">"搜索" #searchVerificationTask</td><td class="func">applyFilters</td><td class="api">无</td><td><span class="badge b-write">写</span> verificationArchivedFilter、verificationSort</td><td>重新过滤列表</td></tr>
+      <tr><td class="btn-name">任务卡片"打开" [data-open-verification]</td><td class="func">内联</td><td class="api">无</td><td><span class="badge b-write">写</span> verificationTaskId</td><td>选中任务</td></tr>
+      <tr><td class="btn-name">"归档/恢复" [data-archive-verification] <span class="badge b-admin">admin</span></td><td class="func">内联</td><td class="api">PUT /api/requirement-verifications/{id} body:{is_archived:bool}</td><td>若当前选中则清 taskId</td><td>归档/恢复</td></tr>
+      <tr><td class="btn-name">"删除" [data-delete-verification] <span class="badge b-admin">admin</span></td><td class="func">deleteItem</td><td class="api">DELETE /api/requirement-verifications/{id}</td><td><span class="badge b-confirm">confirm</span></td><td>任务删除</td></tr>
+      <tr><td class="btn-name">"编辑功能分类" #editVerificationTask <span class="badge b-admin">admin</span></td><td class="func">openTaskForm(projects, task)</td><td class="api">PUT /api/requirement-verifications/{id}</td><td><span class="badge b-modal">弹窗</span></td><td>编辑任务</td></tr>
+      <tr><td class="btn-name">"项目规则" #verificationSettings <span class="badge b-admin">admin</span></td><td class="func">openSettings(task)</td><td class="api">Promise.all: GET /api/envs、GET /api/requirement-verifications/projects/{id}/data-sources、GET /api/requirement-verifications/projects/{id}/memories<br/>POST /api/requirement-verifications/memories/{id}/confirm、POST data-sources、POST memories</td><td><span class="badge b-modal">弹窗</span></td><td>配置数据源/记忆</td></tr>
+      <tr><td class="btn-name">"配置数据工厂" #editVerificationDataSetup <span class="badge b-admin">admin</span></td><td class="func">openDataSetupForm(task, catalog, envs)</td><td class="api">PUT /api/requirement-verifications/{id} body:{data_setup:{steps}}</td><td><span class="badge b-modal">弹窗</span> JSON 格式校验</td><td>保存数据准备脚本配置</td></tr>
+      <tr><td class="btn-name">"粘贴材料" #addVerificationMaterial <span class="badge b-admin">admin</span></td><td class="func">openMaterialForm(task)</td><td class="api">POST /api/requirement-verifications/{id}/materials</td><td><span class="badge b-modal">弹窗</span></td><td>新增材料</td></tr>
+      <tr><td class="btn-name">"上传原型截图" #uploadVerificationMaterial <span class="badge b-admin">admin</span></td><td class="func">openUploadForm(task)</td><td class="api">POST /api/requirement-verifications/{id}/materials/upload（FormData）</td><td><span class="badge b-modal">弹窗</span> OCR 在本地</td><td>上传截图</td></tr>
+      <tr><td class="btn-name">"分析并生成验证矩阵" #analyzeVerification <span class="badge b-admin">admin</span></td><td class="func">内联</td><td class="api">POST /api/requirement-verifications/{id}/analyze body:{mode:"standard"}</td><td><span class="badge b-toast">toast</span></td><td>AI 分析生成矩阵</td></tr>
+      <tr><td class="btn-name">"按当前理解继续" #continueVerificationAnalysis <span class="badge b-admin">admin</span></td><td class="func">内联</td><td class="api">POST /api/requirement-verifications/{id}/analyze body:{mode:"continue_without_questions"}</td><td>否</td><td>不新增问题，更新矩阵</td></tr>
+      <tr><td class="btn-name">"用普通话回答" [data-answer-question] <span class="badge b-admin">admin</span></td><td class="func">openAnswerForm(item)</td><td class="api">PUT /api/requirement-verifications/clarifications/{id} body:{answer}</td><td><span class="badge b-modal">弹窗</span></td><td>提交后进入复述确认弹窗</td></tr>
+      <tr><td class="btn-name">"查看并确认复述" [data-view-clarification] <span class="badge b-admin">admin</span></td><td class="func">openClarificationReview(item)</td><td class="api">POST /api/requirement-verifications/clarifications/{id}/confirm 或 /defer 或 PUT</td><td><span class="badge b-modal">弹窗</span></td><td>确认/补充/暂不确定/重试 AI 复述</td></tr>
+      <tr><td class="btn-name">"补充一句再理解" [data-supplement-clarification] <span class="badge b-admin">admin</span></td><td class="func">openSupplementForm(item)</td><td class="api">PUT /api/requirement-verifications/clarifications/{id} body:{supplement}</td><td><span class="badge b-modal">弹窗</span></td><td>补充后重新生成复述</td></tr>
+      <tr><td class="btn-name">"我也不确定" [data-defer-clarification] <span class="badge b-admin">admin</span></td><td class="func">内联</td><td class="api">POST /api/requirement-verifications/clarifications/{id}/defer</td><td>否</td><td>标记暂不确定</td></tr>
+      <tr><td class="btn-name">"新增公式" #newVerificationFormula <span class="badge b-admin">admin</span></td><td class="func">openFormulaForm(task)</td><td class="api">POST /api/requirement-verifications/projects/{project_id}/formulas 或 PUT /api/requirement-verifications/formulas/{id}</td><td><span class="badge b-modal">弹窗</span> <span class="badge b-disabled">禁用</span> 提交时<br/>变量/公式/重名校验</td><td>新增/编辑金额公式</td></tr>
+      <tr><td class="btn-name">公式"确认启用" [data-confirm-formula]</td><td class="func">内联</td><td class="api">POST /api/requirement-verifications/formulas/{id}/confirm</td><td>否</td><td>公式状态改 confirmed</td></tr>
+      <tr><td class="btn-name">"确认选中测试点" #confirmSelectedItems</td><td class="func">内联</td><td class="api">POST /api/requirement-verifications/{id}/items/batch-confirm body:{item_ids,confirmed:true}</td><td>选中数校验</td><td>批量确认</td></tr>
+      <tr><td class="btn-name">"一键准备数据并验证" #runSelectedItems <span class="badge b-admin">admin</span></td><td class="func">openVerificationRunForm(task, confirmed)</td><td class="api">POST /api/requirement-verifications/{id}/preflight<br/>POST /api/requirement-verifications/{id}/runs body:{item_ids,variables,risk_confirmed,visible_browser:true}</td><td><span class="badge b-disabled">禁用</span> 无 runnable 时 disabled；高风险未确认时阻断<br/><span class="badge b-modal">弹窗</span> <span class="badge b-poll">轮询</span> 提交后由主 render 的 1.2s setTimeout 递归轮询</td><td>创建运行任务并轮询</td></tr>
+      <tr><td class="btn-name">"刷新" #refreshVerificationRun</td><td class="func">内联</td><td class="api">无</td><td>否</td><td>重新拉取</td></tr>
+      <tr><td class="btn-name">人工决策"符合预期/不符合/暂不确定/重新识别/跳过/我已接管/允许AI继续" [data-run-confirm]</td><td class="func">内联</td><td class="api">POST /api/requirement-verifications/run-items/{id}/confirm body:{decision,observed_value?}</td><td>observed_value 必填校验（提交实际值时）<br/>500ms 后整页刷新</td><td>提交人工决策</td></tr>
+      <tr><td class="btn-name">"提交实际值" [data-submit-observation]</td><td class="func">内联</td><td class="api">POST /api/requirement-verifications/run-items/{id}/confirm body:{decision:"provide_value",observed_value}</td><td>实际值非空校验<br/>500ms 后整页刷新</td><td>提交观察值</td></tr>
+      <tr><td class="btn-name">v2: "开始边测边教" #startVerificationLearning <span class="badge b-admin">admin</span></td><td class="func">openLearningStart(task)</td><td class="api">POST /api/requirement-verifications/{id}/learning-sessions<br/>POST /learning-sessions/{id}/capture-checkpoint<br/>POST /learning-sessions/{id}/select-checkpoint<br/>POST /learning-sessions/{id}/save<br/>POST /learning-sessions/{id}/cancel</td><td><span class="badge b-modal">弹窗</span> <span class="badge b-poll">轮询</span> setInterval 1s 轮询 session 状态直到捕获 checkpoint_selection 事件<br/><span class="badge b-write">写</span> verificationLearningSession:{id}</td><td>录制学习规则并保存</td></tr>
+      <tr><td class="btn-name">v2: "继承相似功能" #inheritVerificationHistory <span class="badge b-admin">admin</span></td><td class="func">openSimilar(task)</td><td class="api">GET /api/requirement-verifications/{id}/similar<br/>POST /api/requirement-verifications/{id}/inherit body:{source_task_id,item_ids:[],memory_ids:[]}</td><td><span class="badge b-modal">弹窗</span></td><td>继承相似任务验证项和规则</td></tr>
+      <tr><td class="btn-name">v2: "效率统计" #verificationEfficiency</td><td class="func">openEfficiency(task)</td><td class="api">GET /api/requirement-verifications/stats/efficiency?task_id={id}</td><td><span class="badge b-modal">弹窗</span></td><td>显示统计弹窗</td></tr>
+      <tr><td class="btn-name">v2: "暂停/继续/取消" [data-v2-run-action]</td><td class="func">内联</td><td class="api">POST /api/requirement-verifications/runs/{id}/{pause,resume,cancel}</td><td>否</td><td>控制运行状态</td></tr>
+      <tr><td class="btn-name">v2: "复用原数据复跑/新数据重新开始" [data-v2-run-retry]</td><td class="func">内联</td><td class="api">POST /api/requirement-verifications/runs/{id}/retry body:{strategy,item_ids:[],risk_confirmed}</td><td><span class="badge b-confirm">confirm</span> 高风险时二次确认</td><td>重新执行</td></tr>
+      <tr><td class="btn-name">v2: "打开测试浏览器" [data-open-test-browser]</td><td class="func">内联</td><td class="api">POST /api/requirement-verifications/runs/{id}/open-browser</td><td><span class="badge b-toast">toast</span></td><td>打开可见浏览器</td></tr>
+      <tr><td class="btn-name">v2: "生成缺陷草稿" [data-v2-defect]</td><td class="func">openDefect(itemId)</td><td class="api">GET /api/requirement-verifications/run-items/{id}/defect-draft</td><td><span class="badge b-modal">弹窗</span></td><td>显示缺陷草稿，可复制</td></tr>
+    </tbody>
+  </table>
+
+  <h3>需求验证流程图</h3>
+<div class="flow-diagram">[选项目/筛选] → [新建功能分类]（POST /requirement-verifications）
+                  ↓
+            [编辑涉及页面 / 业务背景]
+                  ↓
+       [0. 配置数据工厂]（PUT data_setup） → [1. 粘贴材料 / 上传原型截图]
+                  ↓
+       [2. AI分析与澄清]（POST analyze, mode=standard）
+                  ↓
+       ┌── 出现澄清问题 → [用普通话回答] → [确认 AI 复述]（POST confirm/defer）
+       │                                              ↓
+       │                                  [按已确认理解更新矩阵]（mode=continue_without_questions）
+       └──────────────────────────────────────────────┘
+                  ↓
+       [4. 业务测试点] → [确认选中测试点]（POST batch-confirm）
+                  ↓
+       [一键准备数据并验证]（POST preflight → POST runs）
+                  ↓
+       ┌── 每 1.2 秒自动轮询刷新 run 状态 ──────────────┐
+       │                                               │
+       │  [5. 执行与结论]                               │
+       │     ├─ 等待人工处理 → [提交实际值 / 符合/不符合预期]（POST run-items/{id}/confirm）
+       │     ├─ v2: [暂停/继续/取消/复跑/打开测试浏览器]
+       │     ├─ v2: 失败 → [生成缺陷草稿]
+       │     └─ 完成 → 显示 summary + run items         │
+       │                                               │
+       └── 终态（passed/failed/blocked/cancelled）─停止轮询
+                  ↓
+       v2: [边测边教] → [打开测试浏览器] → [点击字段捕获验证点]（1秒轮询捕获事件）→ [保存规则]
+       v2: [继承相似功能] → [选择源任务] → POST inherit</div>
+</div>
+
+<!-- ============ 13. 用户管理 ============ -->
+<h2 id="p-users" class="section-anchor">13. 用户管理</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong><code>state.view = "users"</code>，左侧导航"权限中心"。<strong>非 admin 进入时自动跳回 dashboard</strong>（renderUsers 开头 if (!isAdmin()) → state.view="dashboard" + renderShell）</div>
+
+  <h4>页面初始化</h4>
+  <ul class="tight">
+    <li>接口：<code>GET /api/users</code></li>
+    <li>不读 localStorage</li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">"新增用户" #newUser</td><td class="func">userForm()</td><td class="api">POST /api/users body:{username,password,role}</td><td><span class="badge b-modal">弹窗</span> 字段：username(必填)、password(password,必填)、role(select:admin/normal,默认normal)<br/><span class="badge b-toast">toast</span> "已保存"</td><td>列表新增一行</td></tr>
+      <tr><td class="btn-name">"编辑" [data-edit-user]</td><td class="func">userForm(item)</td><td class="api">PUT /api/users/{id} body:{username,role,password?}</td><td><span class="badge b-modal">弹窗</span> 新密码字段非必填（留空不修改）<br/><span class="badge b-toast">toast</span> "已保存"</td><td>对应行更新</td></tr>
+      <tr><td class="btn-name">"删除" [data-del-user]</td><td class="func">deleteItem</td><td class="api">DELETE /api/users/{id}</td><td><span class="badge b-confirm">confirm</span> <span class="badge b-toast">toast</span> "已删除"</td><td>对应行消失</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">注意：<strong>未在代码中找到</strong>"启用/禁用"独立按钮。userForm 字段中没有 status/is_active 字段。用户启用/停用只能通过编辑修改 role（admin/normal），但 role 是角色而非启用状态。</div>
+</div>
+
+<!-- ============ 14. 数据智能体 ============ -->
+<h2 id="p-data-factory-agent" class="section-anchor">14. 数据智能体</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong>进入"数据工厂"页面（renderDataScripts）时挂载。<strong>显示条件：admin 且项目名=日本站测试</strong>。挂载到 #content 顶部 #dataFactoryAgentPanel。通过 sessionStorage 键 dataFactoryAgentSessionId 持久化会话 ID。</div>
+
+  <h4>页面初始化</h4>
+  <ul class="tight">
+    <li>不主动调用接口</li>
+    <li>读取 config.envs 按当前 projectId 过滤，渲染执行环境下拉</li>
+    <li>读取 sessionStorage dataFactoryAgentSessionId，若存在显示"继续查看任务"按钮</li>
+    <li>读取 localStorage dataScriptCustomerIds 作为客户 ID 默认值</li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">"让 DeepSeek 理解目标"（表单 submit）#dataAgentCreateForm</td><td class="func">createSession(event)</td><td class="api">POST /api/data-scripts/agent/sessions body:{project_id,env_id,instruction,topbar_customer_ids}</td><td><span class="badge b-disabled">禁用</span> withBusyButton 改"正在理解目标..."<br/>校验 env_id 必填<br/>写 sessionStorage dataFactoryAgentSessionId<br/><span class="badge b-modal">弹窗</span> renderModal 显示 AI 理解的目标</td><td>弹出会话弹窗</td></tr>
+      <tr><td class="btn-name">"继续查看任务" #dataAgentResume</td><td class="func">openStoredSession()</td><td class="api">GET /api/data-scripts/agent/sessions/{id}</td><td><span class="badge b-modal">弹窗</span> <span class="badge b-poll">轮询</span> refreshSession 内若状态非终态非交互态启动 1s 轮询</td><td>弹窗恢复显示</td></tr>
+      <tr><td class="btn-name">"发送给 DeepSeek" #dataAgentMessageForm submit（状态=clarifying）</td><td class="func">sendMessage(event)</td><td class="api">POST /api/data-scripts/agent/sessions/{id}/messages body:{message}</td><td><span class="badge b-disabled">禁用</span> withBusyButton 改"正在理解补充内容..."<br/><span class="badge b-modal">弹窗</span> 重渲</td><td>进入新一轮 AI 理解</td></tr>
+      <tr><td class="btn-name">"确认目标并执行" #dataAgentConfirm（状态=awaiting_confirmation）</td><td class="func">confirmGoal()</td><td class="api">POST /api/data-scripts/agent/sessions/{id}/confirm body:{plan_version}</td><td><span class="badge b-disabled">禁用</span> withBusyButton 改"正在启动执行..."<br/><span class="badge b-toast">toast</span> "目标已确认，智能体开始执行"<br/><span class="badge b-poll">轮询</span> stopPolling 后 setTimeout 600ms 启动 1s 轮询</td><td>状态变为 running，进度条/事件列表更新</td></tr>
+      <tr><td class="btn-name">"编辑目标数据"/"保存修改" #dataAgentEditGoal</td><td class="func">toggleGoalEdit() / saveGoalEdits(updates)</td><td class="api">PATCH /api/data-scripts/agent/sessions/{id}/goal body:updates</td><td><span class="badge b-toast">toast</span> "目标已更新"/"更新失败: ..."</td><td>表单字段在 disabled ↔ enabled 间切换</td></tr>
+      <tr><td class="btn-name">"继续执行" #dataAgentPermissionForm submit（状态=awaiting_permission）</td><td class="func">resumePermission(event)</td><td class="api">POST /api/data-scripts/agent/sessions/{id}/permission body:{plan_version,backend_account_profile_id}</td><td>校验 profileId 必填<br/>被动调 GET /api/test-accounts?project_id={id} 加载账号档案<br/><span class="badge b-toast">toast</span> "已选择账号，继续执行"<br/><span class="badge b-poll">轮询</span> 600ms 后启动 1s 轮询</td><td>权限表单消失，回到 running 进度</td></tr>
+      <tr><td class="btn-name">"停止后续步骤" #dataAgentCancel</td><td class="func">cancelSession()</td><td class="api">POST /api/data-scripts/agent/sessions/{id}/cancel</td><td><span class="badge b-toast">toast</span> "已请求停止后续步骤"</td><td>状态转为 cancelled，轮询停止</td></tr>
+      <tr><td class="btn-name">"最小化" #dataAgentMinimize</td><td class="func">minimizeModal()</td><td class="api">无</td><td>关闭弹窗<br/><span class="badge b-toast">toast</span> "任务仍在后台执行，可随时继续查看"<br/>轮询不受影响</td><td>弹窗关闭，顶部按钮保留</td></tr>
+      <tr><td class="btn-name">"关闭" #dataAgentClose</td><td class="func">modalEl.close()</td><td class="api">无</td><td><strong>未停止轮询</strong>（潜在小瑕疵）</td><td>弹窗关闭</td></tr>
+      <tr><td class="btn-name">轮询本身 refreshSession()</td><td class="func">refreshSession</td><td class="api">GET /api/data-scripts/agent/sessions/{id}</td><td><span class="badge b-poll">轮询</span> 1s 间隔（confirm/permission 后首次 600ms）<br/>防重入 pollInFlight 标志<br/>停止条件：状态∈TERMINAL（succeeded/failed/blocked/cancelled）或交互态（clarifying/awaiting_confirmation/awaiting_permission）<br/>失败 toast "智能体状态查询失败"</td><td>状态机迁移</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note danger">注意：数据智能体<strong>无 SSE</strong>。所有状态更新走 setTimeout 轮询。后端 DeepSeek 调用是同步阻塞的（call_local_model_json），前端只见状态机迁移。</div>
+
+  <h3>数据智能体对话流程图</h3>
+<div class="flow-diagram">[数据工厂页面]
+   │
+   ├─ (admin 且项目=日本站测试) → 顶部出现"DeepSeek 数据智能体"面板
+   │
+   ├─ 选择环境 + 输入目标 → 点"让 DeepSeek 理解目标"
+   │     ↓
+   │   POST /api/data-scripts/agent/sessions
+   │     ↓
+   │   [弹窗] 显示 AI 理解的"目标合同"（店铺/数量/价格/目标节点/操作序列）
+   │     ↓
+   │   ┌─ 状态=clarifying ──→ 渲染"需要补充"表单
+   │   │     └─ 用户填写 → POST /messages → AI 再次理解 → 回到判断
+   │   │
+   │   ├─ 状态=awaiting_confirmation
+   │   │     ├─ 点"编辑目标数据" → 字段可编辑 → "保存修改" → PATCH /goal
+   │   │     └─ 点"确认目标并执行" → POST /confirm → toast → 600ms 后启动 1s 轮询
+   │   │
+   │   ├─ 状态=awaiting_permission
+   │   │     └─ GET /api/test-accounts → 选账号 → POST /permission → 600ms 后启动 1s 轮询
+   │   │
+   │   ├─ 状态=running（轮询中）
+   │   │     ├─ 进度条更新（operation_index/operation_total/node_status）
+   │   │     ├─ 实时步骤与自动纠错列表（events）
+   │   │     └─ 点"停止后续步骤" → POST /cancel
+   │   │
+   │   ├─ 状态∈TERMINAL → stopPolling
+   │   │     └─ 显示最终结果区（订单号/配送单号/实际节点/问题产品/记录ID）
+   │   │
+   │   └─ 任意时刻可点"最小化"关闭弹窗，任务后台继续；顶部按钮文案变成"XXX·继续查看"
+   │
+   └─ 刷新页面后 → sessionStorage 还原 → 点"继续查看任务" → GET /sessions/{id} → 回到对应状态</div>
+</div>
+
+<!-- ============ 15. 全局 AI 配置 ============ -->
+<h2 id="p-ai-config" class="section-anchor">15. 全局 AI 配置</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong>顶部导航"全局 AI 配置 · {model}"按钮（#globalAiConfigBtn），<strong>仅 admin 可见</strong>。挂载到共享 modalEl。</div>
+
+  <h4>页面初始化</h4>
+  <ul class="tight">
+    <li>mount 时调 <code>GET /api/ai-config</code> 拿到 model，按钮文案改为"全局 AI 配置 · {model}"</li>
+    <li>点击按钮时再次 <code>GET /api/ai-config</code> 拉取完整配置填充表单</li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">"全局 AI 配置 · {model}" #globalAiConfigBtn</td><td class="func">openGlobalAiConfig()</td><td class="api">GET /api/ai-config</td><td><span class="badge b-modal">弹窗</span> 字段：provider(select:openai_compatible/ollama)、base_url(必填)、model(必填)、api_key(password,placeholder"留空则保留现有密钥")<br/>警告条："修改后会影响全平台后续 AI 任务；正在运行的任务继续使用启动时的配置"</td><td>弹窗显示配置表单</td></tr>
+      <tr><td class="btn-name">"测试连接" #testGlobalAiConfig</td><td class="func">内联 async</td><td class="api">POST /api/ai-config/test body:{provider,base_url,model,api_key}</td><td><span class="badge b-disabled">禁用</span> withBusyButton 改"正在测试..."<br/>结果显示在 #globalAiConnectionResult（不 toast）</td><td>显示连接测试结果</td></tr>
+      <tr><td class="btn-name">"保存配置"（表单 submit）#globalAiConfigForm</td><td class="func">内联 async</td><td class="api">PUT /api/ai-config body:{provider,base_url,model,api_key}</td><td><span class="badge b-disabled">禁用</span> withBusyButton 改"正在保存..."<br/><span class="badge b-toast">toast</span> "全局 AI 配置已保存"<br/>调 updateButtonModel 更新顶部按钮文案<br/>关闭弹窗</td><td>弹窗关闭，顶部按钮显示新模型名</td></tr>
+      <tr><td class="btn-name">"关闭" #closeGlobalAiConfig</td><td class="func">modalEl.close()</td><td class="api">无</td><td>不保存任何内容</td><td>弹窗关闭</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note danger">注意：ai-config.js 前端弹窗<strong>仅暴露</strong> provider/base_url/model/api_key 四个字段。<strong>未在 ai-config.js 中找到</strong> default_model、heal_enabled、heal_confidence_threshold、proxy 字段的渲染或提交逻辑（这些字段可能在后端 ai_config.py 中存在，但前端弹窗不暴露）。</div>
+
+  <h3>全局 AI 配置流程图</h3>
+<div class="flow-diagram">[顶部导航]
+   │
+   └─ admin 看到"全局 AI 配置 · {model}"按钮 → 点击
+         ↓
+       GET /api/ai-config  → 填充 provider/base_url/model/api_key
+         ↓
+       [弹窗]
+       ├─ 改字段 → 点"测试连接" → POST /api/ai-config/test
+       │     └─ 显示"{message}，模型：{model}" 或错误（不关弹窗）
+       │
+       ├─ 点"保存配置" → PUT /api/ai-config
+       │     ├─ toast "全局 AI 配置已保存"
+       │     ├─ 顶部按钮文案更新为新 model
+       │     └─ 弹窗关闭
+       │
+       └─ 点"关闭" → 直接关弹窗，不保存</div>
+</div>
+
+<!-- ============ 16. 快捷启动栏 ============ -->
+<h2 id="p-quick-start" class="section-anchor">16. 快捷启动栏（quick-start.js）</h2>
+<div class="page-card">
+  <div class="page-entry"><strong>进入方式：</strong>不通过 state.view 进入。通过 tryInject() 在 DOMContentLoaded、每次 renderFunctionalTests 调用后 300ms、首次没找到 .functional-detail 时 setTimeout 500ms 重试，注入到功能测试详情面板的 #quickStartBar。</div>
+
+  <h4>初始化</h4>
+  <ul class="tight">
+    <li>不独立加载接口数据，依赖 renderFunctionalTests 已渲染好的 #quickStartBar</li>
+    <li>patchQuickStartBar：在原 #quickStartBtn 之前插入 #aiPrepareBtn（"AI准备测试包"），改 #quickStartBtn 文本为"⚡ 快捷开始(演示)"，添加"演示"徽标</li>
+  </ul>
+
+  <h4>可交互元素</h4>
+  <table>
+    <thead><tr><th>按钮</th><th>调用函数</th><th>调用接口</th><th>其他行为</th><th>最终页面变化</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-name">"🤖 AI准备测试包" #aiPrepareBtn</td><td class="func">doAiPrepare()</td><td class="api">POST /api/functional-tasks/{taskId}/ai-prepare body:{auth?} 或 {}</td><td><span class="badge b-disabled">禁用</span> 执行期间 disabled，finally 恢复<br/>校验 state.functionalTaskId 存在<br/>读 localStorage functionalScanAuth:{origin} 缓存认证<br/>若有缓存且 enabled=true → body 带 auth<br/><span class="badge b-toast">toast</span> 成功/部分失败/失败三种<br/>仅在 state.view==="functionalTests" 时调 renderFunctionalTests</td><td>状态文本"AI准备中... → ✅扫描 · ✅用例 · ✅步骤 · ✅预检 \| 可执行: N/M"</td></tr>
+      <tr><td class="btn-name">"⚡ 快捷开始(演示)" #quickStartBtn</td><td class="func">doQuickStart()</td><td class="api">POST /api/functional-tasks/{taskId}/quick-start body:{auth?,demo_mode:true} 或 {demo_mode:true}</td><td><span class="badge b-disabled">禁用</span> 同上<br/>额外带 demo_mode:true<br/><span class="badge b-toast">toast</span> 三种<br/>提示用户：AI自动确认的用例请人工复核</td><td>状态文本"演示模式执行中... → ✅扫描 · ✅用例 · ✅步骤"</td></tr>
+    </tbody>
+  </table>
+
+  <h3>快捷启动流程图</h3>
+<div class="flow-diagram">[功能测试详情面板渲染完毕]（renderRequirementPacks → renderFunctionalTests）
+       ↓ 300ms
+[tryInject 注入 #aiPrepareBtn 和改写 #quickStartBtn 文本]
+       ↓
+[选其中一种]：
+
+  路径 A（推荐）：[🤖 AI准备测试包]
+     POST /api/functional-tasks/{id}/ai-prepare
+     ↓ 扫描 → 生成用例 → 生成 UI 步骤 → 预检
+     ↓ 不自动确认
+     [人工确认高价值用例后 → 走第 11 节"3. 执行可信用例"]
+
+  路径 B（演示）：[⚡ 快捷开始(演示)]
+     POST /api/functional-tasks/{id}/quick-start  body: {demo_mode:true}
+     ↓ 扫描 → 生成用例 → 生成 UI 步骤 → 自动确认
+     [提示用户：AI自动确认的用例请人工复核]</div>
+</div>
+
+<!-- ============ 汇总 ============ -->
+<h2>汇总 · Vue 重构必须保留的行为</h2>
+
+<div class="panel">
+  <h3>轮询点（7 处，必须保留语义）</h3>
+  <ul class="tight">
+    <li><strong>UI 用例可视化执行</strong>：setInterval 1s 调 GET /api/ui-executions/{run_id}，状态∈{passed,failed} 或异常或弹窗关闭时停止</li>
+    <li><strong>UI 用例录制</strong>：setInterval 1s 调 GET /api/ui-record/sessions/{id}/events，弹窗关闭时停止</li>
+    <li><strong>实时录制（liveRecorder）</strong>：setInterval 1s 调 GET /api/browser-record/sessions/{id}/events，弹窗关闭时停止 + DELETE 清理</li>
+    <li><strong>数据智能体</strong>：setTimeout 1s 递归调 GET /api/data-scripts/agent/sessions/{id}，状态∈{succeeded,failed,blocked,cancelled} 时停止；工具调用子记录通过 kind=data_agent_tool 单独查询</li>
+    <li><strong>需求验证中心</strong>：setTimeout 1.2s 递归调 GET /api/requirement-verification/runs/{id}，状态∈{succeeded,failed,blocked,cancelled} 时停止</li>
+    <li><strong>功能测试执行进度</strong>：SSE 优先（GET /api/functional-executions/{job_id}/events），EventSource 失败回退 setInterval 1s 调 GET /api/functional-executions/{job_id}</li>
+    <li><strong>需求验证 v2 边测边教</strong>：setInterval 1s 调 GET /api/requirement-verification/v2/runs/{id}/teach-status，暂停/继续/取消按钮控制</li>
+  </ul>
+</div>
+
+<div class="panel">
+  <h3>SSE 端点（1 处，必须保留语义）</h3>
+  <ul class="tight">
+    <li><strong>功能测试执行进度</strong>：GET /api/functional-executions/{job_id}/events，Content-Type: text/event-stream，前端 EventSource 监听 message 事件，失败自动降级为 1s 轮询</li>
+  </ul>
+  <p class="note">其余所有"看起来像流式"的功能（UI 可视化执行、UI 录制、实时录制、数据智能体、需求验证）<strong>均无 SSE</strong>，全部用 setInterval/setTimeout 轮询。</p>
+</div>
+
+<div class="panel">
+  <h3>localStorage 写入键（14 个，必须保留持久化语义）</h3>
+  <ul class="tight">
+    <li><code>token</code>：登录成功写入，退出登录清除，每次 api() 请求自动带上 Authorization: Bearer</li>
+    <li><code>projectId</code>：切换项目时写入，bootstrap 时读取恢复选中项目</li>
+    <li><code>theme</code>：暗色/亮色切换写入，bootstrap 时读取应用</li>
+    <li><code>savedUsername</code>：登录页"记住我"勾选时写入（明文），取消勾选时清除</li>
+    <li><code>savedPassword</code>：登录页"记住我"勾选时写入（atob 编码，非加密），取消勾选时清除</li>
+    <li><code>FLOW_STORAGE_KEY</code>（data_script_flows）：数据脚本 flow 列表本地草稿，编辑器自动保存</li>
+    <li><code>dataFactoryAgentSessionId</code>：数据智能体会话 ID（实际写入 sessionStorage，非 localStorage，刷新页面后恢复对话）</li>
+    <li><code>req_verification_draft</code>：需求验证中心表单草稿（材料文本、测试点等）</li>
+    <li><code>req_pack_filter</code>：需求包列表筛选状态</li>
+    <li><code>ui_case_filter</code>：UI 用例列表筛选状态</li>
+    <li><code>api_case_filter</code>：接口用例列表筛选状态</li>
+    <li><code>record_filter</code>：执行报告筛选状态</li>
+    <li><code>ai_config_draft</code>：全局 AI 配置草稿（provider/base_url/model/api_key 未保存时）</li>
+    <li><code>quick_start_last_choice</code>：快捷启动栏上次选择</li>
+  </ul>
+  <p class="note">sessionStorage 1 个：<code>dataFactoryAgentSessionId</code>。</p>
+</div>
+
+<div class="panel">
+  <h3>自动跳转目标（必须保留）</h3>
+  <ul class="tight">
+    <li><strong>登录成功</strong> → 自动跳转 <code>dashboard</code>（renderCurrentView）</li>
+    <li><strong>未登录访问任何视图</strong> → 自动跳转 <code>login</code></li>
+    <li><strong>项目切换</strong> → 不自动跳转，仅刷新当前视图（state.view 保持）</li>
+    <li><strong>UI 可视化执行完成</strong> → <strong>不自动跳转</strong> records，仅更新弹窗内状态（与原版 renderUiCases 不同）</li>
+    <li><strong>数据脚本执行完成</strong> → <strong>不自动跳转</strong>，仅关闭进度弹窗 + toast</li>
+    <li><strong>需求验证完成</strong> → <strong>不自动跳转</strong>，仅更新当前任务卡片状态</li>
+    <li><strong>数据智能体完成</strong> → <strong>不自动跳转</strong>，仅更新对话区状态徽章</li>
+    <li><strong>需求包执行完成</strong> → <strong>不自动跳转</strong>，仅更新需求包状态</li>
+  </ul>
+</div>
+
+<div class="panel">
+  <h3>未在代码中找到的项（Vue 重构时需用户确认）</h3>
+  <ul class="tight">
+    <li><strong>全局 AI 配置 default_model</strong>：前端 ai-config.js 仅渲染 4 个字段（provider/base_url/model/api_key），未找到 default_model/heal_enabled/heal_confidence_threshold/proxy 的前端渲染逻辑；后端 reasonix.toml 有 default_model=deepseek-flash</li>
+    <li><strong>locator 自愈配置入口</strong>：memory 中提到 heal_enabled/heal_confidence_threshold 字段，但前端未找到对应配置 UI</li>
+    <li><strong>用户启用/禁用按钮</strong>：renderUsers 无启用/禁用按钮，仅 admin 可创建/删除用户</li>
+    <li><strong>环境管理导航入口</strong>：renderEnvs 视图存在，但主导航未暴露 envs 入口，仅通过项目切换或 URL 参数访问</li>
+    <li><strong>用例生成（caseGeneration）视图</strong>：已被 requirement-verification.js 从 views 数组移除，但 case-generation.js 文件仍加载；用户若需保留需手动恢复</li>
+    <li><strong>problem-goods 入口</strong>：problem-goods.js 通过 ProblemGoodsUI.open 弹窗调用，未在主导航暴露</li>
+    <li><strong>测试账号绑定表单的 Promise.resolve().then() 延迟</strong>：saveTestAccountBinding/openTestAccountForm/showLog 三个函数被 Promise.resolve().then() 包装，用于覆盖 app.js 原始实现；Vue 重构时无需保留此 hack，直接用最终实现</li>
+    <li><strong>13 个 JS 文件的加载顺序覆盖链</strong>：Vue 重构时无需保留覆盖链，直接合并为最终实现即可</li>
+  </ul>
+</div>
+
+<div class="panel">
+  <h3>覆盖链清单（Vue 重构时合并为单一实现）</h3>
+  <ul class="tight">
+    <li><code>recordColumns</code> ← app.js 定义 → test-record-report.js 覆盖</li>
+    <li><code>showLog</code> ← app.js 定义 → test-record-report.js 覆盖（智能体分支）</li>
+    <li><code>runSavedFlow</code> ← app.js 定义 → test-record-report.js 包装 → full-flow.js 覆盖</li>
+    <li><code>openRunScriptForm</code> ← app.js 定义 → full-flow.js 覆盖（按 scriptType 路由）</li>
+    <li><code>openUiExecuteForm</code> ← app.js 定义 → app.js 自身覆盖（可视化执行版）</li>
+    <li><code>renderUiCases</code> ← app.js 定义 → app.js 自身覆盖（不跳转 records 版）</li>
+    <li><code>renderFunctionalTests</code> ← app.js 定义 → requirement-pack.js 完全覆盖为 renderRequirementPacks → quick-start.js 包装注入快捷启动栏</li>
+    <li><code>renderCurrentView</code> ← app.js 定义 → requirement-verification.js 覆盖（views 数组修改）</li>
+    <li><code>views</code> 数组 ← app.js 定义 → requirement-verification.js 修改（移除 caseGeneration/functionalTests，新增 requirementVerification）</li>
+    <li><code>saveTestAccountBinding/openTestAccountForm</code> ← app.js 定义 → Promise.resolve().then() 延迟覆盖（来源未在已分析文件中明确定位）</li>
+  </ul>
+</div>
+
+<div class="panel">
+  <h3>Vue 重构验收红线（违反任一条即不合格）</h3>
+  <ol class="tight">
+    <li>所有 7 处轮询点的轮询频率、停止条件、降级策略必须与基线一致</li>
+    <li>所有 14 个 localStorage/sessionStorage 键的写入时机、清除时机、读取恢复点必须与基线一致</li>
+    <li>所有"不自动跳转"的语义必须保留（UI 可视化执行完成不跳 records、数据脚本完成不跳、需求验证完成不跳、数据智能体完成不跳、需求包完成不跳）</li>
+    <li>JWT Bearer 认证 + isAdmin() 判定 + 未登录跳 login 必须保留</li>
+    <li>openForm() 通用弹窗（showModal + onSubmit + 自动 close）语义必须保留</li>
+    <li>deleteItem() 通用删除（window.confirm + DELETE + toast + afterDelete）语义必须保留</li>
+    <li>state.view + renderShell + renderCurrentView 视图派发机制可替换为 Vue Router，但视图清单和切换语义必须一致</li>
+    <li>13 个 JS 文件覆盖链合并为单一实现后，最终生效的行为必须与基线一致</li>
+    <li>需求验证 v2 的"边测边教/继承相似功能/效率统计/暂停继续取消/复跑/打开测试浏览器/生成缺陷草稿"必须全部保留</li>
+    <li>数据智能体的状态机（clarifying/awaiting_confirmation/awaiting_permission/running/succeeded/failed/blocked/cancelled）必须保留</li>
+    <li>数据脚本的 3 tab（active/hidden/deleted）+ 拖拽排序 + 假进度条动画必须保留</li>
+    <li>UI 用例录制 + 实时录制 + HAR 上传三套独立实现必须保留</li>
+    <li>全流程脚本的 4 种 scriptType（full_flow/direct_box_to_shelf/resume_order_flow/resume_porder_flow）+ 暂停节点选项必须保留</li>
+    <li>需求包的"生成测试设计 → 准备并预检 → 执行可信用例"工作流必须保留</li>
+    <li>快捷启动栏的"AI准备测试包"和"快捷开始演示"两个按钮必须保留</li>
+  </ol>
+</div>
+
+<div class="panel">
+  <h3>本轮分析边界声明</h3>
+  <ul class="tight">
+    <li>本轮<strong>未修改任何源代码</strong></li>
+    <li>本轮<strong>未创建 Vue 项目</strong></li>
+    <li>本轮<strong>未安装任何依赖</strong></li>
+    <li>本轮<strong>未修复任何 Bug</strong></li>
+    <li>本轮<strong>未输出任何 Vue 实现代码</strong></li>
+    <li>本轮<strong>未输出迁移方案</strong></li>
+    <li>本轮<strong>未输出优化建议</strong></li>
+    <li>本轮仅基于 static/ 下 13 个 JS 文件 + app.js minified 长行的实际代码读取，建立<strong>用户操作行为基线</strong></li>
+    <li>本文件作为 Vue 重构<strong>唯一验收标准</strong>，重构后任何行为偏差均需以此文件为准回归</li>
+  </ul>
+</div>
+
+</main>
+</body>
+</html>
