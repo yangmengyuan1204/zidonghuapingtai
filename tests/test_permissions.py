@@ -583,7 +583,7 @@ def test_data_script_customer_id_derives_frontend_account(monkeypatch):
                     "customer_id": "50",
                     "account": "old-account",
                     "password": "old-password",
-                    "backend_password": "keep-backend-password",
+                    "backend_password": "raku@123456``",
                     "client_tool": "1",
                 },
             },
@@ -593,8 +593,8 @@ def test_data_script_customer_id_derives_frontend_account(monkeypatch):
     assert calls[0]["customer_id"] == "50"
     assert calls[0]["customer_ids"] == ["50"]
     assert calls[0]["account"] == "userID/50In"
-    assert calls[0]["password"] == "raku@123456``"
-    assert calls[0]["backend_password"] == "keep-backend-password"
+    assert calls[0]["password"] == "xiaolin666@@"
+    assert calls[0]["backend_password"] == "xiaolin666@@"
 
 
 def test_data_script_customer_ids_parse_multiple_and_keep_backend_password():
@@ -610,7 +610,7 @@ def test_data_script_customer_ids_parse_multiple_and_keep_backend_password():
     assert variables["customer_ids"] == ["50", "300001", "88"]
     assert variables["customer_id"] == "50"
     assert variables["account"] == "userID/50In"
-    assert variables["password"] == "raku@123456``"
+    assert variables["password"] == "xiaolin666@@"
     assert variables["backend_password"] == "keep-backend-password"
 
 
@@ -854,6 +854,49 @@ def test_order_option_counts_ignore_empty_values():
     )
 
     assert counts == {"1": 2}
+
+
+def test_inspect_order_options_returns_public_catalog(monkeypatch):
+    from collections import OrderedDict
+
+    class FakeRuntime:
+        def client(self, env, variables, log=None):
+            return object(), "https://example.test", 25, "token", True
+
+    catalog = OrderedDict({
+        "79": {
+            "key": "79",
+            "id": 79,
+            "name": "詳細検品",
+            "label": "詳細検品",
+            "name_translate": "详细检查",
+            "price": "2",
+            "price_type": "0",
+            "unit": "件",
+            "template": {"name": "詳細検品"},
+        }
+    })
+    monkeypatch.setattr(data_scripts, "_runtime_from_variables", lambda variables: FakeRuntime())
+    monkeypatch.setattr(
+        data_scripts,
+        "_fetch_order_option_catalog",
+        lambda client, variables: (catalog, {"success": True, "code": 0}, "/client/order.optionList"),
+    )
+
+    result = data_scripts.inspect_order_options(full_flow_env(), {})
+
+    assert result["count"] == 1
+    assert result["path"] == "/client/order.optionList"
+    assert result["options"] == [{
+        "key": "79",
+        "id": 79,
+        "name": "詳細検品",
+        "label": "詳細検品",
+        "name_translate": "详细检查",
+        "price": "2",
+        "price_type": "0",
+        "unit": "件",
+    }]
 
 
 def test_order_options_apply_to_order_detail_fields():
@@ -1281,6 +1324,38 @@ def test_order_quote_options_preview_endpoint_uses_preview_function(monkeypatch)
     assert response.status_code == 200
     assert response.json()["options"][0]["label"] == "FBA贴标"
     assert calls[0]["variables"]["order_shop_count"] == 1
+
+
+def test_order_quote_options_preview_endpoint_returns_bad_request_on_runtime_error(monkeypatch):
+    def fake_preview(_env, _variables):
+        raise RuntimeError("client login failed")
+
+    monkeypatch.setattr(main, "preview_order_quote_options", fake_preview)
+
+    with TestClient(app) as client:
+        admin_token = login(client, "admin", "admin123")
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        project = client.post("/api/projects", headers=headers, json={"name": "option-preview-error-project", "desc": ""}).json()
+        env = client.post(
+            "/api/envs",
+            headers=headers,
+            json={
+                "project_id": project["id"],
+                "env_name": "option-preview-error-env",
+                "base_url": "https://example.test",
+                "global_headers": {},
+                "global_vars": {},
+                "timeout": 30,
+            },
+        ).json()
+        response = client.post(
+            "/api/data-scripts/order-quote/options-preview",
+            headers=headers,
+            json={"env_id": env["id"], "variables": {}},
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "读取订单选项失败：client login failed"
 
 
 def create_case_generation_fixture(client: TestClient, headers: dict):
@@ -2203,6 +2278,40 @@ def test_full_flow_pauses_at_pending_purchase(monkeypatch):
     assert node_status["purchase_no_saved"] == "pending"
 
 
+def test_full_flow_emits_progress_before_and_after_each_coarse_node(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    events = []
+    monkeypatch.setattr(data_scripts, "run_shopping_cart_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("不应补购物车")))
+    monkeypatch.setattr(data_scripts, "run_order_quote_script", lambda env, variables: (True, "", "", {"order_sn": "ORDER-PROGRESS"}))
+    monkeypatch.setattr(
+        data_scripts,
+        "run_balance_payment_script",
+        lambda env, variables: (True, "", "", {"payment_type": "balance", "order_sn": "ORDER-PROGRESS"}),
+    )
+    monkeypatch.setattr(
+        data_scripts,
+        "run_purchase_to_shelf_script",
+        lambda env, variables: (True, "", "", data_scripts._paused_summary("pending_purchase", {"order_sn": "ORDER-PROGRESS"})),
+    )
+    monkeypatch.setattr(data_scripts, "run_warehouse_delivery_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("不应创建配送单")))
+
+    passed, _, _, _ = data_scripts.run_full_flow_script(
+        full_flow_env(),
+        {"stop_after_node": "pending_purchase"},
+        progress_callback=events.append,
+    )
+
+    assert passed is True
+    assert [(item["node"], item["status"]) for item in events] == [
+        ("order_offered", "running"),
+        ("order_offered", "completed"),
+        ("order_paid", "running"),
+        ("order_paid", "completed"),
+        ("pending_purchase", "running"),
+        ("pending_purchase", "completed"),
+    ]
+
+
 def test_full_flow_balance_insufficient_uses_bank_payment(monkeypatch):
     patch_full_flow_report(monkeypatch)
     calls = []
@@ -2410,6 +2519,34 @@ def test_detect_resume_order_flow_shelf_stored_from_order_status(monkeypatch):
     assert summary["detected_start_node"] == "shelf_stored"
     assert summary["order_detail_id"] == "DETAIL-STORED"
     assert summary["order_detail_ids"] == ["DETAIL-STORED"]
+
+
+def test_shelf_type_set_is_normalized_to_array_for_wms_interface():
+    from app.data_scripts.purchase import _normalize_shelf_type_set
+
+    assert _normalize_shelf_type_set("1,3") == [1, 3]
+    assert _normalize_shelf_type_set("1，3") == [1, 3]
+    assert _normalize_shelf_type_set("[1,3]") == [1, 3]
+    assert _normalize_shelf_type_set([1, "3"]) == [1, 3]
+
+
+def test_order_status_60_with_checking_details_is_not_shelf_stored():
+    assert data_scripts._order_ready_for_warehouse_delivery(
+        60,
+        {"order_detail": [{"id": "DETAIL-CHECKING", "status": 4, "statusName": "核查中"}]},
+    ) is False
+
+
+def test_order_status_60_requires_all_details_to_be_shelf_stored():
+    assert data_scripts._order_ready_for_warehouse_delivery(
+        60,
+        {
+            "order_detail": [
+                {"id": "DETAIL-STORED", "statusName": "待发货"},
+                {"id": "DETAIL-CHECKING", "statusName": "核查中"},
+            ]
+        },
+    ) is False
 
 
 def test_resume_order_flow_shelf_stored_skips_shelf_and_runs_delivery(monkeypatch):

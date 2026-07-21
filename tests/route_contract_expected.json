@@ -35,6 +35,11 @@
     "name": "get_ai_config"
   },
   {
+    "method": "POST",
+    "path": "/api/ai-config/test",
+    "name": "test_ai_config_connection"
+  },
+  {
     "method": "PUT",
     "path": "/api/ai-config",
     "name": "update_ai_config"
@@ -233,6 +238,46 @@
     "method": "GET",
     "path": "/api/dashboard",
     "name": "dashboard"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/sessions",
+    "name": "create_session"
+  },
+  {
+    "method": "GET",
+    "path": "/api/data-scripts/agent/sessions/{session_id}",
+    "name": "read_session"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/sessions/{session_id}/cancel",
+    "name": "cancel_session"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/sessions/{session_id}/confirm",
+    "name": "confirm_session"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/data-scripts/agent/sessions/{session_id}/goal",
+    "name": "update_goal"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/sessions/{session_id}/messages",
+    "name": "post_message"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/sessions/{session_id}/permission",
+    "name": "resume_permission"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/balance-adjustment",
+    "name": "run_balance_adjustment_data_script"
   },
   {
     "method": "POST",
@@ -856,6 +901,166 @@
   },
   {
     "method": "GET",
+    "path": "/api/requirement-verifications",
+    "name": "list_verification_tasks"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications",
+    "name": "create_verification_task"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/requirement-verifications/clarifications/{clarification_id}",
+    "name": "answer_clarification"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/clarifications/{clarification_id}/confirm",
+    "name": "confirm_clarification_answer"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/clarifications/{clarification_id}/defer",
+    "name": "defer_clarification_answer"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/data-script-catalog",
+    "name": "get_data_script_catalog"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/requirement-verifications/data-sources/{source_id}",
+    "name": "update_data_source"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/requirement-verifications/formulas/{formula_id}",
+    "name": "update_formula"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/formulas/{formula_id}/confirm",
+    "name": "confirm_formula"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/formulas/{formula_id}/preview",
+    "name": "preview_formula"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/requirement-verifications/items/{item_id}",
+    "name": "update_verification_item"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/materials/{material_id}/file",
+    "name": "get_material_file"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/materials/{material_id}/ocr",
+    "name": "rerun_material_ocr"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/requirement-verifications/memories/{memory_id}",
+    "name": "update_memory"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/memories/{memory_id}/confirm",
+    "name": "confirm_memory"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/projects/{project_id}/data-sources",
+    "name": "list_data_sources"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/projects/{project_id}/data-sources",
+    "name": "create_data_source"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/projects/{project_id}/formulas",
+    "name": "list_project_formulas"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/projects/{project_id}/formulas",
+    "name": "create_project_formula"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/projects/{project_id}/memories",
+    "name": "list_memories"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/projects/{project_id}/memories",
+    "name": "create_memory"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/run-items/{run_item_id}/confirm",
+    "name": "confirm_run_item"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/runs/{run_id}",
+    "name": "get_run"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/requirement-verifications/{task_id}",
+    "name": "delete_verification_task"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/{task_id}",
+    "name": "get_verification_task"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/requirement-verifications/{task_id}",
+    "name": "update_verification_task"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/{task_id}/analyze",
+    "name": "analyze_verification_task"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/{task_id}/preflight",
+    "name": "preflight_run"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/{task_id}/items/batch-confirm",
+    "name": "confirm_verification_items"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/{task_id}/materials",
+    "name": "add_text_material"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/{task_id}/materials/upload",
+    "name": "upload_material_screenshot"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/{task_id}/runs",
+    "name": "start_run"
+  },
+  {
+    "method": "GET",
     "path": "/docs",
     "name": "swagger_ui_html"
   },
@@ -878,5 +1083,110 @@
     "method": "GET",
     "path": "/redoc",
     "name": "redoc_html"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/learning-sessions/{session_id}",
+    "name": "get_learning_session"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/learning-sessions/{session_id}/cancel",
+    "name": "cancel_learning_rules"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/learning-sessions/{session_id}/capture-checkpoint",
+    "name": "capture_learning_checkpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/learning-sessions/{session_id}/events",
+    "name": "save_learning_events"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/learning-sessions/{session_id}/save",
+    "name": "save_learning_rules"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/learning-sessions/{session_id}/select-checkpoint",
+    "name": "select_learning_checkpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/projects/{project_id}/templates/copy",
+    "name": "copy_verification_template"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/run-items/{run_item_id}/defect-draft",
+    "name": "get_defect_draft"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/runs/{run_id}/cancel",
+    "name": "cancel_verification_run"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/runs/{run_id}/open-browser",
+    "name": "open_verification_manual_browser"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/runs/{run_id}/pause",
+    "name": "pause_verification_run"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/runs/{run_id}/resume",
+    "name": "resume_verification_run"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/runs/{run_id}/retry",
+    "name": "retry_verification_run"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/stats/efficiency",
+    "name": "get_verification_efficiency"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/{task_id}/boundary-combinations",
+    "name": "get_boundary_combinations"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/{task_id}/cross-project-suggestions",
+    "name": "get_cross_project_suggestions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/{task_id}/diff",
+    "name": "get_verification_diff"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/{task_id}/inherit",
+    "name": "inherit_verification_task"
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirement-verifications/{task_id}/learning-sessions",
+    "name": "start_learning_session"
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirement-verifications/{task_id}/similar",
+    "name": "get_similar_verification_tasks"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/test-accounts/{account_id}/browser-session",
+    "name": "clear_test_account_browser_session"
   }
 ]

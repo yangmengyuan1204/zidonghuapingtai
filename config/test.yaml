@@ -1,9 +1,0 @@
-oem:
-  base_url: https://oem-test.example.com
-  timeout: 25
-  retry_count: 2
-  write_retry: false
-  log_level: INFO
-security:
-  token_desensitize: true
-  log_truncate_length: 300

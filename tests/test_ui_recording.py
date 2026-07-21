@@ -1,3 +1,6 @@
+import asyncio
+
+from app.services import ui_recording_session
 from app.services.ui_recording_session import build_ui_steps
 
 
@@ -70,3 +73,27 @@ def test_build_ui_steps_keeps_full_navigation_before_form_input():
 
     assert [step["action"] for step in steps] == ["goto", "click", "goto", "input", "assert_url"]
     assert steps[2] == {"name": "打开跳转页面", "action": "goto", "value": "https://example.test/login"}
+
+
+def test_get_session_storage_state_returns_live_browser_state():
+    class FakeContext:
+        async def storage_state(self):
+            return {"cookies": [{"name": "session", "value": "masked"}], "origins": []}
+
+    session_id = "storage-state-test"
+    ui_recording_session._SESSIONS[session_id] = ui_recording_session._Session(
+        playwright=None,
+        browser=None,
+        context=FakeContext(),
+        page=None,
+        project_id=1,
+        case_name="登录态保存",
+        start_url="https://example.test",
+        persistent=True,
+    )
+    try:
+        state = asyncio.run(ui_recording_session.get_session_storage_state(session_id))
+        assert state["cookies"][0]["name"] == "session"
+        assert ui_recording_session._SESSIONS[session_id].persistent is True
+    finally:
+        ui_recording_session._SESSIONS.pop(session_id, None)
