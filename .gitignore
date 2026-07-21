@@ -22,6 +22,7 @@ package-lock.json
 .codegraph/
 .playwright-cli/
 .worktrees/
+.superpowers/
 
 # Large binaries / runtime deps
 .ocr_cache/
@@ -64,6 +65,7 @@ _*.py
 -*
 $null
 fix_*.js
+fix_*.ps1
 fix_route_script.py
 axure_to_cases.py
 
