@@ -317,6 +317,10 @@ class TestAccountProfile(Base):
     submit_locator = Column(Text, nullable=True)
     success_url_contains = Column(String(500), nullable=True)
     success_selector = Column(String(500), nullable=True)
+    browser_state_encrypted = Column(Text, nullable=True)
+    browser_session_status = Column(String(32), nullable=True)
+    browser_session_validated_at = Column(DateTime, nullable=True)
+    browser_session_cleared_at = Column(DateTime, nullable=True)
     status = Column(String(32), nullable=False)
     create_time = Column(DateTime, nullable=False)
     update_time = Column(DateTime, nullable=True)
@@ -409,4 +413,234 @@ class RecordedFlowStep(Base):
     response_extraction_json = Column(Text, nullable=True)
 
     flow = relationship("RecordedFlow", back_populates="steps")
+
+
+class RequirementVerification(Base):
+    """按单个需求组织分析、验证计划和执行结论。"""
+
+    __tablename__ = "requirement_verification"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    target_url = Column(String(500), nullable=True)
+    target_pages_json = Column(Text, nullable=True)
+    data_setup_json = Column(Text, nullable=True)
+    requirement_text = Column(Text, nullable=True)
+    context = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="draft")
+    is_archived = Column(Integer, nullable=False, default=0)
+    analysis_version = Column(Integer, nullable=False, default=0)
+    analysis_json = Column(Text, nullable=True)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class VerificationMaterial(Base):
+    __tablename__ = "verification_material"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    material_type = Column(String(32), nullable=False)
+    name = Column(String(200), nullable=True)
+    content_text = Column(Text, nullable=True)
+    image_path = Column(String(500), nullable=True)
+    ocr_text = Column(Text, nullable=True)
+    analysis_json = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="active")
+    create_time = Column(DateTime, nullable=False)
+
+
+class VerificationClarification(Base):
+    __tablename__ = "verification_clarification"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    analysis_version = Column(Integer, nullable=False)
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=True)
+    source_ref = Column(String(500), nullable=True)
+    topic_key = Column(String(200), nullable=True, index=True)
+    review_json = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="open")
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class VerificationFormula(Base):
+    __tablename__ = "verification_formula"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=False, index=True)
+    task_id = Column(Integer, nullable=True, index=True)
+    analysis_version = Column(Integer, nullable=True)
+    name = Column(String(200), nullable=False)
+    version = Column(Integer, nullable=False, default=1)
+    expression = Column(Text, nullable=False)
+    variables_json = Column(Text, nullable=True)
+    conditions_json = Column(Text, nullable=True)
+    currency = Column(String(16), nullable=True)
+    scale = Column(Integer, nullable=False, default=2)
+    rounding_mode = Column(String(32), nullable=False, default="HALF_UP")
+    rounding_stage = Column(String(32), nullable=False, default="final")
+    source_refs = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="draft")
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class VerificationDataSource(Base):
+    __tablename__ = "verification_data_source"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=False, index=True)
+    env_id = Column(Integer, nullable=False, index=True)
+    name = Column(String(160), nullable=False)
+    allowed_paths = Column(Text, nullable=False)
+    status = Column(String(32), nullable=False, default="active")
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class VerificationItem(Base):
+    __tablename__ = "verification_item"
+    __table_args__ = (
+        Index("ix_verification_item_task_version", "task_id", "analysis_version"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    analysis_version = Column(Integer, nullable=False)
+    item_type = Column(String(32), nullable=False)
+    title = Column(String(220), nullable=False)
+    priority = Column(String(20), nullable=False, default="P1")
+    role_name = Column(String(120), nullable=True)
+    precondition = Column(Text, nullable=True)
+    action_goal = Column(Text, nullable=True)
+    expected = Column(Text, nullable=True)
+    source_refs = Column(Text, nullable=True)
+    automation_level = Column(String(32), nullable=False, default="manual")
+    risk_level = Column(String(20), nullable=False, default="low")
+    config_json = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="draft")
+    confirmed = Column(Integer, nullable=False, default=0)
+    result_message = Column(Text, nullable=True)
+    actual_json = Column(Text, nullable=True)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class VerificationMemory(Base):
+    __tablename__ = "verification_memory"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=False, index=True)
+    memory_type = Column(String(40), nullable=False)
+    name = Column(String(200), nullable=False)
+    content_json = Column(Text, nullable=False)
+    source_task_id = Column(Integer, nullable=True, index=True)
+    version = Column(Integer, nullable=False, default=1)
+    status = Column(String(32), nullable=False, default="draft")
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class VerificationRun(Base):
+    __tablename__ = "verification_run"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    status = Column(String(32), nullable=False, default="queued")
+    variables_json = Column(Text, nullable=True)
+    data_setup_json = Column(Text, nullable=True)
+    setup_result_json = Column(Text, nullable=True)
+    summary_json = Column(Text, nullable=True)
+    phase = Column(String(32), nullable=False, default="queued")
+    progress_json = Column(Text, nullable=True)
+    heartbeat_time = Column(DateTime, nullable=True)
+    pause_reason = Column(Text, nullable=True)
+    cancel_requested = Column(Integer, nullable=False, default=0)
+    parent_run_id = Column(Integer, nullable=True, index=True)
+    execution_version = Column(String(16), nullable=False, default="v2")
+    visible_browser = Column(Integer, nullable=False, default=1)
+    create_time = Column(DateTime, nullable=False)
+    start_time = Column(DateTime, nullable=True)
+    finish_time = Column(DateTime, nullable=True)
+
+
+class VerificationRunItem(Base):
+    __tablename__ = "verification_run_item"
+    __table_args__ = (
+        Index("ix_verification_run_item_run_result", "run_id", "result"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(Integer, nullable=False, index=True)
+    item_id = Column(Integer, nullable=False, index=True)
+    dataset_id = Column(Integer, nullable=True, index=True)
+    flow_group = Column(String(120), nullable=True, index=True)
+    dependency_json = Column(Text, nullable=True)
+    attempt = Column(Integer, nullable=False, default=0)
+    failure_kind = Column(String(40), nullable=True, index=True)
+    resume_json = Column(Text, nullable=True)
+    result = Column(String(32), nullable=False, default="pending")
+    message = Column(Text, nullable=True)
+    actual_json = Column(Text, nullable=True)
+    evidence_json = Column(Text, nullable=True)
+    start_time = Column(DateTime, nullable=True)
+    finish_time = Column(DateTime, nullable=True)
+
+
+class VerificationRunDataset(Base):
+    __tablename__ = "verification_run_dataset"
+    __table_args__ = (
+        Index("ix_verification_run_dataset_run_status", "run_id", "status"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(Integer, nullable=False, index=True)
+    group_key = Column(String(160), nullable=False)
+    name = Column(String(200), nullable=True)
+    conditions_json = Column(Text, nullable=True)
+    setup_json = Column(Text, nullable=True)
+    variables_json = Column(Text, nullable=True)
+    result_json = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="pending")
+    reuse_allowed = Column(Integer, nullable=False, default=1)
+    attempt = Column(Integer, nullable=False, default=0)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class VerificationLearningSession(Base):
+    __tablename__ = "verification_learning_session"
+
+    id = Column(String(64), primary_key=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(Integer, nullable=False, index=True)
+    account_profile_id = Column(Integer, nullable=True, index=True)
+    role_name = Column(String(120), nullable=True)
+    page_name = Column(String(160), nullable=True)
+    start_url = Column(String(1000), nullable=False)
+    current_url = Column(String(1000), nullable=True)
+    status = Column(String(32), nullable=False, default="recording")
+    browser_state_json = Column(Text, nullable=True)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+    finish_time = Column(DateTime, nullable=True)
+
+
+class VerificationLearningEvent(Base):
+    __tablename__ = "verification_learning_event"
+    __table_args__ = (
+        Index("ix_verification_learning_event_session_id", "session_id", "id"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(64), nullable=False)
+    event_type = Column(String(40), nullable=False)
+    action = Column(String(40), nullable=True)
+    payload_json = Column(Text, nullable=False)
+    sensitive = Column(Integer, nullable=False, default=0)
+    create_time = Column(DateTime, nullable=False)
 

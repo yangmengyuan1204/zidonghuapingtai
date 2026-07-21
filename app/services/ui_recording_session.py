@@ -1,4 +1,6 @@
 import asyncio
+import json
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -207,6 +209,8 @@ class _Session:
     case_name: str
     start_url: str
     user_id: int | None = None
+    learning_session_id: str = ""
+    persistent: bool = False
     events: list[dict[str, Any]] = field(default_factory=list)
     current_url: str = ""
     last_activity: float = field(default_factory=time.time)
@@ -239,7 +243,7 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
     if not isinstance(payload, dict):
         return None
     action = str(payload.get("action") or "").strip().lower()
-    if action not in {"click", "input", "select", "check", "uncheck", "url_change", "ready"}:
+    if action not in {"click", "input", "select", "check", "uncheck", "url_change", "ready", "checkpoint"}:
         return None
     event_type = str(payload.get("event_type") or action).strip().lower()
     item = {
@@ -256,8 +260,34 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
         "checked": payload.get("checked"),
         "created_at": _short_text(payload.get("created_at") or datetime.now().isoformat(), 80),
     }
+    if action == "checkpoint":
+        item.update(
+            {
+                "field_name": _short_text(payload.get("field_name"), 300),
+                "actual_value": _short_text(payload.get("actual_value"), 1000),
+                "value_type": _short_text(payload.get("value_type"), 40),
+                "currency": _short_text(payload.get("currency"), 20),
+                "relation": _short_text(payload.get("relation"), 80),
+                "locator_candidates": _list_strings(payload.get("locator_candidates"), 12),
+            }
+        )
     if isinstance(item["value"], str):
         item["value"] = _short_text(item["value"], 2000)
+    sensitive_text = " ".join(
+        str(item.get(key) or "") for key in ("locator", "text", "input_type")
+    ).lower()
+    sensitive = bool(
+        item.get("input_type") == "password"
+        or any(word in sensitive_text for word in ("password", "passwd", "token", "cookie", "authorization", "验证码", "captcha", "密码"))
+    )
+    if item.get("action") == "input" and any(word in sensitive_text for word in ("username", "account", "mobile", "phone", "email", "账号", "手机号", "邮箱")):
+        item["value"] = "{{username}}"
+        sensitive = True
+    elif item.get("action") == "input" and sensitive:
+        item["value"] = "{{password}}" if item.get("input_type") == "password" or "密码" in sensitive_text else "***"
+    elif isinstance(item.get("value"), str):
+        item["value"] = re.sub(r"(?<!\d)1[3-9]\d{9}(?!\d)", "***手机号***", item["value"])
+    item["sensitive"] = sensitive
     return item
 
 
@@ -271,6 +301,33 @@ def _append_event(session: _Session, payload: Any) -> None:
     if event.get("url"):
         session.current_url = str(event["url"])
     session.last_activity = time.time()
+    if session.learning_session_id:
+        try:
+            from ..database import SessionLocal
+            from ..models import VerificationLearningEvent, VerificationLearningSession
+
+            db = SessionLocal()
+            try:
+                if db.get(VerificationLearningSession, session.learning_session_id):
+                    db.add(
+                        VerificationLearningEvent(
+                            session_id=session.learning_session_id,
+                            event_type=str(event.get("event_type") or "action"),
+                            action=str(event.get("action") or ""),
+                            payload_json=json.dumps(event, ensure_ascii=False, default=str),
+                            sensitive=1 if event.get("sensitive") else 0,
+                            create_time=datetime.now(),
+                        )
+                    )
+                    learning = db.get(VerificationLearningSession, session.learning_session_id)
+                    if learning:
+                        learning.current_url = session.current_url
+                        learning.update_time = datetime.now()
+                    db.commit()
+            finally:
+                db.close()
+        except Exception:
+            pass
 
 
 def _step_label(action: str, event: dict[str, Any]) -> str:
@@ -388,11 +445,23 @@ def _session_payload(session_id: str, session: _Session, assertion_text: str = "
     }
 
 
-async def start_session(project_id: int, case_name: str, start_url: str, user_id: int | None = None) -> str:
+async def start_session(
+    project_id: int,
+    case_name: str,
+    start_url: str,
+    user_id: int | None = None,
+    storage_state: dict[str, Any] | None = None,
+    preferred_session_id: str | None = None,
+    persistent: bool = False,
+    persist_learning_events: bool = True,
+) -> str:
     global _cleanup_started
     playwright = await async_playwright().start()
     browser = await _launch_chromium(playwright)
-    context = await browser.new_context(ignore_https_errors=True)
+    context_options: dict[str, Any] = {"ignore_https_errors": True}
+    if isinstance(storage_state, dict) and isinstance(storage_state.get("cookies"), list):
+        context_options["storage_state"] = storage_state
+    context = await browser.new_context(**context_options)
     await context.add_init_script(RECORDING_SCRIPT)
     page = await context.new_page()
     session = _Session(
@@ -405,6 +474,8 @@ async def start_session(project_id: int, case_name: str, start_url: str, user_id
         start_url=start_url,
         user_id=user_id,
         current_url=start_url,
+        learning_session_id=str(preferred_session_id or "") if persist_learning_events else "",
+        persistent=bool(persistent),
     )
 
     async def record_binding(_source: Any, payload: Any) -> None:
@@ -422,7 +493,9 @@ async def start_session(project_id: int, case_name: str, start_url: str, user_id
     page.on("framenavigated", on_frame_navigated)
 
     async with _LOCK:
-        session_id = uuid4().hex
+        session_id = str(preferred_session_id or uuid4().hex)
+        if persist_learning_events:
+            session.learning_session_id = session_id
         _SESSIONS[session_id] = session
     if not _cleanup_started:
         _cleanup_started = True
@@ -434,6 +507,80 @@ async def start_session(project_id: int, case_name: str, start_url: str, user_id
     return session_id
 
 
+async def get_session_storage_state(session_id: str) -> dict[str, Any]:
+    session = _SESSIONS.get(session_id)
+    if not session:
+        return {}
+    try:
+        value = await session.context.storage_state()
+        return value if isinstance(value, dict) else {}
+    except Exception:
+        return {}
+
+
+async def begin_checkpoint_selection(session_id: str) -> None:
+    session = _SESSIONS.get(session_id)
+    if not session:
+        raise ValueError(f"录制会话不存在: {session_id}")
+    await session.page.evaluate(
+        r"""
+        () => {
+          if (window.__verificationCheckpointSelecting) return;
+          window.__verificationCheckpointSelecting = true;
+          const clean = (value, max = 300) => String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
+          const quote = (value) => String(value || '').replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+          const locator = (el) => {
+            const testid = el.getAttribute('data-testid');
+            if (testid) return `[data-testid="${quote(testid)}"]`;
+            if (el.id) return `#${CSS.escape(el.id)}`;
+            if (el.getAttribute('name')) return `[name="${quote(el.getAttribute('name'))}"]`;
+            const text = clean(el.innerText || el.textContent || el.value, 100);
+            if (text) return `text="${quote(text)}"`;
+            return el.tagName.toLowerCase();
+          };
+          const handler = (event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const el = event.target?.nodeType === Node.ELEMENT_NODE ? event.target : event.target?.parentElement;
+            if (!el) return;
+            document.removeEventListener('click', handler, true);
+            window.__verificationCheckpointSelecting = false;
+            const cell = el.closest('td,th');
+            const row = el.closest('tr');
+            const previous = cell?.previousElementSibling;
+            const next = cell?.nextElementSibling;
+            const own = clean(el.innerText || el.textContent || el.value);
+            const previousText = clean(previous?.innerText || previous?.textContent || previous?.value);
+            const nextText = clean(next?.innerText || next?.textContent || next?.value);
+            let fieldName = previousText || clean(el.getAttribute('aria-label') || el.getAttribute('name')) || own;
+            let actualValue = previousText ? own : (nextText || own);
+            if (row) {
+              const cells = Array.from(row.querySelectorAll(':scope > th,:scope > td')).map((node) => clean(node.innerText || node.textContent || node.value));
+              const index = cell ? cells.indexOf(clean(cell.innerText || cell.textContent || cell.value)) : -1;
+              if (index >= 0 && index + 1 < cells.length && own === cells[index]) {
+                fieldName = own;
+                actualValue = cells[index + 1];
+              }
+            }
+            window.__recordUiEvent({
+              event_type: 'checkpoint_selection',
+              action: 'checkpoint',
+              field_name: fieldName,
+              actual_value: actualValue,
+              value_type: /(?:¥|￥|円|元|\d[\d,]*\.\d{2})/.test(actualValue) ? 'money' : 'text',
+              currency: /円|JPY/i.test(actualValue) ? 'JPY' : (/元|￥|CNY/i.test(actualValue) ? 'CNY' : ''),
+              relation: cell ? 'table_key_value' : 'nearby_value',
+              locator_candidates: [locator(el)],
+              locator: locator(el),
+              text: own,
+              url: location.href,
+              created_at: new Date().toISOString()
+            });
+          };
+          document.addEventListener('click', handler, true);
+        }
+        """
+    )
 def get_session_state(session_id: str, assertion_text: str = "") -> dict[str, Any]:
     session = _SESSIONS.get(session_id)
     if not session:
@@ -462,7 +609,7 @@ async def _cleanup_loop() -> None:
         expired: list[str] = []
         async with _LOCK:
             for session_id, session in list(_SESSIONS.items()):
-                if now - session.last_activity > _SESSION_TIMEOUT:
+                if not session.persistent and now - session.last_activity > _SESSION_TIMEOUT:
                     expired.append(session_id)
         for session_id in expired:
             try:

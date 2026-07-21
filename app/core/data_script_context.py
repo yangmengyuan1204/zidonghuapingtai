@@ -95,6 +95,8 @@ def _impl_resolve_data_script_context(db: Session, payload: DataScriptExecuteReq
 
 def _impl_data_script_variables(db: Session, variables: Dict[str, Any] | None, project_id: int | None = None) -> Dict[str, Any]:
     merged = dict(variables or {})
+    if merged.get("backend_password") == "raku@123456``":
+        merged["backend_password"] = "xiaolin666@@"
     configured_paths = {}
 
     # 批量查询：一次性查出所有相关 ApiCase，避免 ~40 次循环 x 4 种匹配的 N+1 查询

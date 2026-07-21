@@ -176,7 +176,7 @@ class DataScriptRuntime:
             base_url.rstrip("/"),
             timeout,
             str(variables.get("backend_account") or variables.get("backend_username") or "Y001"),
-            str(variables.get("backend_password") or "raku@123456``"),
+            str(variables.get("backend_password") or "xiaolin666@@"),
             str(variables.get("backend_system") or "1"),
             str(variables.get("backend_compute_token") or ""),
             str(variables.get("backend_code") or "wnm666"),

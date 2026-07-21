@@ -59,15 +59,20 @@ def reduce_intent_fields(state: Dict[str, Any], message: str) -> Dict[str, Any]:
             )
 
     target_patterns = (
-        (r"(?:到|进入|停在)?待拍下", "pending_purchase"),
-        (r"(?:到|进入|停在)?(?:待付款|待支付|付款前)", "order_offered"),
-        (r"(?:已付款|支付完成|付完钱)", "order_paid"),
+        (r"配送单.{0,8}(?:支付完成|已支付|已付款|付款完成)", "porder_paid"),
+        (r"配送单.{0,8}(?:报价(?:完成)?|已报价)", "porder_offered"),
+        (r"(?:配送单(?:提出|已提出)|提出配送单)", "warehouse_delivery_created"),
+        (r"(?:上架入库|上架|入库)", "shelf_stored"),
         (r"(?:采购|交易号|财务).{0,8}(?:待付款|待支付)", "purchase_wait_pay"),
+        (r"(?:到|进入|停在|做到)?(?:待拍下|待拍单)", "pending_purchase"),
+        (r"(?:到|进入|停在|做到)?(?:待付款|待支付|付款前|等付款)", "order_offered"),
+        (r"(?:已付款|支付完成|付款完成|付完钱)", "order_paid"),
     )
     for pattern, value in target_patterns:
         match = re.search(pattern, text)
         if match:
             resolve("target_node", value, match.group(0))
+            break
 
     # --- 订单号提取 ---
     order_sn_long = re.search(r"(\d{16}-\d+)", text)  # 2026071715475684-300001 格式
@@ -132,12 +137,15 @@ def reduce_intent_fields(state: Dict[str, Any], message: str) -> Dict[str, Any]:
         resolve("item_count", _count(item_count.group(1)), item_count.group(0))
 
     per_item_quantity = re.search(
-        rf"(?:每(?:个|种|款)?(?:商品|货品|sku)?|每(?:一)?番(?:商品|货品)?)(?:的)?(?:购买)?(?:数量|买)(?:都)?(?:改成|改为|调整为|变成|是|为|=|:)?({_COUNT_TOKEN})(?:件|个|份)?",
+        rf"(?:每(?:个|种|款)?(?:商品|货品|sku)?|每(?:一)?番(?:商品|货品)?)(?:的)?(?:"
+        rf"(?:购买)?(?:数量|买)(?:都)?(?:改成|改为|调整为|变成|是|为|=|:)?({_COUNT_TOKEN})(?:件|个|份)?|"
+        rf"(?:购买)?({_COUNT_TOKEN})(?:件|个|份))",
         text,
         re.IGNORECASE,
     )
     if per_item_quantity:
-        resolve("quantity_per_item", _count(per_item_quantity.group(1)), per_item_quantity.group(0))
+        quantity = per_item_quantity.group(1) or per_item_quantity.group(2)
+        resolve("quantity_per_item", _count(quantity), per_item_quantity.group(0))
 
     # --- 问题产品退款：单价改成0 ---
     refund_unit_price = re.search(
@@ -150,7 +158,7 @@ def reduce_intent_fields(state: Dict[str, Any], message: str) -> Dict[str, Any]:
         text,
     )
     unit_price = re.search(
-        r"(?:商品单价|单价|每(?:个|件|种|款)(?:商品)?(?:的)?(?:报价|单价)?)(?:改成|改为|调整为|变成|是|为|=|:)?(\d+(?:\.\d+)?)",
+        r"(?:商品单价|单价|每(?:个|件|种|款)(?:商品)?(?:的)?(?:报价|单价|价格|金额))(?:改成|改为|调整为|变成|是|为|=|:)?(\d+(?:\.\d+)?)",
         text,
     )
     price_list = re.search(r"(?:分别|依次)(?:报价|单价)?([^。；;]*)", text)

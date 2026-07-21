@@ -97,6 +97,23 @@ def delete_test_account(
     return {"message": "deleted"}
 
 
+@router.delete("/api/test-accounts/{account_id}/browser-session")
+def clear_test_account_browser_session(
+    account_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    profile = get_or_404(db, TestAccountProfile, account_id)
+    profile.browser_state_encrypted = ""
+    profile.browser_session_status = "cleared"
+    profile.browser_session_cleared_at = datetime.now()
+    profile.browser_session_validated_at = None
+    profile.update_time = datetime.now()
+    db.commit()
+    db.refresh(profile)
+    return serialize_account_profile(profile)
+
+
 @router.put("/api/test-account-bindings")
 def update_test_account_binding(
     payload: TestAccountBindingUpdate,

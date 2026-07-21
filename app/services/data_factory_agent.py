@@ -488,6 +488,18 @@ def _analysis_prompt(
 
 def _unsupported_capability(messages: list[Dict[str, str]]) -> Dict[str, str]:
     text = "\n".join(str(item.get("content") or "") for item in messages if isinstance(item, dict))
+    if re.search(r"(?:执行|运行|修改|删除|写入|注入).{0,12}\b(?:SQL|SELECT|UPDATE|INSERT|DELETE|DROP|ALTER)\b", text, re.IGNORECASE):
+        return {
+            "reason": "当前数据智能体禁止执行任意SQL，未触发任何业务调用。",
+            "capability_gap": "任意SQL",
+            "suggested_tool": "使用已注册且受合同校验的数据工具",
+        }
+    if re.search(r"(?:调用|访问|请求|打开).{0,12}(?:外部)?(?:URL|https?://)", text, re.IGNORECASE):
+        return {
+            "reason": "当前数据智能体禁止调用外部URL，未触发任何业务调用。",
+            "capability_gap": "外部URL",
+            "suggested_tool": "使用已注册且受目标校验的业务工具",
+        }
     if re.search(r"(?:把)?订单(?:给我)?(?:删除|删掉|删了)|(?:删除|删掉|删了).{0,4}订单", text):
         return {
             "reason": "当前数据智能体尚未注册“删除订单”能力，未触发任何业务调用。",
@@ -677,7 +689,16 @@ def _explicit_count_intent(source_text: str) -> tuple[Dict[str, Any], str]:
     if not text:
         return {}, ""
     result: Dict[str, Any] = {"evidence": {}}
-    quantity_match = re.search(
+    direct_quantity_matches = list(re.finditer(
+        rf"(?:每(?:个|种|款)(?:商品|货品|sku)?|每(?:一)?番(?:商品|货品)?)(?:的)?(?:购买)?(?:数量)?"
+        rf"(?:都)?(?:给我)?(?:放|买|是|为|=|:)?({_COUNT_TOKEN})(?:件|个|份)",
+        text,
+        re.IGNORECASE,
+    ))
+    direct_quantity_values = {_count_value(match.group(1)) for match in direct_quantity_matches}
+    if len(direct_quantity_values) > 1:
+        return {}, "同一每种商品数量出现多个冲突值，请确认最终购买数量。"
+    quantity_match = direct_quantity_matches[0] if direct_quantity_matches else re.search(
         rf"(?:每(?:个|种|款|件)?(?:商品|货品|sku)|每(?:一)?番(?:商品|货品)?(?:的)?|{_COUNT_TOKEN}番(?:商品|货品)|每(?:个|种)?数量)"
         rf"(?:购买)?(?:数量|买)?(?:都)?(?:给我)?(?:放|买|是|为|=|:)?({_COUNT_TOKEN})(?:件|个|份)?(?:数量)?",
         text,
@@ -736,25 +757,33 @@ def _explicit_target_intent(source_text: str) -> tuple[str, str, str]:
     text = _compact_semantic_text(source_text)
     if not text:
         return "", "", ""
-    purchase_match = re.search(
-        r"(?:采购|交易号|财务).{0,8}(?:待付款|待支付|付款)|待财务付款",
-        text,
-    )
-    waiting_match = re.search(
+    porder_paid_match = re.search(r"配送单.{0,8}(?:支付完成|已支付|已付款|付款完成)", text)
+    porder_offered_match = re.search(r"配送单.{0,8}(?:报价(?:完成)?|已报价)", text)
+    delivery_created_match = re.search(r"(?:配送单(?:提出|已提出)|提出配送单)", text)
+    shelf_match = re.search(r"(?:上架入库|上架|入库)", text)
+    pending_match = re.search(r"(?:待拍下|待拍单)", text)
+    purchase_match = re.search(r"(?:采购|交易号|财务).{0,8}(?:待付款|待支付|付款)|待财务付款", text)
+    waiting_match = None if purchase_match else re.search(
         r"订单.{0,8}(?:待付款|待支付)|待付款|待支付|付款前|付钱之前|等付款|报价完(?:就行|成)?",
         text,
     )
-    paid_match = re.search(r"已付款|已支付|支付完成|付款完成|付完(?:钱|款)", text)
+    paid_match = None if porder_paid_match else re.search(r"已付款|已支付|支付完成|付款完成|付完(?:钱|款)", text)
     targets: list[tuple[str, str]] = []
-    if purchase_match:
-        targets.append(("purchase_wait_pay", purchase_match.group(0)))
-    elif waiting_match:
-        targets.append(("order_offered", waiting_match.group(0)))
-    if paid_match:
-        targets.append(("order_paid", paid_match.group(0)))
+    for match, node in (
+        (porder_paid_match, "porder_paid"),
+        (porder_offered_match, "porder_offered"),
+        (delivery_created_match, "warehouse_delivery_created"),
+        (shelf_match, "shelf_stored"),
+        (pending_match, "pending_purchase"),
+        (purchase_match, "purchase_wait_pay"),
+        (waiting_match, "order_offered"),
+        (paid_match, "order_paid"),
+    ):
+        if match:
+            targets.append((node, match.group(0)))
     unique = {item[0] for item in targets}
     if len(unique) > 1:
-        return "", "", "同时出现了待付款和已付款含义，请确认最终要停在哪个状态。"
+        return "", "", "同时出现多个冲突目标，请确认最终要停在哪个状态。"
     if not targets:
         return "", "", ""
     return targets[0][0], targets[0][1], ""
@@ -824,11 +853,13 @@ def _explicit_price_intent(
         if not total_match:
             total_match = re.search(rf"{number}(?:元)?(?:的)?(?:商品总金额|商品总额|商品总价|商品金额|总金额|总价|合计)", text)
         unit_match = re.search(
-            rf"(?:商品单价|报价单价|单价|单番(?:的)?(?:单价|价格|报价)?|每(?:个|件|番|种|款)(?:商品)?(?:的)?(?:报价|单价|价格|金额)?|单件(?:的)?(?:单价|价格|报价)?)(?:是|为|=|:|等于)?{number}",
+            rf"(?:商品单价|报价单价|单价|单番(?:的)?(?:单价|价格|报价)|每(?:个|件|番|种|款)(?:商品)?(?:的)?(?:报价|单价|价格|金额)|单件(?:的)?(?:单价|价格|报价))(?:是|为|=|:|等于)?{number}",
             text,
         )
         ambiguous_match = re.search(rf"(?:价格|金额)(?:是|为|=|:)?{number}", text)
 
+        if total_match and unit_match:
+            return {}, "同时出现商品总价与单价，请确认仅保留一种价格口径。"
         if unit_match:
             return {
                 "mode": "uniform_unit",
@@ -1364,7 +1395,7 @@ def _normalize_goal(
     invalid_model_target = bool(raw_target_node) and not target_node
     explicit_target, target_evidence, target_question = _explicit_target_intent(source_text)
     latest_target = resolved_fields.get("target_node") if isinstance(resolved_fields, dict) else None
-    if isinstance(latest_target, dict) and latest_target.get("value"):
+    if isinstance(latest_target, dict) and latest_target.get("value") and not target_question:
         explicit_target = str(latest_target["value"])
         target_evidence = str(latest_target.get("evidence") or "")
         target_question = ""
@@ -1436,7 +1467,8 @@ def _normalize_goal(
         count_intent["shop_count"] = 1
         count_intent["items_per_shop"] = int(latest_item_count["value"])
         count_intent.setdefault("evidence", {})["item_count"] = str(latest_item_count.get("evidence") or "")
-        count_question = ""
+        if "冲突" not in count_question:
+            count_question = ""
     if isinstance(latest_quantity, dict) and latest_quantity.get("value"):
         count_intent["quantity_per_item"] = int(latest_quantity["value"])
         count_intent.setdefault("evidence", {})["quantity"] = str(latest_quantity.get("evidence") or "")
@@ -1553,7 +1585,7 @@ def _normalize_goal(
             return "clarifying", {}, problem_contract_question
     price_source, price_question = _explicit_price_intent(source_text, raw_goal, raw_variables)
     latest_pricing = resolved_fields.get("pricing") if isinstance(resolved_fields, dict) else None
-    if isinstance(latest_pricing, dict) and isinstance(latest_pricing.get("value"), dict):
+    if not price_question and isinstance(latest_pricing, dict) and isinstance(latest_pricing.get("value"), dict):
         price_source = {
             **copy.deepcopy(latest_pricing["value"]),
             "evidence": str(latest_pricing.get("evidence") or ""),

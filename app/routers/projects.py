@@ -19,6 +19,10 @@ from ..models import (
     FunctionalRequirementNote, FunctionalImpactItem, FunctionalDataCheckResult,
     FunctionalDataCheckRule, PageSnapshot, LocatorHealLog, ActionTemplate,
     CaseGenerationCase, CaseGenerationScreenshot, CaseGenerationRequirementNote, CaseGenerationTask,
+    RequirementVerification, VerificationClarification, VerificationDataSource,
+    VerificationFormula, VerificationItem, VerificationMaterial, VerificationMemory,
+    VerificationRun, VerificationRunDataset, VerificationRunItem,
+    VerificationLearningEvent, VerificationLearningSession,
 )
 from ..schemas import ProjectCreate, ProjectUpdate
 from ..security import get_current_user, require_admin
@@ -174,6 +178,35 @@ def delete_project(
         db.query(CaseGenerationScreenshot).filter(CaseGenerationScreenshot.task_id.in_(cg_task_ids)).delete(synchronize_session=False)
         db.query(CaseGenerationRequirementNote).filter(CaseGenerationRequirementNote.task_id.in_(cg_task_ids)).delete(synchronize_session=False)
         db.query(CaseGenerationTask).filter(CaseGenerationTask.id.in_(cg_task_ids)).delete(synchronize_session=False)
+    verification_task_ids = [
+        row[0]
+        for row in db.query(RequirementVerification.id)
+        .filter(RequirementVerification.project_id == project_id)
+        .all()
+    ]
+    if verification_task_ids:
+        verification_run_ids = [
+            row[0]
+            for row in db.query(VerificationRun.id)
+            .filter(VerificationRun.task_id.in_(verification_task_ids))
+            .all()
+        ]
+        if verification_run_ids:
+            db.query(VerificationRunItem).filter(VerificationRunItem.run_id.in_(verification_run_ids)).delete(synchronize_session=False)
+            db.query(VerificationRunDataset).filter(VerificationRunDataset.run_id.in_(verification_run_ids)).delete(synchronize_session=False)
+            db.query(VerificationRun).filter(VerificationRun.id.in_(verification_run_ids)).delete(synchronize_session=False)
+        learning_ids = [row[0] for row in db.query(VerificationLearningSession.id).filter(VerificationLearningSession.task_id.in_(verification_task_ids)).all()]
+        if learning_ids:
+            db.query(VerificationLearningEvent).filter(VerificationLearningEvent.session_id.in_(learning_ids)).delete(synchronize_session=False)
+            db.query(VerificationLearningSession).filter(VerificationLearningSession.id.in_(learning_ids)).delete(synchronize_session=False)
+        db.query(VerificationClarification).filter(VerificationClarification.task_id.in_(verification_task_ids)).delete(synchronize_session=False)
+        db.query(VerificationItem).filter(VerificationItem.task_id.in_(verification_task_ids)).delete(synchronize_session=False)
+        db.query(VerificationMaterial).filter(VerificationMaterial.task_id.in_(verification_task_ids)).delete(synchronize_session=False)
+        db.query(VerificationFormula).filter(VerificationFormula.task_id.in_(verification_task_ids)).delete(synchronize_session=False)
+        db.query(RequirementVerification).filter(RequirementVerification.id.in_(verification_task_ids)).delete(synchronize_session=False)
+    db.query(VerificationMemory).filter(VerificationMemory.project_id == project_id).delete(synchronize_session=False)
+    db.query(VerificationDataSource).filter(VerificationDataSource.project_id == project_id).delete(synchronize_session=False)
+    db.query(VerificationFormula).filter(VerificationFormula.project_id == project_id).delete(synchronize_session=False)
     if ui_ids:
         db.query(UiCase).filter(UiCase.id.in_(ui_ids)).delete(synchronize_session=False)
     if api_ids:

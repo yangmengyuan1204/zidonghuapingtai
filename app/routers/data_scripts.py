@@ -25,6 +25,7 @@ from ..data_scripts import (
     fetch_oem_goods_class_list,
     fetch_oem_option_list,
     preview_order_quote_options,
+    run_balance_adjustment_script,
     run_balance_payment_script,
     run_balance_recharge_script,
     run_bank_payment_script,
@@ -133,7 +134,10 @@ def preview_order_quote_options_data_script(
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
     variables = data_script_variables(db, payload.variables, project_id)
-    return _runtime_func("preview_order_quote_options", preview_order_quote_options)(env, variables)
+    try:
+        return _runtime_func("preview_order_quote_options", preview_order_quote_options)(env, variables)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"读取订单选项失败：{exc}") from exc
 
 
 @router.post("/data-scripts/balance-payment")
@@ -360,6 +364,36 @@ def run_balance_recharge_data_script(
     variables = data_script_variables(db, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_balance_recharge_script", run_balance_recharge_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="balance_recharge", env_id=env.id, variables=payload.variables)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+@router.post("/data-scripts/balance-adjustment")
+def run_balance_adjustment_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
+    passed, log_text, report_path, summary = _runtime_func(
+        "run_balance_adjustment_script",
+        run_balance_adjustment_script,
+    )(env, variables)
+    record = save_record(
+        db,
+        "api",
+        0,
+        passed,
+        log_text,
+        report_path,
+        project_id=project_id,
+        kind="data_script",
+        script_key="balance_adjustment",
+        env_id=env.id,
+        variables=payload.variables,
+    )
     data = serialize(record)
     data["summary"] = summary
     return data

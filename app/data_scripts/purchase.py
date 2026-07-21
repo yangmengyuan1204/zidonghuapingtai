@@ -82,6 +82,30 @@ def _sync_compat_globals() -> None:
         globals()[name] = getattr(package, name)
 
 
+def _normalize_shelf_type_set(value: Any) -> list[Any]:
+    if value in (None, ""):
+        return [1, 3]
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith("[") and text.endswith("]"):
+            text = text[1:-1]
+        items = text.replace("，", ",").split(",")
+    elif isinstance(value, (list, tuple, set)):
+        items = list(value)
+    else:
+        items = [value]
+    normalized: list[Any] = []
+    for item in items:
+        text = str(item).strip()
+        if not text:
+            continue
+        try:
+            normalized.append(int(text))
+        except ValueError:
+            normalized.append(text)
+    return normalized or [1, 3]
+
+
 def _impl_run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
     ensure_report_dirs()
     variables = dict(variables or {})
@@ -575,7 +599,7 @@ def _impl_run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | Non
 
         userid = str(variables.get("warehouse_user_id") or _first_preview_user_id(preview_rows, preview_items) or "")
         warehouse_fields = {
-            "shelf_type_set": variables.get("shelf_type_set") or [1, 3],
+            "shelf_type_set": _normalize_shelf_type_set(variables.get("shelf_type_set")),
             "user_id": userid,
             "order_purchase_id": storage_purchase_ids,
         }
@@ -964,7 +988,7 @@ def _impl_run_direct_box_to_shelf_script(env: Env, variables: Dict[str, Any] | N
                 return _finish_named(DIRECT_BOX_TO_SHELF_SCRIPT_NAME, log, False, {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u8d27\u7269\u88c5\u7bb1\u5931\u8d25", "box_id": box_id})
 
         grid_fields = {
-            "shelf_type_set": variables.get("shelf_type_set") or [1, 3],
+            "shelf_type_set": _normalize_shelf_type_set(variables.get("shelf_type_set")),
             "user_id": str(variables.get("warehouse_user_id") or ""),
             "order_purchase_id": variables.get("grid_order_purchase_id") or "",
         }

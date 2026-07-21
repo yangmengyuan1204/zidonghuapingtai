@@ -174,6 +174,30 @@ def _impl__money_total(num: Any, price: Any, freight: Any = "0") -> str:
     return _decimal_text(total)
 
 
+def _impl__offer_unit_price_values(value: Any) -> list[str]:
+    if value in (None, ""):
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith("[") and text.endswith("]"):
+            text = text[1:-1]
+        values = [item.strip().strip("\"'") for item in re.split(r"[,，]", text) if item.strip()]
+    elif isinstance(value, (list, tuple)):
+        values = list(value)
+    else:
+        values = [value]
+    prices: list[str] = []
+    for item in values:
+        try:
+            number = Decimal(str(item))
+        except (InvalidOperation, ValueError, TypeError) as exc:
+            raise ValueError(f"逐商品报价包含非法金额：{item}") from exc
+        if number < 0:
+            raise ValueError("逐商品报价不能小于0")
+        prices.append(_decimal_text(number))
+    return prices
+
+
 def _impl__admin_headers(token: str) -> Dict[str, str]:
     return {
         "Authorization": f"Bearer {token}",
@@ -269,7 +293,7 @@ def _impl__admin_login_without_runtime(
 ) -> tuple[Dict[str, Any], str]:
     fields = {
         "username": str(variables.get("backend_account") or variables.get("backend_username") or "Y001"),
-        "password": str(variables.get("backend_password") or "raku@123456``"),
+        "password": str(variables.get("backend_password") or "xiaolin666@@"),
         "system": str(variables.get("backend_system") or "1"),
         "compute_token": str(variables.get("backend_compute_token") or ""),
         "code": str(variables.get("backend_code") or "wnm666"),
@@ -507,6 +531,7 @@ def _impl__save_order_part_pay_plan_if_needed(
 def _impl__prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, Any], item_quantity: int) -> Dict[str, Any]:
     prepared = copy.deepcopy(order_data)
     quote_price = _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10")
+    unit_prices = _impl__offer_unit_price_values(variables.get("offer_unit_prices"))
     offer_freight = _decimal_text(variables.get("offer_freight") or variables.get("confirm_freight") or "5")
     prepared["other_price"] = _decimal_text(variables.get("other_price") or prepared.get("other_price") or "0")
     prepared["other_price_remark"] = str(variables.get("other_price_remark") or prepared.get("other_price_remark") or "自动化其他费用备注")
@@ -516,18 +541,26 @@ def _impl__prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, A
     _apply_order_part_pay_payload(prepared, variables)
     details = prepared.get("order_detail")
     if isinstance(details, list):
-        for detail in details:
+        valid_details = [detail for detail in details if isinstance(detail, dict)]
+        if len(unit_prices) > 1 and len(unit_prices) != len(valid_details):
+            raise ValueError(
+                f"逐商品报价数量不匹配：订单有{len(valid_details)}个商品，收到{len(unit_prices)}个报价"
+            )
+        for index, detail in enumerate(valid_details):
             if not isinstance(detail, dict):
                 continue
+            item_offer_price = unit_prices[0] if len(unit_prices) == 1 else (
+                unit_prices[index] if unit_prices else quote_price
+            )
             quantity = _as_int(detail.get("confirm_num") or detail.get("num") or item_quantity, item_quantity)
             offer_quantity = _as_int(variables.get("offer_num"), quantity)
             detail["confirm_num"] = str(quantity)
             detail["confirm_price"] = quote_price
             detail["confirm_dicker_price"] = quote_price
             detail["offer_num"] = offer_quantity
-            detail["offer_price"] = quote_price
+            detail["offer_price"] = item_offer_price
             detail["offer_freight"] = offer_freight
-            detail["offer_total"] = _money_total(offer_quantity, quote_price, offer_freight)
+            detail["offer_total"] = _money_total(offer_quantity, item_offer_price, offer_freight)
     return prepared
 
 
@@ -708,19 +741,18 @@ def _impl__order_detail_ids(order_data: Dict[str, Any]) -> list[str]:
 
 
 def _impl__order_ready_for_warehouse_delivery(status: int | None, order_data: Dict[str, Any]) -> bool:
-    if status == 60:
-        return True
     details = order_data.get("order_detail")
     if not isinstance(details, list):
         return False
-    ready_names = ["\u5f85\u53d1\u8d27", "\u53ef\u53d1\u8d27", "\u5df2\u5165\u5e93"]
-    for item in details:
-        if not isinstance(item, dict):
-            continue
+    ready_names = ["\u5f85\u53d1\u8d27", "\u53ef\u53d1\u8d27", "\u5df2\u5165\u5e93", "\u5df2\u4e0a\u67b6", "\u4e0a\u67b6\u5b8c\u4e86"]
+    valid_details = [item for item in details if isinstance(item, dict)]
+    if not valid_details:
+        return False
+    for item in valid_details:
         status_name = str(item.get("statusName") or item.get("status_name") or "")
-        if any(name in status_name for name in ready_names):
-            return True
-    return False
+        if not any(name in status_name for name in ready_names):
+            return False
+    return True
 
 
 def _impl__purchase_is_pending_start(item: Dict[str, Any]) -> bool:

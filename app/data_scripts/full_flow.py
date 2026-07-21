@@ -69,7 +69,38 @@ def _full_flow_part_pay_input_error(variables: Dict[str, Any]) -> str:
     return "" if selected_values else "按番尾款已启用，但未填写番序号"
 
 
-def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+def _emit_progress(callback: Any, node: str, status: str, next_node: str = "", **extra: Any) -> None:
+    if callable(callback):
+        callback(
+            {
+                "node": node,
+                "status": status,
+                "next_node": next_node,
+                "updated_at": datetime.now().isoformat(),
+                **extra,
+            }
+        )
+
+
+def _call_with_progress(callback: Any, node: str, runner: Any) -> Any:
+    _emit_progress(callback, node, "running")
+    try:
+        result = runner()
+    except Exception as exc:
+        _emit_progress(callback, node, "failed", reason=str(exc))
+        raise
+    passed = bool(result[0]) if isinstance(result, tuple) and result else False
+    summary = result[3] if isinstance(result, tuple) and len(result) > 3 and isinstance(result[3], dict) else {}
+    actual_node = str(summary.get("current_node") or summary.get("stopped_after_node") or node)
+    _emit_progress(callback, actual_node, "completed" if passed else "failed")
+    return result
+
+
+def _impl_run_full_flow_script(
+    env: Env,
+    variables: Dict[str, Any] | None = None,
+    progress_callback: Any = None,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
     ensure_report_dirs()
     variables = dict(variables or {})
     variables["_runtime"] = variables.get("_runtime") if isinstance(variables.get("_runtime"), DataScriptRuntime) else DataScriptRuntime()
@@ -85,10 +116,10 @@ def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None
     resume_order_sn = str(variables.get("order_sn") or variables.get("last_order_sn") or "").strip()
     if resume_porder_sn:
         variables["porder_sn"] = resume_porder_sn
-        return run_resume_porder_flow_script(env, variables)
+        return run_resume_porder_flow_script(env, variables, progress_callback=progress_callback)
     if resume_order_sn:
         variables["order_sn"] = resume_order_sn
-        return run_resume_order_flow_script(env, variables)
+        return run_resume_order_flow_script(env, variables, progress_callback=progress_callback)
 
     input_adjustments = _full_flow_prepare_warehouse_counts(variables)
     stop_after = _stop_after_node(variables) or FULL_FLOW_COMPLETE_NODE
@@ -110,7 +141,11 @@ def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None
 
     try:
         if _full_flow_stop_reached(variables, "shopping_cart"):
-            cart_passed, cart_log, cart_report, cart_summary = run_shopping_cart_script(env, variables)
+            cart_passed, cart_log, cart_report, cart_summary = _call_with_progress(
+                progress_callback,
+                "shopping_cart",
+                lambda: run_shopping_cart_script(env, variables),
+            )
             cart_summary = dict(cart_summary or {})
             _full_flow_record_step(log, "shopping_cart", SCRIPT_NAME, cart_passed, cart_summary, cart_report)
             if not cart_passed:
@@ -135,7 +170,11 @@ def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None
                 quote_vars["auto_fill_cart_on_shortage"] = False
             return run_order_quote_script(env, quote_vars)
 
-        quote_passed, quote_log, quote_report, quote_summary = run_quote_attempt()
+        quote_passed, quote_log, quote_report, quote_summary = _call_with_progress(
+            progress_callback,
+            "order_offered",
+            run_quote_attempt,
+        )
         quote_summary = dict(quote_summary or {})
         if (
             not quote_passed
@@ -167,7 +206,11 @@ def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None
             cart_vars = dict(variables)
             cart_vars.pop("order_sn", None)
             cart_vars.pop("last_order_sn", None)
-            cart_passed, cart_log, cart_report, cart_summary = run_shopping_cart_script(env, cart_vars)
+            cart_passed, cart_log, cart_report, cart_summary = _call_with_progress(
+                progress_callback,
+                "shopping_cart",
+                lambda: run_shopping_cart_script(env, cart_vars),
+            )
             cart_summary = dict(cart_summary or {})
             log["cart_autofill"]["cart_summary"] = {
                 "passed": cart_passed,
@@ -180,7 +223,11 @@ def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None
             _full_flow_record_step(log, "shopping_cart", SCRIPT_NAME, cart_passed, cart_summary, cart_report)
             if not cart_passed:
                 return _full_flow_finish(log, False, "shopping_cart", reason=str(cart_summary.get("reason") or cart_summary.get("error") or "\u5546\u54c1\u52a0\u8d2d\u5931\u8d25"))
-            quote_passed, quote_log, quote_report, quote_summary = run_quote_attempt(retry_after_autofill=True)
+            quote_passed, quote_log, quote_report, quote_summary = _call_with_progress(
+                progress_callback,
+                "order_offered",
+                lambda: run_quote_attempt(retry_after_autofill=True),
+            )
             quote_summary = dict(quote_summary or {})
             log["cart_autofill"]["retry_quote_report_path"] = quote_report
         elif not quote_passed:
@@ -199,7 +246,11 @@ def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None
 
         pay_vars = dict(variables)
         pay_vars["order_sn"] = order_sn
-        pay_passed, pay_log, pay_report, pay_summary = _payment_with_bank_fallback(env, pay_vars, porder=False)
+        pay_passed, pay_log, pay_report, pay_summary = _call_with_progress(
+            progress_callback,
+            "order_paid",
+            lambda: _payment_with_bank_fallback(env, pay_vars, porder=False),
+        )
         _full_flow_record_step(log, "order_paid", pay_summary.get("payment_type") == "bank" and BANK_PAYMENT_SCRIPT_NAME or BALANCE_PAYMENT_SCRIPT_NAME, pay_passed, pay_summary, pay_report)
         if not pay_passed:
             return _full_flow_finish(log, False, "order_paid", reason=str(pay_summary.get("reason") or pay_summary.get("error") or "\u8ba2\u5355\u652f\u4ed8\u5931\u8d25"))
@@ -211,7 +262,20 @@ def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None
         shelf_vars["purchase_no"] = str(variables.get("purchase_no") or datetime.now().strftime("%Y%m%d%H%M%S"))
         shelf_vars["link_quote_balance_before_shelf"] = False
         shelf_vars["auto_quote_and_pay"] = False
-        shelf_passed, shelf_log, shelf_report, shelf_summary = run_purchase_to_shelf_script(env, shelf_vars)
+        shelf_progress_node = stop_after if stop_after in {
+            "pending_purchase",
+            "purchase_no_saved",
+            "purchase_wait_modify_price",
+            "purchase_wait_pay",
+            "purchase_paid",
+            "checking_started",
+            "shelf_stored",
+        } else "shelf_stored"
+        shelf_passed, shelf_log, shelf_report, shelf_summary = _call_with_progress(
+            progress_callback,
+            shelf_progress_node,
+            lambda: run_purchase_to_shelf_script(env, shelf_vars),
+        )
         _full_flow_record_step(log, "shelf_stored", PURCHASE_TO_SHELF_SCRIPT_NAME, shelf_passed, shelf_summary, shelf_report)
         if not shelf_passed:
             return _full_flow_finish(log, False, str(shelf_summary.get("current_node") or "shelf_stored"), reason=str(shelf_summary.get("reason") or shelf_summary.get("error") or "\u5f85\u62cd\u4e0b\u5230\u4e0a\u67b6\u5931\u8d25"))
@@ -226,7 +290,18 @@ def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None
         delivery_vars.setdefault("warehouse_fill_retries", 3)
         delivery_vars.setdefault("warehouse_fill_retry_delay", 1)
         delivery_vars.pop("porder_sn", None)
-        delivery_passed, delivery_log, delivery_report, delivery_summary = run_warehouse_delivery_script(env, delivery_vars)
+        delivery_progress_node = stop_after if stop_after in {
+            "warehouse_delivery_created",
+            "porder_translated",
+            "porder_confirmed",
+            "porder_wait_offer",
+            "porder_offered",
+        } else "porder_offered"
+        delivery_passed, delivery_log, delivery_report, delivery_summary = _call_with_progress(
+            progress_callback,
+            delivery_progress_node,
+            lambda: run_warehouse_delivery_script(env, delivery_vars),
+        )
         _full_flow_record_step(log, "porder_offered", WAREHOUSE_DELIVERY_SCRIPT_NAME, delivery_passed, delivery_summary, delivery_report)
         if not delivery_passed:
             return _full_flow_finish(log, False, str(delivery_summary.get("current_node") or "porder_offered"), reason=str(delivery_summary.get("reason") or delivery_summary.get("error") or "\u914d\u9001\u5355\u6d41\u8f6c\u5931\u8d25"))
@@ -241,7 +316,11 @@ def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None
         porder_pay_vars = dict(variables)
         porder_pay_vars["porder_sn"] = porder_sn
         porder_pay_vars["run_backend_porder_flow"] = False
-        porder_pay_passed, porder_pay_log, porder_pay_report, porder_pay_summary = _payment_with_bank_fallback(env, porder_pay_vars, porder=True)
+        porder_pay_passed, porder_pay_log, porder_pay_report, porder_pay_summary = _call_with_progress(
+            progress_callback,
+            "porder_paid",
+            lambda: _payment_with_bank_fallback(env, porder_pay_vars, porder=True),
+        )
         _full_flow_record_step(
             log,
             "porder_paid",
@@ -261,7 +340,11 @@ def _impl_run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None
         return _full_flow_finish(log, False, str(log["steps"][-1]["node"] if log["steps"] else "full_flow"), reason=str(exc))
 
 
-def _impl_run_resume_order_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+def _impl_run_resume_order_flow_script(
+    env: Env,
+    variables: Dict[str, Any] | None = None,
+    progress_callback: Any = None,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
     ensure_report_dirs()
     variables = dict(variables or {})
     variables["_runtime"] = variables.get("_runtime") if isinstance(variables.get("_runtime"), DataScriptRuntime) else DataScriptRuntime()
@@ -345,14 +428,21 @@ def _impl_run_resume_order_flow_script(env: Env, variables: Dict[str, Any] | Non
                 base_url = (variables.get("backend_base_url") or env.base_url or bulk_cart.BASE_URL).rstrip("/")
                 timeout = _as_int(variables.get("timeout"), env.timeout or 25)
                 item_quantity = _as_int(variables.get("order_item_num") or variables.get("item_quantity"), 10)
-                backend_passed, backend_summary = _run_backend_order_flow_resume(
-                    base_url,
-                    timeout,
-                    variables,
-                    order_sn,
-                    item_quantity,
-                    log,
-                    detect_summary.get("order_data") if isinstance(detect_summary.get("order_data"), dict) else {},
+                backend_node = stop_after if stop_after in {
+                    "order_translated", "order_confirmed", "order_offered"
+                } else "order_offered"
+                backend_passed, backend_summary = _call_with_progress(
+                    progress_callback,
+                    backend_node,
+                    lambda: _run_backend_order_flow_resume(
+                        base_url,
+                        timeout,
+                        variables,
+                        order_sn,
+                        item_quantity,
+                        log,
+                        detect_summary.get("order_data") if isinstance(detect_summary.get("order_data"), dict) else {},
+                    ),
                 )
                 backend_summary = dict(backend_summary or {})
                 _full_flow_record_step(
@@ -374,7 +464,11 @@ def _impl_run_resume_order_flow_script(env: Env, variables: Dict[str, Any] | Non
 
             pay_vars = dict(variables)
             pay_vars["order_sn"] = order_sn
-            pay_passed, pay_log, pay_report, pay_summary = _payment_with_bank_fallback(env, pay_vars, porder=False)
+            pay_passed, pay_log, pay_report, pay_summary = _call_with_progress(
+                progress_callback,
+                "order_paid",
+                lambda: _payment_with_bank_fallback(env, pay_vars, porder=False),
+            )
             pay_summary = dict(pay_summary or {})
             _full_flow_record_step(
                 log,
@@ -400,7 +494,20 @@ def _impl_run_resume_order_flow_script(env: Env, variables: Dict[str, Any] | Non
             shelf_vars["purchase_no"] = str(variables.get("purchase_no") or _purchase_timestamp_no())
             shelf_vars["link_quote_balance_before_shelf"] = False
             shelf_vars["auto_quote_and_pay"] = False
-            shelf_passed, shelf_log, shelf_report, shelf_summary = run_purchase_to_shelf_script(env, shelf_vars)
+            shelf_progress_node = stop_after if stop_after in {
+                "pending_purchase",
+                "purchase_no_saved",
+                "purchase_wait_modify_price",
+                "purchase_wait_pay",
+                "purchase_paid",
+                "checking_started",
+                "shelf_stored",
+            } else "shelf_stored"
+            shelf_passed, shelf_log, shelf_report, shelf_summary = _call_with_progress(
+                progress_callback,
+                shelf_progress_node,
+                lambda: run_purchase_to_shelf_script(env, shelf_vars),
+            )
             shelf_summary = dict(shelf_summary or {})
             _full_flow_record_step(log, str(shelf_summary.get("current_node") or "shelf_stored"), PURCHASE_TO_SHELF_SCRIPT_NAME, shelf_passed, shelf_summary, shelf_report)
             if not shelf_passed:
@@ -422,7 +529,18 @@ def _impl_run_resume_order_flow_script(env: Env, variables: Dict[str, Any] | Non
         delivery_vars.setdefault("warehouse_fill_retries", 3)
         delivery_vars.setdefault("warehouse_fill_retry_delay", 1)
         delivery_vars.pop("porder_sn", None)
-        delivery_passed, delivery_log, delivery_report, delivery_summary = run_warehouse_delivery_script(env, delivery_vars)
+        delivery_progress_node = stop_after if stop_after in {
+            "warehouse_delivery_created",
+            "porder_translated",
+            "porder_confirmed",
+            "porder_wait_offer",
+            "porder_offered",
+        } else "porder_offered"
+        delivery_passed, delivery_log, delivery_report, delivery_summary = _call_with_progress(
+            progress_callback,
+            delivery_progress_node,
+            lambda: run_warehouse_delivery_script(env, delivery_vars),
+        )
         delivery_summary = dict(delivery_summary or {})
         _full_flow_record_step(log, str(delivery_summary.get("current_node") or "porder_offered"), WAREHOUSE_DELIVERY_SCRIPT_NAME, delivery_passed, delivery_summary, delivery_report)
         if not delivery_passed:
@@ -441,7 +559,11 @@ def _impl_run_resume_order_flow_script(env: Env, variables: Dict[str, Any] | Non
         return _resume_flow_finish(log, False, str(log["steps"][-1]["node"] if log["steps"] else "order_created"), reason=str(exc))
 
 
-def _impl_run_resume_porder_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+def _impl_run_resume_porder_flow_script(
+    env: Env,
+    variables: Dict[str, Any] | None = None,
+    progress_callback: Any = None,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
     ensure_report_dirs()
     variables = dict(variables or {})
     variables["_runtime"] = variables.get("_runtime") if isinstance(variables.get("_runtime"), DataScriptRuntime) else DataScriptRuntime()
@@ -492,8 +614,15 @@ def _impl_run_resume_porder_flow_script(env: Env, variables: Dict[str, Any] | No
         else:
             base_url = (variables.get("backend_base_url") or env.base_url or bulk_cart.BASE_URL).rstrip("/")
             timeout = _as_int(variables.get("timeout"), env.timeout or 25)
-            backend_passed, backend_summary = _run_backend_porder_flow_resume(
-                base_url, timeout, variables, porder_sn, log, detected_start_node,
+            backend_node = stop_after if stop_after in {
+                "porder_translated", "porder_confirmed", "porder_wait_offer", "porder_offered"
+            } else "porder_offered"
+            backend_passed, backend_summary = _call_with_progress(
+                progress_callback,
+                backend_node,
+                lambda: _run_backend_porder_flow_resume(
+                    base_url, timeout, variables, porder_sn, log, detected_start_node,
+                ),
             )
             backend_summary = dict(backend_summary or {})
             _full_flow_record_step(
@@ -517,7 +646,11 @@ def _impl_run_resume_porder_flow_script(env: Env, variables: Dict[str, Any] | No
         porder_pay_vars = dict(variables)
         porder_pay_vars["porder_sn"] = porder_sn
         porder_pay_vars["run_backend_porder_flow"] = False
-        pay_passed, pay_log, pay_report, pay_summary = _payment_with_bank_fallback(env, porder_pay_vars, porder=True)
+        pay_passed, pay_log, pay_report, pay_summary = _call_with_progress(
+            progress_callback,
+            "porder_paid",
+            lambda: _payment_with_bank_fallback(env, porder_pay_vars, porder=True),
+        )
         pay_summary = dict(pay_summary or {})
         _full_flow_record_step(
             log,
@@ -540,16 +673,28 @@ def _impl_run_resume_porder_flow_script(env: Env, variables: Dict[str, Any] | No
         return _resume_flow_finish(log, False, str(log["steps"][-1]["node"] if log["steps"] else "warehouse_delivery_created"), reason=str(exc))
 
 
-def run_full_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+def run_full_flow_script(
+    env: Env,
+    variables: Dict[str, Any] | None = None,
+    progress_callback: Any = None,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
     _sync_compat_globals()
-    return _impl_run_full_flow_script(env, variables)
+    return _impl_run_full_flow_script(env, variables, progress_callback=progress_callback)
 
 
-def run_resume_order_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+def run_resume_order_flow_script(
+    env: Env,
+    variables: Dict[str, Any] | None = None,
+    progress_callback: Any = None,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
     _sync_compat_globals()
-    return _impl_run_resume_order_flow_script(env, variables)
+    return _impl_run_resume_order_flow_script(env, variables, progress_callback=progress_callback)
 
 
-def run_resume_porder_flow_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
+def run_resume_porder_flow_script(
+    env: Env,
+    variables: Dict[str, Any] | None = None,
+    progress_callback: Any = None,
+) -> Tuple[bool, str, str, Dict[str, Any]]:
     _sync_compat_globals()
-    return _impl_run_resume_porder_flow_script(env, variables)
+    return _impl_run_resume_porder_flow_script(env, variables, progress_callback=progress_callback)

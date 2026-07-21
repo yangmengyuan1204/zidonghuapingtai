@@ -304,6 +304,10 @@ def _impl_init_app() -> None:
                 "submit_locator": "ALTER TABLE test_account_profile ADD COLUMN submit_locator TEXT",
                 "success_url_contains": "ALTER TABLE test_account_profile ADD COLUMN success_url_contains VARCHAR(500)",
                 "success_selector": "ALTER TABLE test_account_profile ADD COLUMN success_selector VARCHAR(500)",
+                "browser_state_encrypted": "ALTER TABLE test_account_profile ADD COLUMN browser_state_encrypted TEXT",
+                "browser_session_status": "ALTER TABLE test_account_profile ADD COLUMN browser_session_status VARCHAR(32)",
+                "browser_session_validated_at": "ALTER TABLE test_account_profile ADD COLUMN browser_session_validated_at DATETIME",
+                "browser_session_cleared_at": "ALTER TABLE test_account_profile ADD COLUMN browser_session_cleared_at DATETIME",
             },
             "case_generation_screenshot": {
                 "ocr_text": "ALTER TABLE case_generation_screenshot ADD COLUMN ocr_text TEXT",
@@ -329,6 +333,34 @@ def _impl_init_app() -> None:
             },
             "recorded_flow_step": {
                 "full_url": "ALTER TABLE recorded_flow_step ADD COLUMN full_url VARCHAR(1000)",
+            },
+            "requirement_verification": {
+                "is_archived": "ALTER TABLE requirement_verification ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0",
+                "target_pages_json": "ALTER TABLE requirement_verification ADD COLUMN target_pages_json TEXT",
+                "data_setup_json": "ALTER TABLE requirement_verification ADD COLUMN data_setup_json TEXT",
+            },
+            "verification_run": {
+                "data_setup_json": "ALTER TABLE verification_run ADD COLUMN data_setup_json TEXT",
+                "setup_result_json": "ALTER TABLE verification_run ADD COLUMN setup_result_json TEXT",
+                "phase": "ALTER TABLE verification_run ADD COLUMN phase VARCHAR(32) NOT NULL DEFAULT 'queued'",
+                "progress_json": "ALTER TABLE verification_run ADD COLUMN progress_json TEXT",
+                "heartbeat_time": "ALTER TABLE verification_run ADD COLUMN heartbeat_time DATETIME",
+                "pause_reason": "ALTER TABLE verification_run ADD COLUMN pause_reason TEXT",
+                "cancel_requested": "ALTER TABLE verification_run ADD COLUMN cancel_requested INTEGER NOT NULL DEFAULT 0",
+                "parent_run_id": "ALTER TABLE verification_run ADD COLUMN parent_run_id INTEGER",
+                "execution_version": "ALTER TABLE verification_run ADD COLUMN execution_version VARCHAR(16) NOT NULL DEFAULT 'v2'",
+            },
+            "verification_run_item": {
+                "dataset_id": "ALTER TABLE verification_run_item ADD COLUMN dataset_id INTEGER",
+                "flow_group": "ALTER TABLE verification_run_item ADD COLUMN flow_group VARCHAR(120)",
+                "dependency_json": "ALTER TABLE verification_run_item ADD COLUMN dependency_json TEXT",
+                "attempt": "ALTER TABLE verification_run_item ADD COLUMN attempt INTEGER NOT NULL DEFAULT 0",
+                "failure_kind": "ALTER TABLE verification_run_item ADD COLUMN failure_kind VARCHAR(40)",
+                "resume_json": "ALTER TABLE verification_run_item ADD COLUMN resume_json TEXT",
+            },
+            "verification_clarification": {
+                "topic_key": "ALTER TABLE verification_clarification ADD COLUMN topic_key VARCHAR(200)",
+                "review_json": "ALTER TABLE verification_clarification ADD COLUMN review_json TEXT",
             },
         }
         with engine.begin() as conn:

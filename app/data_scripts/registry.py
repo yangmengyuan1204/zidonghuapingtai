@@ -18,6 +18,7 @@ SCRIPT_REGISTRY: Dict[str, Dict[str, Any]] = {
     "material_order": {"name": "辅料单", "func": None},
     "material_generation": {"name": "辅料生成", "func": None},
     "balance_recharge": {"name": "余额充值", "func": None},
+    "balance_adjustment": {"name": "出入金调整", "func": None},
     "problem_goods": {"name": "日本站问题产品处理", "func": None},
     "oem_new_inquiry": {"name": "OEM创建询价单", "func": None},
     "oem_sample_order": {"name": "OEM提出样品单", "func": None},

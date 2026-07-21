@@ -8,6 +8,7 @@ _LEGACY_EXPORT_NAMES = tuple(
     name for name in vars(_legacy_module) if not name.startswith("__")
 )
 _DOMAIN_ENTRY_NAMES = (
+    "run_balance_adjustment_script",
     "run_balance_payment_script",
     "run_balance_recharge_script",
     "run_bank_payment_script",
@@ -23,6 +24,7 @@ _DOMAIN_ENTRY_NAMES = (
     "run_oem_sample_full_flow_script",
     "run_oem_sample_order_script",
     "run_order_quote_script",
+    "inspect_order_options",
     "run_problem_goods_script",
     "run_porder_balance_payment_script",
     "run_porder_bank_payment_script",
@@ -54,6 +56,7 @@ _sys.modules[__name__].__class__ = _DataScriptsModule
 
 
 from .cart import run_shopping_cart_script
+from .balance_adjustment import BALANCE_ADJUSTMENT_SCRIPT_NAME, run_balance_adjustment_script
 from .full_flow import run_full_flow_script, run_resume_order_flow_script, run_resume_porder_flow_script
 from .materials import run_material_generation_script, run_material_order_script
 from .oem import (
@@ -71,7 +74,7 @@ from .order_payments import (
     run_porder_balance_payment_script,
     run_porder_bank_payment_script,
 )
-from .orders import run_order_quote_script
+from .orders import inspect_order_options, run_order_quote_script
 from .payments import run_balance_recharge_script
 from .problem_goods import run_problem_goods_script
 from .purchase import run_direct_box_to_shelf_script, run_purchase_to_shelf_chain, run_purchase_to_shelf_script
@@ -98,6 +101,7 @@ register_script("resume_porder_flow", run_resume_porder_flow_script)
 register_script("material_order", run_material_order_script)
 register_script("material_generation", run_material_generation_script)
 register_script("balance_recharge", run_balance_recharge_script)
+register_script("balance_adjustment", run_balance_adjustment_script)
 register_script("problem_goods", run_problem_goods_script)
 register_script("oem_new_inquiry", run_oem_new_inquiry_script)
 register_script("oem_sample_order", run_oem_sample_order_script)

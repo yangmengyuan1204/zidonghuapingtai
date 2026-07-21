@@ -30,6 +30,7 @@ _COMPAT_NAMES = (
     '_parse_order_max_limit',
     '_paused_summary',
     '_payload_brief',
+    '_public_order_options',
     '_run_backend_order_flow',
     '_runtime_from_variables',
     '_select_cart_items',
@@ -382,3 +383,27 @@ def _impl_run_order_quote_script(env: Env, variables: Dict[str, Any] | None = No
 def run_order_quote_script(env: Env, variables: Dict[str, Any] | None = None) -> Tuple[bool, str, str, Dict[str, Any]]:
     _sync_compat_globals()
     return _impl_run_order_quote_script(env, variables)
+
+
+def inspect_order_options(env: Env, variables: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    _sync_compat_globals()
+    values = dict(variables or {})
+    runtime = _runtime_from_variables(values)
+    log: Dict[str, Any] = {"script": "查询订单附加服务", "read_only": True}
+    if runtime:
+        client, _base_url, _timeout, _token, _cached = runtime.client(env, values, log=log)
+    else:
+        base_url = (env.base_url or bulk_cart.BASE_URL).rstrip("/")
+        timeout = _as_int(values.get("timeout"), env.timeout or 25)
+        client = bulk_cart.RakumartClient(base_url, timeout)
+        _configure_client_api_paths(client, values)
+        _call_with_retry(
+            "client login",
+            lambda: client.login(
+                str(values.get("account") or ""),
+                str(values.get("password") or ""),
+                str(values.get("client_tool") or "1"),
+            ),
+        )
+    catalog, _payload, path = _fetch_order_option_catalog(client, values)
+    return {"path": path, "options": _public_order_options(catalog), "count": len(catalog)}

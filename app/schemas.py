@@ -358,6 +358,13 @@ class AiConfigUpdate(BaseModel):
     heal_confidence_threshold: Optional[float] = 0.7
 
 
+class AiConfigConnectionTest(BaseModel):
+    provider: Optional[str] = None
+    base_url: Optional[str] = None
+    model: Optional[str] = None
+    api_key: Optional[str] = None
+
+
 class QuickRunRequest(BaseModel):
     method: str = "GET"
     url: str
