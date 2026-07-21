@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Dict
@@ -184,6 +185,20 @@ def sanitize_observation(value: Any, *, depth: int = 0) -> Any:
     if isinstance(value, (int, float, bool)) or value is None:
         return value
     return str(value)[:1000]
+
+
+def _redact_sensitive_text(value: str, secrets: set[str]) -> str:
+    result = value
+    for secret in sorted((item for item in secrets if item), key=len, reverse=True):
+        if len(secret) >= 8:
+            result = result.replace(secret, "[REDACTED]")
+            continue
+        result = re.sub(
+            rf"(?<![0-9A-Za-z_]){re.escape(secret)}(?![0-9A-Za-z_])",
+            "[REDACTED]",
+            result,
+        )
+    return result
 
 
 def is_insufficient_balance(result: Dict[str, Any]) -> bool:
@@ -395,8 +410,7 @@ def _save_script_result(
         if isinstance(value, tuple):
             return [redact(item) for item in value]
         if isinstance(value, str):
-            for secret in redacted_values:
-                value = value.replace(secret, "[REDACTED]")
+            value = _redact_sensitive_text(value, redacted_values)
         return value
 
     try:
@@ -1338,8 +1352,7 @@ def execute_agent_tool(name: str, context: AgentToolContext, arguments: Dict[str
         if isinstance(value, tuple):
             return [redact(item) for item in value]
         if isinstance(value, str):
-            for secret in redacted_values():
-                value = value.replace(secret, "[REDACTED]")
+            value = _redact_sensitive_text(value, redacted_values())
         return value
 
     try:

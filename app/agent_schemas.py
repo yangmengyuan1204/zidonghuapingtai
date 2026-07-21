@@ -21,8 +21,8 @@ class DataAgentSessionConfirm(BaseModel):
 class DataAgentPermissionResume(BaseModel):
     plan_version: int
     backend_account_profile_id: int | None = None
-    backend_account: str = Field(default="", max_length=160)
-    backend_password: str = Field(default="", max_length=500)
+    backend_account: str = ""
+    backend_password: str = ""
 
 
 

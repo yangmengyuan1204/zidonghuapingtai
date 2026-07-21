@@ -297,12 +297,18 @@ _SESSIONS: Dict[str, AgentSessionState] = {}
 _STORE_LOCK = threading.RLock()
 _ENV_RUNNING: Dict[int, str] = {}
 _TEMP_PERMISSION_SECRETS: Dict[str, Dict[str, str]] = {}
+_CLAIMED_TEMP_PERMISSION_SECRETS: set[str] = set()
 _EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="data-factory-agent")
 
 
 def _store_temp_permission_secret(session_id: str, backend_account: str, backend_password: str) -> None:
     with _STORE_LOCK:
-        _TEMP_PERMISSION_SECRETS[str(session_id)] = {
+        key = str(session_id)
+        previous = _TEMP_PERMISSION_SECRETS.pop(key, None)
+        if previous:
+            previous.clear()
+        _CLAIMED_TEMP_PERMISSION_SECRETS.discard(key)
+        _TEMP_PERMISSION_SECRETS[key] = {
             "backend_account": str(backend_account),
             "backend_password": str(backend_password),
         }
@@ -310,12 +316,21 @@ def _store_temp_permission_secret(session_id: str, backend_account: str, backend
 
 def _take_temp_permission_secret(session_id: str) -> Dict[str, str]:
     with _STORE_LOCK:
-        return _TEMP_PERMISSION_SECRETS.pop(str(session_id), {})
+        key = str(session_id)
+        if key in _CLAIMED_TEMP_PERMISSION_SECRETS:
+            return {}
+        secret = _TEMP_PERMISSION_SECRETS.get(key)
+        if not secret:
+            return {}
+        _CLAIMED_TEMP_PERMISSION_SECRETS.add(key)
+        return secret
 
 
 def _clear_temp_permission_secret(session_id: str) -> None:
     with _STORE_LOCK:
-        secret = _TEMP_PERMISSION_SECRETS.pop(str(session_id), None)
+        key = str(session_id)
+        secret = _TEMP_PERMISSION_SECRETS.pop(key, None)
+        _CLAIMED_TEMP_PERMISSION_SECRETS.discard(key)
         if secret:
             secret.clear()
 
@@ -339,9 +354,10 @@ def _event(kind: str, message: str, **data: Any) -> Dict[str, Any]:
 def _cleanup_sessions() -> None:
     cutoff = datetime.now() - SESSION_TTL
     for session_id, session in list(_SESSIONS.items()):
-        if session.status != "running" and session.updated_at < cutoff:
+        if session.updated_at < cutoff:
             _clear_temp_permission_secret(session_id)
-            _SESSIONS.pop(session_id, None)
+            if session.status != "running":
+                _SESSIONS.pop(session_id, None)
 
 
 def _session_or_404(session_id: str, user_id: int) -> AgentSessionState:
@@ -2942,6 +2958,11 @@ def resume_agent_permission(
 ) -> Dict[str, Any]:
     session = _session_or_404(session_id, user_id)
     validate_agent_context(db, session.project_id, session.env_id)
+    if len(str(backend_account or "")) > 160 or len(str(backend_password or "")) > 500:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="临时后台账号或密码长度超过限制",
+        )
     temporary_account = str(backend_account or "").strip()
     temporary_password = str(backend_password or "")
     has_profile = backend_account_profile_id is not None
@@ -3032,5 +3053,6 @@ def reset_agent_runtime_for_tests() -> None:
         for secret in _TEMP_PERMISSION_SECRETS.values():
             secret.clear()
         _TEMP_PERMISSION_SECRETS.clear()
+        _CLAIMED_TEMP_PERMISSION_SECRETS.clear()
         _SESSIONS.clear()
         _ENV_RUNNING.clear()

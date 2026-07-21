@@ -1,6 +1,7 @@
 ﻿from typing import Any, Dict
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from ..agent_schemas import (
@@ -71,12 +72,22 @@ def read_session(
 
 
 @router.post("/sessions/{session_id}/permission")
-def resume_permission(
+async def resume_permission(
     session_id: str,
-    payload: DataAgentPermissionResume,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
+    try:
+        raw_payload = await request.json()
+        if not isinstance(raw_payload, dict):
+            raise ValueError("invalid payload")
+        payload = DataAgentPermissionResume.model_validate(raw_payload)
+    except (ValidationError, ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="权限恢复请求格式无效",
+        ) from None
     return resume_agent_permission(
         db,
         session_id,

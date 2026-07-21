@@ -475,18 +475,18 @@
     const temporaryAccount = String(formData.get("backend_account") || "").trim();
     const temporaryPassword = String(formData.get("backend_password") || "");
     const passwordInput = form.querySelector('[name="backend_password"]');
-    if (source === "profile" && !profileId) return options.showToast("请选择后台账号档案");
-    if (source === "temporary" && (!temporaryAccount || !temporaryPassword.trim())) {
-      return options.showToast("请同时输入后台账号和密码");
-    }
-    const body = source === "profile"
-      ? { plan_version: currentSession.plan_version, backend_account_profile_id: profileId }
-      : {
-          plan_version: currentSession.plan_version,
-          backend_account: temporaryAccount,
-          backend_password: temporaryPassword,
-        };
     try {
+      if (source === "profile" && !profileId) return options.showToast("请选择后台账号档案");
+      if (source === "temporary" && (!temporaryAccount || !temporaryPassword.trim())) {
+        return options.showToast("请同时输入后台账号和密码");
+      }
+      const body = source === "profile"
+        ? { plan_version: currentSession.plan_version, backend_account_profile_id: profileId }
+        : {
+            plan_version: currentSession.plan_version,
+            backend_account: temporaryAccount,
+            backend_password: temporaryPassword,
+          };
       currentSession = await options.api(`/api/data-scripts/agent/sessions/${currentSession.id}/permission`, {
         method: "POST",
         body,

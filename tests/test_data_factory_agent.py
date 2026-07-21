@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import json
 from pathlib import Path
+import threading
 from types import SimpleNamespace
 import uuid
 
@@ -2619,6 +2620,109 @@ def test_permission_resume_rejects_ambiguous_or_incomplete_source_without_mutati
     assert created["id"] not in agent_service._TEMP_PERMISSION_SECRETS
 
 
+@pytest.mark.parametrize(
+    ("backend_account", "backend_password"),
+    [
+        ("a" * 161, "valid-password"),
+        ("valid-account", "p" * 501),
+    ],
+)
+def test_permission_resume_rejects_oversized_temporary_credentials_without_echo(
+    monkeypatch,
+    backend_account,
+    backend_password,
+):
+    project, env = _agent_context()
+    deferred = DeferredExecutor()
+    monkeypatch.setattr(agent_service, "_EXECUTOR", deferred)
+    monkeypatch.setattr(agent_service, "call_local_model_json", lambda *args, **kwargs: _ready_goal())
+
+    with TestClient(app) as client:
+        headers = _login(client)
+        created = client.post(
+            "/api/data-scripts/agent/sessions",
+            headers=headers,
+            json={"project_id": project.id, "env_id": env.id, "instruction": "等待退款权限"},
+        ).json()
+        session = agent_service._SESSIONS[created["id"]]
+        session.status = "awaiting_permission"
+        session.runtime_state = {"operation_index": 0, "awaiting_permission": True}
+        before = agent_service._serialize_session(session)
+        response = client.post(
+            f"/api/data-scripts/agent/sessions/{created['id']}/permission",
+            headers=headers,
+            json={
+                "plan_version": created["plan_version"],
+                "backend_account": backend_account,
+                "backend_password": backend_password,
+            },
+        )
+        after = agent_service._serialize_session(session)
+
+    response_text = response.text
+    assert response.status_code == 400
+    assert backend_account not in response_text
+    assert backend_password not in response_text
+    assert after == before
+    assert deferred.calls == []
+    assert created["id"] not in agent_service._TEMP_PERMISSION_SECRETS
+
+
+@pytest.mark.parametrize(
+    ("payload", "secrets"),
+    [
+        (
+            {"backend_account": "missing-plan-account", "backend_password": "missing-plan-password"},
+            ["missing-plan-account", "missing-plan-password"],
+        ),
+        (
+            {
+                "plan_version": "invalid-plan-version",
+                "backend_account": "invalid-plan-account",
+                "backend_password": "invalid-plan-password",
+            },
+            ["invalid-plan-version", "invalid-plan-account", "invalid-plan-password"],
+        ),
+        (
+            {
+                "plan_version": 1,
+                "backend_account": {"value": "invalid-account-shape"},
+                "backend_password": "invalid-shape-password",
+            },
+            ["invalid-account-shape", "invalid-shape-password"],
+        ),
+    ],
+)
+def test_permission_resume_schema_errors_never_echo_temporary_credentials(monkeypatch, payload, secrets):
+    project, env = _agent_context()
+    deferred = DeferredExecutor()
+    monkeypatch.setattr(agent_service, "_EXECUTOR", deferred)
+    monkeypatch.setattr(agent_service, "call_local_model_json", lambda *args, **kwargs: _ready_goal())
+
+    with TestClient(app) as client:
+        headers = _login(client)
+        created = client.post(
+            "/api/data-scripts/agent/sessions",
+            headers=headers,
+            json={"project_id": project.id, "env_id": env.id, "instruction": "等待退款权限"},
+        ).json()
+        session = agent_service._SESSIONS[created["id"]]
+        session.status = "awaiting_permission"
+        session.runtime_state = {"operation_index": 0, "awaiting_permission": True}
+        before = agent_service._serialize_session(session)
+        response = client.post(
+            f"/api/data-scripts/agent/sessions/{created['id']}/permission",
+            headers=headers,
+            json=payload,
+        )
+        after = agent_service._serialize_session(session)
+
+    assert response.status_code == 400
+    assert all(secret not in response.text for secret in secrets)
+    assert after == before
+    assert deferred.calls == []
+
+
 def test_temporary_permission_credentials_are_redacted_from_tool_records_and_released(monkeypatch):
     secret = {"backend_account": "one-shot-leader", "backend_password": "one-shot-secret"}
     context = _tool_context()
@@ -2648,6 +2752,34 @@ def test_temporary_permission_credentials_are_redacted_from_tool_records_and_rel
     assert "one-shot-leader" not in serialized
     assert "one-shot-secret" not in serialized
     assert saved["variables"] == {}
+
+
+def test_short_temporary_credentials_do_not_corrupt_business_identifiers(monkeypatch):
+    context = _tool_context()
+    context.permission_credentials_provider = lambda: {
+        "backend_account": "1",
+        "backend_password": "a",
+    }
+
+    def fake_runner(env, variables):
+        return (
+            True,
+            json.dumps({"order_sn": "ORDER-1001", "message": "account 1 password a"}),
+            "reports/ORDER-1001.html",
+            {"order_sn": "ORDER-1001", "reason": "account 1 password a"},
+        )
+
+    monkeypatch.setattr(agent_tools, "save_record", lambda *args, **kwargs: SimpleNamespace(id=1))
+    result = agent_tools._save_script_result(
+        context,
+        "problem_goods",
+        fake_runner,
+        agent_tools._problem_runtime_variables(context, {"allow_large_refund": True}),
+    )
+
+    assert result["summary"]["order_sn"] == "ORDER-1001"
+    assert result["report_path"] == "reports/ORDER-1001.html"
+    assert result["summary"]["reason"] == "account [REDACTED] password [REDACTED]"
 
 
 def test_temporary_permission_credentials_are_redacted_from_any_tool_result(monkeypatch):
@@ -2762,10 +2894,78 @@ def test_temporary_permission_secrets_clear_on_submit_failure_cancel_ttl_and_res
     agent_service._cleanup_sessions()
     assert expired.id not in agent_service._TEMP_PERMISSION_SECRETS
 
+    queued = _permission_session(project, env)
+    queued.status = "running"
+    queued.updated_at = datetime.now() - agent_service.SESSION_TTL - timedelta(seconds=1)
+    agent_service._store_temp_permission_secret(queued.id, "queued-account", "queued-secret")
+    agent_service._cleanup_sessions()
+    assert queued.id not in agent_service._TEMP_PERMISSION_SECRETS
+    assert queued.id in agent_service._SESSIONS
+
+    in_flight = _permission_session(project, env)
+    in_flight.status = "running"
+    agent_service._store_temp_permission_secret(in_flight.id, "flight-account", "flight-secret")
+    in_flight_secret = agent_service._take_temp_permission_secret(in_flight.id)
+    agent_service.cancel_agent_session(in_flight.id, in_flight.user_id)
+    assert in_flight_secret == {}
+
+    ttl_in_flight = _permission_session(project, env)
+    ttl_in_flight.status = "running"
+    agent_service._store_temp_permission_secret(ttl_in_flight.id, "ttl-flight-account", "ttl-flight-secret")
+    ttl_in_flight_secret = agent_service._take_temp_permission_secret(ttl_in_flight.id)
+    ttl_in_flight.updated_at = datetime.now() - agent_service.SESSION_TTL - timedelta(seconds=1)
+    agent_service._cleanup_sessions()
+    assert ttl_in_flight_secret == {}
+
+    reset_in_flight = _permission_session(project, env)
+    agent_service._store_temp_permission_secret(reset_in_flight.id, "reset-flight-account", "reset-flight-secret")
+    reset_in_flight_secret = agent_service._take_temp_permission_secret(reset_in_flight.id)
+    agent_service.reset_agent_runtime_for_tests()
+    assert reset_in_flight_secret == {}
+
     agent_service._store_temp_permission_secret("reset-session", "reset-account", "reset-secret")
     agent_service.reset_agent_runtime_for_tests()
     assert agent_service._TEMP_PERMISSION_SECRETS == {}
     db.close()
+
+
+@pytest.mark.parametrize("cleanup_action", ["cancel", "reset"])
+def test_in_flight_permission_credentials_are_revoked_while_tool_is_blocked(monkeypatch, cleanup_action):
+    project, env = _agent_context()
+    session = _permission_session(project, env)
+    session.runtime_state["allow_large_refund"] = True
+    agent_service._store_temp_permission_secret(session.id, "blocked-account", "blocked-secret")
+    entered = threading.Event()
+    release = threading.Event()
+    observed = []
+
+    def fake_execute(name, context, arguments):
+        entered.set()
+        assert release.wait(5)
+        observed.append(context.permission_credentials_provider())
+        return {
+            "tool": "process_problem_goods",
+            "passed": True,
+            "record_id": 1,
+            "report_path": "",
+            "summary": {"completed_all": True, "problem_goods_ids": [901], "items": []},
+        }
+
+    monkeypatch.setattr(agent_service, "execute_agent_tool", fake_execute)
+    monkeypatch.setattr(agent_service, "save_record", lambda *args, **kwargs: SimpleNamespace(id=1))
+    worker = threading.Thread(target=agent_service._run_agent_session, args=(session.id,))
+    worker.start()
+    assert entered.wait(5)
+    if cleanup_action == "cancel":
+        agent_service.cancel_agent_session(session.id, session.user_id)
+    else:
+        agent_service.reset_agent_runtime_for_tests()
+    release.set()
+    worker.join(5)
+
+    assert not worker.is_alive()
+    assert observed == [{}]
+    assert session.id not in agent_service._TEMP_PERMISSION_SECRETS
 
 
 def test_temporary_permission_secret_is_stored_atomically_with_running_transition(monkeypatch):
@@ -2824,6 +3024,14 @@ def test_permission_frontend_supports_exclusive_profile_or_temporary_credentials
     assert 'backend_password: temporaryPassword' in source
     assert 'passwordInput.value = ""' in source
     assert "finally" in source
+
+
+def test_permission_frontend_clears_password_when_temporary_validation_fails():
+    source = Path("static/data-factory-agent.js").read_text(encoding="utf-8")
+    resume_source = source[source.index("async function resumePermission"):source.index("async function saveGoalEdits")]
+
+    assert resume_source.index("try {") < resume_source.index('if (source === "temporary"')
+    assert resume_source.index("finally") < resume_source.index('passwordInput.value = ""')
 
 
 def test_price_zero_never_silent():
