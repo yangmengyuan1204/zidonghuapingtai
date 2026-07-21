@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Dict
 
@@ -52,6 +52,8 @@ class AgentToolContext:
     public_variables: Dict[str, Any]
     state: Dict[str, Any]
     progress_callback: Callable[[Dict[str, Any]], None] | None = None
+    permission_credentials_provider: Callable[[], Dict[str, str]] | None = None
+    permission_redaction_values: set[str] = field(default_factory=set)
 
 
 TOOL_SPECS: Dict[str, AgentToolSpec] = {
@@ -369,15 +371,51 @@ def _save_script_result(
         data_scripts.run_resume_order_flow_script,
         data_scripts.run_resume_porder_flow_script,
     }
-    if context.progress_callback and runner in progress_runners:
-        passed, log_text, report_path, raw_summary = runner(
-            context.env,
-            variables,
-            progress_callback=context.progress_callback,
+    temp_credentials = (
+        context.permission_credentials_provider()
+        if context.permission_credentials_provider
+        else {}
+    )
+    redacted_values = context.permission_redaction_values | {
+        str(value)
+        for value in (
+            temp_credentials.get("backend_account"),
+            temp_credentials.get("backend_password"),
+            variables.get("backend_password"),
+            variables.get("password"),
         )
-    else:
-        passed, log_text, report_path, raw_summary = runner(context.env, variables)
-    summary = dict(raw_summary or {})
+        if str(value or "")
+    }
+
+    def redact(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: redact(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [redact(item) for item in value]
+        if isinstance(value, tuple):
+            return [redact(item) for item in value]
+        if isinstance(value, str):
+            for secret in redacted_values:
+                value = value.replace(secret, "[REDACTED]")
+        return value
+
+    try:
+        if context.progress_callback and runner in progress_runners:
+            passed, log_text, report_path, raw_summary = runner(
+                context.env,
+                variables,
+                progress_callback=context.progress_callback,
+            )
+        else:
+            passed, log_text, report_path, raw_summary = runner(context.env, variables)
+    except Exception as exc:
+        safe_message = str(redact(str(exc)))
+        if isinstance(exc, ValueError):
+            raise ValueError(safe_message) from None
+        raise RuntimeError(safe_message) from None
+    log_text = str(redact(str(log_text or "")))
+    report_path = str(redact(str(report_path or "")))
+    summary = dict(redact(dict(raw_summary or {})))
     try:
         execution_log = json.loads(log_text) if log_text else {}
     except (json.JSONDecodeError, TypeError):
@@ -773,6 +811,8 @@ def _problem_goal_operation(context: AgentToolContext) -> Dict[str, Any]:
 
 def _problem_runtime_variables(context: AgentToolContext, values: Dict[str, Any]) -> Dict[str, Any]:
     variables = _tool_variables(context, values)
+    if context.state.get("allow_large_refund"):
+        variables["allow_large_refund"] = True
     profile_id = context.state.get("backend_account_profile_id")
     if profile_id:
         account_values, _ = account_profile_variables(context.db, int(profile_id), context.project_id)
@@ -780,6 +820,7 @@ def _problem_runtime_variables(context: AgentToolContext, values: Dict[str, Any]
         backend_password = account_values.get("backend_password") or account_values.get("password")
         if not backend_account or not backend_password:
             raise ValueError("所选后台账号档案缺少账号或密码")
+        context.permission_redaction_values.add(str(backend_password))
         variables.update(account_values)
         variables.update(
             {
@@ -790,6 +831,18 @@ def _problem_runtime_variables(context: AgentToolContext, values: Dict[str, Any]
                 "backend_account_profile_id": int(profile_id),
             }
         )
+    if context.permission_credentials_provider:
+        permission_credentials = context.permission_credentials_provider()
+        backend_account = str(permission_credentials.get("backend_account") or "")
+        backend_password = str(permission_credentials.get("backend_password") or "")
+        if backend_account and backend_password:
+            context.permission_redaction_values.update({backend_account, backend_password})
+            variables.update(
+                {
+                    "backend_account": backend_account,
+                    "backend_password": backend_password,
+                }
+            )
     return variables
 
 
@@ -1266,9 +1319,41 @@ def execute_agent_tool(name: str, context: AgentToolContext, arguments: Dict[str
     if not runner:
         raise ValueError(f"未注册的数据工具：{name}")
     safe_arguments = arguments if isinstance(arguments, dict) else {}
-    result = runner(context, safe_arguments)
-    result.pop("_raw", None)
-    return result
+
+    def redacted_values() -> set[str]:
+        values = set(context.permission_redaction_values)
+        if context.permission_credentials_provider:
+            values.update(
+                str(value)
+                for value in context.permission_credentials_provider().values()
+                if str(value or "")
+            )
+        return values
+
+    def redact(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: redact(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [redact(item) for item in value]
+        if isinstance(value, tuple):
+            return [redact(item) for item in value]
+        if isinstance(value, str):
+            for secret in redacted_values():
+                value = value.replace(secret, "[REDACTED]")
+        return value
+
+    try:
+        result = runner(context, safe_arguments)
+        result = dict(redact(result))
+        result.pop("_raw", None)
+        return result
+    except Exception as exc:
+        safe_message = str(redact(str(exc)))
+        if isinstance(exc, ValueError):
+            raise ValueError(safe_message) from None
+        raise RuntimeError(safe_message) from None
+    finally:
+        context.permission_redaction_values.clear()
 
 
 def aggregate_log(goal: Dict[str, Any], events: list[Dict[str, Any]], result: Dict[str, Any]) -> str:

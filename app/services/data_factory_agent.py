@@ -21,7 +21,7 @@ from ..core.data_script_catalog import DATA_SCRIPT_PROJECT_NAME
 from ..core.utils import data_script_variables, save_record
 from ..database import SessionLocal
 from ..functional_testing.model_client import call_local_model_json
-from ..models import AiConfig, Env, Project
+from ..models import AiConfig, Env, Project, TestAccountProfile
 from .data_factory_agent_intent import reduce_intent_fields
 from .data_factory_agent_contract import (
     compile_contract_defaults,
@@ -296,7 +296,36 @@ class AgentSessionState:
 _SESSIONS: Dict[str, AgentSessionState] = {}
 _STORE_LOCK = threading.RLock()
 _ENV_RUNNING: Dict[int, str] = {}
+_TEMP_PERMISSION_SECRETS: Dict[str, Dict[str, str]] = {}
 _EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="data-factory-agent")
+
+
+def _store_temp_permission_secret(session_id: str, backend_account: str, backend_password: str) -> None:
+    with _STORE_LOCK:
+        _TEMP_PERMISSION_SECRETS[str(session_id)] = {
+            "backend_account": str(backend_account),
+            "backend_password": str(backend_password),
+        }
+
+
+def _take_temp_permission_secret(session_id: str) -> Dict[str, str]:
+    with _STORE_LOCK:
+        return _TEMP_PERMISSION_SECRETS.pop(str(session_id), {})
+
+
+def _clear_temp_permission_secret(session_id: str) -> None:
+    with _STORE_LOCK:
+        secret = _TEMP_PERMISSION_SECRETS.pop(str(session_id), None)
+        if secret:
+            secret.clear()
+
+
+def _safe_exception_text(exc: Exception, credentials: Dict[str, str]) -> str:
+    message = str(exc)
+    for value in credentials.values():
+        if value:
+            message = message.replace(str(value), "[REDACTED]")
+    return message
 
 
 def _now_text() -> str:
@@ -311,6 +340,7 @@ def _cleanup_sessions() -> None:
     cutoff = datetime.now() - SESSION_TTL
     for session_id, session in list(_SESSIONS.items()):
         if session.status != "running" and session.updated_at < cutoff:
+            _clear_temp_permission_secret(session_id)
             _SESSIONS.pop(session_id, None)
 
 
@@ -397,6 +427,28 @@ def validate_agent_context(db: Session, project_id: int, env_id: int) -> tuple[P
     if not env or env.project_id != project.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="环境不属于日本站测试项目")
     return project, env
+
+
+def _auto_large_refund_profile_id(db: Session, project_id: int) -> int | None:
+    profile = (
+        db.query(TestAccountProfile)
+        .filter(
+            TestAccountProfile.project_id == int(project_id),
+            TestAccountProfile.status == "active",
+            TestAccountProfile.profile_name == "后台沈文妮账号",
+        )
+        .order_by(TestAccountProfile.id.asc())
+        .first()
+    )
+    if not profile:
+        return None
+    try:
+        account_values, _ = account_profile_variables(db, int(profile.id), int(project_id))
+    except HTTPException:
+        return None
+    backend_account = account_values.get("backend_account") or account_values.get("username") or account_values.get("account")
+    backend_password = account_values.get("backend_password") or account_values.get("password")
+    return int(profile.id) if backend_account and backend_password else None
 
 
 def _latest_model_config(db: Session) -> AiConfig:
@@ -2297,6 +2349,7 @@ def _finalize_session(
     result: Dict[str, Any],
     context: AgentToolContext | None,
 ) -> None:
+    _clear_temp_permission_secret(session_id)
     if final_status not in TERMINAL_STATUSES:
         final_status = "failed"
     with _STORE_LOCK:
@@ -2388,6 +2441,7 @@ def _pause_agent_session(
     question: str,
     result: Dict[str, Any],
 ) -> None:
+    _clear_temp_permission_secret(session_id)
     with _STORE_LOCK:
         session = _SESSIONS.get(session_id)
         if not session:
@@ -2403,6 +2457,7 @@ def _pause_agent_session(
 def _run_agent_session(session_id: str) -> None:
     db = SessionLocal()
     context: AgentToolContext | None = None
+    permission_credentials = _take_temp_permission_secret(session_id)
     final_status = "failed"
     final_result: Dict[str, Any] = {"reason": "智能体未完成执行"}
     try:
@@ -2434,6 +2489,7 @@ def _run_agent_session(session_id: str) -> None:
             public_variables=public_variables,
             state=state,
             progress_callback=_make_progress_callback(session_id, goal, state),
+            permission_credentials_provider=lambda: dict(permission_credentials),
         )
         action_counts: Dict[str, int] = {}
         last_result: Dict[str, Any] = {}
@@ -2610,8 +2666,10 @@ def _run_agent_session(session_id: str) -> None:
                     "passed": False,
                     "record_id": None,
                     "report_path": "",
-                    "summary": {"reason": str(exc)},
+                    "summary": {"reason": _safe_exception_text(exc, permission_credentials)},
                 }
+            finally:
+                permission_credentials.clear()
             last_result = tool_result
             _sync_runtime_state(session_id, context.state)
             _append_event(
@@ -2638,6 +2696,29 @@ def _run_agent_session(session_id: str) -> None:
                 _append_event(session_id, _event("capability_gap", tool_reason, suggested_tool=final_result["suggested_tool"]))
                 break
             if operation.get("type") == "problem_goods" and tool_summary.get("awaiting_permission"):
+                retry_count = _problem_quantity(context.state.get("permission_retry_count", 0))
+                if tool_summary.get("permission_required") and retry_count < 1:
+                    profile_id = _auto_large_refund_profile_id(db, project_id)
+                    if profile_id:
+                        context.state.update(
+                            {
+                                "backend_account_profile_id": profile_id,
+                                "allow_large_refund": True,
+                                "permission_retry_count": 1,
+                                "awaiting_permission": False,
+                            }
+                        )
+                        _sync_runtime_state(session_id, context.state)
+                        _append_event(
+                            session_id,
+                            _event(
+                                "permission_auto_resumed",
+                                "已自动切换当前项目后台账号并重试一次",
+                                backend_account_profile_id=profile_id,
+                                permission_retry_count=1,
+                            ),
+                        )
+                        continue
                 context.state["awaiting_permission"] = True
                 _sync_runtime_state(session_id, context.state)
                 _pause_agent_session(
@@ -2688,9 +2769,10 @@ def _run_agent_session(session_id: str) -> None:
         _finalize_session(db, session_id, final_status, final_result, context)
     except Exception as exc:
         final_status = "failed"
-        final_result = {"reason": str(exc), **sanitize_observation(context.state if context else {})}
+        safe_error = _safe_exception_text(exc, permission_credentials)
+        final_result = {"reason": safe_error, **sanitize_observation(context.state if context else {})}
         try:
-            _append_event(session_id, _event("error", f"智能体执行异常：{exc}"))
+            _append_event(session_id, _event("error", f"智能体执行异常：{safe_error}"))
             _finalize_session(db, session_id, final_status, final_result, context)
         except Exception:
             with _STORE_LOCK:
@@ -2700,6 +2782,8 @@ def _run_agent_session(session_id: str) -> None:
                     session.result = final_result
                     session.updated_at = datetime.now()
     finally:
+        permission_credentials.clear()
+        _clear_temp_permission_secret(session_id)
         with _STORE_LOCK:
             session = _SESSIONS.get(session_id)
             if session and _ENV_RUNNING.get(session.env_id) == session_id:
@@ -2852,15 +2936,37 @@ def resume_agent_permission(
     session_id: str,
     user_id: int,
     plan_version: int,
-    backend_account_profile_id: int,
+    backend_account_profile_id: int | None,
+    backend_account: str = "",
+    backend_password: str = "",
 ) -> Dict[str, Any]:
     session = _session_or_404(session_id, user_id)
     validate_agent_context(db, session.project_id, session.env_id)
-    account_values, _ = account_profile_variables(db, int(backend_account_profile_id), session.project_id)
-    backend_account = account_values.get("backend_account") or account_values.get("username") or account_values.get("account")
-    backend_password = account_values.get("backend_password") or account_values.get("password")
-    if not backend_account or not backend_password:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="所选后台账号档案缺少账号或密码")
+    temporary_account = str(backend_account or "").strip()
+    temporary_password = str(backend_password or "")
+    has_profile = backend_account_profile_id is not None
+    has_temporary_account = bool(temporary_account)
+    has_temporary_password = bool(temporary_password.strip())
+    if has_profile == (has_temporary_account or has_temporary_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请选择后台账号档案，或同时输入临时后台账号和密码",
+        )
+    if not has_profile and not (has_temporary_account and has_temporary_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="临时后台账号和密码必须同时填写",
+        )
+    if has_profile:
+        account_values, _ = account_profile_variables(
+            db,
+            int(backend_account_profile_id),
+            session.project_id,
+        )
+        profile_account = account_values.get("backend_account") or account_values.get("username") or account_values.get("account")
+        profile_password = account_values.get("backend_password") or account_values.get("password")
+        if not profile_account or not profile_password:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="所选后台账号档案缺少账号或密码")
     with _STORE_LOCK:
         if session.status != "awaiting_permission":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前任务不在等待权限状态")
@@ -2869,26 +2975,41 @@ def resume_agent_permission(
         running_session = _ENV_RUNNING.get(session.env_id)
         if running_session and running_session != session.id:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前环境已有数据智能体任务正在执行")
-        session.runtime_state["backend_account_profile_id"] = int(backend_account_profile_id)
+        if has_profile:
+            session.runtime_state["backend_account_profile_id"] = int(backend_account_profile_id)
+        else:
+            session.runtime_state.pop("backend_account_profile_id", None)
+        session.runtime_state["allow_large_refund"] = True
+        session.runtime_state["permission_retry_count"] = max(
+            1,
+            _problem_quantity(session.runtime_state.get("permission_retry_count", 0)),
+        )
         session.runtime_state["awaiting_permission"] = False
         session.status = "running"
         session.question = ""
         session.result = {}
         session.cancel_requested = False
         session.updated_at = datetime.now()
-        session.events.append(
-            _event(
-                "permission_resumed",
-                "已选择后台账号，继续问题产品处理",
-                backend_account_profile_id=int(backend_account_profile_id),
-            )
+        event_data = (
+            {"backend_account_profile_id": int(backend_account_profile_id)}
+            if has_profile
+            else {"temporary_credentials": True}
         )
+        session.events.append(
+            _event("permission_resumed", "已提供后台权限，继续问题产品处理", **event_data)
+        )
+        if has_profile:
+            _clear_temp_permission_secret(session.id)
+        else:
+            _store_temp_permission_secret(session.id, temporary_account, temporary_password)
         _ENV_RUNNING[session.env_id] = session.id
     try:
         _EXECUTOR.submit(_run_agent_session, session.id)
     except Exception:
+        _clear_temp_permission_secret(session.id)
         with _STORE_LOCK:
             session.status = "awaiting_permission"
+            session.runtime_state["awaiting_permission"] = True
             _ENV_RUNNING.pop(session.env_id, None)
         raise
     return _serialize_session(session)
@@ -2902,10 +3023,14 @@ def cancel_agent_session(session_id: str, user_id: int) -> Dict[str, Any]:
         session.cancel_requested = True
         session.updated_at = datetime.now()
         session.events.append(_event("cancel", "已请求取消，将在当前工具执行结束后停止"))
+    _clear_temp_permission_secret(session.id)
     return _serialize_session(session)
 
 
 def reset_agent_runtime_for_tests() -> None:
     with _STORE_LOCK:
+        for secret in _TEMP_PERMISSION_SECRETS.values():
+            secret.clear()
+        _TEMP_PERMISSION_SECRETS.clear()
         _SESSIONS.clear()
         _ENV_RUNNING.clear()

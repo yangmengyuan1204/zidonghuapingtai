@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from pathlib import Path
 from types import SimpleNamespace
+import uuid
 
 import pytest
 from fastapi.testclient import TestClient
@@ -101,6 +102,72 @@ def _tool_context() -> AgentToolContext:
         public_variables={},
         state={"order_sn": "ORDER-1", "porder_sn": "PORDER-1"},
     )
+
+
+def _permission_session(project: Project, env: Env, *, user_id: int = 1) -> agent_service.AgentSessionState:
+    session = agent_service.AgentSessionState(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        project_id=project.id,
+        env_id=env.id,
+        status="running",
+        goal={
+            "mode": "resume_order",
+            "order_sn": "ORDER-LARGE-REFUND",
+            "variables": {},
+            "operations": [
+                {
+                    "id": "operation_problem_goods_1",
+                    "type": "problem_goods",
+                    "scope": "selected_item",
+                    "item_index": 1,
+                }
+            ],
+        },
+        runtime_state={"operation_index": 0, "order_sn": "ORDER-LARGE-REFUND"},
+    )
+    agent_service._SESSIONS[session.id] = session
+    agent_service._ENV_RUNNING[session.env_id] = session.id
+    return session
+
+
+def _permission_pause_result() -> dict:
+    return {
+        "tool": "process_problem_goods",
+        "passed": False,
+        "record_id": 901,
+        "report_path": "",
+        "summary": {
+            "paused": True,
+            "permission_required": True,
+            "awaiting_permission": True,
+            "reason": "预计退款达到500元，需要部长账号权限",
+            "problem_goods_id": 901,
+        },
+    }
+
+
+def _add_backend_profile(
+    db,
+    project_id: int | None,
+    *,
+    name: str = "后台沈文妮账号",
+    profile_status: str = "active",
+) -> AccountProfile:
+    profile = AccountProfile(
+        project_id=project_id,
+        profile_name=name,
+        variables="{}",
+        sensitive_variables=encrypt_account_payload(
+            {"backend_account": "leader", "backend_password": "profile-secret"}
+        ),
+        status=profile_status,
+        create_time=datetime.now(),
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile
 
 
 def test_agent_customer_priority_is_natural_language_then_topbar(monkeypatch):
@@ -2327,7 +2394,436 @@ def test_permission_resume_endpoint_uses_selected_account(monkeypatch):
     assert response.status_code == 200
     assert response.json()["status"] == "running"
     assert response.json()["current_state"]["backend_account_profile_id"] == 4
+    assert response.json()["current_state"]["allow_large_refund"] is True
+    assert response.json()["current_state"]["permission_retry_count"] == 1
     assert len(deferred.calls) == 1
+
+
+def test_large_refund_permission_auto_profile_retries_same_operation_once(monkeypatch):
+    project, env = _agent_context()
+    db = SessionLocal()
+    profile = _add_backend_profile(db, project.id)
+    session = _permission_session(project, env)
+    calls = []
+
+    def fake_execute(name, context, arguments):
+        calls.append(
+            {
+                "name": name,
+                "operation_id": context.state.get("current_operation_id"),
+                "profile_id": context.state.get("backend_account_profile_id"),
+                "allow_large_refund": context.state.get("allow_large_refund"),
+                "retry_count": context.state.get("permission_retry_count"),
+            }
+        )
+        if len(calls) == 1:
+            return _permission_pause_result()
+        return {
+            "tool": "process_problem_goods",
+            "passed": True,
+            "record_id": 902,
+            "report_path": "",
+            "summary": {
+                "completed_all": True,
+                "problem_goods_ids": [901],
+                "items": [{"problem_goods_id": 901, "status": 6}],
+            },
+        }
+
+    monkeypatch.setattr(agent_service, "execute_agent_tool", fake_execute)
+    monkeypatch.setattr(agent_service, "save_record", lambda *args, **kwargs: SimpleNamespace(id=903))
+    try:
+        agent_service._run_agent_session(session.id)
+    finally:
+        db.delete(profile)
+        db.commit()
+        db.close()
+
+    assert len(calls) == 2
+    assert calls[0]["operation_id"] == calls[1]["operation_id"] == "operation_problem_goods_1"
+    assert calls[0]["profile_id"] is None
+    assert calls[1] == {
+        "name": "process_problem_goods",
+        "operation_id": "operation_problem_goods_1",
+        "profile_id": profile.id,
+        "allow_large_refund": True,
+        "retry_count": 1,
+    }
+    assert session.status == "succeeded"
+    assert session.runtime_state["permission_retry_count"] == 1
+    assert session.runtime_state["allow_large_refund"] is True
+    assert session.runtime_state["backend_account_profile_id"] == profile.id
+
+
+def test_large_refund_permission_without_auto_profile_waits_for_manual_resume(monkeypatch):
+    project, env = _agent_context()
+    session = _permission_session(project, env)
+    calls = []
+    monkeypatch.setattr(agent_service, "_auto_large_refund_profile_id", lambda *args: None)
+    monkeypatch.setattr(
+        agent_service,
+        "execute_agent_tool",
+        lambda *args: calls.append(args[0]) or _permission_pause_result(),
+    )
+
+    agent_service._run_agent_session(session.id)
+
+    assert calls == ["process_problem_goods"]
+    assert session.status == "awaiting_permission"
+    assert session.runtime_state["operation_index"] == 0
+    assert session.runtime_state["current_operation_id"] == "operation_problem_goods_1"
+    assert session.runtime_state.get("permission_retry_count", 0) == 0
+
+
+def test_large_refund_auto_profile_still_restricted_does_not_loop(monkeypatch):
+    project, env = _agent_context()
+    db = SessionLocal()
+    profile = _add_backend_profile(db, project.id)
+    session = _permission_session(project, env)
+    calls = []
+
+    def fake_execute(name, context, arguments):
+        calls.append(
+            (
+                context.state.get("current_operation_id"),
+                context.state.get("permission_retry_count", 0),
+            )
+        )
+        return _permission_pause_result()
+
+    monkeypatch.setattr(agent_service, "execute_agent_tool", fake_execute)
+    try:
+        agent_service._run_agent_session(session.id)
+    finally:
+        db.delete(profile)
+        db.commit()
+        db.close()
+
+    assert calls == [
+        ("operation_problem_goods_1", 0),
+        ("operation_problem_goods_1", 1),
+    ]
+    assert session.status == "awaiting_permission"
+    assert session.runtime_state["permission_retry_count"] == 1
+    assert session.runtime_state["backend_account_profile_id"] == profile.id
+
+
+def test_auto_large_refund_profile_is_current_project_active_exact_name():
+    db = SessionLocal()
+    project = Project(name=f"permission-scope-{uuid.uuid4()}", desc="", create_time=datetime.now())
+    other_project = Project(name=f"permission-other-{uuid.uuid4()}", desc="", create_time=datetime.now())
+    db.add_all([project, other_project])
+    db.commit()
+    profiles = [
+        _add_backend_profile(db, other_project.id),
+        _add_backend_profile(db, project.id, profile_status="disabled"),
+        _add_backend_profile(db, project.id, name="后台沈文妮账号-备用"),
+        _add_backend_profile(db, None),
+        _add_backend_profile(db, project.id),
+        _add_backend_profile(db, project.id),
+    ]
+    expected_id = profiles[-2].id
+    try:
+        assert agent_service._auto_large_refund_profile_id(db, project.id) == expected_id
+    finally:
+        for profile in profiles:
+            db.delete(profile)
+        db.delete(other_project)
+        db.delete(project)
+        db.commit()
+        db.close()
+
+
+def test_permission_resume_endpoint_accepts_temporary_credentials_without_serializing_them(monkeypatch):
+    project, env = _agent_context()
+    deferred = DeferredExecutor()
+    monkeypatch.setattr(agent_service, "_EXECUTOR", deferred)
+    monkeypatch.setattr(agent_service, "call_local_model_json", lambda *args, **kwargs: _ready_goal())
+
+    with TestClient(app) as client:
+        headers = _login(client)
+        created = client.post(
+            "/api/data-scripts/agent/sessions",
+            headers=headers,
+            json={
+                "project_id": project.id,
+                "env_id": env.id,
+                "instruction": "订单退款达到权限阈值，需要继续当前问题产品操作",
+            },
+        ).json()
+        session = agent_service._SESSIONS[created["id"]]
+        session.status = "awaiting_permission"
+        session.runtime_state = {
+            "operation_index": 0,
+            "current_operation_id": "operation_problem_goods_1",
+            "awaiting_permission": True,
+        }
+        response = client.post(
+            f"/api/data-scripts/agent/sessions/{created['id']}/permission",
+            headers=headers,
+            json={
+                "plan_version": created["plan_version"],
+                "backend_account": "temporary-leader",
+                "backend_password": "temporary-secret",
+            },
+        )
+
+    assert response.status_code == 200
+    serialized = json.dumps(response.json(), ensure_ascii=False)
+    assert "temporary-leader" not in serialized
+    assert "temporary-secret" not in serialized
+    assert response.json()["current_state"]["allow_large_refund"] is True
+    assert agent_service._TEMP_PERMISSION_SECRETS[created["id"]] == {
+        "backend_account": "temporary-leader",
+        "backend_password": "temporary-secret",
+    }
+    assert len(deferred.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"backend_account_profile_id": 4, "backend_account": "temp", "backend_password": "secret"},
+        {"backend_account": "temp"},
+        {"backend_password": "secret"},
+        {},
+    ],
+)
+def test_permission_resume_rejects_ambiguous_or_incomplete_source_without_mutation(monkeypatch, payload):
+    project, env = _agent_context()
+    deferred = DeferredExecutor()
+    monkeypatch.setattr(agent_service, "_EXECUTOR", deferred)
+    monkeypatch.setattr(agent_service, "call_local_model_json", lambda *args, **kwargs: _ready_goal())
+
+    with TestClient(app) as client:
+        headers = _login(client)
+        created = client.post(
+            "/api/data-scripts/agent/sessions",
+            headers=headers,
+            json={"project_id": project.id, "env_id": env.id, "instruction": "等待退款权限"},
+        ).json()
+        session = agent_service._SESSIONS[created["id"]]
+        session.status = "awaiting_permission"
+        session.runtime_state = {"operation_index": 0, "awaiting_permission": True}
+        before = agent_service._serialize_session(session)
+        response = client.post(
+            f"/api/data-scripts/agent/sessions/{created['id']}/permission",
+            headers=headers,
+            json={"plan_version": created["plan_version"], **payload},
+        )
+        after = agent_service._serialize_session(session)
+
+    assert response.status_code == 400
+    assert after == before
+    assert deferred.calls == []
+    assert created["id"] not in agent_service._TEMP_PERMISSION_SECRETS
+
+
+def test_temporary_permission_credentials_are_redacted_from_tool_records_and_released(monkeypatch):
+    secret = {"backend_account": "one-shot-leader", "backend_password": "one-shot-secret"}
+    context = _tool_context()
+    context.permission_credentials_provider = lambda: dict(secret)
+    saved = {}
+
+    def fake_save_record(*args, **kwargs):
+        saved["log"] = args[4]
+        saved["variables"] = kwargs["variables"]
+        return SimpleNamespace(id=1)
+
+    def fake_runner(env, variables):
+        assert variables["backend_account"] == "one-shot-leader"
+        assert variables["backend_password"] == "one-shot-secret"
+        return (
+            True,
+            json.dumps({"account": "one-shot-leader", "password": "one-shot-secret"}),
+            "reports/one-shot-secret.html",
+            {"completed": True, "echo": "one-shot-leader one-shot-secret"},
+        )
+
+    monkeypatch.setattr(agent_tools, "save_record", fake_save_record)
+    variables = agent_tools._problem_runtime_variables(context, {"allow_large_refund": True})
+    result = agent_tools._save_script_result(context, "problem_goods", fake_runner, variables)
+    serialized = json.dumps({"result": result, "saved": saved}, ensure_ascii=False)
+
+    assert "one-shot-leader" not in serialized
+    assert "one-shot-secret" not in serialized
+    assert saved["variables"] == {}
+
+
+def test_temporary_permission_credentials_are_redacted_from_any_tool_result(monkeypatch):
+    context = _tool_context()
+    context.permission_credentials_provider = lambda: {
+        "backend_account": "result-leader",
+        "backend_password": "result-secret",
+    }
+    monkeypatch.setitem(
+        agent_tools.TOOL_RUNNERS,
+        "temporary_result_probe",
+        lambda *args: {
+            "tool": "temporary_result_probe",
+            "passed": False,
+            "report_path": "reports/result-secret.html",
+            "summary": {"reason": "result-leader result-secret"},
+        },
+    )
+
+    result = execute_agent_tool("temporary_result_probe", context, {})
+
+    serialized = json.dumps(result, ensure_ascii=False)
+    assert "result-leader" not in serialized
+    assert "result-secret" not in serialized
+
+
+def test_temporary_permission_credentials_are_redacted_from_tool_exceptions(monkeypatch):
+    context = _tool_context()
+    context.permission_credentials_provider = lambda: {
+        "backend_account": "exception-leader",
+        "backend_password": "exception-secret",
+    }
+
+    def raise_secret(*args):
+        raise RuntimeError("exception-leader exception-secret")
+
+    monkeypatch.setitem(agent_tools.TOOL_RUNNERS, "temporary_exception_probe", raise_secret)
+
+    with pytest.raises(RuntimeError) as captured:
+        execute_agent_tool("temporary_exception_probe", context, {})
+
+    assert "exception-leader" not in str(captured.value)
+    assert "exception-secret" not in str(captured.value)
+
+
+def test_temporary_permission_secret_is_taken_once_and_local_provider_is_cleared(monkeypatch):
+    project, env = _agent_context()
+    session = _permission_session(project, env)
+    session.runtime_state["allow_large_refund"] = True
+    agent_service._store_temp_permission_secret(session.id, "temporary-leader", "temporary-secret")
+    providers = []
+
+    def fake_execute(name, context, arguments):
+        providers.append(context.permission_credentials_provider)
+        first = agent_tools._problem_runtime_variables(context, {})
+        second = agent_tools._problem_runtime_variables(context, {})
+        assert first["backend_account"] == second["backend_account"] == "temporary-leader"
+        assert first["backend_password"] == second["backend_password"] == "temporary-secret"
+        return {
+            "tool": "process_problem_goods",
+            "passed": True,
+            "record_id": 1,
+            "report_path": "",
+            "summary": {"completed_all": True, "problem_goods_ids": [901], "items": []},
+        }
+
+    monkeypatch.setattr(agent_service, "execute_agent_tool", fake_execute)
+    monkeypatch.setattr(agent_service, "save_record", lambda *args, **kwargs: SimpleNamespace(id=1))
+    agent_service._run_agent_session(session.id)
+
+    assert session.id not in agent_service._TEMP_PERMISSION_SECRETS
+    assert providers and providers[0]() == {}
+    serialized = json.dumps(agent_service._serialize_session(session), ensure_ascii=False)
+    assert "temporary-leader" not in serialized
+    assert "temporary-secret" not in serialized
+
+
+def test_temporary_permission_secrets_clear_on_submit_failure_cancel_ttl_and_reset(monkeypatch):
+    project, env = _agent_context()
+    db = SessionLocal()
+    session = _permission_session(project, env)
+    session.status = "awaiting_permission"
+    session.runtime_state["awaiting_permission"] = True
+
+    class FailingExecutor:
+        def submit(self, *args, **kwargs):
+            raise RuntimeError("submit failed")
+
+    monkeypatch.setattr(agent_service, "_EXECUTOR", FailingExecutor())
+    with pytest.raises(RuntimeError, match="submit failed"):
+        agent_service.resume_agent_permission(
+            db,
+            session.id,
+            session.user_id,
+            session.plan_version,
+            None,
+            "temporary-leader",
+            "temporary-secret",
+        )
+    assert session.id not in agent_service._TEMP_PERMISSION_SECRETS
+    assert session.status == "awaiting_permission"
+
+    session.status = "running"
+    agent_service._store_temp_permission_secret(session.id, "cancel-account", "cancel-secret")
+    agent_service.cancel_agent_session(session.id, session.user_id)
+    assert session.id not in agent_service._TEMP_PERMISSION_SECRETS
+
+    expired = _permission_session(project, env)
+    expired.status = "awaiting_permission"
+    expired.updated_at = datetime.now() - agent_service.SESSION_TTL - timedelta(seconds=1)
+    agent_service._store_temp_permission_secret(expired.id, "expired-account", "expired-secret")
+    agent_service._cleanup_sessions()
+    assert expired.id not in agent_service._TEMP_PERMISSION_SECRETS
+
+    agent_service._store_temp_permission_secret("reset-session", "reset-account", "reset-secret")
+    agent_service.reset_agent_runtime_for_tests()
+    assert agent_service._TEMP_PERMISSION_SECRETS == {}
+    db.close()
+
+
+def test_temporary_permission_secret_is_stored_atomically_with_running_transition(monkeypatch):
+    project, env = _agent_context()
+    db = SessionLocal()
+    session = _permission_session(project, env)
+    session.status = "awaiting_permission"
+    session.runtime_state["awaiting_permission"] = True
+    deferred = DeferredExecutor()
+    ownership = []
+    original_store = agent_service._store_temp_permission_secret
+
+    def observed_store(*args):
+        ownership.append(agent_service._STORE_LOCK._is_owned())
+        return original_store(*args)
+
+    monkeypatch.setattr(agent_service, "_EXECUTOR", deferred)
+    monkeypatch.setattr(agent_service, "_store_temp_permission_secret", observed_store)
+    agent_service.resume_agent_permission(
+        db,
+        session.id,
+        session.user_id,
+        session.plan_version,
+        None,
+        "atomic-account",
+        "atomic-secret",
+    )
+
+    assert ownership == [True]
+    agent_service._clear_temp_permission_secret(session.id)
+    db.close()
+
+
+@pytest.mark.parametrize("terminal_status", ["succeeded", "failed", "blocked", "cancelled"])
+def test_temporary_permission_secrets_clear_on_every_terminal_status(monkeypatch, terminal_status):
+    project, env = _agent_context()
+    db = SessionLocal()
+    session = _permission_session(project, env)
+    agent_service._store_temp_permission_secret(session.id, "terminal-account", "terminal-secret")
+    monkeypatch.setattr(agent_service, "save_record", lambda *args, **kwargs: SimpleNamespace(id=1))
+
+    agent_service._finalize_session(db, session.id, terminal_status, {"reason": "done"}, None)
+
+    assert session.id not in agent_service._TEMP_PERMISSION_SECRETS
+    db.close()
+
+
+def test_permission_frontend_supports_exclusive_profile_or_temporary_credentials():
+    source = Path("static/data-factory-agent.js").read_text(encoding="utf-8")
+
+    assert 'name="permission_source"' in source
+    assert 'name="backend_account"' in source
+    assert 'name="backend_password"' in source
+    assert 'backend_account_profile_id: profileId' in source
+    assert 'backend_account: temporaryAccount' in source
+    assert 'backend_password: temporaryPassword' in source
+    assert 'passwordInput.value = ""' in source
+    assert "finally" in source
 
 
 def test_price_zero_never_silent():

@@ -83,6 +83,8 @@ def resume_permission(
         current_user.id,
         payload.plan_version,
         payload.backend_account_profile_id,
+        payload.backend_account,
+        payload.backend_password,
     )
 
 
