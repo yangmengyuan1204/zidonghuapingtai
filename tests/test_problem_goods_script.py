@@ -11,6 +11,7 @@ from app.data_scripts.problem_goods import (
     ProblemGoodsGateway,
     available_option_catalog,
     client_deal_text,
+    merge_purchase_candidates,
     normalize_customer_id,
     order_purchase_candidates,
     parse_preview_bills,
@@ -308,19 +309,46 @@ def test_candidates_mark_fully_stored_purchase_unavailable():
     assert rows[0]["can_submit"] is False
 
 
+def test_order_purchase_candidates_skip_malformed_id_and_quantity_records():
+    payload = {"data": {"order_detail": [{
+        "id": 14052983,
+        "order_purchase": [
+            {"id": "bad-id", "order_detail_id": 14052983, "possible_num": 1, "storage_num": 0},
+            {"id": 15328211, "order_detail_id": 14052983, "possible_num": "bad-num", "storage_num": 0},
+            {"id": 15328212, "order_detail_id": 14052983, "possible_num": 2, "storage_num": 0},
+        ],
+    }]}}
+
+    rows = order_purchase_candidates(payload)
+
+    assert [row["order_purchase_id"] for row in rows] == [15328212]
+
+
+def test_merge_purchase_candidates_skips_malformed_id_and_fills_empty_fields():
+    rows = merge_purchase_candidates(
+        [{"order_purchase_id": "bad-id"}, {"order_purchase_id": 15328213, "purchase_no": "", "sorting": None}],
+        [{"order_purchase_id": 15328213, "purchase_no": "P-13", "sorting": 3}],
+    )
+
+    assert rows == [{"order_purchase_id": 15328213, "purchase_no": "P-13", "sorting": 3}]
+
+
 def _candidate_gateway(monkeypatch, responses):
     gateway = object.__new__(ProblemGoodsGateway)
     gateway.variables = {"customer_id": "300001"}
     gateway.log = {}
     gateway._path = lambda key, default: default
+    calls = []
 
     def request(path, fields, action, mutation):
+        calls.append(path)
         response = responses[path]
         if isinstance(response, Exception):
             raise response
         return response
 
     monkeypatch.setattr(gateway, "_admin_request", request)
+    gateway.candidate_request_paths = calls
     return gateway
 
 
@@ -354,6 +382,27 @@ def test_gateway_prefers_order_detail_candidates(monkeypatch):
 
     assert [row["order_purchase_id"] for row in rows] == [15328208]
     assert gateway.log["candidate_sources"]["order_detail"]["count"] == 1
+    assert gateway.candidate_request_paths == ["/order.detail"]
+
+
+def test_gateway_uses_successful_fallback_when_primary_candidates_are_malformed(monkeypatch):
+    malformed_primary = {"success": True, "data": {"order_detail": [{
+        "id": 14052981,
+        "order_purchase": [{"id": "bad-id", "possible_num": 1, "storage_num": 0}],
+    }]}}
+    gateway = _candidate_gateway(
+        monkeypatch,
+        {
+            "/order.detail": malformed_primary,
+            "/purchase.purchaseList": _order_detail_payload(15328214),
+            "/follow.followList": ProblemGoodsError("temporary failure"),
+        },
+    )
+
+    rows = gateway.list_purchase_candidates("2026071816165891-300001")
+
+    assert [row["order_purchase_id"] for row in rows] == [15328214]
+    assert gateway.candidate_request_paths == ["/order.detail", "/purchase.purchaseList", "/follow.followList"]
 
 
 def test_gateway_merges_and_deduplicates_fallback_sources(monkeypatch):

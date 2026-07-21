@@ -409,13 +409,16 @@ def order_purchase_candidates(order_data: Dict[str, Any]) -> list[Dict[str, Any]
     candidates: list[Dict[str, Any]] = []
     seen: set[int] = set()
     for detail, purchase in pairs:
-        purchase_id = int(purchase.get("id") or purchase.get("order_purchase_id") or 0)
-        detail_id = int(detail.get("id") or purchase.get("order_detail_id") or 0)
+        try:
+            purchase_id = int(purchase.get("id") or purchase.get("order_purchase_id") or 0)
+            detail_id = int(detail.get("id") or purchase.get("order_detail_id") or 0)
+            possible_num = int(purchase.get("possible_num") or 0)
+            storage_num = int(purchase.get("storage_num") or 0)
+        except (TypeError, ValueError):
+            continue
         if not purchase_id or not detail_id or purchase_id in seen:
             continue
         seen.add(purchase_id)
-        possible_num = int(purchase.get("possible_num") or 0)
-        storage_num = int(purchase.get("storage_num") or 0)
         max_submit_num = max(0, possible_num - storage_num)
         price = purchase.get("price") if purchase.get("price") not in (None, "") else detail.get("confirm_price")
         freight = purchase.get("freight") if purchase.get("freight") not in (None, "") else detail.get("confirm_freight")
@@ -455,7 +458,10 @@ def merge_purchase_candidates(*groups: list[Dict[str, Any]]) -> list[Dict[str, A
     merged: Dict[int, Dict[str, Any]] = {}
     for group in groups:
         for candidate in group:
-            purchase_id = int(candidate.get("order_purchase_id") or 0)
+            try:
+                purchase_id = int(candidate.get("order_purchase_id") or 0)
+            except (TypeError, ValueError):
+                continue
             if not purchase_id:
                 continue
             current = merged.get(purchase_id)
