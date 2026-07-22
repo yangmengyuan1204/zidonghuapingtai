@@ -1923,3 +1923,73 @@ def test_concurrent_new_sources_reopen_review_once_without_losing_evidence(tmp_p
     finally:
         verification_db.close()
         engine.dispose()
+
+
+def test_regression_result_cannot_overwrite_evidence_added_during_evaluation(
+    tmp_path,
+    monkeypatch,
+):
+    database_path = tmp_path / "candidate-regression-snapshot.db"
+    engine = create_engine(
+        f"sqlite:///{database_path}",
+        connect_args={"check_same_thread": False, "timeout": 1},
+    )
+    with engine.begin() as connection:
+        connection.execute(text("PRAGMA journal_mode=WAL"))
+    Base.metadata.create_all(bind=engine)
+    session_factory = sessionmaker(bind=engine)
+    setup_db = session_factory()
+    try:
+        candidate, samples = _pending_regression_candidate(setup_db)
+        candidate_id = candidate.id
+        original_source_ids = [sample.id for sample in samples]
+    finally:
+        setup_db.close()
+
+    def add_evidence_then_return_stale_success(db, candidate):
+        errors = []
+
+        def add_evidence():
+            evidence_db = session_factory()
+            try:
+                sample = _verified_corrected_sample(
+                    evidence_db,
+                    instruction="回归运行中新增证据",
+                    initial_contract=_regression_goal(quantity=1),
+                    final_contract=_regression_goal(quantity=2),
+                )
+                learning_service.refresh_candidates_for_sample(evidence_db, sample)
+                evidence_db.commit()
+            except Exception as exc:  # pragma: no cover - asserted through errors
+                errors.append(exc)
+            finally:
+                evidence_db.close()
+
+        worker = threading.Thread(target=add_evidence)
+        worker.start()
+        worker.join(10)
+        assert not worker.is_alive()
+        assert errors == []
+        summary = learning_service._regression_summary(fixture_total=80, historical_total=3)
+        summary["source_sample_ids_checked"] = original_source_ids
+        summary["passed"] = 83
+        return summary
+
+    monkeypatch.setattr(learning_service, "evaluate_candidate", add_evidence_then_return_stale_success)
+    regression_db = session_factory()
+    try:
+        result = learning_service.run_candidate_regression(regression_db, candidate_id)
+    finally:
+        regression_db.close()
+
+    verification_db = session_factory()
+    try:
+        candidate = verification_db.get(models.DataAgentRuleCandidate, candidate_id)
+        assert result.status == "pending_regression"
+        assert candidate.status == "pending_regression"
+        assert candidate.regression_json == "{}"
+        assert candidate.occurrence_count == 4
+        assert len(json.loads(candidate.source_sample_ids_json)) == 4
+    finally:
+        verification_db.close()
+        engine.dispose()

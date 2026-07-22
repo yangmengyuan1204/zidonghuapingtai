@@ -8,6 +8,7 @@ import time
 import unicodedata
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from types import SimpleNamespace
 from typing import Any, Dict
 
 from sqlalchemy import case, or_
@@ -1282,30 +1283,71 @@ def run_candidate_regression(db: Session, candidate_id: int) -> DataAgentRuleCan
     if candidate.status != "pending_regression":
         raise ValueError("仅 pending_regression 候选可运行回归")
 
+    snapshot = {
+        "id": int(candidate.id),
+        "project_id": int(candidate.project_id),
+        "proposal_json": str(candidate.proposal_json),
+        "source_sample_ids_json": str(candidate.source_sample_ids_json),
+        "occurrence_count": int(candidate.occurrence_count or 0),
+    }
+    evaluation_candidate = SimpleNamespace(**snapshot)
+    db.rollback()
+
     try:
-        summary = evaluate_candidate(db, candidate)
+        summary = evaluate_candidate(db, evaluation_candidate)
     except Exception:
         summary = _regression_summary(fixture_total=0, historical_total=0)
         _add_error_code(summary, "regression_exception")
         summary = _finish_summary(summary)
-    candidate.regression_json = _stable_json(summary)
-    candidate.status = "pending_review" if regression_passed(summary) else "regression_failed"
-    candidate.update_time = datetime.now()
+    result_status = "pending_review" if regression_passed(summary) else "regression_failed"
+    result_json = _stable_json(summary)
+    db.rollback()
+
+    def persist_if_snapshot_matches(status: str, regression_json: str) -> int:
+        return (
+            db.query(DataAgentRuleCandidate)
+            .filter(
+                DataAgentRuleCandidate.id == snapshot["id"],
+                DataAgentRuleCandidate.status == "pending_regression",
+                DataAgentRuleCandidate.proposal_json == snapshot["proposal_json"],
+                DataAgentRuleCandidate.source_sample_ids_json
+                == snapshot["source_sample_ids_json"],
+                DataAgentRuleCandidate.occurrence_count == snapshot["occurrence_count"],
+            )
+            .update(
+                {
+                    DataAgentRuleCandidate.regression_json: regression_json,
+                    DataAgentRuleCandidate.status: status,
+                    DataAgentRuleCandidate.update_time: datetime.now(),
+                },
+                synchronize_session=False,
+            )
+        )
+
     try:
+        if persist_if_snapshot_matches(result_status, result_json) != 1:
+            db.rollback()
+            current = db.get(DataAgentRuleCandidate, snapshot["id"])
+            if current is None:
+                raise RuntimeError("候选回归事务失败") from None
+            return current
         db.commit()
     except Exception:
         db.rollback()
         fallback = _transaction_failure_summary(summary)
-        candidate = db.get(DataAgentRuleCandidate, int(candidate_id))
-        if candidate is None:
-            raise RuntimeError("候选回归事务失败") from None
-        candidate.regression_json = _stable_json(fallback)
-        candidate.status = "regression_failed"
-        candidate.update_time = datetime.now()
         try:
+            if persist_if_snapshot_matches("regression_failed", _stable_json(fallback)) != 1:
+                db.rollback()
+                current = db.get(DataAgentRuleCandidate, snapshot["id"])
+                if current is None:
+                    raise RuntimeError("候选回归事务失败") from None
+                return current
             db.commit()
         except Exception:
             db.rollback()
             raise RuntimeError("候选回归事务失败") from None
+    candidate = db.get(DataAgentRuleCandidate, snapshot["id"])
+    if candidate is None:
+        raise RuntimeError("候选回归事务失败") from None
     db.refresh(candidate)
     return candidate
