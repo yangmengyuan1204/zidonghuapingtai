@@ -849,7 +849,7 @@ def _explicit_price_intent(
 
         list_match = re.search(r"(?:分别(?:报价|单价)?|(?:报价|单价)分别(?:是|为)?|依次(?:报价|单价)?)([^。；;]*)", text)
         list_values = re.findall(r"\d+(?:\.\d+)?", list_match.group(1)) if list_match else []
-        total_match = re.search(rf"(?:商品总金额|商品总额|商品总价|商品金额|总金额|总价|合计|一共|总共)(?:是|为|=|:|等于|共计)?{number}{money_boundary}", text)
+        total_match = re.search(rf"(?:商品总金额|商品总额|商品总价|(?<!每个)商品金额|总金额|总价|合计|一共|总共)(?:是|为|=|:|等于|共计)?{number}{money_boundary}", text)
         if not total_match:
             total_match = re.search(rf"{number}(?:元)?(?:的)?(?:商品总金额|商品总额|商品总价|商品金额|总金额|总价|合计)", text)
         unit_match = re.search(
@@ -1287,6 +1287,14 @@ def _normalize_goal(
     requested_status = str(payload.get("status") or "ready").strip().lower()
     question = str(payload.get("question") or "").strip()
     source_text = _source_text(messages)
+    latest_source_text = next(
+        (
+            str(item.get("content") or "").strip()
+            for item in reversed(messages or [])
+            if isinstance(item, dict) and str(item.get("content") or "").strip()
+        ),
+        source_text,
+    )
     conversation_intent: Dict[str, Any] = {}
     for message in messages or []:
         if isinstance(message, dict) and str(message.get("content") or "").strip():
@@ -1351,7 +1359,7 @@ def _normalize_goal(
     unhandled = [item for item in unhandled if not stop_constraint_words.search(item)]
     ignored = [item for item in ignored if not stop_constraint_words.search(item)]
     deterministic_order_sn = _explicit_order_sn(source_text)
-    deterministic_target, _, deterministic_target_question = _explicit_target_intent(source_text)
+    deterministic_target, _, deterministic_target_question = _explicit_target_intent(latest_source_text)
     if deterministic_order_sn and deterministic_target and not deterministic_target_question:
         generic_parse_failure = re.compile(r"^(?:无法|不能|未能)(?:解析|理解)(?:用户)?(?:消息|输入|需求|指令)$")
         covered_constraint = re.compile(r"^(?:确认一下(?:就行)?|(?:商品数量、)?每个购买数量和价格都保持原样|其他数据不要改|保持(?:原样|原值)|不要(?:修改|改))$")
@@ -1393,7 +1401,7 @@ def _normalize_goal(
     raw_target_node = str(raw_goal.get("target_node") or "").strip()
     target_node = _target_node(raw_target_node)
     invalid_model_target = bool(raw_target_node) and not target_node
-    explicit_target, target_evidence, target_question = _explicit_target_intent(source_text)
+    explicit_target, target_evidence, target_question = _explicit_target_intent(latest_source_text)
     latest_target = resolved_fields.get("target_node") if isinstance(resolved_fields, dict) else None
     if isinstance(latest_target, dict) and latest_target.get("value") and not target_question:
         explicit_target = str(latest_target["value"])
@@ -1583,7 +1591,7 @@ def _normalize_goal(
         )
         if problem_contract_question and not force_ready:
             return "clarifying", {}, problem_contract_question
-    price_source, price_question = _explicit_price_intent(source_text, raw_goal, raw_variables)
+    price_source, price_question = _explicit_price_intent(latest_source_text, raw_goal, raw_variables)
     latest_pricing = resolved_fields.get("pricing") if isinstance(resolved_fields, dict) else None
     if not price_question and isinstance(latest_pricing, dict) and isinstance(latest_pricing.get("value"), dict):
         price_source = {
