@@ -150,6 +150,8 @@ def _verified_corrected_sample(
     outcome="success",
     verified=1,
     corrections=None,
+    initial_contract=None,
+    final_contract=None,
 ):
     sample = _sample(
         project_id=project_id,
@@ -164,6 +166,8 @@ def _verified_corrected_sample(
             ensure_ascii=False,
             sort_keys=True,
         ),
+        initial_contract_json=json.dumps(initial_contract or {}, ensure_ascii=False, sort_keys=True),
+        final_contract_json=json.dumps(final_contract or {}, ensure_ascii=False, sort_keys=True),
         outcome=outcome,
         verified=verified,
         fingerprint=f"{learning_db.query(models.DataAgentLearningSample).count() + 1:064x}",
@@ -172,6 +176,54 @@ def _verified_corrected_sample(
     learning_db.commit()
     learning_db.refresh(sample)
     return sample
+
+
+def _regression_goal(*, quantity=1, keyword="衣服"):
+    return {
+        "mode": "new",
+        "target_node": "order_offered",
+        "variables": {
+            "order_shop_count": 1,
+            "order_per_shop": 1,
+            "order_item_num": quantity,
+            "keyword": keyword,
+        },
+        "operations": [
+            {"id": "operation_1", "type": "advance_order", "target_node": "order_offered"}
+        ],
+        "intent": {
+            "pricing": {
+                "mode": "uniform_unit",
+                "effective_unit_prices": ["10"],
+                "effective_goods_total": str(10 * quantity),
+                "requested_goods_total": "",
+            }
+        },
+    }
+
+
+def _pending_regression_candidate(learning_db, *, secret_instruction=False):
+    samples = []
+    for index in range(3):
+        instruction = (
+            f"创建两个商品的订单-token=source-secret-{index}"
+            if secret_instruction
+            else f"创建两个商品的订单-{index}"
+        )
+        samples.append(
+            _verified_corrected_sample(
+                learning_db,
+                instruction=instruction,
+                initial_contract=_regression_goal(quantity=1, keyword="旧关键词"),
+                final_contract=_regression_goal(quantity=2, keyword=f"合法修订-{index}"),
+            )
+        )
+    for sample in samples:
+        learning_service.refresh_candidates_for_sample(learning_db, sample)
+    learning_db.commit()
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+    assert candidate.status == "pending_regression"
+    return candidate, samples
 
 
 def _rule_version(**overrides):
@@ -1252,3 +1304,371 @@ def test_candidate_refresh_failure_preserves_business_record_and_terminal_state(
     assert learning_db.query(models.DataAgentRuleCandidate).count() == 0
     assert "RuntimeError" in caplog.text
     assert "raw candidate refresh details" not in caplog.text
+
+
+def _proposal(field, after, *phrases):
+    return {
+        "signature": _candidate_signature(field, after),
+        "field": field,
+        "match_phrases": list(phrases),
+        "set_fields": {field: after},
+        "source_count": max(1, len(phrases)),
+    }
+
+
+def test_regression_fixture_helper_expands_and_scores_the_same_80_cases():
+    from scripts import evaluate_data_agent_hit_rate as evaluator
+
+    cases = evaluator.expand_fixture_cases()
+
+    assert len(cases) == 80
+    assert sum(case["kind"] == "explicit" for case in cases) == 60
+    assert sum(case["kind"] == "fixed" for case in cases) == 20
+    assert all(
+        evaluator.fixture_case_matches(
+            evaluator.analyze_without_execution(case["instruction"], case.get("candidate")),
+            case,
+        )
+        for case in cases
+    )
+
+
+def test_candidate_match_normalizes_chinese_whitespace_and_punctuation_conservatively():
+    proposal = _proposal("order_item_num", 2, "创建订单，每件两个")
+
+    assert learning_service.candidate_matches_instruction(proposal, "请创建订单 ， 每件两个。")
+    assert not learning_service.candidate_matches_instruction(proposal, "创建订单，每件三个")
+
+
+@pytest.mark.parametrize("phrase", ["", "，。；！？"])
+def test_empty_match_phrase_is_rejected(phrase):
+    with pytest.raises(ValueError, match="match_phrases"):
+        learning_service.validate_candidate_rule(_proposal("order_item_num", 2, phrase))
+
+
+@pytest.mark.parametrize(
+    ("field", "after"),
+    [
+        ("target_node", "https://unsafe.example/api"),
+        ("keyword", "https://unsafe.example/product"),
+        ("order_payment_mode", "permission_override"),
+    ],
+)
+def test_candidate_validator_rejects_unsafe_overlay_values(field, after):
+    with pytest.raises(ValueError, match="禁止|不允许|合法"):
+        learning_service.validate_candidate_rule(_proposal(field, after, "安全短语"))
+
+
+def test_overlay_is_deep_copy_and_only_changes_mapped_contract_fields():
+    goal = _regression_goal(quantity=1)
+    goal["customer_ids"] = ["300001"]
+    proposal = _proposal("order_item_num", 2, "每件两个")
+    original_goal = json.loads(json.dumps(goal, ensure_ascii=False))
+    original_proposal = json.loads(json.dumps(proposal, ensure_ascii=False))
+
+    overlaid = learning_service.apply_candidate_overlay(goal, proposal)
+
+    assert overlaid["variables"]["order_item_num"] == 2
+    assert overlaid["customer_ids"] == ["300001"]
+    assert goal == original_goal
+    assert proposal == original_proposal
+    assert overlaid is not goal
+    assert overlaid["variables"] is not goal["variables"]
+
+
+def test_target_overlay_updates_only_safe_operation_targets():
+    goal = _regression_goal()
+    goal["operations"].append(
+        {"id": "operation_2", "type": "problem_goods", "target_node": "must-not-change"}
+    )
+
+    overlaid = learning_service.apply_candidate_overlay(
+        goal,
+        _proposal("target_node", "pending_purchase", "做到待拍单"),
+    )
+
+    assert overlaid["target_node"] == "pending_purchase"
+    assert overlaid["variables"]["stop_after_node"] == "pending_purchase"
+    assert overlaid["operations"][0]["target_node"] == "pending_purchase"
+    assert overlaid["operations"][1]["target_node"] == "must-not-change"
+
+
+def test_pricing_overlay_keeps_intent_and_execution_variables_consistent():
+    goal = _regression_goal(quantity=2)
+
+    overlaid = learning_service.apply_candidate_overlay(
+        goal,
+        _proposal("pricing", {"mode": "goods_total", "amount": "60"}, "商品总价60元"),
+    )
+
+    assert overlaid["intent"]["pricing"]["mode"] == "goods_total"
+    assert overlaid["intent"]["pricing"]["requested_goods_total"] == "60"
+    assert overlaid["intent"]["pricing"]["effective_unit_prices"] == ["30"]
+    assert overlaid["variables"]["offer_price"] == "30"
+    assert "offer_unit_prices" not in overlaid["variables"]
+
+
+@pytest.mark.parametrize(
+    ("field", "after", "operation_key", "expected"),
+    [
+        ("problem_scope", "all", "scope", "all_candidates"),
+        ("problem_refund_quantity", "all", "quantity_refund_mode", "all"),
+        ("problem_refund_freight", "all", "freight_refund_mode", "all"),
+    ],
+)
+def test_problem_overlay_updates_existing_problem_contract_only(field, after, operation_key, expected):
+    goal = _regression_goal()
+    goal["variables"][field] = "keep"
+    goal["operations"].append(
+        {
+            "id": "operation_2",
+            "type": "problem_goods",
+            "scope": "selected_item",
+            "quantity_refund_mode": "keep",
+            "freight_refund_mode": "keep",
+        }
+    )
+
+    overlaid = learning_service.apply_candidate_overlay(goal, _proposal(field, after, "问题产品"))
+
+    assert overlaid["variables"][field] == after
+    assert overlaid["operations"][1][operation_key] == expected
+
+
+def test_clean_regression_reaches_pending_review_without_model_tools_or_activation(
+    learning_db,
+    monkeypatch,
+):
+    candidate, samples = _pending_regression_candidate(learning_db)
+    payload = {
+        "status": "ready",
+        "goal": {
+            "mode": "new",
+            "target_node": "order_offered",
+            "variables": {"order_item_num": 2},
+        },
+    }
+    messages = [{"role": "user", "content": "创建订单，每件两个"}]
+    normalized_before = agent_service._normalize_goal(payload, messages)
+
+    def fail_external_call(*args, **kwargs):
+        raise AssertionError("候选回归不得调用 DeepSeek 或业务工具")
+
+    monkeypatch.setattr(agent_service, "call_local_model_json", fail_external_call)
+    monkeypatch.setattr(agent_service, "execute_agent_tool", fail_external_call)
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+    summary = json.loads(result.regression_json)
+
+    assert result.status == "pending_review"
+    assert learning_service.regression_passed(summary)
+    assert summary == {
+        "fixture_total": 80,
+        "historical_total": 3,
+        "passed": 83,
+        "failed": 0,
+        "conflicts": 0,
+        "failed_case_ids": [],
+        "failed_sample_ids": [],
+        "conflict_sample_ids": [],
+        "source_sample_ids_checked": sorted(sample.id for sample in samples),
+        "error_codes": [],
+    }
+    assert learning_db.query(models.DataAgentRuleVersion).count() == 0
+    assert learning_db.query(models.DataAgentRuleReview).count() == 0
+    assert agent_service._normalize_goal(payload, messages) == normalized_before
+
+
+def test_fixture_contract_change_and_broad_phrase_fail_regression(learning_db):
+    candidate, _ = _pending_regression_candidate(learning_db)
+    proposal = _proposal("order_item_num", 9, "帮我创建订单")
+    proposal["source_count"] = 3
+    candidate.proposal_json = json.dumps(
+        proposal,
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+    learning_db.commit()
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+    summary = json.loads(result.regression_json)
+
+    assert result.status == "regression_failed"
+    assert summary["failed"] > 0
+    assert summary["failed_case_ids"]
+    assert summary["conflicts"] > 0
+
+
+def test_fixed_blocked_case_stays_blocked_and_contract_change_is_rejected(learning_db):
+    from scripts import evaluate_data_agent_hit_rate as evaluator
+
+    candidate, _ = _pending_regression_candidate(learning_db)
+    proposal = _proposal("target_node", "pending_purchase", "删除订单")
+    proposal["source_count"] = 3
+    candidate.proposal_json = json.dumps(proposal, ensure_ascii=False, sort_keys=True)
+    learning_db.commit()
+    blocked_case = next(
+        case for case in evaluator.expand_fixture_cases() if case["id"] == "blocked_delete_order"
+    )
+    baseline = evaluator.analyze_without_execution(blocked_case["instruction"])
+    overlaid = {**baseline, "goal": learning_service.apply_candidate_overlay(baseline["goal"], proposal)}
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+    summary = json.loads(result.regression_json)
+
+    assert baseline["status"] == overlaid["status"] == "blocked"
+    assert result.status == "regression_failed"
+    assert "blocked_delete_order" in summary["failed_case_ids"]
+
+
+def test_historical_conflict_is_limited_to_candidate_field(learning_db):
+    candidate, samples = _pending_regression_candidate(learning_db)
+    samples[0].final_contract_json = json.dumps(_regression_goal(quantity=3), ensure_ascii=False)
+    learning_db.commit()
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+    summary = json.loads(result.regression_json)
+
+    assert result.status == "regression_failed"
+    assert summary["conflict_sample_ids"] == [samples[0].id]
+    assert samples[1].id not in summary["conflict_sample_ids"]
+
+
+def test_missing_source_phrase_coverage_is_a_conflict(learning_db):
+    candidate, samples = _pending_regression_candidate(learning_db)
+    proposal = json.loads(candidate.proposal_json)
+    proposal["match_phrases"] = proposal["match_phrases"][:2]
+    candidate.proposal_json = json.dumps(proposal, ensure_ascii=False, sort_keys=True)
+    learning_db.commit()
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+    summary = json.loads(result.regression_json)
+
+    assert result.status == "regression_failed"
+    assert samples[2].id in summary["conflict_sample_ids"]
+    assert summary["source_sample_ids_checked"] == sorted(sample.id for sample in samples)
+
+
+def test_source_id_count_mismatch_fails_closed(learning_db):
+    candidate, samples = _pending_regression_candidate(learning_db)
+    candidate.source_sample_ids_json = json.dumps([samples[0].id, samples[1].id])
+    learning_db.commit()
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+    summary = json.loads(result.regression_json)
+
+    assert result.status == "regression_failed"
+    assert summary["error_codes"] == ["source_coverage_invalid"]
+
+
+def test_regression_summary_limits_ids_without_reducing_failure_count():
+    summary = learning_service._regression_summary(fixture_total=80, historical_total=120)
+    summary["failed_sample_ids"] = list(range(1, 121))
+
+    finished = learning_service._finish_summary(summary)
+
+    assert finished["failed"] == 120
+    assert len(finished["failed_sample_ids"]) == 100
+    assert finished["passed"] == 80
+
+
+@pytest.mark.parametrize(
+    ("proposal_json", "expected_code"),
+    [
+        ("{malformed-password=raw-secret", "invalid_candidate_json"),
+        (
+            json.dumps(
+                {
+                    "signature": "order_item_num:not-canonical",
+                    "field": "order_item_num",
+                    "match_phrases": ["创建两个商品"],
+                    "set_fields": {"order_item_num": 2},
+                    "source_count": 3,
+                }
+            ),
+            "invalid_candidate",
+        ),
+        (
+            json.dumps(
+                {
+                    "signature": "order_item_num:not-canonical",
+                    "field": "order_item_num",
+                    "match_phrases": ["创建两个商品"],
+                    "set_fields": {"order_item_num": {"permission": "raw-secret"}},
+                    "source_count": 3,
+                }
+            ),
+            "invalid_candidate",
+        ),
+    ],
+)
+def test_invalid_candidate_fails_closed_without_sensitive_error_text(
+    learning_db,
+    proposal_json,
+    expected_code,
+):
+    candidate, _ = _pending_regression_candidate(learning_db)
+    candidate.proposal_json = proposal_json
+    learning_db.commit()
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+
+    assert result.status == "regression_failed"
+    assert json.loads(result.regression_json)["error_codes"] == [expected_code]
+    assert "raw-secret" not in result.regression_json
+
+
+def test_corrupt_historical_json_fails_closed_without_content_leak(learning_db):
+    candidate, samples = _pending_regression_candidate(learning_db, secret_instruction=True)
+    samples[1].initial_contract_json = '{"password":"historical-top-secret"'
+    learning_db.commit()
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+    summary = json.loads(result.regression_json)
+
+    assert result.status == "regression_failed"
+    assert summary["error_codes"] == ["invalid_sample_json"]
+    assert summary["failed_sample_ids"] == [samples[1].id]
+    assert "secret" not in result.regression_json.lower()
+    assert all("创建" not in str(value) for value in summary.values())
+
+
+def test_non_pending_candidate_cannot_run_or_change_row(learning_db):
+    candidate, _ = _pending_regression_candidate(learning_db)
+    candidate.status = "pending_review"
+    candidate.regression_json = '{"preserved":true}'
+    learning_db.commit()
+
+    with pytest.raises(ValueError, match="pending_regression"):
+        learning_service.run_candidate_regression(learning_db, candidate.id)
+
+    learning_db.refresh(candidate)
+    assert (candidate.status, candidate.regression_json) == (
+        "pending_review",
+        '{"preserved":true}',
+    )
+
+
+def test_commit_failure_rolls_back_then_persists_safe_failed_summary(
+    learning_db,
+    monkeypatch,
+):
+    candidate, _ = _pending_regression_candidate(learning_db)
+    original_commit = learning_db.commit
+    attempts = 0
+
+    def fail_first_commit():
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("transaction-password=raw-secret")
+        return original_commit()
+
+    monkeypatch.setattr(learning_db, "commit", fail_first_commit)
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+
+    assert attempts == 2
+    assert result.status == "regression_failed"
+    assert json.loads(result.regression_json)["error_codes"] == ["transaction_failed"]
+    assert "raw-secret" not in result.regression_json

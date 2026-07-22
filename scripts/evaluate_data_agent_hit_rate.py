@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
 from app.database import SessionLocal  # noqa: E402
 from app.models import TestRecord  # noqa: E402
 from app.services import data_factory_agent as agent_service  # noqa: E402
+from app.services.data_factory_agent_intent import reduce_intent_fields  # noqa: E402
 
 
 FIXTURE_PATH = ROOT / "tests" / "fixtures" / "data_agent_intent_cases.json"
@@ -71,6 +72,54 @@ def explicit_case_matches(result: dict[str, Any], case: dict[str, Any]) -> bool:
         return pricing.get("requested_goods_total") == expected_pricing["amount"]
     effective = pricing.get("effective_unit_prices") or []
     return bool(effective) and set(effective) == {expected_pricing["amount"]}
+
+
+def expand_fixture_cases(fixture: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    fixture = fixture or load_cases()
+    explicit = [{"kind": "explicit", **case} for case in expand_explicit_cases(fixture)]
+    fixed = [{"kind": "fixed", **copy.deepcopy(case)} for case in fixture["fixed_cases"]]
+    return explicit + fixed
+
+
+def analyze_without_execution(
+    instruction: str,
+    candidate: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    messages = [{"role": "user", "content": str(instruction or "")}]
+    intent_state = reduce_intent_fields({}, str(instruction or ""))
+    capability_gap = agent_service._unsupported_capability(messages)
+    if capability_gap:
+        return {
+            "status": "blocked",
+            "goal": {},
+            "question": "",
+            "reason": capability_gap["reason"],
+            "intent_state": intent_state,
+        }
+    payload = copy.deepcopy(candidate) if candidate is not None else {
+        "status": "ready",
+        "goal": {"mode": "new", "target_node": "", "variables": {}},
+    }
+    status, goal, question = agent_service._normalize_goal(payload, messages)
+    return {
+        "status": status,
+        "goal": goal,
+        "question": question,
+        "reason": "",
+        "intent_state": intent_state,
+    }
+
+
+def fixture_case_matches(result: dict[str, Any], case: dict[str, Any]) -> bool:
+    if case.get("kind") == "explicit":
+        return explicit_case_matches(result, case)
+    if case.get("kind") != "fixed":
+        return False
+    explanation = f"{result.get('question', '')} {result.get('reason', '')}"
+    return (
+        result.get("status") == case.get("expected_status")
+        and str(case.get("question_contains") or "") in explanation
+    )
 
 
 def tool_record_snapshot_from_rows(rows: Iterable[Any]) -> dict[str, int | None]:
