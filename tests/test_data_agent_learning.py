@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from app import models
 from app.database import Base
 from app.services import data_factory_agent as agent_service
+from app.services import data_agent_learning as learning_service
 from app.services.data_agent_learning import (
     capture_learning_sample,
     sample_fingerprint,
@@ -122,6 +123,43 @@ def _candidate(**overrides):
     }
     values.update(overrides)
     return _model("DataAgentRuleCandidate")(**values)
+
+
+def _verified_corrected_sample(
+    learning_db,
+    *,
+    field="order_item_num",
+    after=2,
+    before=1,
+    project_id=1,
+    module_key="order",
+    intent_key="create",
+    instruction="创建两个商品的订单",
+    outcome="success",
+    verified=1,
+    corrections=None,
+):
+    sample = _sample(
+        project_id=project_id,
+        session_id=f"candidate-session-{learning_db.query(models.DataAgentLearningSample).count() + 1}",
+        module_key=module_key,
+        intent_key=intent_key,
+        instruction_text=instruction,
+        corrections_json=json.dumps(
+            corrections
+            if corrections is not None
+            else [{"field": field, "before": before, "after": after, "source": "direct_edit"}],
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        outcome=outcome,
+        verified=verified,
+        fingerprint=f"{learning_db.query(models.DataAgentLearningSample).count() + 1:064x}",
+    )
+    learning_db.add(sample)
+    learning_db.commit()
+    learning_db.refresh(sample)
+    return sample
 
 
 def _rule_version(**overrides):
@@ -738,3 +776,351 @@ def test_learning_state_is_not_exposed_by_session_serializer():
 
     assert "initial_contract" not in payload
     assert "learning_sample" not in payload
+
+
+def test_repeated_matching_corrections_reach_regression_threshold_only_on_third_sample(learning_db):
+    expected_statuses = ["collecting", "collecting", "pending_regression"]
+
+    for index, expected_status in enumerate(expected_statuses, start=1):
+        sample = _verified_corrected_sample(
+            learning_db,
+            instruction=f"创建订单并把每件商品数量改成两个-{index}",
+        )
+        candidates = learning_service.refresh_candidates_for_sample(learning_db, sample)
+
+        assert len(candidates) == 1
+        assert candidates[0].occurrence_count == index
+        assert candidates[0].status == expected_status
+        if index < 3:
+            assert candidates[0].regression_json == "{}"
+
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+    assert candidate.status != "active"
+    assert candidate.rule_key.startswith("order_item_num:")
+    assert len(candidate.rule_key.rsplit(":", 1)[1]) == 16
+
+
+def test_different_after_values_have_independent_signatures_and_counts(learning_db):
+    first = _verified_corrected_sample(learning_db, after=2, instruction="每件商品改成两个")
+    second = _verified_corrected_sample(learning_db, after=3, instruction="每件商品改成三个")
+
+    learning_service.refresh_candidates_for_sample(learning_db, first)
+    learning_service.refresh_candidates_for_sample(learning_db, second)
+    candidates = learning_db.query(models.DataAgentRuleCandidate).order_by(models.DataAgentRuleCandidate.rule_key).all()
+
+    assert len(candidates) == 2
+    assert candidates[0].rule_key != candidates[1].rule_key
+    assert [candidate.occurrence_count for candidate in candidates] == [1, 1]
+    assert {json.loads(candidate.proposal_json)["set_fields"]["order_item_num"] for candidate in candidates} == {2, 3}
+
+
+def test_candidate_counts_are_isolated_by_project_module_and_intent(learning_db):
+    scopes = [
+        (1, "order", "create"),
+        (2, "order", "create"),
+        (1, "porder", "create"),
+        (1, "order", "update"),
+    ]
+    for index, (project_id, module_key, intent_key) in enumerate(scopes):
+        sample = _verified_corrected_sample(
+            learning_db,
+            project_id=project_id,
+            module_key=module_key,
+            intent_key=intent_key,
+            instruction=f"隔离样本-{index}",
+        )
+        learning_service.refresh_candidates_for_sample(learning_db, sample)
+
+    candidates = learning_db.query(models.DataAgentRuleCandidate).all()
+    assert {(row.project_id, row.module_key, row.intent_key) for row in candidates} == set(scopes)
+    assert {row.occurrence_count for row in candidates} == {1}
+
+
+@pytest.mark.parametrize(
+    ("outcome", "verified", "corrections"),
+    [
+        ("failure", 0, [{"field": "order_item_num", "before": 1, "after": 2}]),
+        ("success", 0, [{"field": "order_item_num", "before": 1, "after": 2}]),
+        ("success", 1, []),
+    ],
+)
+def test_ineligible_samples_do_not_refresh_candidates(learning_db, outcome, verified, corrections):
+    sample = _verified_corrected_sample(
+        learning_db,
+        outcome=outcome,
+        verified=verified,
+        corrections=corrections,
+    )
+
+    assert learning_service.refresh_candidates_for_sample(learning_db, sample) == []
+    assert learning_db.query(models.DataAgentRuleCandidate).count() == 0
+
+
+def test_duplicate_correction_and_refresh_count_one_sample_once(learning_db):
+    correction = {"field": "order_item_num", "before": 1, "after": 2, "source": "direct_edit"}
+    sample = _verified_corrected_sample(learning_db, corrections=[correction, correction])
+
+    first = learning_service.refresh_candidates_for_sample(learning_db, sample)
+    second = learning_service.refresh_candidates_for_sample(learning_db, sample)
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+
+    assert first[0].id == second[0].id == candidate.id
+    assert candidate.occurrence_count == 1
+    assert json.loads(candidate.source_sample_ids_json) == [sample.id]
+
+
+def test_source_ids_and_safe_match_phrases_are_stable_unique_and_bounded(learning_db):
+    samples = []
+    for index in range(10):
+        phrase = "重复安全表达" if index < 2 else f"表达-{index}-token=raw-secret-{index}-" + "长" * 300
+        samples.append(_verified_corrected_sample(learning_db, instruction=phrase))
+
+    for sample in reversed(samples):
+        learning_service.refresh_candidates_for_sample(learning_db, sample)
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+    proposal = json.loads(candidate.proposal_json)
+    source_ids = json.loads(candidate.source_sample_ids_json)
+    serialized = candidate.proposal_json + candidate.source_sample_ids_json + candidate.regression_json
+
+    assert source_ids == sorted({sample.id for sample in samples})
+    assert candidate.occurrence_count == len(source_ids) == proposal["source_count"] == 10
+    assert proposal["match_phrases"] == sorted(set(proposal["match_phrases"]))
+    assert len(proposal["match_phrases"]) <= 8
+    assert all(len(phrase) <= 240 for phrase in proposal["match_phrases"])
+    assert "raw-secret" not in serialized
+
+
+@pytest.mark.parametrize(
+    "rule",
+    [
+        {
+            "signature": "order_item_num:unsafe",
+            "field": "order_item_num",
+            "match_phrases": [],
+            "set_fields": {"order_item_num": 2},
+            "source_count": 1,
+            "sql": "select secret",
+        },
+        {
+            "signature": "allow_large_refund:unsafe",
+            "field": "allow_large_refund",
+            "match_phrases": [],
+            "set_fields": {"allow_large_refund": True},
+            "source_count": 1,
+        },
+        {
+            "signature": "pricing:unsafe",
+            "field": "pricing",
+            "match_phrases": [],
+            "set_fields": {"pricing": {"mode": "goods_total", "authorization": "Bearer raw"}},
+            "source_count": 1,
+        },
+        {
+            "signature": "pricing:unsafe",
+            "field": "pricing",
+            "match_phrases": [],
+            "set_fields": {"pricing": {"mode": "goods_total", "customer_identity": {"account": "raw"}}},
+            "source_count": 1,
+        },
+        {
+            "signature": "order_item_num:unsafe",
+            "field": "order_item_num",
+            "match_phrases": [],
+            "set_fields": {"order_item_num": {"permission": {"amount_threshold": 100}}},
+            "source_count": 1,
+        },
+    ],
+)
+def test_candidate_validator_recursively_rejects_forbidden_fields(rule):
+    with pytest.raises(ValueError, match="禁止|不允许"):
+        learning_service.validate_candidate_rule(rule)
+
+
+def test_reducer_mappings_and_safe_pricing_after_create_candidates(learning_db):
+    samples = [
+        _verified_corrected_sample(learning_db, field="item_count", after=3, instruction="每单三个商品"),
+        _verified_corrected_sample(learning_db, field="quantity_per_item", after=4, instruction="每件四个"),
+        _verified_corrected_sample(
+            learning_db,
+            field="pricing",
+            before={"mode": "ambiguous", "amount": "500"},
+            after={"mode": "goods_total", "amount": "600"},
+            instruction="总价六百元",
+        ),
+    ]
+
+    for sample in samples:
+        learning_service.refresh_candidates_for_sample(learning_db, sample)
+    proposals = [json.loads(row.proposal_json) for row in learning_db.query(models.DataAgentRuleCandidate).all()]
+
+    assert {proposal["field"] for proposal in proposals} == {"order_per_shop", "order_item_num", "pricing"}
+    assert {proposal["field"]: proposal["set_fields"] for proposal in proposals}["pricing"] == {
+        "pricing": {"amount": "600", "mode": "goods_total"}
+    }
+    validated = learning_service.validate_candidate_rule(
+        {
+            "signature": "order_item_num:safe",
+            "field": "order_item_num",
+            "match_phrases": ["每件两个"],
+            "set_fields": {"order_item_num": 2},
+            "source_count": 3,
+        }
+    )
+    assert validated["set_fields"] == {"order_item_num": 2}
+
+
+def test_correction_field_and_string_after_are_normalized_before_signature_grouping(learning_db):
+    first = _verified_corrected_sample(
+        learning_db,
+        field=" Quantity_Per_Item ",
+        after="  two  ",
+        instruction="每件两个-英文表达",
+    )
+    second = _verified_corrected_sample(
+        learning_db,
+        field="quantity_per_item",
+        after="two",
+        instruction="每件两个-规范表达",
+    )
+
+    learning_service.refresh_candidates_for_sample(learning_db, first)
+    learning_service.refresh_candidates_for_sample(learning_db, second)
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+
+    assert candidate.occurrence_count == 2
+    assert json.loads(candidate.proposal_json)["set_fields"] == {"order_item_num": "two"}
+
+
+def test_refresh_rejects_explicit_forbidden_correction_field(learning_db):
+    sample = _verified_corrected_sample(
+        learning_db,
+        field="allow_large_refund",
+        after=True,
+    )
+
+    with pytest.raises(ValueError, match="禁止字段"):
+        learning_service.refresh_candidates_for_sample(learning_db, sample)
+
+
+@pytest.mark.parametrize("later_status", ["pending_regression", "pending_review", "active", "rejected"])
+def test_later_candidate_status_is_never_downgraded_by_new_samples(learning_db, later_status):
+    first = _verified_corrected_sample(learning_db, instruction="状态样本-1")
+    candidate = learning_service.refresh_candidates_for_sample(learning_db, first)[0]
+    candidate.status = later_status
+    learning_db.commit()
+    second = _verified_corrected_sample(learning_db, instruction="状态样本-2")
+
+    learning_service.refresh_candidates_for_sample(learning_db, second)
+    learning_db.refresh(candidate)
+
+    assert candidate.status == later_status
+    assert candidate.occurrence_count == 2
+
+
+def test_capture_automatically_refreshes_candidates_without_changing_goal_normalization(learning_db):
+    payload = {
+        "status": "ready",
+        "goal": {
+            "mode": "new",
+            "target_node": "order_offered",
+            "variables": {"order_item_num": 2},
+            "operations": [{"id": "operation_1", "type": "advance_order"}],
+        },
+    }
+    messages = [{"role": "user", "content": "创建订单，每件两个"}]
+    normalized_before = agent_service._normalize_goal(payload, messages)
+
+    for index, before in enumerate((1, 3, 4)):
+        session = _agent_session(
+            session_id=f"automatic-candidate-{index}",
+            instruction=f"创建订单，每件两个-{index}",
+            goal=payload["goal"],
+        )
+        session.events.append(
+            {
+                "kind": "goal_updated",
+                "corrections": [
+                    {"field": "order_item_num", "before": before, "after": 2, "source": "direct_edit"}
+                ],
+            }
+        )
+        capture_learning_sample(learning_db, session, "succeeded", _verified_result())
+
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+    assert (candidate.occurrence_count, candidate.status) == (3, "pending_regression")
+    assert candidate.status != "active"
+    assert agent_service._normalize_goal(payload, messages) == normalized_before
+
+
+def test_duplicate_capture_does_not_refresh_candidate_twice(learning_db):
+    session = _agent_session(instruction="重复 finalize")
+    session.events.append(
+        {
+            "kind": "goal_updated",
+            "corrections": [
+                {"field": "order_item_num", "before": 1, "after": 2, "source": "direct_edit"},
+                {"field": "order_item_num", "before": 1, "after": 2, "source": "direct_edit"},
+            ],
+        }
+    )
+
+    first = capture_learning_sample(learning_db, session, "succeeded", _verified_result())
+    second = capture_learning_sample(learning_db, session, "succeeded", _verified_result())
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+
+    assert first.id == second.id
+    assert candidate.occurrence_count == 1
+
+
+def test_candidate_refresh_failure_preserves_business_record_and_terminal_state(
+    learning_db,
+    monkeypatch,
+    caplog,
+):
+    session = _agent_session(instruction="候选刷新失败隔离")
+    session.events.append(
+        {
+            "kind": "goal_updated",
+            "corrections": [{"field": "order_item_num", "before": 1, "after": 2}],
+        }
+    )
+    agent_service._SESSIONS[session.id] = session
+    saved = models.TestRecord(
+        case_type="api",
+        case_id=0,
+        project_id=1,
+        result="passed",
+        log="{}",
+        report_path="",
+        execute_time=datetime.now(),
+    )
+
+    def save_business_record(db, *args, **kwargs):
+        db.add(saved)
+        db.commit()
+        db.refresh(saved)
+        return saved
+
+    def fail_candidate_refresh(db, sample):
+        raise RuntimeError("raw candidate refresh details")
+
+    monkeypatch.setattr(agent_service, "save_record", save_business_record)
+    monkeypatch.setattr(learning_service, "refresh_candidates_for_sample", fail_candidate_refresh)
+    try:
+        with caplog.at_level(logging.ERROR, logger="app.services.data_factory_agent"):
+            agent_service._finalize_session(
+                learning_db,
+                session.id,
+                "succeeded",
+                _verified_result(),
+                None,
+            )
+    finally:
+        agent_service._SESSIONS.pop(session.id, None)
+
+    learning_db.expire_all()
+    assert learning_db.get(models.TestRecord, saved.id) is not None
+    assert (session.status, session.record_id) == ("succeeded", saved.id)
+    assert learning_db.query(models.DataAgentRuleCandidate).count() == 0
+    assert "RuntimeError" in caplog.text
+    assert "raw candidate refresh details" not in caplog.text

@@ -9,7 +9,7 @@ from typing import Any, Dict
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..models import DataAgentLearningSample
+from ..models import DataAgentLearningSample, DataAgentRuleCandidate
 
 
 SENSITIVE_KEYS = {
@@ -54,6 +54,36 @@ MAX_DEPTH = 5
 MAX_DICT_ITEMS = 80
 MAX_LIST_ITEMS = 100
 MAX_STRING_LENGTH = 4000
+MAX_MATCH_PHRASES = 8
+MAX_MATCH_PHRASE_LENGTH = 240
+CANDIDATE_THRESHOLD = 3
+CANDIDATE_RULE_KEYS = {"signature", "field", "match_phrases", "set_fields", "source_count"}
+PRICING_FIELDS = {"mode", "amount", "offer_price", "offer_unit_prices", "unit_prices", "currency"}
+FORBIDDEN_CANDIDATE_KEYS = {
+    "allow_large_refund",
+    "permission",
+    "amount_threshold",
+    "backend",
+    "account",
+    "password",
+    "profile",
+    "system",
+    "api_path",
+    "url",
+    "sql",
+    "tool",
+    "tool_name",
+    "interface_order",
+    "token",
+    "cookie",
+    "authorization",
+    "secret",
+    "browser_state",
+    "ciphertext",
+    "sensitive_variables",
+    "customer",
+    "identity",
+}
 
 _SENSITIVE_ASSIGNMENT_START = re.compile(
     rf"(?i)\b(password|passwd|pwd|access[_ -]?token|admin[_ -]?token|token|cookie|"
@@ -174,6 +204,254 @@ def sample_fingerprint(project_id: int, instruction: str, final_contract: dict) 
     )
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _stable_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def _normalized_key(key: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", str(key or "").strip().lower()).strip("_")
+
+
+def _normalized_candidate_value(value: Any) -> Any:
+    safe_value = sanitize_learning_value(value)
+    if isinstance(safe_value, dict):
+        return {key: _normalized_candidate_value(item) for key, item in safe_value.items()}
+    if isinstance(safe_value, list):
+        return [_normalized_candidate_value(item) for item in safe_value]
+    if isinstance(safe_value, str):
+        return safe_value.strip()
+    return safe_value
+
+
+def _forbidden_candidate_key(key: Any) -> bool:
+    normalized = _normalized_key(key)
+    parts = set(normalized.split("_"))
+    return normalized in FORBIDDEN_CANDIDATE_KEYS or bool(
+        parts & {"permission", "threshold", "backend", "account", "password", "profile", "system", "url", "sql", "tool", "token", "cookie", "authorization", "secret", "browser", "ciphertext", "customer", "identity"}
+    )
+
+
+def _reject_forbidden_candidate_keys(value: Any) -> None:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if _forbidden_candidate_key(key):
+                raise ValueError(f"候选规则包含禁止字段：{key}")
+            _reject_forbidden_candidate_keys(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _reject_forbidden_candidate_keys(item)
+
+
+def _validate_pricing_value(value: Any) -> None:
+    if not isinstance(value, dict) or not value:
+        raise ValueError("pricing 候选只允许安全价格语义与金额字段")
+    unknown = sorted(set(value) - PRICING_FIELDS)
+    if unknown:
+        raise ValueError(f"pricing 候选包含不允许字段：{', '.join(unknown)}")
+    for key, item in value.items():
+        if isinstance(item, dict):
+            raise ValueError(f"pricing 候选字段不允许嵌套对象：{key}")
+        if isinstance(item, list) and any(isinstance(entry, (dict, list, tuple)) for entry in item):
+            raise ValueError(f"pricing 候选字段不允许复杂列表：{key}")
+
+
+def validate_candidate_rule(rule: dict) -> dict:
+    if not isinstance(rule, dict):
+        raise ValueError("候选规则必须是对象")
+    _reject_forbidden_candidate_keys(rule)
+    unknown = sorted(set(rule) - CANDIDATE_RULE_KEYS)
+    if unknown:
+        raise ValueError(f"候选规则包含不允许字段：{', '.join(unknown)}")
+    missing = sorted(CANDIDATE_RULE_KEYS - set(rule))
+    if missing:
+        raise ValueError(f"候选规则缺少字段：{', '.join(missing)}")
+
+    source_field = _normalized_key(rule.get("field"))
+    field = REVISION_FIELD_MAP.get(source_field, source_field)
+    if field not in LEARNABLE_FIELDS:
+        raise ValueError(f"候选规则包含禁止字段：{field or 'field'}")
+    set_fields = rule.get("set_fields")
+    if not isinstance(set_fields, dict) or len(set_fields) != 1:
+        raise ValueError("候选规则 set_fields 只允许当前规范字段")
+    raw_set_field, raw_set_value = next(iter(set_fields.items()))
+    source_set_field = _normalized_key(raw_set_field)
+    set_field = REVISION_FIELD_MAP.get(source_set_field, source_set_field)
+    if set_field != field:
+        raise ValueError("候选规则 set_fields 只允许当前规范字段")
+    safe_value = _normalized_candidate_value(raw_set_value)
+    if isinstance(safe_value, dict) and field != "pricing":
+        raise ValueError(f"候选规则字段不允许嵌套对象：{field}")
+    if field == "pricing":
+        _validate_pricing_value(safe_value)
+
+    signature = str(rule.get("signature") or "").strip()
+    if not signature.startswith(f"{field}:"):
+        raise ValueError("候选规则 signature 与规范字段不一致")
+    phrases = rule.get("match_phrases")
+    if not isinstance(phrases, list) or any(not isinstance(item, str) for item in phrases):
+        raise ValueError("候选规则 match_phrases 必须是字符串列表")
+    safe_phrases = sorted(
+        {
+            str(sanitize_learning_value(item)).strip()[:MAX_MATCH_PHRASE_LENGTH]
+            for item in phrases
+            if str(item or "").strip()
+        }
+    )[:MAX_MATCH_PHRASES]
+    source_count = rule.get("source_count")
+    if isinstance(source_count, bool) or not isinstance(source_count, int) or source_count < 1:
+        raise ValueError("候选规则 source_count 必须是正整数")
+    return {
+        "signature": signature,
+        "field": field,
+        "match_phrases": safe_phrases,
+        "set_fields": {field: safe_value},
+        "source_count": source_count,
+    }
+
+
+def _normalized_correction(item: Any) -> dict | None:
+    if not isinstance(item, dict):
+        return None
+    source_field = _normalized_key(item.get("field"))
+    field = REVISION_FIELD_MAP.get(source_field, source_field)
+    if field not in LEARNABLE_FIELDS:
+        if _forbidden_candidate_key(source_field):
+            raise ValueError(f"候选规则包含禁止字段：{source_field or 'field'}")
+        return None
+    after = _normalized_candidate_value(item.get("after"))
+    before = _normalized_candidate_value(item.get("before"))
+    if after is None or before == after:
+        return None
+    signature_payload = {"field": field, "after": after}
+    signature = f"{field}:{hashlib.sha256(_stable_json(signature_payload).encode('utf-8')).hexdigest()[:16]}"
+    validate_candidate_rule(
+        {
+            "signature": signature,
+            "field": field,
+            "match_phrases": ["candidate"],
+            "set_fields": {field: after},
+            "source_count": 1,
+        }
+    )
+    return {"signature": signature, "field": field, "before": before, "after": after}
+
+
+def _sample_corrections(sample: DataAgentLearningSample) -> list[dict]:
+    try:
+        raw = json.loads(sample.corrections_json or "[]")
+    except (TypeError, ValueError):
+        return []
+    return [normalized for item in raw if (normalized := _normalized_correction(item)) is not None]
+
+
+def refresh_rule_candidate(
+    db: Session,
+    project_id: int,
+    module_key: str,
+    intent_key: str,
+    rule_key_or_signature: str,
+) -> DataAgentRuleCandidate:
+    signature = str(rule_key_or_signature or "").strip()
+    if not signature:
+        raise ValueError("候选规则 signature 不能为空")
+    matching_samples: list[DataAgentLearningSample] = []
+    matched_rule: dict | None = None
+    samples = (
+        db.query(DataAgentLearningSample)
+        .filter(
+            DataAgentLearningSample.project_id == int(project_id),
+            DataAgentLearningSample.module_key == str(module_key),
+            DataAgentLearningSample.intent_key == str(intent_key),
+            DataAgentLearningSample.outcome == "success",
+            DataAgentLearningSample.verified == 1,
+        )
+        .order_by(DataAgentLearningSample.id.asc())
+        .all()
+    )
+    for sample in samples:
+        sample_matches = {
+            correction["signature"]: correction
+            for correction in _sample_corrections(sample)
+            if correction["signature"] == signature
+        }
+        if signature in sample_matches:
+            matching_samples.append(sample)
+            matched_rule = sample_matches[signature]
+    if not matching_samples or matched_rule is None:
+        raise ValueError("没有匹配的已验证纠正样本")
+
+    source_ids = sorted({int(sample.id) for sample in matching_samples})
+    phrases = sorted(
+        {
+            str(sanitize_learning_value(sample.instruction_text or "")).strip()[:MAX_MATCH_PHRASE_LENGTH]
+            for sample in matching_samples
+            if str(sample.instruction_text or "").strip()
+        }
+    )[:MAX_MATCH_PHRASES]
+    proposal = validate_candidate_rule(
+        {
+            "signature": signature,
+            "field": matched_rule["field"],
+            "match_phrases": phrases,
+            "set_fields": {matched_rule["field"]: matched_rule["after"]},
+            "source_count": len(source_ids),
+        }
+    )
+    candidate = (
+        db.query(DataAgentRuleCandidate)
+        .filter(
+            DataAgentRuleCandidate.project_id == int(project_id),
+            DataAgentRuleCandidate.module_key == str(module_key),
+            DataAgentRuleCandidate.intent_key == str(intent_key),
+            DataAgentRuleCandidate.rule_key == signature,
+        )
+        .first()
+    )
+    now = datetime.now()
+    if candidate is None:
+        candidate = DataAgentRuleCandidate(
+            project_id=int(project_id),
+            module_key=str(module_key)[:80],
+            intent_key=str(intent_key)[:120],
+            rule_key=signature[:160],
+            proposal_json=_stable_json(proposal),
+            source_sample_ids_json=_stable_json(source_ids),
+            occurrence_count=len(source_ids),
+            regression_json="{}",
+            status="pending_regression" if len(source_ids) >= CANDIDATE_THRESHOLD else "collecting",
+            create_time=now,
+        )
+        db.add(candidate)
+    else:
+        candidate.proposal_json = _stable_json(proposal)
+        candidate.source_sample_ids_json = _stable_json(source_ids)
+        candidate.occurrence_count = len(source_ids)
+        if candidate.status == "collecting" and len(source_ids) >= CANDIDATE_THRESHOLD:
+            candidate.status = "pending_regression"
+        candidate.update_time = now
+    db.flush()
+    return candidate
+
+
+def refresh_candidates_for_sample(
+    db: Session,
+    sample: DataAgentLearningSample,
+) -> list[DataAgentRuleCandidate]:
+    if sample is None or sample.outcome != "success" or int(sample.verified or 0) != 1:
+        return []
+    signatures = sorted({item["signature"] for item in _sample_corrections(sample)})
+    return [
+        refresh_rule_candidate(
+            db,
+            int(sample.project_id),
+            str(sample.module_key),
+            str(sample.intent_key),
+            signature,
+        )
+        for signature in signatures
+    ]
 
 
 def _revision_value(value: Any) -> Any:
@@ -305,6 +583,7 @@ def capture_learning_sample(
         and _operations_verified(session, result if isinstance(result, dict) else {})
     )
     module_key, intent_key = _sample_scope(goal)
+    corrections = _corrections(session)
     sample = DataAgentLearningSample(
         project_id=int(session.project_id),
         session_id=str(session.id)[:64],
@@ -314,7 +593,7 @@ def capture_learning_sample(
         model_candidate_json="{}",
         initial_contract_json=json.dumps(safe_initial_contract, ensure_ascii=False, sort_keys=True, default=str),
         final_contract_json=json.dumps(safe_final_contract, ensure_ascii=False, sort_keys=True, default=str),
-        corrections_json=json.dumps(_corrections(session), ensure_ascii=False, sort_keys=True, default=str),
+        corrections_json=json.dumps(corrections, ensure_ascii=False, sort_keys=True, default=str),
         outcome="success" if verified else "failure",
         verified=1 if verified else 0,
         fingerprint=fingerprint,
@@ -322,6 +601,9 @@ def capture_learning_sample(
     )
     db.add(sample)
     try:
+        db.flush()
+        if verified and corrections:
+            refresh_candidates_for_sample(db, sample)
         db.commit()
         db.refresh(sample)
         return sample
