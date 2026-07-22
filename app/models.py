@@ -1,6 +1,18 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -642,5 +654,95 @@ class VerificationLearningEvent(Base):
     action = Column(String(40), nullable=True)
     payload_json = Column(Text, nullable=False)
     sensitive = Column(Integer, nullable=False, default=0)
+    create_time = Column(DateTime, nullable=False)
+
+
+class DataAgentLearningSample(Base):
+    __tablename__ = "data_agent_learning_sample"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=False, index=True)
+    session_id = Column(String(64), nullable=False, index=True)
+    module_key = Column(String(80), nullable=False, index=True)
+    intent_key = Column(String(120), nullable=False, index=True)
+    instruction_text = Column(Text, nullable=False)
+    model_candidate_json = Column(Text, nullable=False, default="{}")
+    initial_contract_json = Column(Text, nullable=False, default="{}")
+    final_contract_json = Column(Text, nullable=False, default="{}")
+    corrections_json = Column(Text, nullable=False, default="[]")
+    outcome = Column(String(32), nullable=False, index=True)
+    verified = Column(Integer, nullable=False, default=0)
+    fingerprint = Column(String(64), nullable=False, unique=True, index=True)
+    create_time = Column(DateTime, nullable=False)
+
+
+class DataAgentRuleCandidate(Base):
+    __tablename__ = "data_agent_rule_candidate"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id",
+            "module_key",
+            "intent_key",
+            "rule_key",
+            name="uq_data_agent_rule_candidate_identity",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=False, index=True)
+    module_key = Column(String(80), nullable=False, index=True)
+    intent_key = Column(String(120), nullable=False, index=True)
+    rule_key = Column(String(160), nullable=False, index=True)
+    proposal_json = Column(Text, nullable=False)
+    source_sample_ids_json = Column(Text, nullable=False)
+    occurrence_count = Column(Integer, nullable=False, default=0)
+    regression_json = Column(Text, nullable=False, default="{}")
+    status = Column(String(32), nullable=False, default="collecting", index=True)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class DataAgentRuleVersion(Base):
+    __tablename__ = "data_agent_rule_version"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id",
+            "scope",
+            "rule_key",
+            "version",
+            name="uq_data_agent_rule_version_identity",
+        ),
+        CheckConstraint("scope IN ('project', 'global')", name="ck_data_agent_rule_version_scope"),
+        Index(
+            "uq_data_agent_rule_version_active",
+            "project_id",
+            "scope",
+            "rule_key",
+            unique=True,
+            sqlite_where=text("status = 'active'"),
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    candidate_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(Integer, nullable=False, default=0, index=True)
+    scope = Column(String(16), nullable=False, index=True)
+    rule_key = Column(String(160), nullable=False, index=True)
+    version = Column(Integer, nullable=False)
+    rule_json = Column(Text, nullable=False)
+    status = Column(String(24), nullable=False, index=True)
+    create_time = Column(DateTime, nullable=False)
+    activated_at = Column(DateTime, nullable=True)
+
+
+class DataAgentRuleReview(Base):
+    __tablename__ = "data_agent_rule_review"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    candidate_id = Column(Integer, nullable=False, index=True)
+    rule_version_id = Column(Integer, nullable=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    action = Column(String(24), nullable=False)
+    reason = Column(Text, nullable=False, default="")
     create_time = Column(DateTime, nullable=False)
 
