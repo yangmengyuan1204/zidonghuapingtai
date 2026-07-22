@@ -3,10 +3,13 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import time
 from datetime import datetime
 from typing import Any, Dict
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import case
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from ..models import DataAgentLearningSample, DataAgentRuleCandidate
@@ -45,6 +48,7 @@ LEARNABLE_FIELDS = {
     "shop_type",
     "order_payment_mode",
 }
+CANDIDATE_FIELDS = LEARNABLE_FIELDS - {"offer_price", "offer_unit_prices"}
 REVISION_FIELD_MAP = {
     "item_count": "order_per_shop",
     "quantity_per_item": "order_item_num",
@@ -58,7 +62,8 @@ MAX_MATCH_PHRASES = 8
 MAX_MATCH_PHRASE_LENGTH = 240
 CANDIDATE_THRESHOLD = 3
 CANDIDATE_RULE_KEYS = {"signature", "field", "match_phrases", "set_fields", "source_count"}
-PRICING_FIELDS = {"mode", "amount", "offer_price", "offer_unit_prices", "unit_prices", "currency"}
+PRICING_FIELDS = {"mode", "amount", "amounts"}
+PRICING_MODES = {"goods_total", "uniform_unit", "per_item_unit", "default_unit", "unspecified", "ambiguous"}
 FORBIDDEN_CANDIDATE_KEYS = {
     "allow_large_refund",
     "permission",
@@ -210,6 +215,11 @@ def _stable_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
 
 
+def _candidate_signature(field: str, after: Any) -> str:
+    payload = _stable_json({"field": field, "after": after})
+    return f"{field}:{hashlib.sha256(payload.encode('utf-8')).hexdigest()[:16]}"
+
+
 def _normalized_key(key: Any) -> str:
     return re.sub(r"[^a-z0-9]+", "_", str(key or "").strip().lower()).strip("_")
 
@@ -250,6 +260,9 @@ def _validate_pricing_value(value: Any) -> None:
     unknown = sorted(set(value) - PRICING_FIELDS)
     if unknown:
         raise ValueError(f"pricing 候选包含不允许字段：{', '.join(unknown)}")
+    mode = str(value.get("mode") or "")
+    if mode not in PRICING_MODES:
+        raise ValueError(f"pricing 候选包含不允许模式：{mode or 'empty'}")
     for key, item in value.items():
         if isinstance(item, dict):
             raise ValueError(f"pricing 候选字段不允许嵌套对象：{key}")
@@ -270,7 +283,7 @@ def validate_candidate_rule(rule: dict) -> dict:
 
     source_field = _normalized_key(rule.get("field"))
     field = REVISION_FIELD_MAP.get(source_field, source_field)
-    if field not in LEARNABLE_FIELDS:
+    if field not in CANDIDATE_FIELDS:
         raise ValueError(f"候选规则包含禁止字段：{field or 'field'}")
     set_fields = rule.get("set_fields")
     if not isinstance(set_fields, dict) or len(set_fields) != 1:
@@ -287,8 +300,8 @@ def validate_candidate_rule(rule: dict) -> dict:
         _validate_pricing_value(safe_value)
 
     signature = str(rule.get("signature") or "").strip()
-    if not signature.startswith(f"{field}:"):
-        raise ValueError("候选规则 signature 与规范字段不一致")
+    if signature != _candidate_signature(field, safe_value):
+        raise ValueError("候选规则 signature 不是规范 field/after 摘要")
     phrases = rule.get("match_phrases")
     if not isinstance(phrases, list) or any(not isinstance(item, str) for item in phrases):
         raise ValueError("候选规则 match_phrases 必须是字符串列表")
@@ -320,12 +333,22 @@ def _normalized_correction(item: Any) -> dict | None:
         if _forbidden_candidate_key(source_field):
             raise ValueError(f"候选规则包含禁止字段：{source_field or 'field'}")
         return None
-    after = _normalized_candidate_value(item.get("after"))
-    before = _normalized_candidate_value(item.get("before"))
-    if after is None or before == after:
+    raw_after = _normalized_candidate_value(item.get("after"))
+    raw_before = _normalized_candidate_value(item.get("before"))
+    if raw_after is None or raw_before == raw_after:
         return None
-    signature_payload = {"field": field, "after": after}
-    signature = f"{field}:{hashlib.sha256(_stable_json(signature_payload).encode('utf-8')).hexdigest()[:16]}"
+    if field == "offer_price":
+        field = "pricing"
+        after = {"mode": "uniform_unit", "amount": raw_after}
+        before = {"mode": "uniform_unit", "amount": raw_before}
+    elif field == "offer_unit_prices":
+        field = "pricing"
+        after = {"mode": "per_item_unit", "amounts": raw_after}
+        before = {"mode": "per_item_unit", "amounts": raw_before}
+    else:
+        after = raw_after
+        before = raw_before
+    signature = _candidate_signature(field, after)
     validate_candidate_rule(
         {
             "signature": signature,
@@ -399,19 +422,16 @@ def refresh_rule_candidate(
             "source_count": len(source_ids),
         }
     )
-    candidate = (
-        db.query(DataAgentRuleCandidate)
-        .filter(
-            DataAgentRuleCandidate.project_id == int(project_id),
-            DataAgentRuleCandidate.module_key == str(module_key),
-            DataAgentRuleCandidate.intent_key == str(intent_key),
-            DataAgentRuleCandidate.rule_key == signature,
-        )
-        .first()
-    )
     now = datetime.now()
-    if candidate is None:
-        candidate = DataAgentRuleCandidate(
+    identity = (
+        DataAgentRuleCandidate.project_id == int(project_id),
+        DataAgentRuleCandidate.module_key == str(module_key),
+        DataAgentRuleCandidate.intent_key == str(intent_key),
+        DataAgentRuleCandidate.rule_key == signature,
+    )
+    db.execute(
+        sqlite_insert(DataAgentRuleCandidate)
+        .values(
             project_id=int(project_id),
             module_key=str(module_key)[:80],
             intent_key=str(intent_key)[:120],
@@ -423,16 +443,49 @@ def refresh_rule_candidate(
             status="pending_regression" if len(source_ids) >= CANDIDATE_THRESHOLD else "collecting",
             create_time=now,
         )
-        db.add(candidate)
-    else:
-        candidate.proposal_json = _stable_json(proposal)
-        candidate.source_sample_ids_json = _stable_json(source_ids)
-        candidate.occurrence_count = len(source_ids)
-        if candidate.status == "collecting" and len(source_ids) >= CANDIDATE_THRESHOLD:
-            candidate.status = "pending_regression"
-        candidate.update_time = now
+        .on_conflict_do_nothing(
+            index_elements=["project_id", "module_key", "intent_key", "rule_key"]
+        )
+    )
+    status_value = DataAgentRuleCandidate.status
+    if len(source_ids) >= CANDIDATE_THRESHOLD:
+        status_value = case(
+            (DataAgentRuleCandidate.status == "collecting", "pending_regression"),
+            else_=DataAgentRuleCandidate.status,
+        )
+    (
+        db.query(DataAgentRuleCandidate)
+        .filter(*identity, DataAgentRuleCandidate.occurrence_count <= len(source_ids))
+        .update(
+            {
+                DataAgentRuleCandidate.proposal_json: _stable_json(proposal),
+                DataAgentRuleCandidate.source_sample_ids_json: _stable_json(source_ids),
+                DataAgentRuleCandidate.occurrence_count: len(source_ids),
+                DataAgentRuleCandidate.status: status_value,
+                DataAgentRuleCandidate.update_time: now,
+            },
+            synchronize_session=False,
+        )
+    )
     db.flush()
-    return candidate
+    return db.query(DataAgentRuleCandidate).filter(*identity).populate_existing().one()
+
+
+def _refresh_candidates_with_retry(
+    db: Session,
+    sample: DataAgentLearningSample,
+) -> list[DataAgentRuleCandidate]:
+    for attempt in range(3):
+        try:
+            candidates = refresh_candidates_for_sample(db, sample)
+            db.commit()
+            return candidates
+        except OperationalError as exc:
+            db.rollback()
+            if "locked" not in str(exc).lower() or attempt == 2:
+                raise
+            time.sleep(0.05 * (attempt + 1))
+    return []
 
 
 def refresh_candidates_for_sample(
@@ -601,12 +654,7 @@ def capture_learning_sample(
     )
     db.add(sample)
     try:
-        db.flush()
-        if verified and corrections:
-            refresh_candidates_for_sample(db, sample)
         db.commit()
-        db.refresh(sample)
-        return sample
     except IntegrityError:
         db.rollback()
         existing = (
@@ -617,3 +665,8 @@ def capture_learning_sample(
         if existing:
             return existing
         raise
+    db.refresh(sample)
+    if verified and corrections:
+        _refresh_candidates_with_retry(db, sample)
+        db.refresh(sample)
+    return sample

@@ -1,9 +1,11 @@
+import hashlib
 import json
 import logging
+import threading
 from datetime import datetime
 
 import pytest
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
@@ -123,6 +125,16 @@ def _candidate(**overrides):
     }
     values.update(overrides)
     return _model("DataAgentRuleCandidate")(**values)
+
+
+def _candidate_signature(field, after):
+    payload = json.dumps(
+        {"after": after, "field": field},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return f"{field}:{hashlib.sha256(payload.encode('utf-8')).hexdigest()[:16]}"
 
 
 def _verified_corrected_sample(
@@ -959,7 +971,7 @@ def test_reducer_mappings_and_safe_pricing_after_create_candidates(learning_db):
     }
     validated = learning_service.validate_candidate_rule(
         {
-            "signature": "order_item_num:safe",
+            "signature": _candidate_signature("order_item_num", 2),
             "field": "order_item_num",
             "match_phrases": ["每件两个"],
             "set_fields": {"order_item_num": 2},
@@ -967,6 +979,51 @@ def test_reducer_mappings_and_safe_pricing_after_create_candidates(learning_db):
         }
     )
     assert validated["set_fields"] == {"order_item_num": 2}
+
+
+@pytest.mark.parametrize(
+    ("field", "after", "expected_pricing"),
+    [
+        ("offer_price", "88", {"mode": "uniform_unit", "amount": "88"}),
+        ("offer_unit_prices", ["10", "20"], {"mode": "per_item_unit", "amounts": ["10", "20"]}),
+    ],
+)
+def test_legacy_price_fields_are_normalized_into_pricing_candidate(
+    learning_db,
+    field,
+    after,
+    expected_pricing,
+):
+    sample = _verified_corrected_sample(learning_db, field=field, after=after)
+
+    candidate = learning_service.refresh_candidates_for_sample(learning_db, sample)[0]
+    proposal = json.loads(candidate.proposal_json)
+
+    assert proposal["field"] == "pricing"
+    assert proposal["set_fields"] == {"pricing": expected_pricing}
+    with pytest.raises(ValueError, match="禁止|不允许"):
+        learning_service.validate_candidate_rule(
+            {
+                "signature": _candidate_signature(field, after),
+                "field": field,
+                "match_phrases": ["价格纠正"],
+                "set_fields": {field: after},
+                "source_count": 1,
+            }
+        )
+
+
+def test_candidate_validator_rejects_noncanonical_signature():
+    with pytest.raises(ValueError, match="signature"):
+        learning_service.validate_candidate_rule(
+            {
+                "signature": "order_item_num:0000000000000000",
+                "field": "order_item_num",
+                "match_phrases": ["每件两个"],
+                "set_fields": {"order_item_num": 2},
+                "source_count": 3,
+            }
+        )
 
 
 def test_correction_field_and_string_after_are_normalized_before_signature_grouping(learning_db):
@@ -1070,6 +1127,77 @@ def test_duplicate_capture_does_not_refresh_candidate_twice(learning_db):
 
     assert first.id == second.id
     assert candidate.occurrence_count == 1
+
+
+def test_concurrent_distinct_samples_keep_both_sources_without_lost_candidate_count(tmp_path, monkeypatch):
+    database_path = tmp_path / "candidate-concurrency.db"
+    engine = create_engine(
+        f"sqlite:///{database_path}",
+        connect_args={"check_same_thread": False, "timeout": 1},
+    )
+    with engine.begin() as connection:
+        connection.execute(text("PRAGMA journal_mode=WAL"))
+    Base.metadata.create_all(bind=engine)
+    session_factory = sessionmaker(bind=engine)
+    first_session = _agent_session(session_id="concurrent-first", instruction="并发样本一")
+    second_session = _agent_session(session_id="concurrent-second", instruction="并发样本二")
+    for agent_session, before in ((first_session, 1), (second_session, 3)):
+        agent_session.events.append(
+            {
+                "kind": "goal_updated",
+                "corrections": [{"field": "order_item_num", "before": before, "after": 2}],
+            }
+        )
+
+    first_refresh_entered = threading.Event()
+    release_first_refresh = threading.Event()
+    original_sample_corrections = learning_service._sample_corrections
+
+    def pause_first_refresh(sample):
+        result = original_sample_corrections(sample)
+        if threading.current_thread().name == "stale-candidate-refresh" and not first_refresh_entered.is_set():
+            first_refresh_entered.set()
+            assert release_first_refresh.wait(10)
+        return result
+
+    monkeypatch.setattr(learning_service, "_sample_corrections", pause_first_refresh)
+    errors = []
+
+    def capture_first():
+        db = session_factory()
+        try:
+            capture_learning_sample(db, first_session, "succeeded", _verified_result())
+        except Exception as exc:  # pragma: no cover - asserted through errors
+            errors.append(exc)
+        finally:
+            db.close()
+
+    worker = threading.Thread(target=capture_first, name="stale-candidate-refresh")
+    worker.start()
+    assert first_refresh_entered.wait(10)
+    second_db = session_factory()
+    try:
+        capture_learning_sample(second_db, second_session, "succeeded", _verified_result())
+    except Exception as exc:
+        errors.append(exc)
+    finally:
+        second_db.close()
+        release_first_refresh.set()
+        worker.join(10)
+
+    verification_db = session_factory()
+    try:
+        candidate = verification_db.query(models.DataAgentRuleCandidate).one()
+        source_ids = json.loads(candidate.source_sample_ids_json)
+        assert errors == []
+        assert not worker.is_alive()
+        assert verification_db.query(models.DataAgentLearningSample).count() == 2
+        assert candidate.occurrence_count == len(source_ids) == 2
+        assert source_ids == sorted(source_ids)
+        assert candidate.status == "collecting"
+    finally:
+        verification_db.close()
+        engine.dispose()
 
 
 def test_candidate_refresh_failure_preserves_business_record_and_terminal_state(
