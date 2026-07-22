@@ -226,6 +226,35 @@ def _pending_regression_candidate(learning_db, *, secret_instruction=False):
     return candidate, samples
 
 
+def _pending_candidate_for_contracts(
+    learning_db,
+    *,
+    field,
+    before,
+    after,
+    initial_contract,
+    final_contract,
+):
+    samples = [
+        _verified_corrected_sample(
+            learning_db,
+            field=field,
+            before=before,
+            after=after,
+            instruction=f"联动合同回归-{field}-{index}",
+            initial_contract=initial_contract,
+            final_contract=final_contract,
+        )
+        for index in range(3)
+    ]
+    for sample in samples:
+        learning_service.refresh_candidates_for_sample(learning_db, sample)
+    learning_db.commit()
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+    assert candidate.status == "pending_regression"
+    return candidate, samples
+
+
 def _rule_version(**overrides):
     values = {
         "candidate_id": 1,
@@ -1672,3 +1701,225 @@ def test_commit_failure_rolls_back_then_persists_safe_failed_summary(
     assert result.status == "regression_failed"
     assert json.loads(result.regression_json)["error_codes"] == ["transaction_failed"]
     assert "raw-secret" not in result.regression_json
+
+
+@pytest.mark.parametrize(
+    "reviewed_status",
+    ["pending_review", "regression_failed", "approved", "rejected", "active"],
+)
+def test_new_source_reopens_reviewed_candidate_regression(learning_db, reviewed_status):
+    candidate, _ = _pending_regression_candidate(learning_db)
+    candidate.status = reviewed_status
+    candidate.regression_json = '{"passed":83}'
+    learning_db.commit()
+    new_sample = _verified_corrected_sample(
+        learning_db,
+        instruction="创建两个商品的订单-新增来源",
+        initial_contract=_regression_goal(quantity=1),
+        final_contract=_regression_goal(quantity=2),
+    )
+
+    learning_service.refresh_candidates_for_sample(learning_db, new_sample)
+    learning_db.refresh(candidate)
+
+    assert candidate.status == "pending_regression"
+    assert candidate.occurrence_count == 4
+    assert candidate.regression_json == "{}"
+
+
+def test_duplicate_source_refresh_does_not_reopen_pending_review(learning_db):
+    candidate, samples = _pending_regression_candidate(learning_db)
+    candidate.status = "pending_review"
+    candidate.regression_json = '{"passed":83}'
+    learning_db.commit()
+
+    learning_service.refresh_candidates_for_sample(learning_db, samples[0])
+    learning_db.refresh(candidate)
+
+    assert candidate.status == "pending_review"
+    assert candidate.occurrence_count == 3
+    assert candidate.regression_json == '{"passed":83}'
+
+
+def test_changed_proposal_with_same_sources_reopens_review(learning_db):
+    candidate, samples = _pending_regression_candidate(learning_db)
+    candidate.status = "pending_review"
+    candidate.regression_json = '{"passed":83}'
+    proposal = json.loads(candidate.proposal_json)
+    proposal["match_phrases"] = ["stale phrase"]
+    candidate.proposal_json = json.dumps(proposal, ensure_ascii=False, sort_keys=True)
+    learning_db.commit()
+
+    learning_service.refresh_candidates_for_sample(learning_db, samples[0])
+    learning_db.refresh(candidate)
+
+    assert candidate.status == "pending_regression"
+    assert candidate.regression_json == "{}"
+
+
+@pytest.mark.parametrize(
+    ("json_field", "json_value", "expected_code"),
+    [
+        ("model_candidate_json", "", "invalid_sample_json"),
+        ("corrections_json", "", "invalid_sample_json"),
+        ("initial_contract_json", "", "invalid_sample_contract"),
+        ("initial_contract_json", "{}", "invalid_sample_contract"),
+        ("final_contract_json", "", "invalid_sample_contract"),
+        ("final_contract_json", "{}", "invalid_sample_contract"),
+    ],
+)
+def test_empty_historical_json_fails_closed(
+    learning_db,
+    json_field,
+    json_value,
+    expected_code,
+):
+    candidate, samples = _pending_regression_candidate(learning_db)
+    setattr(samples[0], json_field, json_value)
+    learning_db.commit()
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+    summary = json.loads(result.regression_json)
+
+    assert result.status == "regression_failed"
+    assert summary["error_codes"] == [expected_code]
+    assert summary["failed_sample_ids"] == [samples[0].id]
+
+
+def test_target_history_checks_operation_target_touched_by_overlay(learning_db):
+    initial = _regression_goal()
+    final = _regression_goal()
+    final["target_node"] = "pending_purchase"
+    final["variables"]["stop_after_node"] = "pending_purchase"
+    candidate, samples = _pending_candidate_for_contracts(
+        learning_db,
+        field="target_node",
+        before="order_offered",
+        after="pending_purchase",
+        initial_contract=initial,
+        final_contract=final,
+    )
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+    summary = json.loads(result.regression_json)
+
+    assert result.status == "regression_failed"
+    assert summary["conflict_sample_ids"] == [sample.id for sample in samples]
+
+
+def test_pricing_history_checks_execution_variables_touched_by_overlay(learning_db):
+    initial = _regression_goal(quantity=2)
+    final = _regression_goal(quantity=2)
+    final["intent"]["pricing"] = {
+        "mode": "goods_total",
+        "requested_goods_total": "60",
+        "effective_unit_prices": ["30"],
+        "effective_goods_total": "60",
+        "includes_fees": False,
+    }
+    final["variables"]["offer_price"] = "999"
+    after = {"mode": "goods_total", "amount": "60"}
+    candidate, samples = _pending_candidate_for_contracts(
+        learning_db,
+        field="pricing",
+        before={"mode": "uniform_unit", "amount": "10"},
+        after=after,
+        initial_contract=initial,
+        final_contract=final,
+    )
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+    summary = json.loads(result.regression_json)
+
+    assert result.status == "regression_failed"
+    assert summary["conflict_sample_ids"] == [sample.id for sample in samples]
+
+
+def test_problem_history_checks_operation_mode_touched_by_overlay(learning_db):
+    initial = _regression_goal()
+    initial["variables"]["problem_scope"] = "item"
+    initial["operations"].append(
+        {"id": "operation_2", "type": "problem_goods", "scope": "selected_item"}
+    )
+    final = json.loads(json.dumps(initial, ensure_ascii=False))
+    final["variables"]["problem_scope"] = "all"
+    candidate, samples = _pending_candidate_for_contracts(
+        learning_db,
+        field="problem_scope",
+        before="item",
+        after="all",
+        initial_contract=initial,
+        final_contract=final,
+    )
+
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+    summary = json.loads(result.regression_json)
+
+    assert result.status == "regression_failed"
+    assert summary["conflict_sample_ids"] == [sample.id for sample in samples]
+
+
+def test_concurrent_new_sources_reopen_review_once_without_losing_evidence(tmp_path):
+    database_path = tmp_path / "candidate-regression-reopen.db"
+    engine = create_engine(
+        f"sqlite:///{database_path}",
+        connect_args={"check_same_thread": False, "timeout": 1},
+    )
+    with engine.begin() as connection:
+        connection.execute(text("PRAGMA journal_mode=WAL"))
+    Base.metadata.create_all(bind=engine)
+    session_factory = sessionmaker(bind=engine)
+    setup_db = session_factory()
+    try:
+        candidate, _ = _pending_regression_candidate(setup_db)
+        candidate.status = "pending_review"
+        candidate.regression_json = '{"passed":83}'
+        setup_db.commit()
+        fourth = _verified_corrected_sample(
+            setup_db,
+            instruction="并发重开来源-4",
+            initial_contract=_regression_goal(quantity=1),
+            final_contract=_regression_goal(quantity=2),
+        )
+        fifth = _verified_corrected_sample(
+            setup_db,
+            instruction="并发重开来源-5",
+            initial_contract=_regression_goal(quantity=1),
+            final_contract=_regression_goal(quantity=2),
+        )
+        source_ids = (fourth.id, fifth.id)
+    finally:
+        setup_db.close()
+
+    barrier = threading.Barrier(2)
+    errors = []
+
+    def refresh_source(sample_id):
+        db = session_factory()
+        try:
+            sample = db.get(models.DataAgentLearningSample, sample_id)
+            barrier.wait(10)
+            learning_service._refresh_candidates_with_retry(db, sample)
+        except Exception as exc:  # pragma: no cover - asserted through errors
+            errors.append(exc)
+        finally:
+            db.close()
+
+    workers = [threading.Thread(target=refresh_source, args=(sample_id,)) for sample_id in source_ids]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join(15)
+
+    verification_db = session_factory()
+    try:
+        candidate = verification_db.query(models.DataAgentRuleCandidate).one()
+        assert errors == []
+        assert all(not worker.is_alive() for worker in workers)
+        assert candidate.status == "pending_regression"
+        assert candidate.regression_json == "{}"
+        assert candidate.occurrence_count == 5
+        assert len(json.loads(candidate.source_sample_ids_json)) == 5
+    finally:
+        verification_db.close()
+        engine.dispose()

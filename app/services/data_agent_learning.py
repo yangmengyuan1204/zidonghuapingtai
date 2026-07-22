@@ -10,7 +10,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict
 
-from sqlalchemy import case
+from sqlalchemy import case, or_
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
@@ -642,6 +642,8 @@ def refresh_rule_candidate(
             "source_count": len(source_ids),
         }
     )
+    proposal_json = _stable_json(proposal)
+    source_ids_json = _stable_json(source_ids)
     now = datetime.now()
     identity = (
         DataAgentRuleCandidate.project_id == int(project_id),
@@ -656,8 +658,8 @@ def refresh_rule_candidate(
             module_key=str(module_key)[:80],
             intent_key=str(intent_key)[:120],
             rule_key=signature[:160],
-            proposal_json=_stable_json(proposal),
-            source_sample_ids_json=_stable_json(source_ids),
+            proposal_json=proposal_json,
+            source_sample_ids_json=source_ids_json,
             occurrence_count=len(source_ids),
             regression_json="{}",
             status="pending_regression" if len(source_ids) >= CANDIDATE_THRESHOLD else "collecting",
@@ -668,19 +670,34 @@ def refresh_rule_candidate(
         )
     )
     status_value = DataAgentRuleCandidate.status
+    regression_json_value = DataAgentRuleCandidate.regression_json
     if len(source_ids) >= CANDIDATE_THRESHOLD:
+        evidence_changed = or_(
+            DataAgentRuleCandidate.occurrence_count < len(source_ids),
+            DataAgentRuleCandidate.proposal_json != proposal_json,
+            DataAgentRuleCandidate.source_sample_ids_json != source_ids_json,
+        )
+        requires_regression = or_(
+            DataAgentRuleCandidate.status == "collecting",
+            evidence_changed,
+        )
         status_value = case(
-            (DataAgentRuleCandidate.status == "collecting", "pending_regression"),
+            (requires_regression, "pending_regression"),
             else_=DataAgentRuleCandidate.status,
+        )
+        regression_json_value = case(
+            (requires_regression, "{}"),
+            else_=DataAgentRuleCandidate.regression_json,
         )
     (
         db.query(DataAgentRuleCandidate)
         .filter(*identity, DataAgentRuleCandidate.occurrence_count <= len(source_ids))
         .update(
             {
-                DataAgentRuleCandidate.proposal_json: _stable_json(proposal),
-                DataAgentRuleCandidate.source_sample_ids_json: _stable_json(source_ids),
+                DataAgentRuleCandidate.proposal_json: proposal_json,
+                DataAgentRuleCandidate.source_sample_ids_json: source_ids_json,
                 DataAgentRuleCandidate.occurrence_count: len(source_ids),
+                DataAgentRuleCandidate.regression_json: regression_json_value,
                 DataAgentRuleCandidate.status: status_value,
                 DataAgentRuleCandidate.update_time: now,
             },
@@ -985,14 +1002,18 @@ def regression_passed(summary: dict) -> bool:
 
 
 def _load_json_object(value: Any) -> dict:
-    parsed = json.loads(value or "{}")
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("JSON object is empty")
+    parsed = json.loads(value)
     if not isinstance(parsed, dict):
         raise ValueError("JSON contract must be an object")
     return parsed
 
 
 def _load_json_list(value: Any) -> list:
-    parsed = json.loads(value or "[]")
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("JSON list is empty")
+    parsed = json.loads(value)
     if not isinstance(parsed, list):
         raise ValueError("JSON value must be a list")
     return parsed
@@ -1031,6 +1052,73 @@ def _contract_field_value(goal: dict, field: str) -> Any:
             }
         return {"mode": mode} if mode else None
     return None
+
+
+_MISSING_CONTRACT_VALUE = object()
+
+
+def _changed_contract_paths(before: Any, after: Any, path: tuple[Any, ...] = ()) -> list[tuple[Any, ...]]:
+    if isinstance(before, dict) and isinstance(after, dict):
+        paths: list[tuple[Any, ...]] = []
+        for key in sorted(set(before) | set(after), key=str):
+            if key not in before or key not in after:
+                paths.append((*path, key))
+            else:
+                paths.extend(_changed_contract_paths(before[key], after[key], (*path, key)))
+        return paths
+    if isinstance(before, list) and isinstance(after, list):
+        if len(before) != len(after):
+            return [path]
+        paths = []
+        for index, (before_item, after_item) in enumerate(zip(before, after)):
+            paths.extend(_changed_contract_paths(before_item, after_item, (*path, index)))
+        return paths
+    return [path] if before != after else []
+
+
+def _contract_path_value(value: Any, path: tuple[Any, ...]) -> Any:
+    current = value
+    for part in path:
+        if isinstance(part, int):
+            if not isinstance(current, list) or part >= len(current):
+                return _MISSING_CONTRACT_VALUE
+            current = current[part]
+        else:
+            if not isinstance(current, dict) or part not in current:
+                return _MISSING_CONTRACT_VALUE
+            current = current[part]
+    return current
+
+
+def _candidate_contract_structure_valid(goal: dict, field: str) -> bool:
+    if not isinstance(goal, dict) or not goal:
+        return False
+    variables = goal.get("variables")
+    if not isinstance(variables, dict):
+        return False
+    if field == "target_node":
+        operations = goal.get("operations")
+        return (
+            "target_node" in goal
+            and isinstance(operations, list)
+            and any(
+                isinstance(operation, dict)
+                and operation.get("type") in SAFE_TARGET_OPERATION_TYPES
+                for operation in operations
+            )
+        )
+    if field in VARIABLE_OVERLAY_FIELDS:
+        return field in variables
+    if field == "pricing":
+        intent = goal.get("intent")
+        return (
+            isinstance(intent, dict)
+            and isinstance(intent.get("pricing"), dict)
+            and bool(intent["pricing"])
+        )
+    if field in PROBLEM_OVERLAY_FIELDS:
+        return field in variables and _problem_operation(goal) is not None
+    return False
 
 
 def _safe_source_ids(candidate: DataAgentRuleCandidate) -> list[int]:
@@ -1090,6 +1178,15 @@ def evaluate_candidate(db: Session, candidate: DataAgentRuleCandidate) -> dict:
 
     parsed_samples: list[tuple[DataAgentLearningSample, dict, dict]] = []
     for sample in samples:
+        if (
+            not isinstance(sample.initial_contract_json, str)
+            or not sample.initial_contract_json.strip()
+            or not isinstance(sample.final_contract_json, str)
+            or not sample.final_contract_json.strip()
+        ):
+            summary["failed_sample_ids"].append(int(sample.id))
+            _add_error_code(summary, "invalid_sample_contract")
+            continue
         try:
             _load_json_object(sample.model_candidate_json)
             initial_contract = _load_json_object(sample.initial_contract_json)
@@ -1098,6 +1195,10 @@ def evaluate_candidate(db: Session, candidate: DataAgentRuleCandidate) -> dict:
         except (TypeError, ValueError, json.JSONDecodeError):
             summary["failed_sample_ids"].append(int(sample.id))
             _add_error_code(summary, "invalid_sample_json")
+            continue
+        if not initial_contract or not final_contract:
+            summary["failed_sample_ids"].append(int(sample.id))
+            _add_error_code(summary, "invalid_sample_contract")
             continue
         parsed_samples.append((sample, initial_contract, final_contract))
     if summary["failed_sample_ids"]:
@@ -1133,15 +1234,27 @@ def evaluate_candidate(db: Session, candidate: DataAgentRuleCandidate) -> dict:
                 continue
             if not matched:
                 continue
-            baseline_goal = initial_contract
-            if not baseline_goal:
-                baseline_goal = fixture_evaluator.analyze_without_execution(
-                    sample.instruction_text
-                ).get("goal") or {}
-            overlaid = apply_candidate_overlay(baseline_goal, proposal)
+            if not _candidate_contract_structure_valid(
+                initial_contract,
+                proposal["field"],
+            ) or not _candidate_contract_structure_valid(final_contract, proposal["field"]):
+                summary["failed_sample_ids"].append(sample_id)
+                _add_error_code(summary, "invalid_sample_contract")
+                continue
+            overlaid = apply_candidate_overlay(initial_contract, proposal)
+            touched_paths = _changed_contract_paths(initial_contract, overlaid)
             overlaid_value = _contract_field_value(overlaid, proposal["field"])
             final_value = _contract_field_value(final_contract, proposal["field"])
-            if overlaid_value != proposal_after or final_value != proposal_after:
+            touched_paths_match = bool(touched_paths) and all(
+                _contract_path_value(final_contract, path)
+                == _contract_path_value(overlaid, path)
+                for path in touched_paths
+            )
+            if (
+                overlaid_value != proposal_after
+                or final_value != proposal_after
+                or not touched_paths_match
+            ):
                 summary["conflict_sample_ids"].append(sample_id)
         except Exception:
             summary["conflict_sample_ids"].append(sample_id)
