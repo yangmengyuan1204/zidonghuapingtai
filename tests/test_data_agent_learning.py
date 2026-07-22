@@ -16,6 +16,59 @@ EXPECTED_TABLES = {
     "DataAgentRuleReview": "data_agent_rule_review",
 }
 
+REQUIRED_ROW_VALUES = {
+    "DataAgentLearningSample": {
+        "project_id": 1,
+        "session_id": "session-required",
+        "module_key": "shopping_cart",
+        "intent_key": "add_item",
+        "instruction_text": "add one item",
+        "model_candidate_json": "{}",
+        "initial_contract_json": "{}",
+        "final_contract_json": "{}",
+        "corrections_json": "[]",
+        "outcome": "success",
+        "verified": 0,
+        "fingerprint": "b" * 64,
+        "create_time": datetime.now(),
+    },
+    "DataAgentRuleCandidate": {
+        "project_id": 1,
+        "module_key": "shopping_cart",
+        "intent_key": "add_item",
+        "rule_key": "cart.required",
+        "proposal_json": "{}",
+        "source_sample_ids_json": "[]",
+        "occurrence_count": 0,
+        "regression_json": "{}",
+        "status": "collecting",
+        "create_time": datetime.now(),
+    },
+    "DataAgentRuleVersion": {
+        "candidate_id": 1,
+        "project_id": 1,
+        "scope": "project",
+        "rule_key": "cart.required",
+        "version": 1,
+        "rule_json": "{}",
+        "status": "draft",
+        "create_time": datetime.now(),
+    },
+    "DataAgentRuleReview": {
+        "candidate_id": 1,
+        "user_id": 2,
+        "action": "approve",
+        "reason": "",
+        "create_time": datetime.now(),
+    },
+}
+
+NULL_CONSTRAINT_CASES = tuple(
+    (model_name, column_name)
+    for model_name, values in REQUIRED_ROW_VALUES.items()
+    for column_name in values
+)
+
 
 def _model(name):
     assert hasattr(models, name), f"missing ORM model: {name}"
@@ -211,3 +264,21 @@ def test_defaults_and_nullable_contract(learning_db):
     assert _model("DataAgentRuleCandidate").__table__.c.update_time.nullable
     assert _model("DataAgentRuleVersion").__table__.c.activated_at.nullable
     assert _model("DataAgentRuleReview").__table__.c.rule_version_id.nullable
+
+
+@pytest.mark.parametrize(("model_name", "column_name"), NULL_CONSTRAINT_CASES)
+def test_database_rejects_explicit_null_for_required_fields(learning_db, model_name, column_name):
+    model = _model(model_name)
+    values = dict(REQUIRED_ROW_VALUES[model_name])
+    required_columns = {
+        column.name
+        for column in model.__table__.columns
+        if not column.nullable and not column.primary_key
+    }
+    assert set(values) == required_columns
+    values[column_name] = None
+
+    with pytest.raises(IntegrityError):
+        learning_db.execute(model.__table__.insert().values(**values))
+        learning_db.commit()
+    learning_db.rollback()
