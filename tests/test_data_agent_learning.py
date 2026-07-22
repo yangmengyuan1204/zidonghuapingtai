@@ -401,7 +401,12 @@ def test_recursive_redaction_removes_sensitive_keys_and_string_assignments(learn
         "note": "Authorization: Bearer bearer-raw; token: token-raw",
     }
     session = _agent_session(
-        instruction="password=pass-raw cookie: cookie-raw 创建订单",
+        instruction=(
+            'create order password="pass raw quoted" backend_account=account-inline-raw '
+            'account_ciphertext="cipher inline raw" browser_state_encrypted=browser-inline-raw '
+            'sensitive_variables=sensitive-inline-raw Authorization: Bearer bearer-raw '
+            'Cookie: sid=cookie-one-raw; csrf=cookie-two-raw'
+        ),
         goal=goal,
     )
     session.events.append(
@@ -436,17 +441,25 @@ def test_recursive_redaction_removes_sensitive_keys_and_string_assignments(learn
 
     for secret in (
         "pass-raw",
+        "pass raw quoted",
         "cookie-raw",
         "key-raw",
         "session-raw",
         "backend-raw",
         "temporary-account-raw",
         "account-cipher-raw",
+        "account-inline-raw",
+        "cipher inline raw",
+        "browser-inline-raw",
+        "sensitive-inline-raw",
+        "cookie-one-raw",
+        "cookie-two-raw",
         "bearer-raw",
         "token-raw",
         "event-raw",
     ):
         assert secret not in serialized
+    assert "create order" in sample.instruction_text
     assert sanitize_learning_value({"Sensitive_Variables": {"token": "raw"}}) == {
         "Sensitive_Variables": "***"
     }
@@ -475,6 +488,13 @@ def test_fingerprint_uses_sanitized_stable_payload():
 
     assert first == second
     assert len(first) == 64
+
+
+def test_fingerprint_is_stable_when_large_dict_insertion_order_changes():
+    ascending = {f"field_{index:03}": index for index in range(100)}
+    descending = {f"field_{index:03}": index for index in reversed(range(100))}
+
+    assert sample_fingerprint(3, "same", ascending) == sample_fingerprint(3, "same", descending)
 
 
 def test_duplicate_capture_returns_existing_sample(learning_db):
@@ -550,11 +570,33 @@ def test_initial_contract_remains_first_confirmable_goal_after_direct_edit(learn
     assert final["variables"]["order_item_num"] == 4
 
 
+def test_missing_initial_contract_is_not_replaced_with_final_contract(learning_db):
+    session = _agent_session()
+    session.initial_contract = {}
+
+    sample = capture_learning_sample(
+        learning_db,
+        session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert json.loads(sample.initial_contract_json) == {}
+    assert json.loads(sample.final_contract_json) == session.goal
+
+
 def test_clarification_revisions_capture_only_changed_learnable_fields(learning_db):
     session = _agent_session()
     session.intent_state = {
         "revisions": [
             {"field": "target_node", "before": {"value": "order_created"}, "after": {"value": "order_offered"}},
+            {"field": "item_count", "before": {"value": 2}, "after": {"value": 3}},
+            {"field": "quantity_per_item", "before": {"value": 1}, "after": {"value": 4}},
+            {
+                "field": "pricing",
+                "before": {"value": {"mode": "ambiguous", "amount": "500"}},
+                "after": {"value": {"mode": "goods_total", "amount": "500"}},
+            },
             {"field": "order_item_num", "before": 1, "after": 1},
             {"field": "backend_password", "before": "old-secret", "after": "new-secret"},
             {"before": "missing", "after": "field"},
@@ -574,7 +616,25 @@ def test_clarification_revisions_capture_only_changed_learnable_fields(learning_
             "before": "order_created",
             "after": "order_offered",
             "source": "clarification",
-        }
+        },
+        {
+            "field": "order_per_shop",
+            "before": 2,
+            "after": 3,
+            "source": "clarification",
+        },
+        {
+            "field": "order_item_num",
+            "before": 1,
+            "after": 4,
+            "source": "clarification",
+        },
+        {
+            "field": "pricing_mode",
+            "before": "ambiguous",
+            "after": "goods_total",
+            "source": "clarification",
+        },
     ]
 
 

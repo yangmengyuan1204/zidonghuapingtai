@@ -44,18 +44,28 @@ LEARNABLE_FIELDS = {
     "shop_type",
     "order_payment_mode",
 }
+REVISION_FIELD_MAP = {
+    "item_count": "order_per_shop",
+    "quantity_per_item": "order_item_num",
+    "pricing": "pricing_mode",
+}
 TERMINAL_STATUSES = {"succeeded", "failed", "blocked", "cancelled"}
 MAX_DEPTH = 5
 MAX_DICT_ITEMS = 80
 MAX_LIST_ITEMS = 100
 MAX_STRING_LENGTH = 4000
 
+_ASSIGNED_VALUE = r'(?:"[^"\r\n]*"|\'[^\'\r\n]*\'|[^\s,;]+)'
 _SENSITIVE_ASSIGNMENT = re.compile(
-    r"(?i)\b(password|passwd|pwd|access[_ -]?token|"
-    r"admin[_ -]?token|token|cookie|api[_ -]?key|secret|backend[_ -]?password)"
-    r"\s*[:=]\s*[^\s,;]+"
+    rf"(?i)\b(password|passwd|pwd|access[_ -]?token|admin[_ -]?token|token|"
+    rf"api[_ -]?key|secret|backend[_ -]?account|backend[_ -]?password|"
+    rf"account[_ -]?ciphertext|browser[_ -]?state[_ -]?encrypted|sensitive[_ -]?variables)"
+    rf"\s*[:=]\s*{_ASSIGNED_VALUE}"
 )
 _BEARER_ASSIGNMENT = re.compile(r"(?i)\bauthorization\s*:\s*bearer\s+[^\s,;]+")
+_COOKIE_ASSIGNMENT = re.compile(
+    rf"(?i)\bcookie\s*[:=]\s*{_ASSIGNED_VALUE}(?:\s*;\s*[^;\s,]+)*"
+)
 
 
 def _sensitive_key(key: str) -> bool:
@@ -68,6 +78,7 @@ def _sensitive_key(key: str) -> bool:
 
 def _sanitize_text(value: str) -> str:
     redacted = _BEARER_ASSIGNMENT.sub("Authorization: ***", value)
+    redacted = _COOKIE_ASSIGNMENT.sub("Cookie=***", redacted)
     return _SENSITIVE_ASSIGNMENT.sub(lambda match: f"{match.group(1)}=***", redacted)[:MAX_STRING_LENGTH]
 
 
@@ -79,7 +90,7 @@ def sanitize_learning_value(value: Any, key: str = "", *, _depth: int = 0) -> An
     if isinstance(value, dict):
         return {
             str(item_key): sanitize_learning_value(item, str(item_key), _depth=_depth + 1)
-            for item_key, item in list(value.items())[:MAX_DICT_ITEMS]
+            for item_key, item in sorted(value.items(), key=lambda pair: str(pair[0]))[:MAX_DICT_ITEMS]
         }
     if isinstance(value, (list, tuple)):
         return [
@@ -125,15 +136,22 @@ def _corrections(session: Any) -> list[Dict[str, Any]]:
     intent_state = getattr(session, "intent_state", None)
     intent_state = intent_state if isinstance(intent_state, dict) else {}
     for item in intent_state.get("revisions") or []:
-        if not isinstance(item, dict) or item.get("field") not in LEARNABLE_FIELDS:
+        if not isinstance(item, dict):
+            continue
+        source_field = str(item.get("field") or "")
+        field = REVISION_FIELD_MAP.get(source_field, source_field)
+        if field not in LEARNABLE_FIELDS:
             continue
         before = _revision_value(item.get("before"))
         after = _revision_value(item.get("after"))
+        if source_field == "pricing":
+            before = before.get("mode") if isinstance(before, dict) else None
+            after = after.get("mode") if isinstance(after, dict) else None
         if before is None or after is None or before == after:
             continue
         corrections.append(
             {
-                "field": item["field"],
+                "field": field,
                 "before": before,
                 "after": after,
                 "source": "clarification",
@@ -210,7 +228,7 @@ def capture_learning_sample(
     safe_final_contract = sanitize_learning_value(goal)
     initial_contract = getattr(session, "initial_contract", None)
     safe_initial_contract = sanitize_learning_value(
-        initial_contract if isinstance(initial_contract, dict) and initial_contract else goal
+        initial_contract if isinstance(initial_contract, dict) else {}
     )
     fingerprint = sample_fingerprint(int(session.project_id), safe_instruction, safe_final_contract)
     existing = (
