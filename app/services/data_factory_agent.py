@@ -28,6 +28,7 @@ from .data_factory_agent_contract import (
     problem_goods_clarification,
     read_deterministic_problem_fields,
 )
+from .data_agent_learning import capture_learning_sample, sanitize_learning_value
 from .data_factory_agent_prompts import (
     SYSTEM_PROMPT,
     SYSTEM_PROMPT_ACTION,
@@ -280,6 +281,7 @@ class AgentSessionState:
     messages: list[Dict[str, str]] = field(default_factory=list)
     compile_context: Dict[str, Any] = field(default_factory=dict)
     goal: Dict[str, Any] = field(default_factory=dict)
+    initial_contract: Dict[str, Any] = field(default_factory=dict)
     question: str = ""
     events: list[Dict[str, Any]] = field(default_factory=list)
     result: Dict[str, Any] = field(default_factory=dict)
@@ -349,6 +351,11 @@ def _now_text() -> str:
 
 def _event(kind: str, message: str, **data: Any) -> Dict[str, Any]:
     return {"time": _now_text(), "kind": kind, "message": str(message or ""), **sanitize_observation(data)}
+
+
+def _remember_initial_contract(session: AgentSessionState) -> None:
+    if session.status == "awaiting_confirmation" and session.goal and not session.initial_contract:
+        session.initial_contract = sanitize_learning_value(copy.deepcopy(session.goal))
 
 
 def _cleanup_sessions() -> None:
@@ -1962,6 +1969,7 @@ def create_agent_session(
                 field=_clarification_field(question),
                 count=bounded["count"],
             )
+    _remember_initial_contract(session)
     _save_analysis_record(db, session, analysis_trace, session.status, session.question)
     with _STORE_LOCK:
         _cleanup_sessions()
@@ -2052,6 +2060,7 @@ def add_agent_message(db: Session, session_id: str, user_id: int, message: str) 
                 count=session.clarification_counts.get(_clarification_field(question), 0) if question else 0,
             )
         )
+        _remember_initial_contract(session)
     _save_analysis_record(db, session, analysis_trace, session.status, session.question)
     return _serialize_session(session)
 
@@ -2449,6 +2458,15 @@ def _finalize_session(
         env_id=env_id,
         variables=goal.get("variables") if isinstance(goal.get("variables"), dict) else {},
     )
+    try:
+        capture_learning_sample(db, session, final_status, aggregate)
+    except Exception as exc:
+        db.rollback()
+        logger.error(
+            "数据智能体学习样本保存失败 session_id=%s error=%s",
+            session.id,
+            type(exc).__name__,
+        )
     with _STORE_LOCK:
         session = _SESSIONS.get(session_id)
         if not session:
@@ -2861,12 +2879,18 @@ def update_agent_goal(
                 detail="仅允许在待确认或待补充状态下修改目标",
             )
         goal = dict(session.goal)
+        _remember_initial_contract(session)
         variables = dict(goal.get("variables") or {})
         intent = dict(goal.get("intent") or {})
         pricing = dict(intent.get("pricing") or {})
         price_edited = False
         allowed = {"order_shop_count", "order_per_shop", "order_item_num",
                    "offer_price", "offer_unit_prices", "target_node"}
+        before_values = {
+            key: copy.deepcopy(goal.get("target_node") if key == "target_node" else variables.get(key))
+            for key, value in updates.items()
+            if key in allowed and value is not None
+        }
         for key, value in updates.items():
             if key not in allowed or value is None:
                 continue
@@ -2951,7 +2975,21 @@ def update_agent_goal(
         session.goal = goal
         session.plan_version += 1
         session.updated_at = datetime.now()
-        session.events.append(_event("goal_updated", "用户直接编辑了目标数据"))
+        after_values = {
+            key: copy.deepcopy(goal.get("target_node") if key == "target_node" else variables.get(key))
+            for key in before_values
+        }
+        corrections = [
+            {
+                "field": key,
+                "before": before_values[key],
+                "after": after_values[key],
+                "source": "direct_edit",
+            }
+            for key in before_values
+            if before_values[key] != after_values[key]
+        ]
+        session.events.append(_event("goal_updated", "用户直接编辑了目标数据", corrections=corrections))
     return _serialize_session(session)
 
 def confirm_agent_session(
@@ -2966,6 +3004,7 @@ def confirm_agent_session(
     with _STORE_LOCK:
         if session.status != "awaiting_confirmation" or not session.goal:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前任务没有可确认的目标")
+        _remember_initial_contract(session)
         if int(plan_version) != session.plan_version:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="目标已更新，请重新查看后确认")
         running_session = _ENV_RUNNING.get(session.env_id)
