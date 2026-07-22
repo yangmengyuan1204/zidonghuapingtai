@@ -404,7 +404,8 @@ def test_recursive_redaction_removes_sensitive_keys_and_string_assignments(learn
         instruction=(
             'create order password="pass raw quoted" backend_account=account-inline-raw '
             'account_ciphertext="cipher inline raw" browser_state_encrypted=browser-inline-raw '
-            'sensitive_variables=sensitive-inline-raw Authorization: Bearer bearer-raw '
+            'sensitive_variables={"username": "temp-admin-raw", "otp": "otp-raw-secret"} '
+            'Authorization: Bearer bearer-raw '
             'Cookie: sid=cookie-one-raw; csrf=cookie-two-raw'
         ),
         goal=goal,
@@ -451,7 +452,8 @@ def test_recursive_redaction_removes_sensitive_keys_and_string_assignments(learn
         "account-inline-raw",
         "cipher inline raw",
         "browser-inline-raw",
-        "sensitive-inline-raw",
+        "temp-admin-raw",
+        "otp-raw-secret",
         "cookie-one-raw",
         "cookie-two-raw",
         "bearer-raw",
@@ -472,6 +474,28 @@ def test_sanitizer_bounds_depth_collection_and_string_size():
     assert len(sanitize_learning_value(list(range(200)))) == 100
     assert len(sanitize_learning_value("x" * 5000)) == 4000
     assert sanitize_learning_value((1, 2)) == [1, 2]
+
+
+@pytest.mark.parametrize(
+    ("text", "secrets"),
+    [
+        (
+            'prefix sensitive_variables : {"user": "temp user", "nested": ["otp value", {"token": "inner"}]} suffix',
+            ("temp user", "otp value", "inner"),
+        ),
+        (
+            'prefix browser_state_encrypted = [{"cookie": "cookie value"}] suffix',
+            ("cookie value",),
+        ),
+        ("prefix password : 'two word password' suffix", ("two word password",)),
+    ],
+)
+def test_string_redaction_consumes_complete_structured_values_and_preserves_business_text(text, secrets):
+    sanitized = sanitize_learning_value(text)
+
+    assert sanitized.startswith("prefix ")
+    assert sanitized.endswith(" suffix")
+    assert all(secret not in sanitized for secret in secrets)
 
 
 def test_fingerprint_uses_sanitized_stable_payload():
@@ -597,6 +621,11 @@ def test_clarification_revisions_capture_only_changed_learnable_fields(learning_
                 "before": {"value": {"mode": "ambiguous", "amount": "500"}},
                 "after": {"value": {"mode": "goods_total", "amount": "500"}},
             },
+            {
+                "field": "pricing",
+                "before": {"value": {"mode": "goods_total", "amount": "500"}},
+                "after": {"value": {"mode": "goods_total", "amount": "600"}},
+            },
             {"field": "order_item_num", "before": 1, "after": 1},
             {"field": "backend_password", "before": "old-secret", "after": "new-secret"},
             {"before": "missing", "after": "field"},
@@ -630,9 +659,15 @@ def test_clarification_revisions_capture_only_changed_learnable_fields(learning_
             "source": "clarification",
         },
         {
-            "field": "pricing_mode",
-            "before": "ambiguous",
-            "after": "goods_total",
+            "field": "pricing",
+            "before": {"mode": "ambiguous", "amount": "500"},
+            "after": {"mode": "goods_total", "amount": "500"},
+            "source": "clarification",
+        },
+        {
+            "field": "pricing",
+            "before": {"mode": "goods_total", "amount": "500"},
+            "after": {"mode": "goods_total", "amount": "600"},
             "source": "clarification",
         },
     ]

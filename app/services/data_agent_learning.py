@@ -36,6 +36,7 @@ LEARNABLE_FIELDS = {
     "order_item_num",
     "offer_price",
     "offer_unit_prices",
+    "pricing",
     "pricing_mode",
     "problem_scope",
     "problem_refund_quantity",
@@ -47,7 +48,6 @@ LEARNABLE_FIELDS = {
 REVISION_FIELD_MAP = {
     "item_count": "order_per_shop",
     "quantity_per_item": "order_item_num",
-    "pricing": "pricing_mode",
 }
 TERMINAL_STATUSES = {"succeeded", "failed", "blocked", "cancelled"}
 MAX_DEPTH = 5
@@ -55,17 +55,13 @@ MAX_DICT_ITEMS = 80
 MAX_LIST_ITEMS = 100
 MAX_STRING_LENGTH = 4000
 
-_ASSIGNED_VALUE = r'(?:"[^"\r\n]*"|\'[^\'\r\n]*\'|[^\s,;]+)'
-_SENSITIVE_ASSIGNMENT = re.compile(
-    rf"(?i)\b(password|passwd|pwd|access[_ -]?token|admin[_ -]?token|token|"
+_SENSITIVE_ASSIGNMENT_START = re.compile(
+    rf"(?i)\b(password|passwd|pwd|access[_ -]?token|admin[_ -]?token|token|cookie|"
     rf"api[_ -]?key|secret|backend[_ -]?account|backend[_ -]?password|"
     rf"account[_ -]?ciphertext|browser[_ -]?state[_ -]?encrypted|sensitive[_ -]?variables)"
-    rf"\s*[:=]\s*{_ASSIGNED_VALUE}"
+    rf"\s*[:=]\s*"
 )
 _BEARER_ASSIGNMENT = re.compile(r"(?i)\bauthorization\s*:\s*bearer\s+[^\s,;]+")
-_COOKIE_ASSIGNMENT = re.compile(
-    rf"(?i)\bcookie\s*[:=]\s*{_ASSIGNED_VALUE}(?:\s*;\s*[^;\s,]+)*"
-)
 
 
 def _sensitive_key(key: str) -> bool:
@@ -76,10 +72,78 @@ def _sensitive_key(key: str) -> bool:
     )
 
 
+def _single_assigned_value_end(text: str, start: int) -> int:
+    if start >= len(text):
+        return start
+    opening = text[start]
+    if opening in {'"', "'"}:
+        escaped = False
+        for index in range(start + 1, len(text)):
+            character = text[index]
+            if character == opening and not escaped:
+                return index + 1
+            escaped = character == "\\" and not escaped
+            if character != "\\":
+                escaped = False
+        return len(text)
+    if opening in "{[":
+        stack = ["}" if opening == "{" else "]"]
+        quote = ""
+        escaped = False
+        for index in range(start + 1, len(text)):
+            character = text[index]
+            if quote:
+                if character == quote and not escaped:
+                    quote = ""
+                escaped = character == "\\" and not escaped
+                if character != "\\":
+                    escaped = False
+                continue
+            if character in {'"', "'"}:
+                quote = character
+            elif character in "{[":
+                stack.append("}" if character == "{" else "]")
+            elif character == stack[-1]:
+                stack.pop()
+                if not stack:
+                    return index + 1
+        return len(text)
+    index = start
+    while index < len(text) and not text[index].isspace() and text[index] not in ",;":
+        index += 1
+    return index
+
+
+def _assigned_value_end(text: str, start: int, field: str) -> int:
+    end = _single_assigned_value_end(text, start)
+    if field.casefold() != "cookie":
+        return end
+    while end < len(text):
+        continuation = re.match(r"\s*;\s*[^;,\s=]+\s*=\s*", text[end:])
+        if not continuation:
+            break
+        next_start = end + continuation.end()
+        next_end = _single_assigned_value_end(text, next_start)
+        if next_end <= next_start:
+            break
+        end = next_end
+    return end
+
+
+def _redact_sensitive_assignments(text: str) -> str:
+    pieces: list[str] = []
+    cursor = 0
+    while match := _SENSITIVE_ASSIGNMENT_START.search(text, cursor):
+        value_end = _assigned_value_end(text, match.end(), match.group(1))
+        pieces.extend((text[cursor:match.start()], f"{match.group(1)}=***"))
+        cursor = max(value_end, match.end())
+    pieces.append(text[cursor:])
+    return "".join(pieces)
+
+
 def _sanitize_text(value: str) -> str:
     redacted = _BEARER_ASSIGNMENT.sub("Authorization: ***", value)
-    redacted = _COOKIE_ASSIGNMENT.sub("Cookie=***", redacted)
-    return _SENSITIVE_ASSIGNMENT.sub(lambda match: f"{match.group(1)}=***", redacted)[:MAX_STRING_LENGTH]
+    return _redact_sensitive_assignments(redacted)[:MAX_STRING_LENGTH]
 
 
 def sanitize_learning_value(value: Any, key: str = "", *, _depth: int = 0) -> Any:
@@ -144,9 +208,6 @@ def _corrections(session: Any) -> list[Dict[str, Any]]:
             continue
         before = _revision_value(item.get("before"))
         after = _revision_value(item.get("after"))
-        if source_field == "pricing":
-            before = before.get("mode") if isinstance(before, dict) else None
-            after = after.get("mode") if isinstance(after, dict) else None
         if before is None or after is None or before == after:
             continue
         corrections.append(
