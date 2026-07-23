@@ -6,11 +6,15 @@ from datetime import datetime
 
 import pytest
 from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+from fastapi.testclient import TestClient
 
 from app import models
-from app.database import Base
+from app.database import Base, get_db
+from app.main import app
+from app.security import get_current_user, require_admin
 from app.services import data_factory_agent as agent_service
 from app.services import data_agent_learning as learning_service
 from app.services.data_agent_learning import (
@@ -88,7 +92,11 @@ def _model(name):
 
 @pytest.fixture
 def learning_db():
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(bind=engine)
     session = sessionmaker(bind=engine)()
     try:
@@ -605,6 +613,8 @@ def test_sanitizer_bounds_depth_collection_and_string_size():
     assert len(sanitize_learning_value(list(range(200)))) == 100
     assert len(sanitize_learning_value("x" * 5000)) == 4000
     assert sanitize_learning_value((1, 2)) == [1, 2]
+    huge_numbers = sanitize_learning_value([10**3999] * 100)
+    assert len(json.dumps(huge_numbers).encode("utf-8")) <= 70_000
 
 
 @pytest.mark.parametrize(
@@ -1992,4 +2002,1109 @@ def test_regression_result_cannot_overwrite_evidence_added_during_evaluation(
         assert len(json.loads(candidate.source_sample_ids_json)) == 4
     finally:
         verification_db.close()
+        engine.dispose()
+
+
+LEARNING_ROUTE_CONTRACT = {
+    ("GET", "/api/data-scripts/agent/learning/overview"),
+    ("GET", "/api/data-scripts/agent/learning/candidates/{candidate_id}"),
+    ("POST", "/api/data-scripts/agent/learning/candidates/{candidate_id}/regression"),
+    ("POST", "/api/data-scripts/agent/learning/candidates/{candidate_id}/approve"),
+    ("POST", "/api/data-scripts/agent/learning/candidates/{candidate_id}/reject"),
+    ("GET", "/api/data-scripts/agent/learning/rules/{rule_version_id}"),
+    ("POST", "/api/data-scripts/agent/learning/rules/{rule_version_id}/promote"),
+    ("POST", "/api/data-scripts/agent/learning/rules/{rule_version_id}/disable"),
+    ("POST", "/api/data-scripts/agent/learning/rules/{rule_version_id}/rollback"),
+}
+
+
+def _pending_review_candidate(db, *, project_id=1, module_key="order", after=2):
+    proposal = _proposal("order_item_num", after, f"创建{after}个商品")
+    candidate = _candidate(
+        project_id=project_id,
+        module_key=module_key,
+        intent_key="create",
+        rule_key=proposal["signature"],
+        proposal_json=json.dumps(proposal, ensure_ascii=False, sort_keys=True),
+        source_sample_ids_json="[]",
+        occurrence_count=3,
+        regression_json=json.dumps(
+            {
+                "fixture_total": 80,
+                "historical_total": 0,
+                "passed": 80,
+                "failed": 0,
+                "conflicts": 0,
+                "error_codes": [],
+            },
+            sort_keys=True,
+        ),
+        status="pending_review",
+    )
+    db.add(candidate)
+    db.commit()
+    db.refresh(candidate)
+    return candidate
+
+
+def _callable_learning_service(name):
+    value = getattr(learning_service, name, None)
+    assert callable(value), f"missing learning service: {name}"
+    return value
+
+
+def test_learning_admin_routes_exist_and_require_admin():
+    routes = {
+        (method, route.path): route
+        for route in app.routes
+        for method in (getattr(route, "methods", set()) or set())
+    }
+
+    assert LEARNING_ROUTE_CONTRACT <= set(routes)
+    for key in LEARNING_ROUTE_CONTRACT:
+        dependency_calls = {
+            dependency.call for dependency in routes[key].dependant.dependencies
+        }
+        assert require_admin in dependency_calls
+
+
+def test_learning_routes_block_normal_users_before_lookup_or_body_validation():
+    app.dependency_overrides[get_current_user] = lambda: type(
+        "NormalUser", (), {"id": 99, "role": "normal"}
+    )()
+    requests = [
+        ("get", "/api/data-scripts/agent/learning/overview?project_id=1", None),
+        ("get", "/api/data-scripts/agent/learning/candidates/999", None),
+        ("post", "/api/data-scripts/agent/learning/candidates/999/regression", None),
+        ("post", "/api/data-scripts/agent/learning/candidates/999/approve", {"reason": "x"}),
+        ("post", "/api/data-scripts/agent/learning/candidates/999/reject", {"reason": "x"}),
+        ("get", "/api/data-scripts/agent/learning/rules/999", None),
+        ("post", "/api/data-scripts/agent/learning/rules/999/promote", {"reason": "x"}),
+        ("post", "/api/data-scripts/agent/learning/rules/999/disable", {"reason": "x"}),
+        (
+            "post",
+            "/api/data-scripts/agent/learning/rules/999/rollback",
+            {"target_version_id": 998, "reason": "x"},
+        ),
+    ]
+    try:
+        with TestClient(app) as client:
+            responses = [
+                client.request(method, path, json=body) if body is not None
+                else client.request(method, path)
+                for method, path, body in requests
+            ]
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert [response.status_code for response in responses] == [403] * len(requests)
+
+
+def test_overview_is_project_isolated_and_resanitizes_legacy_rows(learning_db):
+    visible = _pending_review_candidate(learning_db, project_id=1)
+    hidden = _pending_review_candidate(learning_db, project_id=2)
+    visible.module_key = "order token=visible-metadata-secret"
+    project_rule = _rule_version(
+        candidate_id=visible.id,
+        project_id=1,
+        scope="project",
+        rule_key=visible.rule_key,
+        status="active",
+        rule_json='{"token":"raw-project-secret","note":"' + ("x" * 5000) + '"}',
+        activated_at=datetime.now(),
+    )
+    other_rule = _rule_version(
+        candidate_id=hidden.id,
+        project_id=2,
+        scope="project",
+        rule_key=hidden.rule_key,
+        status="active",
+        rule_json="{}",
+        activated_at=datetime.now(),
+    )
+    global_rule = _rule_version(
+        candidate_id=visible.id,
+        project_id=0,
+        scope="global",
+        rule_key="token=global-key-secret",
+        status="active",
+        rule_json='{"cookie":"raw-global-secret"}',
+        activated_at=datetime.now(),
+    )
+    learning_db.add_all([project_rule, other_rule, global_rule])
+    learning_db.commit()
+
+    overview = _callable_learning_service("get_learning_overview")(learning_db, 1)
+    serialized = json.dumps(overview, ensure_ascii=False)
+
+    assert [item["id"] for item in overview["candidates"]] == [visible.id]
+    assert {(item["project_id"], item["scope"]) for item in overview["active_rules"]} == {
+        (1, "project"),
+        (0, "global"),
+    }
+    assert hidden.id not in {item["id"] for item in overview["candidates"]}
+    assert other_rule.id not in {item["id"] for item in overview["recent_versions"]}
+    assert "raw-project-secret" not in serialized
+    assert "raw-global-secret" not in serialized
+    assert "visible-metadata-secret" not in serialized
+    assert "global-key-secret" not in serialized
+    assert "x" * 4001 not in serialized
+
+
+def test_overview_resanitizes_json_keys_and_bounds_the_whole_response_tree(learning_db):
+    candidate = _pending_review_candidate(learning_db, project_id=1)
+    broad_rule = {
+        "password=legacy-key-secret": "visible",
+        "password=second-legacy-key-secret": "visible-too",
+        "zz_nested": {
+            f"branch-{branch}": {f"leaf-{leaf}": leaf for leaf in range(80)}
+            for branch in range(80)
+        },
+    }
+    rule = _rule_version(
+        candidate_id=candidate.id,
+        project_id=1,
+        scope="project",
+        rule_key=candidate.rule_key,
+        status="active",
+        rule_json=json.dumps(broad_rule),
+        activated_at=datetime.now(),
+    )
+    learning_db.add(rule)
+    learning_db.commit()
+
+    overview = _callable_learning_service("get_learning_overview")(learning_db, 1)
+    safe_rule = overview["active_rules"][0]["rule"]
+    serialized = json.dumps(safe_rule, ensure_ascii=False)
+
+    def count_nodes(value):
+        if isinstance(value, dict):
+            return 1 + sum(count_nodes(key) + count_nodes(item) for key, item in value.items())
+        if isinstance(value, list):
+            return 1 + sum(count_nodes(item) for item in value)
+        return 1
+
+    assert "legacy-key-secret" not in serialized
+    assert "second-legacy-key-secret" not in serialized
+    assert len([key for key in safe_rule if key.startswith("password=***")]) == 2
+    assert count_nodes(safe_rule) <= 600
+    assert len(serialized.encode("utf-8")) <= 70_000
+
+
+def test_candidate_and_rule_details_resanitize_all_legacy_content(learning_db):
+    sample = _sample(
+        project_id=1,
+        instruction_text="创建订单 token=legacy-instruction-secret",
+        corrections_json=json.dumps(
+            {"password=legacy-correction-key-secret": "visible"}
+        ),
+        fingerprint="d" * 64,
+    )
+    learning_db.add(sample)
+    learning_db.commit()
+    candidate = _candidate(
+        project_id=1,
+        module_key="order token=legacy-module-secret",
+        intent_key="create",
+        rule_key="token=legacy-rule-key-secret",
+        proposal_json=json.dumps(
+            {"cookie=legacy-proposal-key-secret": "visible"}
+        ),
+        source_sample_ids_json=json.dumps([sample.id]),
+        regression_json=json.dumps(
+            {"authorization=legacy-regression-key-secret": "visible"}
+        ),
+        status="pending_review",
+    )
+    learning_db.add(candidate)
+    learning_db.commit()
+    rule = _rule_version(
+        candidate_id=candidate.id,
+        project_id=1,
+        scope="project",
+        rule_key=candidate.rule_key,
+        rule_json=json.dumps({"token=legacy-version-key-secret": "visible"}),
+        status="active",
+        activated_at=datetime.now(),
+    )
+    learning_db.add(rule)
+    learning_db.flush()
+    learning_db.add(
+        models.DataAgentRuleReview(
+            candidate_id=candidate.id,
+            rule_version_id=rule.id,
+            user_id=7,
+            action="approve",
+            reason="password=legacy-review-secret",
+            create_time=datetime.now(),
+        )
+    )
+    learning_db.commit()
+
+    payload = {
+        "candidate": _callable_learning_service("get_candidate_detail")(
+            learning_db, candidate.id
+        ),
+        "rule": _callable_learning_service("get_rule_detail")(
+            learning_db, rule.id
+        ),
+    }
+    serialized = json.dumps(payload, ensure_ascii=False)
+
+    for secret in (
+        "legacy-instruction-secret",
+        "legacy-correction-key-secret",
+        "legacy-module-secret",
+        "legacy-rule-key-secret",
+        "legacy-proposal-key-secret",
+        "legacy-regression-key-secret",
+        "legacy-version-key-secret",
+        "legacy-review-secret",
+    ):
+        assert secret not in serialized
+
+
+def test_approve_versions_from_all_history_and_records_same_transaction_audit(learning_db):
+    approve = _callable_learning_service("approve_candidate")
+    first = _pending_review_candidate(learning_db, after=2)
+
+    first_payload = approve(learning_db, first.id, 7, " approve password=secret ")
+    first_version = learning_db.get(models.DataAgentRuleVersion, first_payload["rule"]["id"])
+    learning_db.refresh(first)
+
+    assert first.status == "approved"
+    assert (first_version.version, first_version.status, first_version.scope) == (1, "active", "project")
+    first_review = learning_db.query(models.DataAgentRuleReview).one()
+    assert (first_review.action, first_review.rule_version_id) == ("approve", first_version.id)
+    assert "secret" not in first_review.reason
+
+    first_version.status = "disabled"
+    history = _rule_version(
+        candidate_id=first.id,
+        project_id=1,
+        scope="project",
+        rule_key=first.rule_key,
+        version=7,
+        rule_json=first_version.rule_json,
+        status="superseded",
+    )
+    learning_db.add(history)
+    learning_db.commit()
+    second = _pending_review_candidate(learning_db, module_key="order-v2", after=2)
+
+    second_payload = approve(learning_db, second.id, 8, "second approval")
+    second_version = learning_db.get(models.DataAgentRuleVersion, second_payload["rule"]["id"])
+
+    assert second_version.version == 8
+    assert second_version.status == "active"
+    assert learning_db.query(models.DataAgentRuleVersion).filter_by(
+        project_id=1, scope="project", rule_key=first.rule_key, status="active"
+    ).count() == 1
+    assert learning_db.query(models.DataAgentRuleReview).filter_by(action="approve").count() == 2
+
+
+@pytest.mark.parametrize(
+    ("status_value", "regression", "proposal"),
+    [
+        ("pending_regression", {}, None),
+        ("pending_review", {"fixture_total": 80, "historical_total": 0, "passed": 79, "failed": 1, "conflicts": 0}, None),
+        ("pending_review", {"fixture_total": 80, "historical_total": 0, "passed": 80, "failed": 0, "conflicts": 0}, {"field": "password"}),
+    ],
+)
+def test_approve_rejects_wrong_state_failed_regression_and_invalid_rule(
+    learning_db, status_value, regression, proposal
+):
+    candidate = _pending_review_candidate(learning_db)
+    candidate.status = status_value
+    candidate.regression_json = json.dumps(regression)
+    if proposal is not None:
+        candidate.proposal_json = json.dumps(proposal)
+    learning_db.commit()
+
+    with pytest.raises(ValueError):
+        _callable_learning_service("approve_candidate")(
+            learning_db, candidate.id, 7, "not allowed"
+        )
+
+    assert learning_db.query(models.DataAgentRuleVersion).count() == 0
+    assert learning_db.query(models.DataAgentRuleReview).count() == 0
+
+
+def test_reject_promote_disable_and_rollback_preserve_immutable_history(learning_db):
+    reject = _callable_learning_service("reject_candidate")
+    approve = _callable_learning_service("approve_candidate")
+    promote = _callable_learning_service("promote_rule")
+    disable = _callable_learning_service("disable_rule")
+    rollback = _callable_learning_service("rollback_rule")
+
+    rejected = _pending_review_candidate(learning_db, module_key="reject", after=3)
+    reject(learning_db, rejected.id, 7, "not suitable")
+    learning_db.refresh(rejected)
+    assert rejected.status == "rejected"
+    assert learning_db.query(models.DataAgentRuleReview).filter_by(
+        candidate_id=rejected.id, action="reject", rule_version_id=None
+    ).count() == 1
+
+    candidate = _pending_review_candidate(learning_db, module_key="approve", after=2)
+    approved = approve(learning_db, candidate.id, 7, "safe")
+    project_rule = learning_db.get(models.DataAgentRuleVersion, approved["rule"]["id"])
+    original_project = (project_rule.status, project_rule.rule_json, project_rule.version)
+    old_global = _rule_version(
+        candidate_id=candidate.id,
+        project_id=0,
+        scope="global",
+        rule_key=project_rule.rule_key,
+        version=4,
+        rule_json=project_rule.rule_json,
+        status="active",
+        activated_at=datetime.now(),
+    )
+    learning_db.add(old_global)
+    learning_db.commit()
+    promoted = promote(learning_db, project_rule.id, 7, "global")
+    global_rule = learning_db.get(models.DataAgentRuleVersion, promoted["rule"]["id"])
+    learning_db.refresh(project_rule)
+    learning_db.refresh(old_global)
+    assert (global_rule.project_id, global_rule.scope, global_rule.status) == (0, "global", "active")
+    assert (old_global.status, global_rule.version) == ("superseded", 5)
+    assert (project_rule.status, project_rule.rule_json, project_rule.version) == original_project
+
+    disable(learning_db, global_rule.id, 7, "disable")
+    learning_db.refresh(global_rule)
+    disabled_snapshot = (global_rule.status, global_rule.rule_json, global_rule.version, global_rule.activated_at)
+    assert disabled_snapshot[0] == "disabled"
+    with pytest.raises(ValueError):
+        disable(learning_db, global_rule.id, 7, "again")
+
+    rolled = rollback(learning_db, global_rule.id, global_rule.id, 7, "restore")
+    restored = learning_db.get(models.DataAgentRuleVersion, rolled["rule"]["id"])
+    learning_db.refresh(global_rule)
+    assert (restored.project_id, restored.scope, restored.rule_key) == (0, "global", global_rule.rule_key)
+    assert restored.version == global_rule.version + 1
+    assert restored.rule_json == global_rule.rule_json
+    assert (global_rule.status, global_rule.rule_json, global_rule.version, global_rule.activated_at) == disabled_snapshot
+    assert learning_db.query(models.DataAgentRuleReview).filter_by(action="rollback").count() == 1
+
+    with pytest.raises(ValueError):
+        rollback(learning_db, restored.id, project_rule.id, 7, "cross scope")
+
+
+def test_rollback_rejects_unknown_target_status_without_mutating_active_rule(learning_db):
+    candidate = _pending_review_candidate(learning_db)
+    approved = _callable_learning_service("approve_candidate")(
+        learning_db, candidate.id, 7, "safe"
+    )
+    active = learning_db.get(
+        models.DataAgentRuleVersion, approved["rule"]["id"]
+    )
+    invalid_target = _rule_version(
+        candidate_id=candidate.id,
+        project_id=active.project_id,
+        scope=active.scope,
+        rule_key=active.rule_key,
+        version=2,
+        rule_json=active.rule_json,
+        status="quarantined",
+    )
+    learning_db.add(invalid_target)
+    learning_db.commit()
+
+    with pytest.raises(learning_service.LearningConflictError):
+        _callable_learning_service("rollback_rule")(
+            learning_db, active.id, invalid_target.id, 7, "unsafe target"
+        )
+
+    learning_db.refresh(active)
+    learning_db.refresh(invalid_target)
+    assert active.status == "active"
+    assert invalid_target.status == "quarantined"
+    assert learning_db.query(models.DataAgentRuleVersion).count() == 2
+    assert learning_db.query(models.DataAgentRuleReview).filter_by(
+        action="rollback"
+    ).count() == 0
+
+
+def test_promote_rejects_project_scope_row_with_global_project_id(learning_db):
+    candidate = _pending_review_candidate(learning_db)
+    invalid_source = _rule_version(
+        candidate_id=candidate.id,
+        project_id=0,
+        scope="project",
+        rule_key=candidate.rule_key,
+        rule_json=candidate.proposal_json,
+        status="active",
+        activated_at=datetime.now(),
+    )
+    learning_db.add(invalid_source)
+    learning_db.commit()
+
+    with pytest.raises(learning_service.LearningConflictError):
+        _callable_learning_service("promote_rule")(
+            learning_db, invalid_source.id, 7, "invalid source"
+        )
+
+    learning_db.refresh(invalid_source)
+    assert invalid_source.status == "active"
+    assert learning_db.query(models.DataAgentRuleVersion).count() == 1
+    assert learning_db.query(models.DataAgentRuleReview).count() == 0
+
+
+@pytest.mark.parametrize("failure_stage", ["insert", "review", "commit"])
+def test_write_failure_rolls_back_active_and_candidate_state(
+    learning_db, monkeypatch, failure_stage
+):
+    candidate = _pending_review_candidate(learning_db)
+    old_active = _rule_version(
+        candidate_id=candidate.id,
+        project_id=1,
+        scope="project",
+        rule_key=candidate.rule_key,
+        rule_json=candidate.proposal_json,
+        status="active",
+        activated_at=datetime.now(),
+    )
+    learning_db.add(old_active)
+    learning_db.commit()
+    candidate_id = candidate.id
+    old_active_id = old_active.id
+
+    with monkeypatch.context() as failure_patch:
+        if failure_stage == "insert":
+            failure_patch.setattr(
+                learning_db,
+                "flush",
+                lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("insert failed")),
+            )
+        elif failure_stage == "review":
+            failure_patch.setattr(
+                learning_service,
+                "_create_review",
+                lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("review failed")),
+            )
+        else:
+            failure_patch.setattr(
+                learning_db,
+                "commit",
+                lambda: (_ for _ in ()).throw(RuntimeError("commit failed")),
+            )
+
+        with pytest.raises(RuntimeError, match=failure_stage):
+            _callable_learning_service("approve_candidate")(
+                learning_db, candidate_id, 7, "atomic"
+            )
+
+    learning_db.expire_all()
+    assert learning_db.get(models.DataAgentRuleCandidate, candidate_id).status == "pending_review"
+    assert learning_db.get(models.DataAgentRuleVersion, old_active_id).status == "active"
+    assert learning_db.query(models.DataAgentRuleVersion).count() == 1
+    assert learning_db.query(models.DataAgentRuleReview).count() == 0
+
+
+@pytest.mark.parametrize(
+    ("operation", "failure_stage"),
+    [
+        ("reject", "review"),
+        ("reject", "commit"),
+        ("disable", "review"),
+        ("disable", "commit"),
+        ("promote", "insert"),
+        ("promote", "review"),
+        ("promote", "commit"),
+        ("rollback", "insert"),
+        ("rollback", "review"),
+        ("rollback", "commit"),
+    ],
+)
+def test_learning_action_failures_roll_back_every_state_change(
+    learning_db, monkeypatch, operation, failure_stage
+):
+    candidate = _pending_review_candidate(
+        learning_db, module_key=f"transaction-{operation}-{failure_stage}"
+    )
+    expected_candidate_status = candidate.status
+    expected_rule_statuses = {}
+
+    if operation == "reject":
+        invoke = lambda: learning_service.reject_candidate(
+            learning_db, candidate.id, 7, "reject"
+        )
+    elif operation == "disable":
+        active = _rule_version(
+            candidate_id=candidate.id,
+            project_id=1,
+            scope="project",
+            rule_key=candidate.rule_key,
+            rule_json=candidate.proposal_json,
+            status="active",
+            activated_at=datetime.now(),
+        )
+        learning_db.add(active)
+        learning_db.commit()
+        expected_rule_statuses[active.id] = "active"
+        invoke = lambda: learning_service.disable_rule(
+            learning_db, active.id, 7, "disable"
+        )
+    elif operation == "promote":
+        source = _rule_version(
+            candidate_id=candidate.id,
+            project_id=1,
+            scope="project",
+            rule_key=candidate.rule_key,
+            rule_json=candidate.proposal_json,
+            status="active",
+            activated_at=datetime.now(),
+        )
+        old_global = _rule_version(
+            candidate_id=candidate.id,
+            project_id=0,
+            scope="global",
+            rule_key=candidate.rule_key,
+            version=4,
+            rule_json=candidate.proposal_json,
+            status="active",
+            activated_at=datetime.now(),
+        )
+        learning_db.add_all([source, old_global])
+        learning_db.commit()
+        expected_rule_statuses.update({source.id: "active", old_global.id: "active"})
+        invoke = lambda: learning_service.promote_rule(
+            learning_db, source.id, 7, "promote"
+        )
+    else:
+        target = _rule_version(
+            candidate_id=candidate.id,
+            project_id=1,
+            scope="project",
+            rule_key=candidate.rule_key,
+            version=1,
+            rule_json=candidate.proposal_json,
+            status="superseded",
+        )
+        current = _rule_version(
+            candidate_id=candidate.id,
+            project_id=1,
+            scope="project",
+            rule_key=candidate.rule_key,
+            version=2,
+            rule_json=candidate.proposal_json,
+            status="active",
+            activated_at=datetime.now(),
+        )
+        learning_db.add_all([target, current])
+        learning_db.commit()
+        expected_rule_statuses.update({target.id: "superseded", current.id: "active"})
+        invoke = lambda: learning_service.rollback_rule(
+            learning_db, current.id, target.id, 7, "rollback"
+        )
+
+    original_version_count = learning_db.query(models.DataAgentRuleVersion).count()
+    with monkeypatch.context() as failure_patch:
+        if failure_stage == "insert":
+            failure_patch.setattr(
+                learning_db,
+                "flush",
+                lambda *args, **kwargs: (_ for _ in ()).throw(
+                    RuntimeError("insert failed")
+                ),
+            )
+        elif failure_stage == "review":
+            failure_patch.setattr(
+                learning_service,
+                "_create_review",
+                lambda *args, **kwargs: (_ for _ in ()).throw(
+                    RuntimeError("review failed")
+                ),
+            )
+        else:
+            failure_patch.setattr(
+                learning_db,
+                "commit",
+                lambda: (_ for _ in ()).throw(RuntimeError("commit failed")),
+            )
+
+        with pytest.raises(RuntimeError, match=failure_stage):
+            invoke()
+
+    learning_db.expire_all()
+    assert learning_db.get(
+        models.DataAgentRuleCandidate, candidate.id
+    ).status == expected_candidate_status
+    assert learning_db.query(models.DataAgentRuleVersion).count() == original_version_count
+    for rule_id, expected_status in expected_rule_statuses.items():
+        assert learning_db.get(models.DataAgentRuleVersion, rule_id).status == expected_status
+    assert learning_db.query(models.DataAgentRuleReview).count() == 0
+
+
+def test_learning_http_errors_are_safe_404_409_and_400(learning_db):
+    candidate = _pending_review_candidate(learning_db)
+    candidate.status = "pending_regression"
+    learning_db.commit()
+    app.dependency_overrides[get_db] = lambda: learning_db
+    app.dependency_overrides[get_current_user] = lambda: type(
+        "AdminUser", (), {"id": 7, "role": "admin"}
+    )()
+    try:
+        with TestClient(app) as client:
+            missing = client.get("/api/data-scripts/agent/learning/candidates/999999")
+            conflict = client.post(
+                f"/api/data-scripts/agent/learning/candidates/{candidate.id}/approve",
+                json={"reason": "safe"},
+            )
+            invalid = client.post(
+                f"/api/data-scripts/agent/learning/candidates/{candidate.id}/reject",
+                json={"reason": "   "},
+            )
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert missing.status_code == 404
+    assert conflict.status_code == 409
+    assert invalid.status_code == 400
+    assert "proposal" not in (missing.text + conflict.text + invalid.text).lower()
+
+
+@pytest.mark.parametrize(
+    "unsafe_error",
+    [
+        ValueError("password=legacy-value-error-secret"),
+        IntegrityError(
+            "token=legacy-integrity-secret",
+            {},
+            RuntimeError("cookie=legacy-integrity-detail"),
+        ),
+        OperationalError(
+            "token=legacy-operational-secret",
+            {},
+            RuntimeError("cookie=legacy-operational-detail"),
+        ),
+    ],
+)
+def test_learning_http_errors_never_echo_untyped_database_exceptions(
+    learning_db, monkeypatch, unsafe_error
+):
+    def raise_unsafe_error(*args, **kwargs):
+        raise unsafe_error
+
+    monkeypatch.setattr(
+        learning_service, "get_candidate_detail", raise_unsafe_error
+    )
+    app.dependency_overrides[get_db] = lambda: learning_db
+    app.dependency_overrides[get_current_user] = lambda: type(
+        "AdminUser", (), {"id": 7, "role": "admin"}
+    )()
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get(
+                "/api/data-scripts/agent/learning/candidates/123"
+            )
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "学习规则状态冲突，请刷新后重试"}
+    assert "legacy-" not in response.text
+
+
+@pytest.mark.parametrize(
+    ("path", "payload", "secret"),
+    [
+        ("/api/data-scripts/agent/learning/candidates/999/approve", {}, None),
+        (
+            "/api/data-scripts/agent/learning/candidates/999/reject",
+            {"reason": {"token": "legacy-wrong-type-secret"}},
+            "legacy-wrong-type-secret",
+        ),
+        (
+            "/api/data-scripts/agent/learning/rules/999/promote",
+            {"reason": "token=" + ("legacy-overlong-secret" * 100)},
+            "legacy-overlong-secret",
+        ),
+        (
+            "/api/data-scripts/agent/learning/rules/999/disable",
+            {"reason": "   "},
+            None,
+        ),
+        (
+            "/api/data-scripts/agent/learning/rules/999/rollback",
+            {
+                "target_version_id": {"password": "legacy-target-secret"},
+                "reason": "safe",
+            },
+            "legacy-target-secret",
+        ),
+    ],
+)
+def test_learning_review_bodies_return_fixed_400_without_echoing_sensitive_input(
+    learning_db, path, payload, secret
+):
+    app.dependency_overrides[get_db] = lambda: learning_db
+    app.dependency_overrides[get_current_user] = lambda: type(
+        "AdminUser", (), {"id": 7, "role": "admin"}
+    )()
+    try:
+        with TestClient(app) as client:
+            response = client.post(path, json=payload)
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "学习规则请求参数无效"}
+    assert '"input"' not in response.text
+    if secret:
+        assert secret not in response.text
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected_status"),
+    [
+        ("passed", "pending_review"),
+        ("failed", "regression_failed"),
+        ("stale", "pending_regression"),
+    ],
+)
+def test_learning_regression_endpoint_returns_pass_fail_and_stale_states(
+    learning_db, monkeypatch, mode, expected_status
+):
+    candidate = _pending_review_candidate(learning_db, module_key=f"regression-{mode}")
+    candidate.status = "pending_regression"
+    candidate.regression_json = "{}"
+    learning_db.commit()
+    candidate_id = candidate.id
+
+    def evaluate(db, snapshot):
+        if mode == "stale":
+            current = db.get(models.DataAgentRuleCandidate, candidate_id)
+            current.occurrence_count += 1
+            db.commit()
+        failed = 1 if mode == "failed" else 0
+        return {
+            "fixture_total": 80,
+            "historical_total": 0,
+            "passed": 80 - failed,
+            "failed": failed,
+            "conflicts": 0,
+            "failed_case_ids": ["fixture-1"] if failed else [],
+            "failed_sample_ids": [],
+            "conflict_sample_ids": [],
+            "source_sample_ids_checked": [],
+            "error_codes": [],
+        }
+
+    monkeypatch.setattr(learning_service, "evaluate_candidate", evaluate)
+    app.dependency_overrides[get_db] = lambda: learning_db
+    app.dependency_overrides[get_current_user] = lambda: type(
+        "AdminUser", (), {"id": 7, "role": "admin"}
+    )()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                f"/api/data-scripts/agent/learning/candidates/{candidate_id}/regression"
+            )
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert response.status_code == 200
+    assert response.json()["candidate"]["status"] == expected_status
+
+
+def test_all_learning_detail_and_action_routes_return_fixed_404(learning_db):
+    app.dependency_overrides[get_db] = lambda: learning_db
+    app.dependency_overrides[get_current_user] = lambda: type(
+        "AdminUser", (), {"id": 7, "role": "admin"}
+    )()
+    requests = [
+        ("get", "/api/data-scripts/agent/learning/candidates/999", None),
+        ("post", "/api/data-scripts/agent/learning/candidates/999/regression", None),
+        ("post", "/api/data-scripts/agent/learning/candidates/999/approve", {"reason": "safe"}),
+        ("post", "/api/data-scripts/agent/learning/candidates/999/reject", {"reason": "safe"}),
+        ("get", "/api/data-scripts/agent/learning/rules/999", None),
+        ("post", "/api/data-scripts/agent/learning/rules/999/promote", {"reason": "safe"}),
+        ("post", "/api/data-scripts/agent/learning/rules/999/disable", {"reason": "safe"}),
+        (
+            "post",
+            "/api/data-scripts/agent/learning/rules/999/rollback",
+            {"target_version_id": 998, "reason": "safe"},
+        ),
+    ]
+    try:
+        with TestClient(app) as client:
+            responses = [
+                client.request(method, path, json=body)
+                if body is not None
+                else client.request(method, path)
+                for method, path, body in requests
+            ]
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert [response.status_code for response in responses] == [404] * len(requests)
+    assert all(
+        response.json() == {"detail": "学习规则不存在"}
+        for response in responses
+    )
+
+
+def test_all_learning_actions_return_fixed_409_for_state_conflicts(learning_db):
+    pending_regression = _pending_review_candidate(
+        learning_db, module_key="conflict-pending-regression"
+    )
+    pending_regression.status = "pending_regression"
+    pending_review = _pending_review_candidate(
+        learning_db, module_key="conflict-pending-review", after=3
+    )
+    disabled_rule = _rule_version(
+        candidate_id=pending_review.id,
+        project_id=1,
+        scope="project",
+        rule_key=pending_review.rule_key,
+        rule_json=pending_review.proposal_json,
+        status="disabled",
+        activated_at=datetime.now(),
+    )
+    other_rule = _rule_version(
+        candidate_id=pending_regression.id,
+        project_id=1,
+        scope="project",
+        rule_key=pending_regression.rule_key,
+        rule_json=pending_regression.proposal_json,
+        status="disabled",
+        activated_at=datetime.now(),
+    )
+    learning_db.add_all([disabled_rule, other_rule])
+    learning_db.commit()
+
+    app.dependency_overrides[get_db] = lambda: learning_db
+    app.dependency_overrides[get_current_user] = lambda: type(
+        "AdminUser", (), {"id": 7, "role": "admin"}
+    )()
+    requests = [
+        (
+            f"/api/data-scripts/agent/learning/candidates/{pending_regression.id}/approve",
+            {"reason": "safe"},
+        ),
+        (
+            f"/api/data-scripts/agent/learning/candidates/{pending_regression.id}/reject",
+            {"reason": "safe"},
+        ),
+        (
+            f"/api/data-scripts/agent/learning/candidates/{pending_review.id}/regression",
+            None,
+        ),
+        (
+            f"/api/data-scripts/agent/learning/rules/{disabled_rule.id}/promote",
+            {"reason": "safe"},
+        ),
+        (
+            f"/api/data-scripts/agent/learning/rules/{disabled_rule.id}/disable",
+            {"reason": "safe"},
+        ),
+        (
+            f"/api/data-scripts/agent/learning/rules/{disabled_rule.id}/rollback",
+            {"target_version_id": other_rule.id, "reason": "safe"},
+        ),
+    ]
+    try:
+        with TestClient(app) as client:
+            responses = [client.post(path, json=body) for path, body in requests]
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert [response.status_code for response in responses] == [409] * len(requests)
+    assert all(
+        response.json() == {"detail": "学习规则状态冲突，请刷新后重试"}
+        for response in responses
+    )
+
+
+def test_concurrent_approvals_leave_one_active_and_unique_versions(tmp_path):
+    approve = _callable_learning_service("approve_candidate")
+    database_path = tmp_path / "learning-approval-concurrency.db"
+    engine = create_engine(
+        f"sqlite:///{database_path}",
+        connect_args={"check_same_thread": False, "timeout": 5},
+    )
+    Base.metadata.create_all(bind=engine)
+    factory = sessionmaker(bind=engine)
+    setup = factory()
+    try:
+        first = _pending_review_candidate(setup, module_key="concurrent-a")
+        second = _pending_review_candidate(setup, module_key="concurrent-b")
+        candidate_ids = [first.id, second.id]
+    finally:
+        setup.close()
+
+    barrier = threading.Barrier(2)
+    results = []
+
+    def worker(candidate_id, user_id):
+        db = factory()
+        try:
+            barrier.wait(10)
+            results.append(("ok", approve(db, candidate_id, user_id, "concurrent")))
+        except learning_service.LearningConflictError:
+            results.append(("conflict", None))
+        except Exception as exc:
+            results.append(("error", type(exc).__name__))
+        finally:
+            db.close()
+
+    workers = [threading.Thread(target=worker, args=(candidate_id, index + 10)) for index, candidate_id in enumerate(candidate_ids)]
+    for worker_thread in workers:
+        worker_thread.start()
+    for worker_thread in workers:
+        worker_thread.join(15)
+
+    verify = factory()
+    try:
+        versions = verify.query(models.DataAgentRuleVersion).order_by(models.DataAgentRuleVersion.version).all()
+        reviews = verify.query(models.DataAgentRuleReview).filter_by(action="approve").count()
+        assert all(not worker_thread.is_alive() for worker_thread in workers)
+        assert len(results) == len(workers)
+        assert {result for result, _ in results} <= {"ok", "conflict"}
+        assert verify.query(models.DataAgentRuleVersion).filter_by(status="active").count() == 1
+        assert len({version.version for version in versions}) == len(versions)
+        assert reviews == len([result for result, _ in results if result == "ok"])
+    finally:
+        verify.close()
+        engine.dispose()
+
+
+def _run_two_learning_actions(factory, actions):
+    barrier = threading.Barrier(len(actions))
+    results = []
+
+    def worker(action, user_id):
+        db = factory()
+        try:
+            barrier.wait(10)
+            results.append(("ok", action(db, user_id)))
+        except learning_service.LearningConflictError:
+            results.append(("conflict", None))
+        except Exception as exc:
+            results.append(("error", type(exc).__name__))
+        finally:
+            db.close()
+
+    workers = [
+        threading.Thread(target=worker, args=(action, index + 20))
+        for index, action in enumerate(actions)
+    ]
+    for worker_thread in workers:
+        worker_thread.start()
+    for worker_thread in workers:
+        worker_thread.join(15)
+    assert all(not worker_thread.is_alive() for worker_thread in workers)
+    assert len(results) == len(workers)
+    assert {result for result, _ in results} <= {"ok", "conflict"}
+    return results
+
+
+def test_concurrent_promotions_leave_one_global_active_unique_versions_and_audits(tmp_path):
+    database_path = tmp_path / "learning-promote-concurrency.db"
+    engine = create_engine(
+        f"sqlite:///{database_path}",
+        connect_args={"check_same_thread": False, "timeout": 5},
+    )
+    Base.metadata.create_all(bind=engine)
+    factory = sessionmaker(bind=engine)
+    setup = factory()
+    try:
+        first = _pending_review_candidate(
+            setup, project_id=1, module_key="promote-concurrent-a"
+        )
+        second = _pending_review_candidate(
+            setup, project_id=2, module_key="promote-concurrent-b"
+        )
+        first_rule_id = learning_service.approve_candidate(
+            setup, first.id, 7, "first"
+        )["rule"]["id"]
+        second_rule_id = learning_service.approve_candidate(
+            setup, second.id, 8, "second"
+        )["rule"]["id"]
+        rule_key = setup.get(models.DataAgentRuleVersion, first_rule_id).rule_key
+    finally:
+        setup.close()
+
+    actions = [
+        lambda db, user_id, rule_id=rule_id: learning_service.promote_rule(
+            db, rule_id, user_id, "concurrent promote"
+        )
+        for rule_id in (first_rule_id, second_rule_id)
+    ]
+    results = _run_two_learning_actions(factory, actions)
+
+    verify = factory()
+    try:
+        global_versions = (
+            verify.query(models.DataAgentRuleVersion)
+            .filter_by(project_id=0, scope="global", rule_key=rule_key)
+            .order_by(models.DataAgentRuleVersion.version)
+            .all()
+        )
+        successful = len([result for result, _ in results if result == "ok"])
+        assert successful >= 1
+        assert sum(version.status == "active" for version in global_versions) == 1
+        assert len({version.version for version in global_versions}) == len(global_versions)
+        assert verify.query(models.DataAgentRuleReview).filter_by(
+            action="promote"
+        ).count() == successful
+        assert verify.get(models.DataAgentRuleVersion, first_rule_id).status == "active"
+        assert verify.get(models.DataAgentRuleVersion, second_rule_id).status == "active"
+    finally:
+        verify.close()
+        engine.dispose()
+
+
+def test_concurrent_rollbacks_leave_one_active_unique_versions_and_audits(tmp_path):
+    database_path = tmp_path / "learning-rollback-concurrency.db"
+    engine = create_engine(
+        f"sqlite:///{database_path}",
+        connect_args={"check_same_thread": False, "timeout": 5},
+    )
+    Base.metadata.create_all(bind=engine)
+    factory = sessionmaker(bind=engine)
+    setup = factory()
+    try:
+        candidate = _pending_review_candidate(setup, module_key="rollback-concurrent")
+        active_id = learning_service.approve_candidate(
+            setup, candidate.id, 7, "initial"
+        )["rule"]["id"]
+        active = setup.get(models.DataAgentRuleVersion, active_id)
+        identity = (active.project_id, active.scope, active.rule_key)
+    finally:
+        setup.close()
+
+    actions = [
+        lambda db, user_id: learning_service.rollback_rule(
+            db, active_id, active_id, user_id, "concurrent rollback"
+        ),
+        lambda db, user_id: learning_service.rollback_rule(
+            db, active_id, active_id, user_id, "concurrent rollback"
+        ),
+    ]
+    results = _run_two_learning_actions(factory, actions)
+
+    verify = factory()
+    try:
+        versions = (
+            verify.query(models.DataAgentRuleVersion)
+            .filter_by(project_id=identity[0], scope=identity[1], rule_key=identity[2])
+            .order_by(models.DataAgentRuleVersion.version)
+            .all()
+        )
+        successful = len([result for result, _ in results if result == "ok"])
+        assert successful >= 1
+        assert sum(version.status == "active" for version in versions) == 1
+        assert len({version.version for version in versions}) == len(versions)
+        assert verify.query(models.DataAgentRuleReview).filter_by(
+            action="rollback"
+        ).count() == successful
+    finally:
+        verify.close()
         engine.dispose()

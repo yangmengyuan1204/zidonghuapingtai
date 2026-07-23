@@ -34,3 +34,12 @@ class DataAgentGoalUpdate(BaseModel):
     offer_price: str | None = None
     offer_unit_prices: list[str] | None = None
     target_node: str | None = None
+
+
+class DataAgentRuleReviewRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=1000)
+
+
+class DataAgentRuleRollbackRequest(BaseModel):
+    target_version_id: int
+    reason: str = Field(min_length=1, max_length=1000)

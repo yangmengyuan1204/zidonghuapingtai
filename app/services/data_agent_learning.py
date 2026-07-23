@@ -11,12 +11,17 @@ from decimal import Decimal, InvalidOperation
 from types import SimpleNamespace
 from typing import Any, Dict
 
-from sqlalchemy import case, or_
+from sqlalchemy import case, func, or_, text
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
-from ..models import DataAgentLearningSample, DataAgentRuleCandidate
+from ..models import (
+    DataAgentLearningSample,
+    DataAgentRuleCandidate,
+    DataAgentRuleReview,
+    DataAgentRuleVersion,
+)
 
 
 SENSITIVE_KEYS = {
@@ -62,6 +67,9 @@ MAX_DEPTH = 5
 MAX_DICT_ITEMS = 80
 MAX_LIST_ITEMS = 100
 MAX_STRING_LENGTH = 4000
+MAX_SANITIZED_KEY_LENGTH = 240
+MAX_SANITIZED_NODES = 500
+MAX_SANITIZED_BYTES = 64_000
 MAX_MATCH_PHRASES = 8
 MAX_MATCH_PHRASE_LENGTH = 240
 MAX_REGRESSION_IDS = 100
@@ -111,7 +119,7 @@ SAFE_TARGET_OPERATION_TYPES = {"advance_order", "advance_porder"}
 
 _SENSITIVE_ASSIGNMENT_START = re.compile(
     rf"(?i)\b(password|passwd|pwd|access[_ -]?token|admin[_ -]?token|token|cookie|"
-    rf"api[_ -]?key|secret|backend[_ -]?account|backend[_ -]?password|"
+    rf"api[_ -]?key|secret|authorization|backend[_ -]?account|backend[_ -]?password|"
     rf"account[_ -]?ciphertext|browser[_ -]?state[_ -]?encrypted|sensitive[_ -]?variables)"
     rf"\s*[:=]\s*"
 )
@@ -200,26 +208,84 @@ def _sanitize_text(value: str) -> str:
     return _redact_sensitive_assignments(redacted)[:MAX_STRING_LENGTH]
 
 
-def sanitize_learning_value(value: Any, key: str = "", *, _depth: int = 0) -> Any:
-    if _sensitive_key(key):
-        return "***"
-    if _depth >= MAX_DEPTH:
+def _budgeted_sanitized_text(value: Any, budget: dict, *, max_length: int) -> str:
+    text_value = _sanitize_text(str(value))[:max_length]
+    remaining = max(0, MAX_SANITIZED_BYTES - int(budget["bytes"]))
+    encoded = text_value.encode("utf-8")
+    if len(encoded) > remaining:
+        text_value = encoded[:remaining].decode("utf-8", errors="ignore")
+        encoded = text_value.encode("utf-8")
+    budget["bytes"] += len(encoded)
+    return text_value
+
+
+def _claim_sanitized_node(budget: dict) -> bool:
+    if int(budget["nodes"]) >= MAX_SANITIZED_NODES:
+        return False
+    budget["nodes"] += 1
+    return True
+
+
+def sanitize_learning_value(
+    value: Any,
+    key: str = "",
+    *,
+    _depth: int = 0,
+    _budget: dict | None = None,
+) -> Any:
+    budget = _budget if _budget is not None else {"nodes": 0, "bytes": 0}
+    if not _claim_sanitized_node(budget):
         return "..."
+    if _sensitive_key(key):
+        return _budgeted_sanitized_text("***", budget, max_length=MAX_STRING_LENGTH)
+    if _depth >= MAX_DEPTH:
+        return _budgeted_sanitized_text("...", budget, max_length=MAX_STRING_LENGTH)
     if isinstance(value, dict):
-        return {
-            str(item_key): sanitize_learning_value(item, str(item_key), _depth=_depth + 1)
-            for item_key, item in sorted(value.items(), key=lambda pair: str(pair[0]))[:MAX_DICT_ITEMS]
-        }
+        result = {}
+        for item_key, item in sorted(value.items(), key=lambda pair: str(pair[0]))[
+            :MAX_DICT_ITEMS
+        ]:
+            if not _claim_sanitized_node(budget):
+                break
+            safe_key = _budgeted_sanitized_text(
+                item_key, budget, max_length=MAX_SANITIZED_KEY_LENGTH
+            )
+            if not safe_key or int(budget["nodes"]) >= MAX_SANITIZED_NODES:
+                break
+            unique_key = safe_key
+            collision = 2
+            while unique_key in result:
+                suffix = f"#{collision}"
+                unique_key = f"{safe_key[:MAX_SANITIZED_KEY_LENGTH - len(suffix)]}{suffix}"
+                collision += 1
+            result[unique_key] = sanitize_learning_value(
+                item,
+                str(item_key),
+                _depth=_depth + 1,
+                _budget=budget,
+            )
+        return result
     if isinstance(value, (list, tuple)):
-        return [
-            sanitize_learning_value(item, key, _depth=_depth + 1)
-            for item in list(value)[:MAX_LIST_ITEMS]
-        ]
+        result = []
+        for item in list(value)[:MAX_LIST_ITEMS]:
+            if int(budget["nodes"]) >= MAX_SANITIZED_NODES:
+                break
+            result.append(
+                sanitize_learning_value(item, key, _depth=_depth + 1, _budget=budget)
+            )
+        return result
     if isinstance(value, str):
-        return _sanitize_text(value)
+        return _budgeted_sanitized_text(value, budget, max_length=MAX_STRING_LENGTH)
     if isinstance(value, (int, float, bool)) or value is None:
+        encoded = str(value).encode("utf-8")
+        remaining = max(0, MAX_SANITIZED_BYTES - int(budget["bytes"]))
+        if len(encoded) > remaining:
+            return _budgeted_sanitized_text(
+                "...", budget, max_length=MAX_STRING_LENGTH
+            )
+        budget["bytes"] += len(encoded)
         return value
-    return _sanitize_text(str(value))
+    return _budgeted_sanitized_text(value, budget, max_length=MAX_STRING_LENGTH)
 
 
 def sample_fingerprint(project_id: int, instruction: str, final_contract: dict) -> str:
@@ -1351,3 +1417,495 @@ def run_candidate_regression(db: Session, candidate_id: int) -> DataAgentRuleCan
         raise RuntimeError("候选回归事务失败") from None
     db.refresh(candidate)
     return candidate
+
+
+class LearningNotFoundError(ValueError):
+    pass
+
+
+class LearningConflictError(ValueError):
+    pass
+
+
+class LearningInputError(ValueError):
+    pass
+
+
+def _safe_json_value(value: str, default: Any) -> Any:
+    try:
+        parsed = json.loads(value or "")
+    except (TypeError, ValueError):
+        parsed = default
+    return sanitize_learning_value(parsed)
+
+
+def _safe_reason(reason: str) -> str:
+    raw = str(reason or "").strip()
+    if not raw or len(raw) > 1000:
+        raise LearningInputError("审核原因不能为空且不能超过 1000 字符")
+    return str(sanitize_learning_value(raw)).strip()
+
+
+def _safe_metadata(value: Any) -> str:
+    return str(sanitize_learning_value(str(value or "")))
+
+
+def _serialize_candidate(candidate: DataAgentRuleCandidate) -> dict:
+    source_ids = _safe_json_value(candidate.source_sample_ids_json, [])
+    return {
+        "id": int(candidate.id),
+        "project_id": int(candidate.project_id),
+        "module_key": _safe_metadata(candidate.module_key),
+        "intent_key": _safe_metadata(candidate.intent_key),
+        "rule_key": _safe_metadata(candidate.rule_key),
+        "proposal": _safe_json_value(candidate.proposal_json, {}),
+        "source_sample_ids": source_ids if isinstance(source_ids, list) else [],
+        "occurrence_count": int(candidate.occurrence_count or 0),
+        "regression": _safe_json_value(candidate.regression_json, {}),
+        "status": _safe_metadata(candidate.status),
+        "create_time": candidate.create_time.isoformat() if candidate.create_time else None,
+        "update_time": candidate.update_time.isoformat() if candidate.update_time else None,
+    }
+
+
+def _serialize_rule(rule: DataAgentRuleVersion) -> dict:
+    return {
+        "id": int(rule.id),
+        "candidate_id": int(rule.candidate_id),
+        "project_id": int(rule.project_id),
+        "scope": _safe_metadata(rule.scope),
+        "rule_key": _safe_metadata(rule.rule_key),
+        "version": int(rule.version),
+        "rule": _safe_json_value(rule.rule_json, {}),
+        "status": _safe_metadata(rule.status),
+        "create_time": rule.create_time.isoformat() if rule.create_time else None,
+        "activated_at": rule.activated_at.isoformat() if rule.activated_at else None,
+    }
+
+
+def _serialize_review(review: DataAgentRuleReview) -> dict:
+    return {
+        "id": int(review.id),
+        "candidate_id": int(review.candidate_id),
+        "rule_version_id": int(review.rule_version_id) if review.rule_version_id else None,
+        "user_id": int(review.user_id),
+        "action": _safe_metadata(review.action),
+        "reason": sanitize_learning_value(review.reason or ""),
+        "create_time": review.create_time.isoformat() if review.create_time else None,
+    }
+
+
+def _create_review(
+    db: Session,
+    *,
+    candidate_id: int,
+    rule_version_id: int | None,
+    user_id: int,
+    action: str,
+    reason: str,
+) -> DataAgentRuleReview:
+    review = DataAgentRuleReview(
+        candidate_id=int(candidate_id),
+        rule_version_id=int(rule_version_id) if rule_version_id is not None else None,
+        user_id=int(user_id),
+        action=str(action),
+        reason=_safe_reason(reason),
+        create_time=datetime.now(),
+    )
+    db.add(review)
+    return review
+
+
+def _begin_learning_write(db: Session) -> None:
+    if db.in_transaction():
+        db.rollback()
+    bind = db.get_bind()
+    if bind.dialect.name == "sqlite":
+        try:
+            db.execute(text("BEGIN IMMEDIATE"))
+        except OperationalError:
+            db.rollback()
+            raise LearningConflictError(
+                "学习规则已被其他管理员更新，请刷新后重试"
+            ) from None
+
+
+def _commit_learning_write(db: Session) -> None:
+    try:
+        db.commit()
+    except (IntegrityError, OperationalError) as exc:
+        db.rollback()
+        raise LearningConflictError("学习规则已被其他管理员更新，请刷新后重试") from None
+
+
+def _rollback_and_raise(db: Session, exc: Exception) -> None:
+    db.rollback()
+    if isinstance(exc, (LearningNotFoundError, LearningConflictError, LearningInputError)):
+        raise exc
+    if isinstance(exc, (IntegrityError, OperationalError)):
+        raise LearningConflictError("学习规则已被其他管理员更新，请刷新后重试") from None
+    raise exc
+
+
+def _next_rule_version(db: Session, project_id: int, scope: str, rule_key: str) -> int:
+    highest = (
+        db.query(func.max(DataAgentRuleVersion.version))
+        .filter(
+            DataAgentRuleVersion.project_id == int(project_id),
+            DataAgentRuleVersion.scope == str(scope),
+            DataAgentRuleVersion.rule_key == str(rule_key),
+        )
+        .scalar()
+    )
+    return int(highest or 0) + 1
+
+
+def _supersede_active(db: Session, project_id: int, scope: str, rule_key: str) -> None:
+    db.query(DataAgentRuleVersion).filter(
+        DataAgentRuleVersion.project_id == int(project_id),
+        DataAgentRuleVersion.scope == str(scope),
+        DataAgentRuleVersion.rule_key == str(rule_key),
+        DataAgentRuleVersion.status == "active",
+    ).update(
+        {DataAgentRuleVersion.status: "superseded"},
+        synchronize_session=False,
+    )
+
+
+def _strict_candidate_rule(candidate: DataAgentRuleCandidate) -> dict:
+    try:
+        proposal = _load_json_object(candidate.proposal_json)
+        validated = validate_candidate_rule(proposal)
+    except (TypeError, ValueError):
+        raise LearningConflictError("候选规则未通过安全校验") from None
+    if validated["signature"] != str(candidate.rule_key):
+        raise LearningConflictError("候选规则标识与规范内容不一致")
+    return validated
+
+
+def _strict_version_rule(rule: DataAgentRuleVersion) -> dict:
+    try:
+        return validate_candidate_rule(_load_json_object(rule.rule_json))
+    except (TypeError, ValueError):
+        raise LearningConflictError("规则版本未通过安全校验") from None
+
+
+def get_learning_overview(db: Session, project_id: int) -> dict:
+    candidates = (
+        db.query(DataAgentRuleCandidate)
+        .filter(DataAgentRuleCandidate.project_id == int(project_id))
+        .order_by(DataAgentRuleCandidate.id.desc())
+        .limit(100)
+        .all()
+    )
+    visible_rules_filter = or_(
+        (
+            (DataAgentRuleVersion.project_id == int(project_id))
+            & (DataAgentRuleVersion.scope == "project")
+        ),
+        (
+            (DataAgentRuleVersion.project_id == 0)
+            & (DataAgentRuleVersion.scope == "global")
+        ),
+    )
+    active_rules = (
+        db.query(DataAgentRuleVersion)
+        .filter(visible_rules_filter, DataAgentRuleVersion.status == "active")
+        .order_by(DataAgentRuleVersion.scope.asc(), DataAgentRuleVersion.rule_key.asc())
+        .limit(100)
+        .all()
+    )
+    recent_versions = (
+        db.query(DataAgentRuleVersion)
+        .filter(visible_rules_filter)
+        .order_by(DataAgentRuleVersion.id.desc())
+        .limit(100)
+        .all()
+    )
+    visible_candidate_ids = {int(item.id) for item in candidates}
+    visible_version_ids = {int(item.id) for item in recent_versions}
+    reviews = []
+    if visible_candidate_ids or visible_version_ids:
+        reviews = (
+            db.query(DataAgentRuleReview)
+            .filter(
+                or_(
+                    DataAgentRuleReview.candidate_id.in_(visible_candidate_ids or {-1}),
+                    DataAgentRuleReview.rule_version_id.in_(visible_version_ids or {-1}),
+                )
+            )
+            .order_by(DataAgentRuleReview.id.desc())
+            .limit(100)
+            .all()
+        )
+    return {
+        "project_id": int(project_id),
+        "candidates": [_serialize_candidate(item) for item in candidates],
+        "active_rules": [_serialize_rule(item) for item in active_rules],
+        "recent_versions": [_serialize_rule(item) for item in recent_versions],
+        "recent_reviews": [_serialize_review(item) for item in reviews],
+    }
+
+
+def get_candidate_detail(db: Session, candidate_id: int) -> dict:
+    candidate = db.get(DataAgentRuleCandidate, int(candidate_id))
+    if candidate is None:
+        raise LearningNotFoundError("候选规则不存在")
+    try:
+        source_ids = _safe_source_ids(candidate)[:MAX_REGRESSION_IDS]
+    except (TypeError, ValueError):
+        source_ids = []
+    samples = []
+    if source_ids:
+        rows = (
+            db.query(DataAgentLearningSample)
+            .filter(
+                DataAgentLearningSample.id.in_(source_ids),
+                DataAgentLearningSample.project_id == int(candidate.project_id),
+            )
+            .order_by(DataAgentLearningSample.id.asc())
+            .all()
+        )
+        samples = [
+            {
+                "id": int(row.id),
+                "module_key": _safe_metadata(row.module_key),
+                "intent_key": _safe_metadata(row.intent_key),
+                "instruction": sanitize_learning_value(row.instruction_text or ""),
+                "corrections": _safe_json_value(row.corrections_json, []),
+                "verified": bool(row.verified),
+                "outcome": _safe_metadata(row.outcome),
+            }
+            for row in rows
+        ]
+    reviews = (
+        db.query(DataAgentRuleReview)
+        .filter(DataAgentRuleReview.candidate_id == int(candidate.id))
+        .order_by(DataAgentRuleReview.id.asc())
+        .limit(100)
+        .all()
+    )
+    return {
+        "candidate": _serialize_candidate(candidate),
+        "source_samples": samples,
+        "reviews": [_serialize_review(item) for item in reviews],
+    }
+
+
+def get_rule_detail(db: Session, rule_version_id: int) -> dict:
+    rule = db.get(DataAgentRuleVersion, int(rule_version_id))
+    if rule is None:
+        raise LearningNotFoundError("规则版本不存在")
+    history = (
+        db.query(DataAgentRuleVersion)
+        .filter(
+            DataAgentRuleVersion.project_id == int(rule.project_id),
+            DataAgentRuleVersion.scope == str(rule.scope),
+            DataAgentRuleVersion.rule_key == str(rule.rule_key),
+        )
+        .order_by(DataAgentRuleVersion.version.desc())
+        .limit(100)
+        .all()
+    )
+    history_ids = [int(item.id) for item in history]
+    reviews = (
+        db.query(DataAgentRuleReview)
+        .filter(DataAgentRuleReview.rule_version_id.in_(history_ids))
+        .order_by(DataAgentRuleReview.id.asc())
+        .limit(100)
+        .all()
+    )
+    return {
+        "rule": _serialize_rule(rule),
+        "history": [_serialize_rule(item) for item in history],
+        "reviews": [_serialize_review(item) for item in reviews],
+    }
+
+
+def approve_candidate(db: Session, candidate_id: int, user_id: int, reason: str) -> dict:
+    safe_reason = _safe_reason(reason)
+    _begin_learning_write(db)
+    try:
+        candidate = db.get(DataAgentRuleCandidate, int(candidate_id))
+        if candidate is None:
+            raise LearningNotFoundError("候选规则不存在")
+        if candidate.status != "pending_review":
+            raise LearningConflictError("仅 pending_review 候选可批准")
+        try:
+            regression = _load_json_object(candidate.regression_json)
+        except (TypeError, ValueError):
+            raise LearningConflictError("候选回归结果无效") from None
+        if not regression_passed(regression):
+            raise LearningConflictError("候选回归未通过")
+        rule = _strict_candidate_rule(candidate)
+        _supersede_active(db, candidate.project_id, "project", candidate.rule_key)
+        version = DataAgentRuleVersion(
+            candidate_id=int(candidate.id),
+            project_id=int(candidate.project_id),
+            scope="project",
+            rule_key=str(candidate.rule_key),
+            version=_next_rule_version(db, candidate.project_id, "project", candidate.rule_key),
+            rule_json=_stable_json(rule),
+            status="active",
+            create_time=datetime.now(),
+            activated_at=datetime.now(),
+        )
+        db.add(version)
+        db.flush()
+        candidate.status = "approved"
+        candidate.update_time = datetime.now()
+        _create_review(
+            db,
+            candidate_id=candidate.id,
+            rule_version_id=version.id,
+            user_id=user_id,
+            action="approve",
+            reason=safe_reason,
+        )
+        _commit_learning_write(db)
+        db.refresh(version)
+        return {"candidate": _serialize_candidate(candidate), "rule": _serialize_rule(version)}
+    except Exception as exc:
+        _rollback_and_raise(db, exc)
+
+
+def reject_candidate(db: Session, candidate_id: int, user_id: int, reason: str) -> dict:
+    safe_reason = _safe_reason(reason)
+    _begin_learning_write(db)
+    try:
+        candidate = db.get(DataAgentRuleCandidate, int(candidate_id))
+        if candidate is None:
+            raise LearningNotFoundError("候选规则不存在")
+        if candidate.status != "pending_review":
+            raise LearningConflictError("仅 pending_review 候选可拒绝")
+        candidate.status = "rejected"
+        candidate.update_time = datetime.now()
+        _create_review(
+            db,
+            candidate_id=candidate.id,
+            rule_version_id=None,
+            user_id=user_id,
+            action="reject",
+            reason=safe_reason,
+        )
+        _commit_learning_write(db)
+        return {"candidate": _serialize_candidate(candidate)}
+    except Exception as exc:
+        _rollback_and_raise(db, exc)
+
+
+def promote_rule(db: Session, rule_version_id: int, user_id: int, reason: str) -> dict:
+    safe_reason = _safe_reason(reason)
+    _begin_learning_write(db)
+    try:
+        source = db.get(DataAgentRuleVersion, int(rule_version_id))
+        if source is None:
+            raise LearningNotFoundError("规则版本不存在")
+        if (
+            source.scope != "project"
+            or int(source.project_id) <= 0
+            or source.status != "active"
+        ):
+            raise LearningConflictError("仅 active 项目规则可提升")
+        rule = _strict_version_rule(source)
+        _supersede_active(db, 0, "global", source.rule_key)
+        version = DataAgentRuleVersion(
+            candidate_id=int(source.candidate_id),
+            project_id=0,
+            scope="global",
+            rule_key=str(source.rule_key),
+            version=_next_rule_version(db, 0, "global", source.rule_key),
+            rule_json=_stable_json(rule),
+            status="active",
+            create_time=datetime.now(),
+            activated_at=datetime.now(),
+        )
+        db.add(version)
+        db.flush()
+        _create_review(
+            db,
+            candidate_id=source.candidate_id,
+            rule_version_id=version.id,
+            user_id=user_id,
+            action="promote",
+            reason=safe_reason,
+        )
+        _commit_learning_write(db)
+        db.refresh(version)
+        return {"source_rule": _serialize_rule(source), "rule": _serialize_rule(version)}
+    except Exception as exc:
+        _rollback_and_raise(db, exc)
+
+
+def disable_rule(db: Session, rule_version_id: int, user_id: int, reason: str) -> dict:
+    safe_reason = _safe_reason(reason)
+    _begin_learning_write(db)
+    try:
+        rule = db.get(DataAgentRuleVersion, int(rule_version_id))
+        if rule is None:
+            raise LearningNotFoundError("规则版本不存在")
+        if rule.status != "active":
+            raise LearningConflictError("仅 active 规则可停用")
+        rule.status = "disabled"
+        _create_review(
+            db,
+            candidate_id=rule.candidate_id,
+            rule_version_id=rule.id,
+            user_id=user_id,
+            action="disable",
+            reason=safe_reason,
+        )
+        _commit_learning_write(db)
+        return {"rule": _serialize_rule(rule)}
+    except Exception as exc:
+        _rollback_and_raise(db, exc)
+
+
+def rollback_rule(
+    db: Session,
+    rule_version_id: int,
+    target_version_id: int,
+    user_id: int,
+    reason: str,
+) -> dict:
+    safe_reason = _safe_reason(reason)
+    _begin_learning_write(db)
+    try:
+        current = db.get(DataAgentRuleVersion, int(rule_version_id))
+        target = db.get(DataAgentRuleVersion, int(target_version_id))
+        if current is None or target is None:
+            raise LearningNotFoundError("规则版本不存在")
+        identity = (int(current.project_id), str(current.scope), str(current.rule_key))
+        target_identity = (int(target.project_id), str(target.scope), str(target.rule_key))
+        if identity != target_identity:
+            raise LearningConflictError("回滚目标不属于同一规则历史")
+        if target.status not in {"active", "superseded", "disabled"}:
+            raise LearningConflictError("回滚目标状态无效")
+        rule = _strict_version_rule(target)
+        _supersede_active(db, current.project_id, current.scope, current.rule_key)
+        version = DataAgentRuleVersion(
+            candidate_id=int(target.candidate_id),
+            project_id=int(current.project_id),
+            scope=str(current.scope),
+            rule_key=str(current.rule_key),
+            version=_next_rule_version(db, current.project_id, current.scope, current.rule_key),
+            rule_json=_stable_json(rule),
+            status="active",
+            create_time=datetime.now(),
+            activated_at=datetime.now(),
+        )
+        db.add(version)
+        db.flush()
+        _create_review(
+            db,
+            candidate_id=target.candidate_id,
+            rule_version_id=version.id,
+            user_id=user_id,
+            action="rollback",
+            reason=safe_reason,
+        )
+        _commit_learning_write(db)
+        db.refresh(version)
+        return {"target_rule": _serialize_rule(target), "rule": _serialize_rule(version)}
+    except Exception as exc:
+        _rollback_and_raise(db, exc)

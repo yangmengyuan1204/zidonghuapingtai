@@ -1,4 +1,4 @@
-﻿[
+[
   {
     "method": "GET",
     "path": "/",
@@ -240,6 +240,51 @@
     "name": "dashboard"
   },
   {
+    "method": "GET",
+    "path": "/api/data-scripts/agent/learning/overview",
+    "name": "learning_overview"
+  },
+  {
+    "method": "GET",
+    "path": "/api/data-scripts/agent/learning/candidates/{candidate_id}",
+    "name": "learning_candidate_detail"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/learning/candidates/{candidate_id}/regression",
+    "name": "learning_candidate_regression"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/learning/candidates/{candidate_id}/approve",
+    "name": "learning_candidate_approve"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/learning/candidates/{candidate_id}/reject",
+    "name": "learning_candidate_reject"
+  },
+  {
+    "method": "GET",
+    "path": "/api/data-scripts/agent/learning/rules/{rule_version_id}",
+    "name": "learning_rule_detail"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/learning/rules/{rule_version_id}/promote",
+    "name": "learning_rule_promote"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/learning/rules/{rule_version_id}/disable",
+    "name": "learning_rule_disable"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/learning/rules/{rule_version_id}/rollback",
+    "name": "learning_rule_rollback"
+  },
+  {
     "method": "POST",
     "path": "/api/data-scripts/agent/sessions",
     "name": "create_session"
@@ -373,6 +418,11 @@
     "method": "POST",
     "path": "/api/data-scripts/porder-bank-payment",
     "name": "run_porder_bank_payment_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/porder-shipment",
+    "name": "porder_shipment"
   },
   {
     "method": "POST",
