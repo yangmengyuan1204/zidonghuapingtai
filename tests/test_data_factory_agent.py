@@ -20,6 +20,7 @@ from app.models import (
     TestAccountProfile as AccountProfile,
 )
 from app.services import data_factory_agent as agent_service
+from app.services import data_agent_learning as learning_service
 from app.services import data_factory_agent_tools as agent_tools
 from app.services.data_factory_agent_tools import AgentToolContext, execute_agent_tool
 
@@ -91,6 +92,109 @@ def _ready_goal() -> dict:
             },
         },
     }
+
+
+def test_analysis_applies_only_approved_learning_to_unresolved_fields(monkeypatch):
+    project, _ = _agent_context()
+    proposal = {
+        "signature": learning_service._candidate_signature("order_item_num", 3),
+        "field": "order_item_num",
+        "match_phrases": ["帮我下单"],
+        "set_fields": {"order_item_num": 3},
+        "source_count": 3,
+    }
+    monkeypatch.setattr(
+        agent_service,
+        "call_local_model_json",
+        lambda *args, **kwargs: {
+            "status": "ready",
+            "question": "",
+            "goal": {
+                "mode": "new",
+                "target_node": "order_offered",
+                "variables": {},
+            },
+        },
+    )
+    monkeypatch.setattr(
+        agent_service,
+        "learning_context",
+        lambda *args, **kwargs: {
+            "module_key": "order",
+            "rules": [
+                {
+                    "id": 91,
+                    "scope": "project",
+                    "module_key": "order",
+                    "rule_key": proposal["signature"],
+                    "version": 1,
+                    "similarity": 1.0,
+                    "rule": proposal,
+                }
+            ],
+            "examples": [],
+        },
+    )
+    db = SessionLocal()
+    try:
+        status_value, goal, question, trace = agent_service._analyze_turn(
+            db,
+            [{"role": "user", "content": "帮我下单"}],
+            {},
+            compile_context={
+                "project_id": project.id,
+                "topbar_customer_ids": [],
+                "bound_customer_ids": [],
+            },
+        )
+    finally:
+        db.close()
+
+    assert (status_value, question) == ("awaiting_confirmation", "")
+    assert goal["variables"]["order_item_num"] == 3
+    assert "【学习推断】order_item_num（项目已审批规则）" in goal["assumptions"]
+    assert "学习规则推断:order_item_num" in goal["defaults_used"]
+    assert trace["learning_rule_ids"] == [91]
+
+
+def test_learning_lookup_failure_does_not_block_core_contract(monkeypatch):
+    project, _ = _agent_context()
+    monkeypatch.setattr(
+        agent_service,
+        "call_local_model_json",
+        lambda *args, **kwargs: {
+            "status": "ready",
+            "question": "",
+            "goal": {
+                "mode": "new",
+                "target_node": "order_offered",
+                "variables": {},
+            },
+        },
+    )
+    monkeypatch.setattr(
+        agent_service,
+        "learning_context",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("learning unavailable")),
+    )
+    db = SessionLocal()
+    try:
+        status_value, goal, question, trace = agent_service._analyze_turn(
+            db,
+            [{"role": "user", "content": "帮我下单到待付款"}],
+            {},
+            compile_context={
+                "project_id": project.id,
+                "topbar_customer_ids": [],
+                "bound_customer_ids": [],
+            },
+        )
+    finally:
+        db.close()
+
+    assert (status_value, question) == ("awaiting_confirmation", "")
+    assert goal["target_node"] == "order_offered"
+    assert trace["learning_rule_ids"] == []
 
 
 def _tool_context() -> AgentToolContext:
@@ -246,6 +350,7 @@ def test_agent_uses_bound_account_customer_when_other_sources_are_absent():
 
         assert (status, question) == ("awaiting_confirmation", "")
         assert compile_context == {
+            "project_id": project.id,
             "topbar_customer_ids": [],
             "bound_customer_ids": ["300003"],
         }

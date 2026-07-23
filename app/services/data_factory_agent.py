@@ -29,7 +29,12 @@ from .data_factory_agent_contract import (
     problem_goods_clarification,
     read_deterministic_problem_fields,
 )
-from .data_agent_learning import capture_learning_sample, sanitize_learning_value
+from .data_agent_learning import (
+    apply_learning_context,
+    capture_learning_sample,
+    learning_context,
+    sanitize_learning_value,
+)
 from .data_factory_agent_prompts import (
     SYSTEM_PROMPT,
     SYSTEM_PROMPT_ACTION,
@@ -488,13 +493,172 @@ def _latest_model_config(db: Session) -> AiConfig:
 def _analysis_prompt(
     messages: list[Dict[str, str]],
     intent_state: Dict[str, Any] | None = None,
+    approved_learning: Dict[str, Any] | None = None,
 ) -> str:
     return build_analysis_prompt(
         messages=messages,
         intent_state=intent_state,
         node_labels=FULL_FLOW_NODE_LABELS,
         allowed_variable_keys=ALLOWED_VARIABLE_KEYS,
+        learning_context=approved_learning,
     )
+
+
+def _infer_learning_module(messages: list[Dict[str, str]]) -> str:
+    text_value = _compact_semantic_text(
+        "\n".join(
+            str(item.get("content") or "")
+            for item in messages
+            if isinstance(item, dict)
+        )
+    )
+    has_order_advance = bool(re.search(r"下单|订单待|待拍下|采购|上架|入库", text_value))
+    if re.search(r"问题产品|问题商品|退款|退运费", text_value) and not has_order_advance:
+        return "problem_goods"
+    if re.search(r"配送单|porder", text_value, re.IGNORECASE) and not has_order_advance:
+        return "porder"
+    return "order"
+
+
+def _learning_hard_fields(
+    messages: list[Dict[str, str]],
+    intent_state: Dict[str, Any],
+    goal: Dict[str, Any],
+) -> set[str]:
+    hard_fields: set[str] = set()
+    resolved = intent_state.get("resolved_fields") if isinstance(intent_state, dict) else {}
+    resolved = resolved if isinstance(resolved, dict) else {}
+    resolved_map = {
+        "target_node": {"target_node"},
+        "item_count": {"order_shop_count", "order_per_shop"},
+        "quantity_per_item": {"order_item_num"},
+        "pricing": {"pricing"},
+        "order_payment_mode": {"order_payment_mode"},
+        "problem_scope": {"problem_scope"},
+        "problem_refund_quantity": {"problem_refund_quantity"},
+        "problem_refund_freight": {"problem_refund_freight"},
+    }
+    for name, fields in resolved_map.items():
+        item = resolved.get(name)
+        if isinstance(item, dict) and item.get("evidence"):
+            hard_fields.update(fields)
+
+    evidence = ((goal.get("intent") or {}).get("evidence") or {})
+    if isinstance(evidence, dict):
+        evidence_map = {
+            "target_node": {"target_node"},
+            "item_count": {"order_shop_count", "order_per_shop"},
+            "shop_count": {"order_shop_count"},
+            "items_per_shop": {"order_per_shop"},
+            "quantity": {"order_item_num"},
+            "pricing": {"pricing"},
+            "problem_scope": {"problem_scope"},
+            "problem_refund_quantity": {"problem_refund_quantity"},
+            "problem_refund_freight": {"problem_refund_freight"},
+        }
+        for name, fields in evidence_map.items():
+            value = str(evidence.get(name) or "")
+            if value and "自动推断" not in value:
+                hard_fields.update(fields)
+
+    source_text = "\n".join(
+        str(item.get("content") or "")
+        for item in messages
+        if isinstance(item, dict)
+    )
+    if re.search(r"(?:关键词|搜索词|商品关键词)(?:是|为|用|[:：])", source_text):
+        hard_fields.add("keyword")
+    if re.search(r"(?:店铺类型|店铺来源|平台)(?:是|为|用|[:：])", source_text):
+        hard_fields.add("shop_type")
+    variables = goal.get("variables") if isinstance(goal.get("variables"), dict) else {}
+    normalized_source = _compact_semantic_text(source_text).casefold()
+    for field in ("keyword", "shop_type"):
+        value = _compact_semantic_text(str(variables.get(field) or "")).casefold()
+        if value and value in normalized_source:
+            hard_fields.add(field)
+    return hard_fields
+
+
+def _apply_approved_learning(
+    goal: Dict[str, Any],
+    approved_learning: Dict[str, Any],
+    hard_fields: set[str],
+) -> Dict[str, Any]:
+    learned = apply_learning_context(goal, approved_learning, hard_fields=hard_fields)
+    applied = learned.get("learning_applied") or []
+    if not applied:
+        return learned
+    variables = learned.get("variables") if isinstance(learned.get("variables"), dict) else {}
+    target_node = str(learned.get("target_node") or "")
+    learned["target_label"] = FULL_FLOW_NODE_LABELS.get(target_node, "")
+    if target_node:
+        variables["stop_after_node"] = target_node
+        for operation in learned.get("operations") or []:
+            if isinstance(operation, dict) and operation.get("type") in {
+                "advance_order",
+                "advance_porder",
+            }:
+                operation["target_label"] = learned["target_label"]
+        learned["steps"] = [
+            (
+                ("继续执行至" if learned.get("mode") != "new" else "创建并执行至")
+                + str(item.get("target_label") or "")
+            )
+            if isinstance(item, dict) and item.get("type") in {"advance_order", "advance_porder"}
+            else "提出并处理问题产品"
+            for item in learned.get("operations") or []
+            if isinstance(item, dict)
+        ]
+    if learned.get("mode") == "new":
+        variables["target_shops"] = variables.get("order_shop_count", 1)
+        variables["per_shop"] = variables.get("order_per_shop", 1)
+    learned["variables"] = variables
+
+    defaults_used = list(learned.get("defaults_used") or [])
+    assumptions = list(learned.get("assumptions") or [])
+    applied_labels: list[str] = []
+    for item in applied:
+        field = str(item.get("field") or "")
+        scope_label = "项目" if item.get("scope") == "project" else "全局"
+        marker = f"学习规则推断:{field}"
+        if marker not in defaults_used:
+            defaults_used.append(marker)
+        label = f"{field}（{scope_label}已审批规则）"
+        applied_labels.append(label)
+        assumption = f"【学习推断】{label}"
+        if assumption not in assumptions:
+            assumptions.append(assumption)
+    learned["defaults_used"] = defaults_used
+    learned["assumptions"] = assumptions[:20]
+
+    if learned.get("mode") == "new":
+        summary_parts = [
+            f"{variables.get('order_shop_count', 1)}个店铺",
+            f"每店{variables.get('order_per_shop', 1)}个商品",
+            f"每种购买数量{variables.get('order_item_num', 1)}",
+        ]
+        pricing = ((learned.get("intent") or {}).get("pricing") or {})
+        prices = pricing.get("effective_unit_prices") if isinstance(pricing, dict) else []
+        if prices:
+            summary_parts.append(f"执行单价{'、'.join(str(item) for item in prices)}元")
+        if target_node:
+            summary_parts.append(f"目标{learned['target_label']}")
+        if any(
+            isinstance(item, dict) and item.get("type") == "problem_goods"
+            for item in learned.get("operations") or []
+        ):
+            summary_parts.append("并处理问题产品")
+        learned["summary"] = "，".join(summary_parts)
+    learned["summary"] = (
+        str(learned.get("summary") or "")
+        + "；受控学习推断："
+        + "、".join(applied_labels)
+    ).strip("；")
+    learned.pop("contract_hash", None)
+    learned["contract_hash"] = hashlib.sha256(
+        json.dumps(learned, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()[:16]
+    return learned
 
 
 def _unsupported_capability(messages: list[Dict[str, str]]) -> Dict[str, str]:
@@ -1383,7 +1547,11 @@ def build_agent_compile_context(
                 if customer_id not in bound_ids:
                     bound_ids.append(customer_id)
 
-    return {"topbar_customer_ids": page_ids, "bound_customer_ids": bound_ids}
+    return {
+        "project_id": int(project_id),
+        "topbar_customer_ids": page_ids,
+        "bound_customer_ids": bound_ids,
+    }
 
 
 def _normalize_goal(
@@ -1944,7 +2112,25 @@ def _analyze_turn(
         return session_status, goal, question, trace
     config = _latest_model_config(db)
     try:
-        prompt = _analysis_prompt(messages, intent_state)
+        latest_instruction = str((messages[-1] if messages else {}).get("content") or "")
+        try:
+            approved_learning = learning_context(
+                db,
+                int(compile_context.get("project_id") or 0)
+                if isinstance(compile_context, dict)
+                else 0,
+                _infer_learning_module(messages),
+                latest_instruction,
+                limit=5,
+            )
+        except Exception as exc:
+            logger.warning("数据智能体学习上下文读取失败 error=%s", type(exc).__name__)
+            approved_learning = {
+                "module_key": _infer_learning_module(messages),
+                "rules": [],
+                "examples": [],
+            }
+        prompt = _analysis_prompt(messages, intent_state, approved_learning)
         if force_ready:
             prompt += "\n\n【强制指令】已多次追问仍未满足所有条件。本轮你必须输出 status=\"ready\"，所有不确定字段使用合理默认值，在 assumptions 中逐一标注你采用的默认值及原因。禁止输出 clarifying。"
         payload = call_local_model_json(config, prompt, timeout=120, system_prompt=SYSTEM_PROMPT)
@@ -1957,6 +2143,12 @@ def _analyze_turn(
             force_ready=force_ready,
             compile_context=compile_context,
         )
+        if session_status == "awaiting_confirmation" and goal:
+            goal = _apply_approved_learning(
+                goal,
+                approved_learning,
+                _learning_hard_fields(messages, intent_state, goal),
+            )
         trace = {
             "turn_index": max(0, len(messages) - 1),
             "model": str(config.model or ""),
@@ -1964,6 +2156,11 @@ def _analyze_turn(
             "model_candidate": sanitize_observation(payload),
             "intent_state": sanitize_observation(intent_state),
             "normalized_intent": sanitize_observation(goal.get("intent") or {}),
+            "learning_rule_ids": [
+                int(item.get("id") or 0)
+                for item in approved_learning.get("rules") or []
+                if isinstance(item, dict)
+            ],
             "pending_fields": {
                 _clarification_field(question): question
             } if question else {},

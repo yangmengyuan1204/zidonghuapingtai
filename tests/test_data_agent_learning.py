@@ -18,7 +18,9 @@ from app.security import get_current_user, require_admin
 from app.services import data_factory_agent as agent_service
 from app.services import data_agent_learning as learning_service
 from app.services.data_agent_learning import (
+    apply_learning_context,
     capture_learning_sample,
+    learning_context,
     sample_fingerprint,
     sanitize_learning_value,
 )
@@ -276,6 +278,47 @@ def _rule_version(**overrides):
     }
     values.update(overrides)
     return _model("DataAgentRuleVersion")(**values)
+
+
+def _approved_rule(
+    learning_db,
+    *,
+    field,
+    value,
+    scope="project",
+    project_id=1,
+    phrase="造订单",
+):
+    signature = _candidate_signature(field, value)
+    proposal = {
+        "signature": signature,
+        "field": field,
+        "match_phrases": [phrase],
+        "set_fields": {field: value},
+        "source_count": 3,
+    }
+    candidate = _candidate(
+        project_id=1,
+        module_key="order",
+        intent_key="create",
+        rule_key=signature,
+        proposal_json=json.dumps(proposal, ensure_ascii=False, sort_keys=True),
+        status="approved",
+    )
+    learning_db.add(candidate)
+    learning_db.flush()
+    version = _rule_version(
+        candidate_id=candidate.id,
+        project_id=project_id,
+        scope=scope,
+        rule_key=signature,
+        rule_json=json.dumps(proposal, ensure_ascii=False, sort_keys=True),
+        status="active",
+    )
+    learning_db.add(version)
+    learning_db.commit()
+    learning_db.refresh(version)
+    return version
 
 
 @pytest.mark.parametrize(("class_name", "table_name"), EXPECTED_TABLES.items())
@@ -2973,6 +3016,92 @@ def test_concurrent_approvals_leave_one_active_and_unique_versions(tmp_path):
     finally:
         verify.close()
         engine.dispose()
+
+
+def test_project_rules_precede_global_rules_and_first_scope_wins(learning_db):
+    _approved_rule(
+        learning_db,
+        field="order_item_num",
+        value=3,
+        scope="project",
+        project_id=1,
+    )
+    _approved_rule(
+        learning_db,
+        field="order_item_num",
+        value=5,
+        scope="global",
+        project_id=0,
+    )
+
+    context = learning_context(learning_db, 1, "order", "帮我造订单", limit=5)
+    final = apply_learning_context(
+        _regression_goal(quantity=1),
+        context,
+        hard_fields=set(),
+    )
+
+    assert [item["scope"] for item in context["rules"]][:2] == ["project", "global"]
+    assert final["variables"]["order_item_num"] == 3
+    assert final["learning_applied"] == [
+        {
+            "field": "order_item_num",
+            "scope": "project",
+            "rule_version_id": context["rules"][0]["id"],
+        }
+    ]
+
+
+def test_learning_context_cannot_override_hard_contract_field(learning_db):
+    _approved_rule(
+        learning_db,
+        field="target_node",
+        value="pending_purchase",
+        phrase="做到待付款",
+    )
+    context = learning_context(learning_db, 1, "order", "做到待付款", limit=5)
+
+    final = apply_learning_context(
+        _regression_goal(quantity=1),
+        context,
+        hard_fields={"target_node"},
+    )
+
+    assert final["target_node"] == "order_offered"
+    assert "learning_applied" not in final
+
+
+def test_learning_context_returns_at_most_five_sanitized_examples(learning_db):
+    for index in range(10):
+        _verified_corrected_sample(
+            learning_db,
+            instruction=f"造订单-{index}-password=secret-{index}",
+            initial_contract=_regression_goal(quantity=1),
+            final_contract=_regression_goal(quantity=2),
+        )
+
+    context = learning_context(learning_db, 1, "order", "造订单", limit=50)
+
+    assert len(context["examples"]) == 5
+    serialized = json.dumps(context, ensure_ascii=False)
+    assert "secret-" not in serialized
+    assert "***" in serialized
+
+
+def test_learning_context_ignores_unapproved_and_other_module_rules(learning_db):
+    active = _approved_rule(
+        learning_db,
+        field="order_item_num",
+        value=3,
+    )
+    active.status = "disabled"
+    candidate = learning_db.get(models.DataAgentRuleCandidate, active.candidate_id)
+    candidate.module_key = "porder"
+    learning_db.commit()
+
+    context = learning_context(learning_db, 1, "order", "造订单", limit=5)
+
+    assert context["rules"] == []
 
 
 def _run_two_learning_actions(factory, actions):

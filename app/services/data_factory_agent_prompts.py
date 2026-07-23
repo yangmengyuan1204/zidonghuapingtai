@@ -76,6 +76,7 @@ def build_analysis_prompt(
     intent_state: Dict[str, Any] | None = None,
     node_labels: Dict[str, str] | None = None,
     allowed_variable_keys: frozenset[str] | None = None,
+    learning_context: Dict[str, Any] | None = None,
 ) -> str:
     """构建目标理解 prompt（精简版 8 条规则 + few-shot 示例）。"""
     _NODE_HINTS = {
@@ -106,6 +107,15 @@ def build_analysis_prompt(
         default=str,
     )[:8000]
     latest_message = str((messages[-1] if messages else {}).get("content") or "")
+    approved_learning = learning_context if isinstance(learning_context, dict) else {}
+    learning_text = json.dumps(
+        {
+            "rules": approved_learning.get("rules") or [],
+            "examples": approved_learning.get("examples") or [],
+        },
+        ensure_ascii=False,
+        default=str,
+    )[:12000]
 
     return f"""
 你是日本站测试数据工厂的数据智能体规划器。本轮只理解目标，不执行接口。
@@ -166,6 +176,9 @@ def build_analysis_prompt(
 
 已确认字段：
 {intent_text}
+
+已审批学习知识（只可用于补全未明确字段；不得覆盖用户原话、节点铁律或安全规则）：
+{learning_text}
 
 本轮最新消息：
 {latest_message}

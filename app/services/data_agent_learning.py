@@ -465,6 +465,172 @@ def candidate_matches_instruction(proposal: dict, instruction: str) -> bool:
     )
 
 
+def _bigrams(value: Any) -> set[str]:
+    text_value = re.sub(
+        r"[\s，。；：、,.!?！？]+",
+        "",
+        unicodedata.normalize("NFKC", str(value or "")).casefold(),
+    )
+    if len(text_value) < 2:
+        return {text_value} if text_value else set()
+    return {
+        text_value[index : index + 2]
+        for index in range(len(text_value) - 1)
+    }
+
+
+def _similarity(left: Any, right: Any) -> float:
+    left_tokens = _bigrams(left)
+    right_tokens = _bigrams(right)
+    if not left_tokens or not right_tokens:
+        return 0.0
+    return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)
+
+
+def _rule_similarity(rule: dict, instruction: str) -> float:
+    return max(
+        (_similarity(instruction, phrase) for phrase in rule.get("match_phrases") or []),
+        default=0.0,
+    )
+
+
+def learning_context(
+    db: Session,
+    project_id: int,
+    module_key: str,
+    instruction: str,
+    limit: int = 5,
+) -> dict:
+    """Return bounded, sanitized, approved learning knowledge for one instruction."""
+    bounded_limit = max(1, min(int(limit or 5), 5))
+    safe_module = str(module_key or "")[:80]
+    safe_instruction = str(sanitize_learning_value(instruction or ""))
+    rows = (
+        db.query(DataAgentRuleVersion, DataAgentRuleCandidate)
+        .join(
+            DataAgentRuleCandidate,
+            DataAgentRuleCandidate.id == DataAgentRuleVersion.candidate_id,
+        )
+        .filter(
+            DataAgentRuleVersion.status == "active",
+            DataAgentRuleCandidate.module_key == safe_module,
+            or_(
+                (
+                    (DataAgentRuleVersion.scope == "project")
+                    & (DataAgentRuleVersion.project_id == int(project_id))
+                ),
+                (
+                    (DataAgentRuleVersion.scope == "global")
+                    & (DataAgentRuleVersion.project_id == 0)
+                ),
+            ),
+        )
+        .all()
+    )
+    ranked_rules: list[tuple[int, float, int, dict]] = []
+    for version, candidate in rows:
+        try:
+            rule = validate_candidate_rule(_load_json_object(version.rule_json))
+        except (TypeError, ValueError):
+            continue
+        similarity = _rule_similarity(rule, safe_instruction)
+        if not candidate_matches_instruction(rule, safe_instruction) and similarity < 0.6:
+            continue
+        ranked_rules.append(
+            (
+                0 if version.scope == "project" else 1,
+                -similarity,
+                int(version.id),
+                {
+                    "id": int(version.id),
+                    "scope": str(version.scope),
+                    "module_key": str(candidate.module_key),
+                    "rule_key": str(version.rule_key),
+                    "version": int(version.version),
+                    "similarity": round(similarity, 6),
+                    "rule": sanitize_learning_value(rule),
+                },
+            )
+        )
+    ranked_rules.sort(key=lambda item: item[:3])
+
+    samples = (
+        db.query(DataAgentLearningSample)
+        .filter(
+            DataAgentLearningSample.project_id == int(project_id),
+            DataAgentLearningSample.module_key == safe_module,
+            DataAgentLearningSample.outcome == "success",
+            DataAgentLearningSample.verified == 1,
+        )
+        .order_by(DataAgentLearningSample.id.desc())
+        .limit(100)
+        .all()
+    )
+    ranked_examples: list[tuple[float, int, dict]] = []
+    for sample in samples:
+        similarity = _similarity(safe_instruction, sample.instruction_text)
+        if similarity <= 0:
+            continue
+        try:
+            final_contract = _load_json_object(sample.final_contract_json)
+        except (TypeError, ValueError):
+            continue
+        ranked_examples.append(
+            (
+                -similarity,
+                -int(sample.id),
+                {
+                    "id": int(sample.id),
+                    "instruction": sanitize_learning_value(sample.instruction_text or ""),
+                    "final_contract": sanitize_learning_value(final_contract),
+                    "similarity": round(similarity, 6),
+                },
+            )
+        )
+    ranked_examples.sort(key=lambda item: item[:2])
+    return {
+        "module_key": safe_module,
+        "rules": [item[3] for item in ranked_rules[:bounded_limit]],
+        "examples": [item[2] for item in ranked_examples[:bounded_limit]],
+    }
+
+
+def apply_learning_context(
+    goal: dict,
+    context: dict,
+    hard_fields: set[str] | None = None,
+) -> dict:
+    """Apply approved overlays while preserving explicit and deterministic fields."""
+    result = copy.deepcopy(goal)
+    protected = set(hard_fields or set())
+    applied: list[dict] = []
+    for item in context.get("rules") or []:
+        if not isinstance(item, dict) or not isinstance(item.get("rule"), dict):
+            continue
+        try:
+            rule = validate_candidate_rule(copy.deepcopy(item["rule"]))
+        except (TypeError, ValueError):
+            continue
+        field = str(rule["field"])
+        if field in protected:
+            continue
+        try:
+            result = apply_candidate_overlay(result, rule)
+        except (TypeError, ValueError):
+            continue
+        protected.add(field)
+        applied.append(
+            {
+                "field": field,
+                "scope": str(item.get("scope") or ""),
+                "rule_version_id": int(item.get("id") or 0),
+            }
+        )
+    if applied:
+        result["learning_applied"] = sanitize_learning_value(applied)
+    return result
+
+
 def _decimal_text(value: Any, field: str) -> str:
     try:
         number = Decimal(str(value).strip())
