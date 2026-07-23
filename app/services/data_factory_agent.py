@@ -2921,6 +2921,7 @@ def _run_agent_session(session_id: str) -> None:
             public_variables=public_variables,
             state=state,
             progress_callback=_make_progress_callback(session_id, goal, state),
+            permission_credentials_provider=lambda: dict(permission_credentials),
         )
         action_counts: Dict[str, int] = {}
         last_result: Dict[str, Any] = {}
