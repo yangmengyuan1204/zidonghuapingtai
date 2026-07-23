@@ -454,6 +454,92 @@ def register_builtin_capabilities() -> None:
             agent_enabled=False,
         ),
     )
+    oem_configs = (
+        (
+            "oem_new_inquiry",
+            "OEM创建询价单",
+            data_scripts.run_oem_new_inquiry_script,
+            (),
+            "inquiry_sn",
+            "oem_frontend",
+            "inquiry_created",
+        ),
+        (
+            "oem_sample_order",
+            "OEM提出样品单",
+            data_scripts.run_oem_sample_order_script,
+            (ParameterSpec("order_sn", "询价单号", "str", required=True),),
+            "order_sn",
+            "oem_frontend",
+            "sample_order_created",
+        ),
+        (
+            "oem_sample_admin_flow",
+            "OEM样品单后台流程",
+            data_scripts.run_oem_sample_admin_flow_script,
+            (ParameterSpec("order_sn", "样品单号", "str", required=True),),
+            "order_sn",
+            "oem_backend",
+            "sample_admin_flow_completed",
+        ),
+        (
+            "oem_full_inquiry_flow",
+            "OEM询价单全流程",
+            data_scripts.run_oem_full_inquiry_flow_script,
+            (ParameterSpec("order_sn", "已有询价单号", "str"),),
+            "order_sn",
+            "oem_frontend_and_backend",
+            "inquiry_quote_completed",
+        ),
+        (
+            "oem_sample_full_flow",
+            "OEM样品单全流程",
+            data_scripts.run_oem_sample_full_flow_script,
+            (ParameterSpec("order_sn", "已有询价单号", "str"),),
+            "sample_order_sn",
+            "oem_frontend_and_backend",
+            "sample_flow_completed",
+        ),
+        (
+            "oem_bulk_order",
+            "OEM大货单下单",
+            data_scripts.run_oem_bulk_order_script,
+            (ParameterSpec("order_sn", "询价单号", "str", required=True),),
+            "large_order_sn",
+            "oem_frontend",
+            "bulk_order_created",
+        ),
+        (
+            "oem_balance_pay",
+            "OEM样品单余额支付",
+            data_scripts.run_oem_sample_balance_pay_script,
+            (ParameterSpec("order_sn", "样品单号", "str", required=True),),
+            "order_sn",
+            "oem_frontend",
+            "sample_order_paid",
+        ),
+    )
+    configs += tuple(
+        DataScriptCapability(
+            key=key,
+            name=name,
+            module="oem",
+            projects=("oem-测试",),
+            intents=(name,),
+            examples=(f"执行{name}，仅处理一个业务单据",),
+            parameters=parameters,
+            risk=RiskSpec(level="high", mutating=True, second_confirmation=True),
+            runner=runner,
+            result_validator=validate_script_result,
+            account_role=account_role,
+            preconditions=("当前环境属于 oem-测试 项目",),
+            result_state=result_state,
+            resume_key=resume_key,
+            idempotency_key="contract_hash",
+            agent_enabled=False,
+        )
+        for key, name, runner, parameters, resume_key, account_role, result_state in oem_configs
+    )
     for spec in configs:
         if spec.key not in CAPABILITIES:
             register_capability(spec)

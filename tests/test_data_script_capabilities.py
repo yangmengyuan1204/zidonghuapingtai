@@ -236,6 +236,49 @@ def test_money_capabilities_require_second_confirmation_but_remain_disabled(key)
     assert callable(spec.result_validator)
 
 
+@pytest.mark.parametrize(
+    "key",
+    [
+        "oem_new_inquiry",
+        "oem_sample_order",
+        "oem_sample_admin_flow",
+        "oem_full_inquiry_flow",
+        "oem_sample_full_flow",
+        "oem_bulk_order",
+        "oem_balance_pay",
+    ],
+)
+def test_oem_capability_declares_scope_account_and_validator(key):
+    spec = capability_catalog()[key]
+
+    assert spec.module == "oem"
+    assert spec.projects == ("oem-测试",)
+    assert spec.account_role
+    assert spec.idempotency_key == "contract_hash"
+    assert callable(spec.result_validator)
+    assert spec.risk.level == "high"
+    assert spec.risk.second_confirmation is True
+    assert spec.agent_enabled is False
+
+
+@pytest.mark.parametrize(
+    ("key", "required"),
+    [
+        ("oem_new_inquiry", set()),
+        ("oem_sample_order", {"order_sn"}),
+        ("oem_sample_admin_flow", {"order_sn"}),
+        ("oem_full_inquiry_flow", set()),
+        ("oem_sample_full_flow", set()),
+        ("oem_bulk_order", {"order_sn"}),
+        ("oem_balance_pay", {"order_sn"}),
+    ],
+)
+def test_oem_capability_required_inputs_match_runner_contract(key, required):
+    spec = capability_catalog()[key]
+
+    assert {item.name for item in spec.parameters if item.required} == required
+
+
 def test_high_risk_contract_requires_matching_second_confirmation(monkeypatch):
     submitted = []
     session = agent_service.AgentSessionState(
