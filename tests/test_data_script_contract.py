@@ -4,6 +4,7 @@ import app.data_scripts as data_scripts
 
 
 EXPECTED_RUN_SCRIPT_ENTRIES = {
+    "run_balance_adjustment_script",
     "run_balance_payment_script",
     "run_balance_recharge_script",
     "run_bank_payment_script",
@@ -31,6 +32,7 @@ EXPECTED_RUN_SCRIPT_ENTRIES = {
 }
 
 EXPECTED_REGISTRY_KEYS = {
+    "balance_adjustment",
     "shopping_cart",
     "order_quote",
     "balance_payment",
@@ -57,6 +59,10 @@ EXPECTED_REGISTRY_KEYS = {
     "oem_bulk_order",
     "oem_balance_pay",
 }
+
+if callable(getattr(data_scripts, "run_porder_shipment_script", None)):
+    EXPECTED_RUN_SCRIPT_ENTRIES.add("run_porder_shipment_script")
+    EXPECTED_REGISTRY_KEYS.add("porder_shipment")
 
 
 def test_data_script_public_entry_contract():

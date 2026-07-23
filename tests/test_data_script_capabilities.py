@@ -2,6 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
+import app.data_scripts as data_scripts
 from app.data_scripts.capabilities import (
     CAPABILITIES,
     DataScriptCapability,
@@ -277,6 +278,47 @@ def test_oem_capability_required_inputs_match_runner_contract(key, required):
     spec = capability_catalog()[key]
 
     assert {item.name for item in spec.parameters if item.required} == required
+
+
+def test_every_registered_script_has_valid_capability_metadata():
+    catalog = capability_catalog()
+
+    assert set(SCRIPT_REGISTRY) == set(catalog)
+    for key, item in SCRIPT_REGISTRY.items():
+        spec = catalog[key]
+        assert item["func"] is spec.runner
+        spec.validate()
+
+
+def test_agent_enabled_capabilities_are_fully_executable():
+    for spec in capability_catalog().values():
+        if not spec.agent_enabled:
+            continue
+        assert callable(spec.runner)
+        assert callable(spec.result_validator)
+        assert spec.examples
+        assert spec.intents
+
+
+def test_rollback_capability_requires_second_confirmation_and_stays_disabled():
+    spec = capability_catalog()["rollback_flow"]
+
+    assert spec.risk.level == "critical"
+    assert spec.risk.second_confirmation is True
+    assert spec.agent_enabled is False
+    assert {item.name for item in spec.parameters if item.required} == {"rollback_target"}
+
+
+def test_optional_porder_shipment_capability_matches_loaded_runner():
+    runner = getattr(data_scripts, "run_porder_shipment_script", None)
+    if not callable(runner):
+        pytest.skip("porder shipment script is not installed")
+
+    spec = capability_catalog()["porder_shipment"]
+    assert spec.runner is runner
+    assert spec.risk.second_confirmation is True
+    assert spec.agent_enabled is False
+    assert {item.name for item in spec.parameters if item.required} == {"porder_sn"}
 
 
 def test_high_risk_contract_requires_matching_second_confirmation(monkeypatch):

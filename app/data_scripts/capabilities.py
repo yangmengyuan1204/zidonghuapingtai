@@ -540,6 +540,53 @@ def register_builtin_capabilities() -> None:
         )
         for key, name, runner, parameters, resume_key, account_role, result_state in oem_configs
     )
+    configs += (
+        DataScriptCapability(
+            key="rollback_flow",
+            name="日本站业务状态回退",
+            module="rollback",
+            projects=("日本站测试",),
+            intents=("回退订单状态", "回退配送单状态", "回退采购单状态"),
+            examples=("将订单状态回退到指定业务节点",),
+            parameters=(
+                ParameterSpec("rollback_target", "回退目标", "node", required=True),
+                ParameterSpec("order_sn", "订单号", "str"),
+                ParameterSpec("porder_sn", "配送单号", "str"),
+                ParameterSpec("purchase_no", "采购单号", "str"),
+            ),
+            risk=RiskSpec(level="critical", mutating=True, second_confirmation=True),
+            runner=data_scripts.run_rollback_flow_script,
+            result_validator=validate_script_result,
+            account_role="backend_admin",
+            preconditions=("业务单号与回退目标必须匹配",),
+            result_state="rollback_target_reached",
+            resume_key="order_sn",
+            idempotency_key="contract_hash",
+            agent_enabled=False,
+        ),
+    )
+    porder_shipment_runner = getattr(data_scripts, "run_porder_shipment_script", None)
+    if callable(porder_shipment_runner):
+        configs += (
+            DataScriptCapability(
+                key="porder_shipment",
+                name="配送单出货",
+                module="porder",
+                projects=("日本站测试",),
+                intents=("配送单出货", "填写物流单号并出货"),
+                examples=("配送单P2024-001自动填写物流单号并提交出货",),
+                parameters=(ParameterSpec("porder_sn", "配送单号", "str", required=True),),
+                risk=RiskSpec(level="high", mutating=True, second_confirmation=True),
+                runner=porder_shipment_runner,
+                result_validator=validate_script_result,
+                account_role="backend_admin",
+                preconditions=("配送单已支付且具备可出货箱子",),
+                result_state="porder_shipped",
+                resume_key="porder_sn",
+                idempotency_key="contract_hash",
+                agent_enabled=False,
+            ),
+        )
     for spec in configs:
         if spec.key not in CAPABILITIES:
             register_capability(spec)
