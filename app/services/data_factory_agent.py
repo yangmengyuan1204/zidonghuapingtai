@@ -20,6 +20,7 @@ from ..core.account_utils import account_profile_variables, default_account_prof
 from ..core.data_script_catalog import DATA_SCRIPT_PROJECT_NAME
 from ..core.utils import data_script_variables, save_record
 from ..data_scripts.rollback_flow import ROLLBACK_TARGET_LABELS
+from ..data_scripts.capabilities import available_capabilities
 from ..database import SessionLocal
 from ..functional_testing.model_client import call_local_model_json
 from ..models import AiConfig, Env, Project, TestAccountProfile
@@ -494,6 +495,7 @@ def _analysis_prompt(
     messages: list[Dict[str, str]],
     intent_state: Dict[str, Any] | None = None,
     approved_learning: Dict[str, Any] | None = None,
+    capability_specs: list[Any] | None = None,
 ) -> str:
     return build_analysis_prompt(
         messages=messages,
@@ -501,6 +503,7 @@ def _analysis_prompt(
         node_labels=FULL_FLOW_NODE_LABELS,
         allowed_variable_keys=ALLOWED_VARIABLE_KEYS,
         learning_context=approved_learning,
+        capability_specs=capability_specs,
     )
 
 
@@ -2130,7 +2133,16 @@ def _analyze_turn(
                 "rules": [],
                 "examples": [],
             }
-        prompt = _analysis_prompt(messages, intent_state, approved_learning)
+        capability_specs = available_capabilities(
+            DATA_SCRIPT_PROJECT_NAME,
+            {_infer_learning_module(messages)},
+        )
+        prompt = _analysis_prompt(
+            messages,
+            intent_state,
+            approved_learning,
+            capability_specs,
+        )
         if force_ready:
             prompt += "\n\n【强制指令】已多次追问仍未满足所有条件。本轮你必须输出 status=\"ready\"，所有不确定字段使用合理默认值，在 assumptions 中逐一标注你采用的默认值及原因。禁止输出 clarifying。"
         payload = call_local_model_json(config, prompt, timeout=120, system_prompt=SYSTEM_PROMPT)
@@ -2161,6 +2173,7 @@ def _analyze_turn(
                 for item in approved_learning.get("rules") or []
                 if isinstance(item, dict)
             ],
+            "capability_keys": [item.key for item in capability_specs],
             "pending_fields": {
                 _clarification_field(question): question
             } if question else {},

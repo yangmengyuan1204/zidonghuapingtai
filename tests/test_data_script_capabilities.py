@@ -7,11 +7,14 @@ from app.data_scripts.capabilities import (
     DataScriptCapability,
     ParameterSpec,
     RiskSpec,
+    available_capabilities,
     capability_catalog,
+    public_capability_catalog,
     register_capability,
 )
 from app.data_scripts.registry import SCRIPT_REGISTRY
 from app.services.data_factory_agent_tools import TOOL_SPECS
+from app.services.data_factory_agent_prompts import build_analysis_prompt
 
 
 @pytest.fixture(autouse=True)
@@ -126,3 +129,43 @@ def test_core_tool_specs_are_projected_from_capabilities(tool_name, capability_k
     assert capability.name in tool.description
     assert tool.mutating is capability.risk.mutating
     assert tool.category == "组合脚本"
+
+
+def test_available_capabilities_excludes_other_projects_modules_and_disabled_specs():
+    specs = available_capabilities("日本站测试", {"order"})
+
+    assert specs
+    assert all("日本站测试" in spec.projects for spec in specs)
+    assert all(spec.agent_enabled for spec in specs)
+    assert all(spec.module == "order" for spec in specs)
+    assert "balance_payment" not in {spec.key for spec in specs}
+    assert "resume_porder_flow" not in {spec.key for spec in specs}
+
+
+def test_available_capabilities_applies_stable_risk_and_key_order():
+    specs = available_capabilities("日本站测试", {"order"}, max_risk="medium")
+    ordering = [(spec.module, spec.risk.level, spec.key) for spec in specs]
+
+    assert ordering == sorted(ordering, key=lambda item: (item[0], {"low": 0, "medium": 1}[item[1]], item[2]))
+    assert all(spec.risk.level in {"low", "medium"} for spec in specs)
+
+
+def test_public_capability_catalog_excludes_runner_and_account_details():
+    payload = public_capability_catalog(available_capabilities("日本站测试", {"order"}))
+    serialized = str(payload).lower()
+
+    assert "runner" not in serialized
+    assert "account_role" not in serialized
+    assert "password" not in serialized
+    assert all(set(item) == {"key", "name", "module", "intents", "examples", "parameters", "preconditions", "result_state", "risk"} for item in payload)
+
+
+def test_analysis_prompt_does_not_include_unrelated_or_disabled_capabilities():
+    prompt = build_analysis_prompt(
+        [{"role": "user", "content": "帮我造订单到待付款"}],
+        capability_specs=available_capabilities("日本站测试", {"order"}),
+    )
+
+    assert "日本站订单全流程" in prompt
+    assert "已有配送单续跑" not in prompt
+    assert "订单余额支付" not in prompt

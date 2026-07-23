@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict
 
+from ..data_scripts.capabilities import public_capability_catalog
 from .data_factory_agent_tools import public_tool_catalog, sanitize_observation
 
 # ── 分析用 System Prompt ──────────────────────────────────────────
@@ -77,6 +78,7 @@ def build_analysis_prompt(
     node_labels: Dict[str, str] | None = None,
     allowed_variable_keys: frozenset[str] | None = None,
     learning_context: Dict[str, Any] | None = None,
+    capability_specs: list[Any] | tuple[Any, ...] | None = None,
 ) -> str:
     """构建目标理解 prompt（精简版 8 条规则 + few-shot 示例）。"""
     _NODE_HINTS = {
@@ -113,6 +115,11 @@ def build_analysis_prompt(
             "rules": approved_learning.get("rules") or [],
             "examples": approved_learning.get("examples") or [],
         },
+        ensure_ascii=False,
+        default=str,
+    )[:12000]
+    capability_text = json.dumps(
+        public_capability_catalog(list(capability_specs or [])),
         ensure_ascii=False,
         default=str,
     )[:12000]
@@ -179,6 +186,9 @@ def build_analysis_prompt(
 
 已审批学习知识（只可用于补全未明确字段；不得覆盖用户原话、节点铁律或安全规则）：
 {learning_text}
+
+当前项目与模块允许发现的脚本能力（只可选择这里列出的能力）：
+{capability_text}
 
 本轮最新消息：
 {latest_message}

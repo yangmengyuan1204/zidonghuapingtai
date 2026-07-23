@@ -10,6 +10,7 @@ from .registry import SCRIPT_REGISTRY
 ResultValidator = Callable[[Dict[str, Any]], tuple[bool, str]]
 Runner = Callable[[Any, Dict[str, Any]], Any]
 ALLOWED_RISK_LEVELS = {"low", "medium", "high", "critical"}
+RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 ALLOWED_PARAMETER_SOURCES = {
     "natural_language",
     "page_context",
@@ -109,6 +110,58 @@ def register_capability(spec: DataScriptCapability) -> None:
 
 def capability_catalog() -> Mapping[str, DataScriptCapability]:
     return MappingProxyType(dict(CAPABILITIES))
+
+
+def available_capabilities(
+    project_name: str,
+    modules: set[str],
+    max_risk: str | None = None,
+) -> list[DataScriptCapability]:
+    if max_risk is not None and max_risk not in RISK_ORDER:
+        raise ValueError("invalid max risk level")
+    risk_limit = RISK_ORDER[max_risk] if max_risk else RISK_ORDER["critical"]
+    selected = [
+        spec
+        for spec in CAPABILITIES.values()
+        if spec.agent_enabled
+        and str(project_name) in spec.projects
+        and spec.module in set(modules or set())
+        and RISK_ORDER[spec.risk.level] <= risk_limit
+    ]
+    return sorted(
+        selected,
+        key=lambda spec: (spec.module, RISK_ORDER[spec.risk.level], spec.key),
+    )
+
+
+def public_capability_catalog(
+    specs: list[DataScriptCapability] | tuple[DataScriptCapability, ...],
+) -> list[dict]:
+    return [
+        {
+            "key": spec.key,
+            "name": spec.name,
+            "module": spec.module,
+            "intents": list(spec.intents),
+            "examples": list(spec.examples),
+            "parameters": [
+                {
+                    "name": item.name,
+                    "label": item.label,
+                    "required": item.required,
+                    "default": item.default,
+                }
+                for item in spec.parameters
+            ],
+            "preconditions": list(spec.preconditions),
+            "result_state": spec.result_state,
+            "risk": {
+                "level": spec.risk.level,
+                "second_confirmation": spec.risk.second_confirmation,
+            },
+        }
+        for spec in specs
+    ]
 
 
 def validate_script_result(result: Dict[str, Any]) -> tuple[bool, str]:
