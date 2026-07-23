@@ -169,3 +169,23 @@ def test_analysis_prompt_does_not_include_unrelated_or_disabled_capabilities():
     assert "日本站订单全流程" in prompt
     assert "已有配送单续跑" not in prompt
     assert "订单余额支付" not in prompt
+
+
+@pytest.mark.parametrize(
+    "key",
+    ["inspect_order_state", "inspect_porder_state", "inspect_problem_goods"],
+)
+def test_read_only_tools_remain_explicit_non_mutating_specs(key):
+    assert TOOL_SPECS[key].mutating is False
+    assert TOOL_SPECS[key].category == "查询接口"
+    assert key not in SCRIPT_REGISTRY
+
+
+def test_shopping_cart_capability_is_enabled_without_second_confirmation():
+    spec = capability_catalog()["shopping_cart"]
+
+    assert spec.agent_enabled is True
+    assert spec.risk.mutating is True
+    assert spec.risk.second_confirmation is False
+    assert callable(spec.result_validator)
+    assert TOOL_SPECS["fill_shopping_cart"].description.startswith(spec.name)

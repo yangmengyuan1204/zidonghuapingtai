@@ -184,6 +184,27 @@ def register_builtin_capabilities() -> None:
 
     configs = (
         DataScriptCapability(
+            key="shopping_cart",
+            name="购物车准备",
+            module="order",
+            projects=("日本站测试",),
+            intents=("加入购物车", "准备购物车商品"),
+            examples=("搜索衣服，准备1个店1种商品",),
+            parameters=(
+                ParameterSpec("keyword", "商品关键词", "str", default="衣服"),
+                ParameterSpec("shop_type", "店铺类型", "str", default="1688"),
+                ParameterSpec("target_shops", "目标店铺数", "int", default=1),
+                ParameterSpec("per_shop", "每店商品数", "int", default=1),
+            ),
+            risk=RiskSpec(level="medium", mutating=True, second_confirmation=False),
+            runner=data_scripts.run_shopping_cart_script,
+            result_validator=validate_script_result,
+            account_role="frontend",
+            result_state="shopping_cart_ready",
+            idempotency_key="contract_hash",
+            agent_enabled=True,
+        ),
+        DataScriptCapability(
             key="full_flow",
             name="日本站订单全流程",
             module="order",

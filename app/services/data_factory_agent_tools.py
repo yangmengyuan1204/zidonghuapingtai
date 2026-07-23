@@ -149,6 +149,7 @@ TOOL_SPECS: Dict[str, AgentToolSpec] = {
 }
 
 for _tool_name, _capability_key in {
+    "fill_shopping_cart": "shopping_cart",
     "run_full_flow": "full_flow",
     "resume_order_flow": "resume_order_flow",
     "resume_porder_flow": "resume_porder_flow",
