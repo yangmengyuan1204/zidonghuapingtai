@@ -18,6 +18,12 @@ class DataAgentSessionConfirm(BaseModel):
     plan_version: int
 
 
+class DataAgentRiskConfirm(BaseModel):
+    plan_version: int
+    contract_hash: str = Field(min_length=16, max_length=64)
+    acknowledged: bool
+
+
 class DataAgentPermissionResume(BaseModel):
     plan_version: int
     backend_account_profile_id: int | None = None

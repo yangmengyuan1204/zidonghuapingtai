@@ -6,6 +6,7 @@
   const STATUS_LABELS = {
     clarifying: "待补充",
     awaiting_confirmation: "待确认",
+    awaiting_risk_confirmation: "待风险确认",
     awaiting_permission: "待权限",
     running: "执行中",
     succeeded: "已完成",
@@ -196,6 +197,23 @@
     </form>`;
   }
 
+  function riskConfirmationHtml(session, escapeHtml) {
+    if (session.status !== "awaiting_risk_confirmation") return "";
+    const risk = session.goal?.risk || {};
+    return `<form id="dataAgentRiskConfirmForm" class="panel">
+      <div class="panel-title"><h3>高风险操作二次确认</h3></div>
+      <div class="panel-body">
+        <p>操作：${escapeHtml(risk.operation || session.goal?.summary || "-")}</p>
+        <p>客户范围：${escapeHtml(risk.customer_scope || session.goal?.customer_scope_label || "-")}</p>
+        <p>金额与方向：${escapeHtml(risk.amount_direction || "-")}</p>
+        <p>执行账号：${escapeHtml(risk.account_role || "按当前项目绑定账号")}</p>
+        <p class="danger-text">该操作会修改真实测试业务数据，请核对后确认。</p>
+        <label><input type="checkbox" name="acknowledged" required /> 我已核对上述范围、金额、方向和执行账号</label>
+      </div>
+      <div class="modal-foot"><span>合同 ${escapeHtml(session.goal?.contract_hash || "-")}</span><button class="btn danger" type="submit">确认执行高风险操作</button></div>
+    </form>`;
+  }
+
   function eventsHtml(events, escapeHtml) {
     if (!events?.length) return '<div class="empty">等待智能体决策</div>';
     return events
@@ -320,6 +338,8 @@
     if (messageForm) messageForm.onsubmit = sendMessage;
     const permissionForm = modalEl.querySelector("#dataAgentPermissionForm");
     if (permissionForm) permissionForm.onsubmit = resumePermission;
+    const riskForm = modalEl.querySelector("#dataAgentRiskConfirmForm");
+    if (riskForm) riskForm.onsubmit = confirmRisk;
     const confirmButton = modalEl.querySelector("#dataAgentConfirm");
     if (confirmButton) confirmButton.onclick = confirmGoal;
     const editButton = modalEl.querySelector("#dataAgentEditGoal");
@@ -348,7 +368,7 @@
     updateRegion(modalEl, "#data-agent-status", statusBadge(session.status, escapeHtml));
     updateRegion(modalEl, "#data-agent-progress", progressHtml(session.current_state?.progress, escapeHtml));
     updateRegion(modalEl, "#data-agent-goal", `${goalHtml(session.goal, escapeHtml)}${session.status === "awaiting_confirmation" ? '<div class="actions" style="margin-top:12px"><button class="btn secondary" id="dataAgentEditGoal" type="button">编辑目标数据</button></div>' : ""}`);
-    updateRegion(modalEl, "#data-agent-question", `${questionHtml(session, escapeHtml)}${permissionHtml(session, escapeHtml)}`);
+    updateRegion(modalEl, "#data-agent-question", `${questionHtml(session, escapeHtml)}${permissionHtml(session, escapeHtml)}${riskConfirmationHtml(session, escapeHtml)}`);
     updateRegion(modalEl, "#data-agent-events", `<section><div class="panel-title"><h3>实时步骤与自动纠错</h3></div>${eventsHtml(session.events, escapeHtml)}</section>`);
     updateRegion(modalEl, "#data-agent-result", resultHtml(session, escapeHtml));
     updateRegion(modalEl, "#data-agent-task", `任务 ${escapeHtml(session.id)}`);
@@ -384,7 +404,7 @@
     try {
       currentSession = await options.api(`/api/data-scripts/agent/sessions/${currentSession.id}`);
       updateModal(currentSession);
-      if (!TERMINAL.has(currentSession.status) && !["clarifying", "awaiting_confirmation", "awaiting_permission"].includes(currentSession.status)) {
+      if (!TERMINAL.has(currentSession.status) && !["clarifying", "awaiting_confirmation", "awaiting_risk_confirmation", "awaiting_permission"].includes(currentSession.status)) {
         pollTimer = window.setTimeout(refreshSession, 1000);
       } else {
         stopPolling();
@@ -485,6 +505,26 @@
     }
   }
 
+  async function confirmRisk(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const acknowledged = new FormData(form).get("acknowledged") === "on";
+    await withBusyButton(form.querySelector('button[type="submit"]'), "正在启动高风险操作...", async () => {
+      currentSession = await options.api(`/api/data-scripts/agent/sessions/${currentSession.id}/risk-confirm`, {
+        method: "POST",
+        body: {
+          plan_version: currentSession.plan_version,
+          contract_hash: currentSession.goal?.contract_hash || "",
+          acknowledged,
+        },
+      });
+      options.showToast("高风险范围已确认，智能体开始执行");
+      renderModal();
+      stopPolling();
+      pollTimer = window.setTimeout(refreshSession, 600);
+    });
+  }
+
   async function confirmGoal() {
     const button = document.querySelector("#dataAgentConfirm");
     await withBusyButton(button, "正在启动执行...", async () => {
@@ -492,7 +532,7 @@
         method: "POST",
         body: { plan_version: currentSession.plan_version },
       });
-      options.showToast("目标已确认，智能体开始执行");
+      options.showToast(currentSession.status === "awaiting_risk_confirmation" ? "目标已确认，请继续核对高风险范围" : "目标已确认，智能体开始执行");
       renderModal();
       stopPolling();
       pollTimer = window.setTimeout(refreshSession, 600);

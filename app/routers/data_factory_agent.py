@@ -10,6 +10,7 @@ from ..agent_schemas import (
     DataAgentPermissionResume,
     DataAgentRuleReviewRequest,
     DataAgentRuleRollbackRequest,
+    DataAgentRiskConfirm,
     DataAgentSessionConfirm,
     DataAgentSessionCreate,
     DataAgentSessionMessage,
@@ -21,6 +22,7 @@ from ..services.data_factory_agent import (
     add_agent_message,
     cancel_agent_session,
     confirm_agent_session,
+    confirm_agent_risk,
     create_agent_session,
     get_agent_session,
     resume_agent_permission,
@@ -65,6 +67,23 @@ def confirm_session(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     return confirm_agent_session(db, session_id, current_user.id, payload.plan_version)
+
+
+@router.post("/sessions/{session_id}/risk-confirm")
+def confirm_session_risk(
+    session_id: str,
+    payload: DataAgentRiskConfirm,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    return confirm_agent_risk(
+        db,
+        session_id,
+        current_user.id,
+        payload.plan_version,
+        payload.contract_hash,
+        payload.acknowledged,
+    )
 
 
 @router.get("/sessions/{session_id}")

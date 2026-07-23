@@ -81,6 +81,7 @@ TERMINAL_STATUSES = {"succeeded", "failed", "blocked", "cancelled"}
 SESSION_STATUSES = {
     "clarifying",
     "awaiting_confirmation",
+    "awaiting_risk_confirmation",
     "awaiting_permission",
     "running",
     "succeeded",
@@ -405,9 +406,10 @@ def _serialize_session(session: AgentSessionState) -> Dict[str, Any]:
             "record_id": session.record_id,
             "analysis_record_ids": list(session.analysis_record_ids),
             "can_confirm": session.status == "awaiting_confirmation",
+            "can_risk_confirm": session.status == "awaiting_risk_confirmation",
             "can_message": session.status in {"clarifying", "awaiting_confirmation"},
             "can_permission": session.status == "awaiting_permission",
-            "can_cancel": session.status == "running",
+            "can_cancel": session.status in {"running", "awaiting_risk_confirmation"},
             "created_at": session.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "updated_at": session.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
         }
@@ -3367,6 +3369,14 @@ def update_agent_goal(
         session.events.append(_event("goal_updated", "用户直接编辑了目标数据", corrections=corrections))
     return _serialize_session(session)
 
+def _requires_risk_confirmation(goal: Dict[str, Any]) -> bool:
+    risk = goal.get("risk") if isinstance(goal.get("risk"), dict) else {}
+    return bool(
+        risk.get("second_confirmation") is True
+        and str(risk.get("level") or "") in {"high", "critical"}
+    )
+
+
 def confirm_agent_session(
     db: Session,
     session_id: str,
@@ -3385,6 +3395,19 @@ def confirm_agent_session(
         running_session = _ENV_RUNNING.get(session.env_id)
         if running_session and running_session != session.id:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前环境已有数据智能体任务正在执行")
+        if _requires_risk_confirmation(session.goal):
+            session.status = "awaiting_risk_confirmation"
+            session.question = "该合同包含高风险业务写入，请核对范围、金额和执行账号后进行二次确认。"
+            session.updated_at = datetime.now()
+            session.events.append(
+                _event(
+                    "risk_confirmation_required",
+                    session.question,
+                    plan_version=session.plan_version,
+                    contract_hash=str(session.goal.get("contract_hash") or ""),
+                )
+            )
+            return _serialize_session(session)
         session.status = "running"
         session.cancel_requested = False
         session.question = ""
@@ -3396,6 +3419,55 @@ def confirm_agent_session(
     except Exception:
         with _STORE_LOCK:
             session.status = "awaiting_confirmation"
+            _ENV_RUNNING.pop(session.env_id, None)
+        raise
+    return _serialize_session(session)
+
+
+def confirm_agent_risk(
+    db: Session,
+    session_id: str,
+    user_id: int,
+    plan_version: int,
+    contract_hash: str,
+    acknowledged: bool,
+) -> Dict[str, Any]:
+    session = _session_or_404(session_id, user_id)
+    validate_agent_context(db, session.project_id, session.env_id)
+    _latest_model_config(db)
+    with _STORE_LOCK:
+        if session.status != "awaiting_risk_confirmation" or not session.goal:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前任务不在等待风险确认状态")
+        if not _requires_risk_confirmation(session.goal):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前合同不需要风险二次确认")
+        if acknowledged is not True:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请明确勾选已核对高风险操作范围")
+        if int(plan_version) != session.plan_version:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="目标已更新，请重新查看后确认")
+        expected_hash = str(session.goal.get("contract_hash") or "")
+        if not expected_hash or str(contract_hash) != expected_hash:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="合同摘要已变化，请重新查看后确认")
+        running_session = _ENV_RUNNING.get(session.env_id)
+        if running_session and running_session != session.id:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前环境已有数据智能体任务正在执行")
+        session.status = "running"
+        session.cancel_requested = False
+        session.question = ""
+        session.updated_at = datetime.now()
+        session.events.append(
+            _event(
+                "risk_confirmed",
+                "高风险操作范围已二次确认，智能体开始执行",
+                plan_version=session.plan_version,
+                contract_hash=expected_hash,
+            )
+        )
+        _ENV_RUNNING[session.env_id] = session.id
+    try:
+        _EXECUTOR.submit(_run_agent_session, session.id)
+    except Exception:
+        with _STORE_LOCK:
+            session.status = "awaiting_risk_confirmation"
             _ENV_RUNNING.pop(session.env_id, None)
         raise
     return _serialize_session(session)
@@ -3493,6 +3565,14 @@ def resume_agent_permission(
 def cancel_agent_session(session_id: str, user_id: int) -> Dict[str, Any]:
     session = _session_or_404(session_id, user_id)
     with _STORE_LOCK:
+        if session.status == "awaiting_risk_confirmation":
+            session.status = "cancelled"
+            session.question = ""
+            session.cancel_requested = False
+            session.updated_at = datetime.now()
+            session.events.append(_event("cancel", "用户取消了高风险合同，未执行任何业务写入"))
+            _clear_temp_permission_secret(session.id)
+            return _serialize_session(session)
         if session.status != "running":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前任务不在执行中")
         session.cancel_requested = True

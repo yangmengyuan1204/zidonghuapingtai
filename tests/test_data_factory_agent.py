@@ -3270,3 +3270,19 @@ def test_data_agent_learning_center_has_required_controls():
         "停用",
     ):
         assert token in source
+
+
+def test_data_agent_high_risk_confirmation_uses_explicit_summary_form():
+    source = Path("static/data-factory-agent.js").read_text(encoding="utf-8")
+
+    for token in (
+        "awaiting_risk_confirmation",
+        "dataAgentRiskConfirmForm",
+        "risk-confirm",
+        "高风险操作二次确认",
+        "客户范围",
+        "金额与方向",
+        "执行账号",
+        "我已核对上述范围、金额、方向和执行账号",
+    ):
+        assert token in source

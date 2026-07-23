@@ -15,6 +15,7 @@ from app.data_scripts.capabilities import (
 from app.data_scripts.registry import SCRIPT_REGISTRY
 from app.services.data_factory_agent_tools import TOOL_SPECS
 from app.services.data_factory_agent_prompts import build_analysis_prompt
+from app.services import data_factory_agent as agent_service
 
 
 @pytest.fixture(autouse=True)
@@ -223,3 +224,56 @@ def test_standard_result_validator_accepts_legacy_script_tuple():
 
     assert validator((True, "", "", {"porder_sn": "P-1"})) == (True, "")
     assert validator((False, "", "", {"reason": "库存不足"})) == (False, "库存不足")
+
+
+@pytest.mark.parametrize("key", ["balance_recharge", "balance_adjustment"])
+def test_money_capabilities_require_second_confirmation_but_remain_disabled(key):
+    spec = capability_catalog()[key]
+
+    assert spec.risk.level == "critical"
+    assert spec.risk.second_confirmation is True
+    assert spec.agent_enabled is False
+    assert callable(spec.result_validator)
+
+
+def test_high_risk_contract_requires_matching_second_confirmation(monkeypatch):
+    submitted = []
+    session = agent_service.AgentSessionState(
+        id="risk-session",
+        user_id=7,
+        project_id=1,
+        env_id=2,
+        status="awaiting_confirmation",
+        goal={
+            "contract_hash": "1234567890abcdef",
+            "risk": {
+                "level": "critical",
+                "second_confirmation": True,
+                "operation": "客户出入金调整",
+            },
+            "operations": [{"id": "operation_1", "type": "capability"}],
+        },
+    )
+    monkeypatch.setattr(agent_service, "validate_agent_context", lambda *args: (object(), object()))
+    monkeypatch.setattr(agent_service, "_latest_model_config", lambda *args: object())
+    monkeypatch.setattr(agent_service._EXECUTOR, "submit", lambda func, session_id: submitted.append(session_id))
+    agent_service._SESSIONS[session.id] = session
+    try:
+        first = agent_service.confirm_agent_session(object(), session.id, 7, 1)
+        assert first["status"] == "awaiting_risk_confirmation"
+        assert submitted == []
+
+        with pytest.raises(Exception) as mismatch:
+            agent_service.confirm_agent_risk(
+                object(), session.id, 7, 1, "ffffffffffffffff", True
+            )
+        assert mismatch.value.status_code == 409
+        assert session.status == "awaiting_risk_confirmation"
+
+        confirmed = agent_service.confirm_agent_risk(
+            object(), session.id, 7, 1, "1234567890abcdef", True
+        )
+        assert confirmed["status"] == "running"
+        assert submitted == [session.id]
+    finally:
+        agent_service.reset_agent_runtime_for_tests()

@@ -321,6 +321,11 @@
   },
   {
     "method": "POST",
+    "path": "/api/data-scripts/agent/sessions/{session_id}/risk-confirm",
+    "name": "confirm_session_risk"
+  },
+  {
+    "method": "POST",
     "path": "/api/data-scripts/balance-adjustment",
     "name": "run_balance_adjustment_data_script"
   },
