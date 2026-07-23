@@ -35,6 +35,12 @@
     porder_paid: "配送单已付款",
     full_complete: "全部流程已完成",
     problem_goods: "问题产品处理",
+    order_wait_offer: "订单待报价",
+    order_purchase: "订单采购",
+    order_translate: "订单翻译",
+    porder_wait_box: "配送单待装箱",
+    porder_wait_translate: "配送单待翻译",
+    shelf_checking: "商品核查中",
   };
   const TOOL_LABELS = {
     run_full_flow: "新建订单并推进",
@@ -52,6 +58,7 @@
     inspect_problem_goods: "查询问题产品",
     inspect_order_options: "查询商品附加服务",
     process_problem_goods: "提出并处理问题产品",
+    rollback_business_state: "逐级回退业务状态",
   };
   const FIELD_LABELS = {
     order_item_num: "每种购买数量",
@@ -132,7 +139,7 @@
       .join("，");
     const steps = (goal.steps || []).map((step, index) => `<li>${index + 1}. ${escapeHtml(step)}</li>`).join("");
     const operations = (goal.operations || []).map((operation, index) => {
-      const labels = { advance_order: "订单推进", advance_porder: "配送单推进", problem_goods: "问题产品" };
+      const labels = { advance_order: "订单推进", advance_porder: "配送单推进", problem_goods: "问题产品", rollback: "业务状态回退" };
       const detail = operation.type === "problem_goods"
         ? `${operation.quantity_refund_mode === "all" ? "退全部商品数量和商品金额" : operation.quantity_refund_mode === "half" ? "退一半商品数量和对应金额" : "按指定数量处理商品金额"}；${operation.freight_refund_mode === "all" ? "退全部国内运费" : "国内运费保持不变"}；${operation.option_refund_mode === "all" ? "退全部附加服务金额" : "附加服务保持不变"}`
         : operation.target_label || nodeLabel(operation.target_node);
@@ -184,13 +191,8 @@
     return `<form id="dataAgentPermissionForm" class="panel">
       <div class="panel-title"><h3>需要部长后台账号</h3></div>
       <div class="panel-body"><p>${escapeHtml(session.question || session.result?.reason || "退款达到权限阈值，请选择账号后继续")}</p>
-        <div class="field"><label><input type="radio" name="permission_source" value="profile" checked /> 使用系统账号</label> <label><input type="radio" name="permission_source" value="temporary" /> 临时输入账号</label></div>
-        <div data-permission-source="profile" class="field"><label>后台账号档案</label><select name="backend_account_profile_id">${accountOptions || '<option value="">正在加载账号...</option>'}</select></div>
-        <div data-permission-source="temporary" hidden>
-          <div class="field"><label>后台账号</label><input name="backend_account" autocomplete="username" maxlength="160" /></div>
-          <div class="field"><label>后台密码</label><input name="backend_password" type="password" autocomplete="current-password" maxlength="500" /></div>
-        </div>
-      </div><div class="modal-foot"><span>不会重复提出已经生成的问题产品</span><button class="btn" type="submit">继续执行</button></div>
+        <div class="field"><label>后台账号档案</label><select name="backend_account_profile_id" required>${accountOptions || '<option value="">正在加载账号...</option>'}</select></div>
+      </div><div class="modal-foot"><span>不会重复提出已经生成的问题产品</span><button class="btn" type="submit" ${accountOptions ? "" : "disabled"}>继续执行</button></div>
     </form>`;
   }
 
@@ -260,7 +262,7 @@
     const state = summary.state || summary;
     const status = summary.status || (summary.reason?.includes("完成") ? "succeeded" : "");
     const operations = (goal.operations || []).map((operation, index) => {
-      const label = operation.type === "problem_goods" ? "问题产品处理" : operation.type === "advance_porder" ? "配送单推进" : operation.type === "advance_order" ? "订单推进" : "未知操作";
+      const label = operation.type === "problem_goods" ? "问题产品处理" : operation.type === "rollback" ? "业务状态回退" : operation.type === "advance_porder" ? "配送单推进" : operation.type === "advance_order" ? "订单推进" : "未知操作";
       const target = operation.type === "problem_goods" ? "按退款合同处理" : nodeLabel(operation.target_node);
       return `<li>${index + 1}. ${escapeHtml(label)}：${escapeHtml(target)}</li>`;
     }).join("");
@@ -317,17 +319,7 @@
     const messageForm = modalEl.querySelector("#dataAgentMessageForm");
     if (messageForm) messageForm.onsubmit = sendMessage;
     const permissionForm = modalEl.querySelector("#dataAgentPermissionForm");
-    if (permissionForm) {
-      permissionForm.onsubmit = resumePermission;
-      permissionForm.querySelectorAll('[name="permission_source"]').forEach((input) => {
-        input.onchange = () => {
-          const source = new FormData(permissionForm).get("permission_source");
-          permissionForm.querySelectorAll("[data-permission-source]").forEach((section) => {
-            section.hidden = section.dataset.permissionSource !== source;
-          });
-        };
-      });
-    }
+    if (permissionForm) permissionForm.onsubmit = resumePermission;
     const confirmButton = modalEl.querySelector("#dataAgentConfirm");
     if (confirmButton) confirmButton.onclick = confirmGoal;
     const editButton = modalEl.querySelector("#dataAgentEditGoal");
@@ -468,36 +460,16 @@
 
   async function resumePermission(event) {
     event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const source = formData.get("permission_source");
-    const profileId = Number(formData.get("backend_account_profile_id"));
-    const temporaryAccount = String(formData.get("backend_account") || "").trim();
-    const temporaryPassword = String(formData.get("backend_password") || "");
-    const passwordInput = form.querySelector('[name="backend_password"]');
-    try {
-      if (source === "profile" && !profileId) return options.showToast("请选择后台账号档案");
-      if (source === "temporary" && (!temporaryAccount || !temporaryPassword.trim())) {
-        return options.showToast("请同时输入后台账号和密码");
-      }
-      const body = source === "profile"
-        ? { plan_version: currentSession.plan_version, backend_account_profile_id: profileId }
-        : {
-            plan_version: currentSession.plan_version,
-            backend_account: temporaryAccount,
-            backend_password: temporaryPassword,
-          };
-      currentSession = await options.api(`/api/data-scripts/agent/sessions/${currentSession.id}/permission`, {
-        method: "POST",
-        body,
-      });
-      options.showToast("已提供账号，继续执行");
-      renderModal();
-      stopPolling();
-      pollTimer = window.setTimeout(refreshSession, 600);
-    } finally {
-      if (passwordInput) passwordInput.value = "";
-    }
+    const profileId = Number(new FormData(event.currentTarget).get("backend_account_profile_id"));
+    if (!profileId) return options.showToast("请选择后台账号档案");
+    currentSession = await options.api(`/api/data-scripts/agent/sessions/${currentSession.id}/permission`, {
+      method: "POST",
+      body: { plan_version: currentSession.plan_version, backend_account_profile_id: profileId },
+    });
+    options.showToast("已选择账号，继续执行");
+    renderModal();
+    stopPolling();
+    pollTimer = window.setTimeout(refreshSession, 600);
   }
 
   async function saveGoalEdits(updates) {

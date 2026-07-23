@@ -11,7 +11,7 @@ LOGIN_CASE_NAME = "\u767b\u5f55"
 
 CART_CASE_NAME = "\u52a0\u5165\u8d2d\u7269\u8f66"
 
-FRONTEND_UNIVERSAL_ACCOUNT_PASSWORD = os.getenv("FRONTEND_ACCOUNT_PASSWORD", "xiaolin666@@")
+FRONTEND_UNIVERSAL_ACCOUNT_PASSWORD = os.getenv("FRONTEND_ACCOUNT_PASSWORD", "raku@123456``")
 
 DATA_SCRIPT_API_CASES = [
     {
@@ -81,6 +81,24 @@ DATA_SCRIPT_API_CASES = [
         "key": "admin_porder_detail",
         "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u8be6\u60c5",
         "url": "/porder.detail",
+        "body": {"porder_sn": "{{porder_sn}}"},
+    },
+    {
+        "key": "admin_porder_back_to_offer",
+        "case_name": "数据脚本-配送单已报价退回待报价",
+        "url": "/porder.backToOffer",
+        "body": {"porder_sn": "{{porder_sn}}"},
+    },
+    {
+        "key": "admin_porder_back_to_confirm",
+        "case_name": "数据脚本-配送单待报价退回待装箱",
+        "url": "/porder.backToConfirm",
+        "body": {"porder_sn": "{{porder_sn}}"},
+    },
+    {
+        "key": "admin_porder_to_wait_translate",
+        "case_name": "数据脚本-配送单待装箱退回待翻译",
+        "url": "/porder.toWaitTranslate",
         "body": {"porder_sn": "{{porder_sn}}"},
     },
     {
@@ -185,40 +203,28 @@ DATA_SCRIPT_API_CASES = [
         "extract": {"adminToken": "json.data.access_token", "compute_token": "json.data.compute_token"},
     },
     {
-        "key": "admin_balance_adjustment_client_info",
-        "case_name": "数据脚本-出入金调整查询客户",
-        "url": "/jpanfirm.clientInfo",
-        "body": {"user_id": "{{customer_id}}"},
-    },
-    {
-        "key": "admin_balance_adjustment_create",
-        "case_name": "数据脚本-创建出入金调整申请",
-        "url": "/bill.adjustApplication.create",
-        "body": {
-            "user_id": "{{customer_id}}",
-            "adjust_reason": "{{adjust_reason}}",
-            "type": "{{adjustment_type}}",
-            "amount": "{{amount}}",
-            "client_bill_reason": "{{client_bill_reason}}",
-        },
-    },
-    {
-        "key": "admin_balance_adjustment_list",
-        "case_name": "数据脚本-出入金调整申请列表",
-        "url": "/bill.adjustApplication.list",
-        "body": {"keywords": "", "status": "{{status}}", "page": "1", "pageSize": "100"},
-    },
-    {
-        "key": "admin_balance_adjustment_confirm",
-        "case_name": "数据脚本-审核出入金调整申请",
-        "url": "/bill.adjustApplication.confirm",
-        "body": {"id": "{{application_id}}", "confirm_remark": "{{confirm_remark}}"},
-    },
-    {
         "key": "admin_order_detail",
         "case_name": "\u6570\u636e\u811a\u672c-\u540e\u53f0\u8ba2\u5355\u8be6\u60c5",
         "url": "/order.detail",
         "body": {"order_sn": "{{order_sn}}"},
+    },
+    {
+        "key": "admin_order_back_to_wait_offer",
+        "case_name": "数据脚本-订单已报价退回待报价",
+        "url": "/order.backToWaitOffer",
+        "body": {"order_sn_set[0]": "{{order_sn}}"},
+    },
+    {
+        "key": "admin_order_back_to_wait_confirm",
+        "case_name": "数据脚本-订单待报价退回订单采购",
+        "url": "/order.backToWaitConfirm",
+        "body": {"data": "{{data}}"},
+    },
+    {
+        "key": "admin_order_back_to_wait_translate",
+        "case_name": "数据脚本-订单采购退回订单翻译",
+        "url": "/order.backToWaitTranslate",
+        "body": {"order_sn_set[0]": "{{order_sn}}"},
     },
     {
         "key": "admin_order_translate",

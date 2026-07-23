@@ -4,7 +4,6 @@ import app.data_scripts as data_scripts
 
 
 EXPECTED_RUN_SCRIPT_ENTRIES = {
-    "run_balance_adjustment_script",
     "run_balance_payment_script",
     "run_balance_recharge_script",
     "run_bank_payment_script",
@@ -26,12 +25,12 @@ EXPECTED_RUN_SCRIPT_ENTRIES = {
     "run_purchase_to_shelf_script",
     "run_resume_order_flow_script",
     "run_resume_porder_flow_script",
+    "run_rollback_flow_script",
     "run_shopping_cart_script",
     "run_warehouse_delivery_script",
 }
 
 EXPECTED_REGISTRY_KEYS = {
-    "balance_adjustment",
     "shopping_cart",
     "order_quote",
     "balance_payment",
@@ -46,6 +45,7 @@ EXPECTED_REGISTRY_KEYS = {
     "direct_box_to_shelf",
     "resume_order_flow",
     "resume_porder_flow",
+    "rollback_flow",
     "material_order",
     "material_generation",
     "balance_recharge",

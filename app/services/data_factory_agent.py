@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from ..core.account_utils import account_profile_variables, default_account_profile_for_target
 from ..core.data_script_catalog import DATA_SCRIPT_PROJECT_NAME
 from ..core.utils import data_script_variables, save_record
+from ..data_scripts.rollback_flow import ROLLBACK_TARGET_LABELS
 from ..database import SessionLocal
 from ..functional_testing.model_client import call_local_model_json
 from ..models import AiConfig, Env, Project, TestAccountProfile
@@ -178,6 +179,7 @@ ALLOWED_VARIABLE_KEYS = {
     "order_item_num",
     "order_option_counts",
     "order_payment_mode",
+    "order_purchase_id",
     "payment_fallback",
     "order_per_shop",
     "order_shop_count",
@@ -192,6 +194,8 @@ ALLOWED_VARIABLE_KEYS = {
     "purchase_freight",
     "purchase_no",
     "purchase_unit_price",
+    "rollback_quantity",
+    "rollback_target",
     "quantities",
     "send_num",
     "shelf_type_set",
@@ -1024,9 +1028,112 @@ def _explicit_customer_ids(source_text: str) -> tuple[list[str], str]:
     return values, evidence
 
 
+
 def _explicit_order_sn(source_text: str) -> str:
-    match = re.search(r"(?<!\d)\d{14,}-\d{4,}(?!\d)", str(source_text or ""))
-    return match.group(0) if match else ""
+    matches = re.findall(r"(?<!\d)\d{14,}-\d{4,}(?!\d)", str(source_text or ""))
+    return matches[-1] if matches else ""
+
+
+def _explicit_porder_sn(source_text: str) -> str:
+    matches = re.findall(
+        r"(?:???(?:?)?|porder[. _-]*sn)\s*[?:=]?\s*([A-Za-z0-9_-]{6,})",
+        str(source_text or ""),
+        re.IGNORECASE,
+    )
+    return matches[-1] if matches else ""
+
+
+def _rollback_target_intent(source_text: str) -> tuple[str, str, str]:
+    text = _compact_semantic_text(source_text)
+    marker = re.search(r"??|??|??|??|??|??", text)
+    if not marker:
+        return "", "", ""
+    shelf_match = re.search(r"(?:??|??).{0,24}(?:???|??)|(?:???|??).{0,24}(?:??|??)", text)
+    if shelf_match:
+        return "shelf_checking", shelf_match.group(0), ""
+
+    rollback_markers = list(re.finditer(r"(?:??|??|??|??)(?:?|?|?|?)?", text))
+    destination = text[rollback_markers[-1].end():] if rollback_markers else ""
+    destination = destination.lstrip("????")
+    is_porder = bool(re.search(r"???|porder", text, re.IGNORECASE))
+    if is_porder:
+        targets = (
+            ("porder_wait_translate", r"???"),
+            ("porder_wait_box", r"???|???"),
+            ("porder_wait_offer", r"???"),
+        )
+    else:
+        targets = (
+            ("order_translate", r"????|???|??"),
+            ("order_purchase", r"????|??"),
+            ("order_wait_offer", r"???"),
+        )
+    for target, pattern in targets:
+        match = re.search(pattern, destination)
+        if match:
+            return target, match.group(0), ""
+    entity = "???" if is_porder else "??"
+    return "", "", f"???{entity}???????????"
+
+
+def _rollback_contract(
+    messages: list[Dict[str, str]],
+) -> tuple[str, Dict[str, Any], str] | None:
+    source_text = _source_text(messages)
+    target, evidence, question = _rollback_target_intent(source_text)
+    if not target and not question:
+        return None
+    if question:
+        return "clarifying", {}, question
+
+    order_sn = _explicit_order_sn(source_text)
+    porder_sn = _explicit_porder_sn(source_text)
+    if target.startswith("porder_"):
+        if not porder_sn:
+            return "clarifying", {}, "?????????????"
+        mode = "resume_porder"
+        order_sn = ""
+    else:
+        if not order_sn:
+            return "clarifying", {}, "????????????"
+        mode = "resume_order"
+        porder_sn = ""
+
+    variables: Dict[str, Any] = {"rollback_target": target, "target_node": target}
+    if order_sn:
+        variables["order_sn"] = order_sn
+    if porder_sn:
+        variables["porder_sn"] = porder_sn
+    purchase_match = re.search(r"(?:???|purchase[. _-]*no)\s*[?:=]?\s*([A-Za-z0-9_-]{4,})", source_text, re.IGNORECASE)
+    purchase_id_match = re.search(r"(?:????(?:ID)?|order[. _-]*purchase[. _-]*id)\s*[?:=]?\s*(\d+)", source_text, re.IGNORECASE)
+    quantity_match = re.search(r"(?:????|??|??)\s*[?:=]?\s*(-\d+)", source_text)
+    grid_match = re.search(r"(?:??(?:ID)?|grid[. _-]*id)\s*[?:=]?\s*([A-Za-z0-9_-]+)", source_text, re.IGNORECASE)
+    if purchase_match:
+        variables["purchase_no"] = purchase_match.group(1)
+    if purchase_id_match:
+        variables["order_purchase_id"] = purchase_id_match.group(1)
+    if quantity_match:
+        variables["rollback_quantity"] = int(quantity_match.group(1))
+    elif target == "shelf_checking":
+        variables["rollback_quantity"] = -1
+    if grid_match:
+        variables["grid_id"] = grid_match.group(1)
+
+    target_label = ROLLBACK_TARGET_LABELS[target]
+    identifier = order_sn or porder_sn
+    operation = {"id": "operation_1", "type": "rollback", "target_node": target, "target_label": target_label, "evidence": evidence}
+    goal = {
+        "mode": mode, "target_node": target, "target_label": target_label, "customer_ids": [], "customer_scope_label": "???????",
+        "order_sn": order_sn, "porder_sn": porder_sn, "variables": variables, "operations": [operation], "options": {}, "unhandled_requests": [],
+        "intent": {"source_text": source_text, "evidence": {"rollback_target": evidence}, "pricing": {}, "corrections": []},
+        "summary": f"?{identifier}?????{target_label}",
+        "assumptions": ["????????????????????????"],
+        "defaults_used": ["??????????-1"] if target == "shelf_checking" and not quantity_match else [],
+        "customer_source": "identifier",
+        "steps": [f"??????????????{target_label}"],
+    }
+    goal["contract_hash"] = hashlib.sha256(json.dumps(goal, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")).hexdigest()[:16]
+    return "awaiting_confirmation", goal, ""
 
 
 def _problem_goods_intent(source_text: str) -> tuple[Dict[str, Any], str]:
@@ -1809,6 +1916,19 @@ def _analyze_turn(
     force_ready: bool = False,
     compile_context: Dict[str, Any] | None = None,
 ) -> tuple[str, Dict[str, Any], str, Dict[str, Any]]:
+    rollback = _rollback_contract(messages)
+    if rollback is not None:
+        session_status, goal, question = rollback
+        trace = {
+            "turn_index": max(0, len(messages) - 1),
+            "model": "deterministic_rollback_contract",
+            "message": copy.deepcopy(messages[-1]) if messages else {},
+            "model_candidate": {},
+            "intent_state": sanitize_observation(intent_state),
+            "normalized_intent": sanitize_observation(goal.get("intent") or {}),
+            "pending_fields": {_clarification_field(question): question} if question else {},
+        }
+        return session_status, goal, question, trace
     config = _latest_model_config(db)
     try:
         prompt = _analysis_prompt(messages, intent_state)
@@ -2179,6 +2299,19 @@ def _verify_goal(context: AgentToolContext, last_result: Dict[str, Any]) -> tupl
     target = str(goal.get("target_node") or "")
     summary = last_result.get("summary") if isinstance(last_result.get("summary"), dict) else {}
     current_node = str(summary.get("current_node") or summary.get("stopped_after_node") or "")
+    if target in ROLLBACK_TARGET_LABELS:
+        passed = bool(last_result.get("passed") and summary.get("verified") is True and current_node == target)
+        verification = {
+            "target_node": target,
+            "target_label": ROLLBACK_TARGET_LABELS[target],
+            "actual_node": current_node,
+            "verified": bool(summary.get("verified")),
+            "already_at_target": bool(summary.get("already_at_target")),
+            "step_count": summary.get("step_count"),
+        }
+        if not passed:
+            verification["reason"] = str(summary.get("reason") or "?????????????")
+        return passed, verification
     verification: Dict[str, Any] = {
         "target_node": target,
         "reported_node": current_node,
@@ -2660,6 +2793,15 @@ def _run_agent_session(session_id: str) -> None:
                     "expected": "问题产品全部完成或安全暂停等待权限",
                     "suggested_tool": "",
                 }
+            elif operation.get("type") == "rollback":
+                action = {
+                    "action": "call_tool",
+                    "tool": "rollback_business_state",
+                    "arguments": {},
+                    "reason": "??????????????",
+                    "expected": "????????????????????",
+                    "suggested_tool": "",
+                }
             else:
                 try:
                     action = _next_agent_action(config, goal, recent_events, state)
@@ -2811,6 +2953,10 @@ def _run_agent_session(session_id: str) -> None:
                     {"reason": tool_summary.get("reason"), "summary": tool_summary, "state": context.state},
                 )
                 return
+            if operation.get("type") == "rollback" and not tool_result.get("passed"):
+                final_status = "blocked"
+                final_result = {"reason": tool_summary.get("reason") or "????????????????", **sanitize_observation(state)}
+                break
             if operation.get("type") == "problem_goods" and not tool_result.get("passed"):
                 final_status = "blocked"
                 final_result = {"reason": tool_summary.get("reason") or "问题产品处理失败，已停止避免重复提交", **sanitize_observation(state)}
@@ -2879,6 +3025,13 @@ def update_agent_goal(
                 detail="仅允许在待确认或待补充状态下修改目标",
             )
         goal = dict(session.goal)
+        if any(isinstance(item, dict) and item.get("type") == "rollback" for item in goal.get("operations") or []):
+            if updates:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="???????????????????????????",
+                )
+            return _serialize_session(session)
         _remember_initial_contract(session)
         variables = dict(goal.get("variables") or {})
         intent = dict(goal.get("intent") or {})

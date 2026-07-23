@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import json
 import random
-import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Dict
 
@@ -28,12 +27,6 @@ SENSITIVE_KEYS = {
     "usertoken",
 }
 
-INSUFFICIENT_BALANCE_PATTERNS = (
-    "浣欓涓嶈冻",
-    "鍙敤浣欓涓嶈冻",
-    "insufficient balance",
-)
-
 
 @dataclass(frozen=True)
 class AgentToolSpec:
@@ -53,8 +46,6 @@ class AgentToolContext:
     public_variables: Dict[str, Any]
     state: Dict[str, Any]
     progress_callback: Callable[[Dict[str, Any]], None] | None = None
-    permission_credentials_provider: Callable[[], Dict[str, str]] | None = None
-    permission_redaction_values: set[str] = field(default_factory=set)
 
 
 TOOL_SPECS: Dict[str, AgentToolSpec] = {
@@ -73,6 +64,12 @@ TOOL_SPECS: Dict[str, AgentToolSpec] = {
     "resume_porder_flow": AgentToolSpec(
         "resume_porder_flow",
         "查询已有配送单状态并从当前节点继续。",
+        True,
+        "组合脚本",
+    ),
+    "rollback_business_state": AgentToolSpec(
+        "rollback_business_state",
+        "按已确认目标逐级回退订单、配送单，或将已上架商品负数下架到核查中；每一步都先查状态并回查结果。",
         True,
         "组合脚本",
     ),
@@ -185,38 +182,6 @@ def sanitize_observation(value: Any, *, depth: int = 0) -> Any:
     if isinstance(value, (int, float, bool)) or value is None:
         return value
     return str(value)[:1000]
-
-
-def _redact_sensitive_text(value: str, secrets: set[str]) -> str:
-    result = value
-    for secret in sorted((item for item in secrets if item), key=len, reverse=True):
-        if len(secret) >= 8:
-            result = result.replace(secret, "[REDACTED]")
-            continue
-        result = re.sub(
-            rf"(?<![0-9A-Za-z_]){re.escape(secret)}(?![0-9A-Za-z_])",
-            "[REDACTED]",
-            result,
-        )
-    return result
-
-
-def is_insufficient_balance(result: Dict[str, Any]) -> bool:
-    if not isinstance(result, dict) or result.get("passed") is True:
-        return False
-    summary = result.get("summary") if isinstance(result.get("summary"), dict) else {}
-    for container in (result, summary):
-        if any(container.get(key) is True for key in ("mutation_uncertain", "mutation_outcome_uncertain", "outcome_uncertain")):
-            return False
-        if str(container.get("mutation_status") or "").strip().casefold() in {"uncertain", "unknown"}:
-            return False
-    accepted = {pattern.casefold() for pattern in INSUFFICIENT_BALANCE_PATTERNS}
-    return any(
-        isinstance(container.get(key), str)
-        and container[key].strip().casefold() in accepted
-        for container in (result, summary)
-        for key in ("reason", "error", "message")
-    )
 
 
 def _decimal_text(value: Any) -> str:
@@ -386,50 +351,15 @@ def _save_script_result(
         data_scripts.run_resume_order_flow_script,
         data_scripts.run_resume_porder_flow_script,
     }
-    temp_credentials = (
-        context.permission_credentials_provider()
-        if context.permission_credentials_provider
-        else {}
-    )
-    redacted_values = context.permission_redaction_values | {
-        str(value)
-        for value in (
-            temp_credentials.get("backend_account"),
-            temp_credentials.get("backend_password"),
-            variables.get("backend_password"),
-            variables.get("password"),
+    if context.progress_callback and runner in progress_runners:
+        passed, log_text, report_path, raw_summary = runner(
+            context.env,
+            variables,
+            progress_callback=context.progress_callback,
         )
-        if str(value or "")
-    }
-
-    def redact(value: Any) -> Any:
-        if isinstance(value, dict):
-            return {key: redact(item) for key, item in value.items()}
-        if isinstance(value, list):
-            return [redact(item) for item in value]
-        if isinstance(value, tuple):
-            return [redact(item) for item in value]
-        if isinstance(value, str):
-            value = _redact_sensitive_text(value, redacted_values)
-        return value
-
-    try:
-        if context.progress_callback and runner in progress_runners:
-            passed, log_text, report_path, raw_summary = runner(
-                context.env,
-                variables,
-                progress_callback=context.progress_callback,
-            )
-        else:
-            passed, log_text, report_path, raw_summary = runner(context.env, variables)
-    except Exception as exc:
-        safe_message = str(redact(str(exc)))
-        if isinstance(exc, ValueError):
-            raise ValueError(safe_message) from None
-        raise RuntimeError(safe_message) from None
-    log_text = str(redact(str(log_text or "")))
-    report_path = str(redact(str(report_path or "")))
-    summary = dict(redact(dict(raw_summary or {})))
+    else:
+        passed, log_text, report_path, raw_summary = runner(context.env, variables)
+    summary = dict(raw_summary or {})
     try:
         execution_log = json.loads(log_text) if log_text else {}
     except (json.JSONDecodeError, TypeError):
@@ -620,6 +550,40 @@ def _resume_porder(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict
     return result
 
 
+def _rollback_business_state(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    operations = context.goal.get("operations") if isinstance(context.goal.get("operations"), list) else []
+    operation_id = str(context.state.get("current_operation_id") or "")
+    operation = next(
+        (
+            item
+            for item in operations
+            if isinstance(item, dict)
+            and item.get("type") == "rollback"
+            and (not operation_id or str(item.get("id") or "") == operation_id)
+        ),
+        None,
+    )
+    target = str((operation or {}).get("target_node") or context.goal.get("target_node") or "").strip()
+    if target not in data_scripts.ROLLBACK_TARGET_LABELS:
+        raise ValueError("回退目标未进入已确认合同")
+
+    overrides: Dict[str, Any] = {"rollback_target": target, "target_node": target}
+    if target.startswith("order_") or target == "shelf_checking":
+        order_sn = _state_identifier(context, "order_sn", arguments)
+        if order_sn:
+            overrides["order_sn"] = order_sn
+    if target.startswith("porder_"):
+        porder_sn = _state_identifier(context, "porder_sn", arguments)
+        if porder_sn:
+            overrides["porder_sn"] = porder_sn
+    return _save_script_result(
+        context,
+        "rollback_flow",
+        data_scripts.run_rollback_flow_script,
+        _tool_variables(context, overrides),
+    )
+
+
 def _fill_cart(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict[str, Any]:
     if context.state.get("order_sn") or context.state.get("porder_sn"):
         raise ValueError("当前任务已有单号，不能再修改共享购物车")
@@ -656,72 +620,18 @@ def _quote_order(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict[s
     )
 
 
-def _pay_with_strict_bank_fallback(
-    context: AgentToolContext,
-    *,
-    mode: str,
-    balance_tool_name: str,
-    balance_runner: Callable[..., Any],
-    bank_tool_name: str,
-    bank_runner: Callable[..., Any],
-    identifiers: Dict[str, Any],
-    variables: Dict[str, Any],
-) -> Dict[str, Any]:
-    payment_mode = str(mode or "balance_first").strip().lower()
-    if payment_mode == "bank":
-        return _save_script_result(
-            context,
-            bank_tool_name,
-            bank_runner,
-            _tool_variables(context, {**identifiers, **variables, "finance_confirm": True}),
-        )
-
-    initial_result = _save_script_result(
-        context,
-        balance_tool_name,
-        balance_runner,
-        _tool_variables(context, {**identifiers, **variables, "finance_confirm": False}),
-    )
-    fallback_mode = str(context.goal.get("variables", {}).get("payment_fallback") or "").strip().lower()
-    if initial_result.get("passed") is True or fallback_mode != "bank" or not is_insufficient_balance(initial_result):
-        return initial_result
-
-    final_result = _save_script_result(
-        context,
-        bank_tool_name,
-        bank_runner,
-        _tool_variables(context, {**identifiers, **variables, "finance_confirm": True}),
-    )
-    initial_summary = initial_result.get("summary") if isinstance(initial_result.get("summary"), dict) else {}
-    final_summary = final_result.get("summary") if isinstance(final_result.get("summary"), dict) else {}
-    combined_summary = sanitize_observation(final_summary)
-    combined_summary.update(
-        {
-            "payment_fallback_reason": "insufficient_balance",
-            "initial_payment_mode": "balance_first",
-            "final_payment_mode": "bank",
-            "initial_payment_failure": sanitize_observation(initial_summary),
-        }
-    )
-    if final_result.get("passed") is not True:
-        combined_summary["final_payment_failure"] = sanitize_observation(final_summary)
-    return {**final_result, "summary": sanitize_observation(combined_summary)}
-
-
 def _pay_order(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict[str, Any]:
     order_sn = _state_identifier(context, "order_sn", arguments)
     if not order_sn:
         raise ValueError("订单支付缺少订单号")
     mode = str(context.goal["variables"].get("order_payment_mode") or "balance_first")
-    return _pay_with_strict_bank_fallback(
+    runner = data_scripts.run_bank_payment_script if mode == "bank" else data_scripts.run_balance_payment_script
+    key = "bank_payment" if mode == "bank" else "balance_payment"
+    return _save_script_result(
         context,
-        mode=mode,
-        balance_tool_name="balance_payment",
-        balance_runner=data_scripts.run_balance_payment_script,
-        bank_tool_name="bank_payment",
-        bank_runner=data_scripts.run_bank_payment_script,
-        identifiers={"order_sn": order_sn},
-        variables={},
+        key,
+        runner,
+        _tool_variables(context, {"order_sn": order_sn, "finance_confirm": mode == "bank"}),
     )
 
 
@@ -765,15 +675,16 @@ def _pay_porder(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict[st
     if not porder_sn:
         raise ValueError("配送单支付缺少配送单号")
     mode = str(context.goal["variables"].get("porder_payment_mode") or "balance_first")
-    return _pay_with_strict_bank_fallback(
+    runner = data_scripts.run_porder_bank_payment_script if mode == "bank" else data_scripts.run_porder_balance_payment_script
+    key = "porder_bank_payment" if mode == "bank" else "porder_balance_payment"
+    return _save_script_result(
         context,
-        mode=mode,
-        balance_tool_name="porder_balance_payment",
-        balance_runner=data_scripts.run_porder_balance_payment_script,
-        bank_tool_name="porder_bank_payment",
-        bank_runner=data_scripts.run_porder_bank_payment_script,
-        identifiers={"porder_sn": porder_sn},
-        variables={"run_backend_porder_flow": False},
+        key,
+        runner,
+        _tool_variables(
+            context,
+            {"porder_sn": porder_sn, "run_backend_porder_flow": False, "finance_confirm": mode == "bank"},
+        ),
     )
 
 
@@ -825,8 +736,6 @@ def _problem_goal_operation(context: AgentToolContext) -> Dict[str, Any]:
 
 def _problem_runtime_variables(context: AgentToolContext, values: Dict[str, Any]) -> Dict[str, Any]:
     variables = _tool_variables(context, values)
-    if context.state.get("allow_large_refund"):
-        variables["allow_large_refund"] = True
     profile_id = context.state.get("backend_account_profile_id")
     if profile_id:
         account_values, _ = account_profile_variables(context.db, int(profile_id), context.project_id)
@@ -834,7 +743,6 @@ def _problem_runtime_variables(context: AgentToolContext, values: Dict[str, Any]
         backend_password = account_values.get("backend_password") or account_values.get("password")
         if not backend_account or not backend_password:
             raise ValueError("所选后台账号档案缺少账号或密码")
-        context.permission_redaction_values.add(str(backend_password))
         variables.update(account_values)
         variables.update(
             {
@@ -845,18 +753,6 @@ def _problem_runtime_variables(context: AgentToolContext, values: Dict[str, Any]
                 "backend_account_profile_id": int(profile_id),
             }
         )
-    if context.permission_credentials_provider:
-        permission_credentials = context.permission_credentials_provider()
-        backend_account = str(permission_credentials.get("backend_account") or "")
-        backend_password = str(permission_credentials.get("backend_password") or "")
-        if backend_account and backend_password:
-            context.permission_redaction_values.update({backend_account, backend_password})
-            variables.update(
-                {
-                    "backend_account": backend_account,
-                    "backend_password": backend_password,
-                }
-            )
     return variables
 
 
@@ -884,34 +780,6 @@ def _problem_int(value: Any, fallback: int = 0) -> int:
         return int(Decimal(str(value)))
     except (InvalidOperation, TypeError, ValueError):
         return fallback
-
-
-_PROBLEM_SELECTED_ITEM_STATE_KEY = "problem_goods_selected_item"
-
-
-def _problem_row_identity(row: Dict[str, Any]) -> Dict[str, int]:
-    return {
-        key: value
-        for key in ("problem_goods_id", "sorting", "order_purchase_id", "order_detail_id")
-        if (value := _problem_int(row.get(key))) > 0
-    }
-
-
-def _problem_row_matches_identity(row: Dict[str, Any], identity: Dict[str, Any]) -> bool:
-    problem_goods_id = _problem_int(identity.get("problem_goods_id"))
-    if problem_goods_id and _problem_int(row.get("problem_goods_id")) == problem_goods_id:
-        return True
-    order_detail_id = _problem_int(identity.get("order_detail_id"))
-    if order_detail_id:
-        return _problem_int(row.get("order_detail_id")) == order_detail_id
-    order_purchase_id = _problem_int(identity.get("order_purchase_id"))
-    sorting = _problem_int(identity.get("sorting"))
-    return bool(
-        order_purchase_id
-        and sorting
-        and _problem_int(row.get("order_purchase_id")) == order_purchase_id
-        and _problem_int(row.get("sorting")) == sorting
-    )
 
 
 def _problem_option_rows(value: Any) -> list[Dict[str, Any]]:
@@ -1081,66 +949,7 @@ def _process_problem(context: AgentToolContext, arguments: Dict[str, Any]) -> Di
     expected_map = context.state.get("problem_goods_expected") if isinstance(context.state.get("problem_goods_expected"), dict) else {}
     active_known = [item for item in existing if _problem_int(item.get("problem_goods_id")) in known_ids and _problem_int(item.get("status")) < 6]
     completed_known = [item for item in existing if _problem_int(item.get("problem_goods_id")) in known_ids and _problem_int(item.get("status")) == 6]
-    operation_scope = str(operation.get("scope") or "")
-    selected_identity = context.state.get(_PROBLEM_SELECTED_ITEM_STATE_KEY)
-    selected_identity = dict(selected_identity) if isinstance(selected_identity, dict) else {}
-    if operation_scope == "selected_item" and selected_identity:
-        matching_existing = [item for item in existing if _problem_row_matches_identity(item, selected_identity)]
-        matching_completed = [item for item in matching_existing if _problem_int(item.get("status")) == 6]
-        matching_active = [item for item in matching_existing if _problem_int(item.get("status")) < 6]
-        matching_candidates = [item for item in candidates if _problem_row_matches_identity(item, selected_identity)]
-        if matching_completed:
-            completed_known = matching_completed
-            known_ids = {
-                problem_goods_id
-                for item in matching_completed
-                if (problem_goods_id := _problem_int(item.get("problem_goods_id"))) > 0
-            }
-            rows = []
-        elif matching_active:
-            rows = matching_active
-        elif matching_candidates:
-            rows = [matching_candidates[0]]
-        else:
-            return {
-                "tool": "process_problem_goods",
-                "passed": False,
-                "record_id": None,
-                "report_path": "",
-                "summary": {
-                    "order_sn": order_sn,
-                    "reason": "原先选择的问题商品已不在候选或已处理记录中，已停止避免改动其他商品",
-                    "needs_clarification": True,
-                },
-            }
-    elif operation_scope == "all_candidates":
-        rows = [*active_known, *candidates]
-    elif operation_scope == "selected_item" and not active_known:
-        if known_ids and len(completed_known) == len(known_ids):
-            rows = []
-        else:
-            selected_index = _problem_int(operation.get("item_index"))
-            ordered_candidates = sorted(
-                candidates,
-                key=lambda item: (_problem_int(item.get("sorting"), 10**9), _problem_int(item.get("order_detail_id"))),
-            )
-            if selected_index <= 0 or selected_index > len(ordered_candidates):
-                return {
-                    "tool": "process_problem_goods",
-                    "passed": False,
-                    "record_id": None,
-                    "report_path": "",
-                    "summary": {
-                        "order_sn": order_sn,
-                        "reason": f"订单有{len(ordered_candidates)}个可处理商品，无法匹配第{selected_index}番",
-                        "needs_clarification": True,
-                    },
-                }
-            selected_row = ordered_candidates[selected_index - 1]
-            context.state[_PROBLEM_SELECTED_ITEM_STATE_KEY] = _problem_row_identity(selected_row)
-            rows = [selected_row]
-    else:
-        rows = active_known or candidates
+    rows = [*active_known, *candidates] if operation.get("scope") == "all_candidates" else (active_known or candidates)
     if not rows and known_ids and len(completed_known) == len(known_ids):
         mismatches = _problem_contract_mismatches(completed_known, expected_map)
         completed_all = bool(expected_map) and not mismatches
@@ -1165,7 +974,7 @@ def _process_problem(context: AgentToolContext, arguments: Dict[str, Any]) -> Di
             "report_path": "",
             "summary": {"order_sn": order_sn, "reason": "没有可提出或可继续的问题产品记录", "needs_clarification": True},
         }
-    if operation_scope != "all_candidates" and len(rows) != 1:
+    if operation.get("scope") != "all_candidates" and len(rows) != 1:
         return {
             "tool": "process_problem_goods",
             "passed": False,
@@ -1216,10 +1025,6 @@ def _process_problem(context: AgentToolContext, arguments: Dict[str, Any]) -> Di
             child_record_ids.append(int(result["record_id"]))
         last_report = str(result.get("report_path") or last_report)
         problem_goods_id = _problem_int(summary.get("problem_goods_id"))
-        if operation_scope == "selected_item" and problem_goods_id:
-            selected_identity = dict(context.state.get(_PROBLEM_SELECTED_ITEM_STATE_KEY) or {})
-            selected_identity["problem_goods_id"] = problem_goods_id
-            context.state[_PROBLEM_SELECTED_ITEM_STATE_KEY] = selected_identity
         if problem_goods_id and problem_goods_id not in completed_ids:
             completed_ids.append(problem_goods_id)
         if problem_goods_id:
@@ -1313,6 +1118,7 @@ TOOL_RUNNERS: Dict[str, Callable[[AgentToolContext, Dict[str, Any]], Dict[str, A
     "run_full_flow": _run_full_flow,
     "resume_order_flow": _resume_order,
     "resume_porder_flow": _resume_porder,
+    "rollback_business_state": _rollback_business_state,
     "fill_shopping_cart": _fill_cart,
     "quote_order": _quote_order,
     "pay_order": _pay_order,
@@ -1333,40 +1139,9 @@ def execute_agent_tool(name: str, context: AgentToolContext, arguments: Dict[str
     if not runner:
         raise ValueError(f"未注册的数据工具：{name}")
     safe_arguments = arguments if isinstance(arguments, dict) else {}
-
-    def redacted_values() -> set[str]:
-        values = set(context.permission_redaction_values)
-        if context.permission_credentials_provider:
-            values.update(
-                str(value)
-                for value in context.permission_credentials_provider().values()
-                if str(value or "")
-            )
-        return values
-
-    def redact(value: Any) -> Any:
-        if isinstance(value, dict):
-            return {key: redact(item) for key, item in value.items()}
-        if isinstance(value, list):
-            return [redact(item) for item in value]
-        if isinstance(value, tuple):
-            return [redact(item) for item in value]
-        if isinstance(value, str):
-            value = _redact_sensitive_text(value, redacted_values())
-        return value
-
-    try:
-        result = runner(context, safe_arguments)
-        result = dict(redact(result))
-        result.pop("_raw", None)
-        return result
-    except Exception as exc:
-        safe_message = str(redact(str(exc)))
-        if isinstance(exc, ValueError):
-            raise ValueError(safe_message) from None
-        raise RuntimeError(safe_message) from None
-    finally:
-        context.permission_redaction_values.clear()
+    result = runner(context, safe_arguments)
+    result.pop("_raw", None)
+    return result
 
 
 def aggregate_log(goal: Dict[str, Any], events: list[Dict[str, Any]], result: Dict[str, Any]) -> str:
