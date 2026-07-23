@@ -17,6 +17,7 @@ _DOMAIN_ENTRY_NAMES = (
     "run_material_order_script",
     "run_oem_bulk_order_script",
     "run_oem_full_inquiry_flow_script",
+    "run_balance_adjustment_script",
     "run_oem_new_inquiry_script",
     "run_oem_sample_admin_flow_script",
     "run_oem_sample_balance_pay_script",
@@ -55,6 +56,7 @@ _sys.modules[__name__].__class__ = _DataScriptsModule
 
 
 from .cart import run_shopping_cart_script
+from .balance_adjustment import BALANCE_ADJUSTMENT_SCRIPT_NAME, run_balance_adjustment_script
 from .full_flow import run_full_flow_script, run_resume_order_flow_script, run_resume_porder_flow_script
 from .materials import run_material_generation_script, run_material_order_script
 from .oem import (
@@ -84,6 +86,7 @@ for _name in _DOMAIN_ENTRY_NAMES:
     setattr(_legacy_module, _name, globals()[_name])
 
 
+register_script("balance_adjustment", run_balance_adjustment_script)
 register_script("shopping_cart", run_shopping_cart_script)
 register_script("order_quote", run_order_quote_script)
 register_script("balance_payment", run_balance_payment_script)

@@ -5,6 +5,7 @@ SCRIPT_REGISTRY: Dict[str, Dict[str, Any]] = {
     "shopping_cart": {"name": "商品购物车", "func": None},
     "order_quote": {"name": "订单报价", "func": None},
     "balance_payment": {"name": "余额支付", "func": None},
+    "balance_adjustment": {"name": "余额调整", "func": None},
     "bank_payment": {"name": "银行支付", "func": None},
     "purchase_to_shelf": {"name": "待拍下到商品上架", "func": None},
     "purchase_to_shelf_chain": {"name": "待拍下到商品上架(组合脚本)", "func": None, "chain": True},
