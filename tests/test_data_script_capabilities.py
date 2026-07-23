@@ -11,6 +11,7 @@ from app.data_scripts.capabilities import (
     register_capability,
 )
 from app.data_scripts.registry import SCRIPT_REGISTRY
+from app.services.data_factory_agent_tools import TOOL_SPECS
 
 
 @pytest.fixture(autouse=True)
@@ -92,3 +93,36 @@ def test_duplicate_parameter_names_are_rejected():
                 ParameterSpec("customer_ids", "客户ID", "list[str]"),
             )
         ).validate()
+
+
+@pytest.mark.parametrize(
+    "key",
+    ["full_flow", "resume_order_flow", "resume_porder_flow", "problem_goods"],
+)
+def test_core_agent_capability_is_complete(key):
+    spec = capability_catalog()[key]
+
+    assert spec.agent_enabled is True
+    assert spec.projects == ("日本站测试",)
+    assert spec.intents
+    assert spec.examples
+    assert callable(spec.result_validator)
+    assert spec.idempotency_key == "contract_hash"
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "capability_key"),
+    [
+        ("run_full_flow", "full_flow"),
+        ("resume_order_flow", "resume_order_flow"),
+        ("resume_porder_flow", "resume_porder_flow"),
+        ("process_problem_goods", "problem_goods"),
+    ],
+)
+def test_core_tool_specs_are_projected_from_capabilities(tool_name, capability_key):
+    capability = capability_catalog()[capability_key]
+    tool = TOOL_SPECS[tool_name]
+
+    assert capability.name in tool.description
+    assert tool.mutating is capability.risk.mutating
+    assert tool.category == "组合脚本"

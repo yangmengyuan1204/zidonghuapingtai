@@ -12,6 +12,7 @@ from .. import data_scripts
 from ..core.account_utils import account_profile_variables
 from ..core.utils import save_record
 from ..data_scripts.problem_goods import inspect_problem_goods
+from ..data_scripts.capabilities import capability_catalog
 from ..models import Env
 
 
@@ -146,6 +147,20 @@ TOOL_SPECS: Dict[str, AgentToolSpec] = {
         "组合脚本",
     ),
 }
+
+for _tool_name, _capability_key in {
+    "run_full_flow": "full_flow",
+    "resume_order_flow": "resume_order_flow",
+    "resume_porder_flow": "resume_porder_flow",
+    "process_problem_goods": "problem_goods",
+}.items():
+    _capability = capability_catalog()[_capability_key]
+    TOOL_SPECS[_tool_name] = AgentToolSpec(
+        _tool_name,
+        f"{_capability.name}：{'；'.join(_capability.intents)}",
+        _capability.risk.mutating,
+        "组合脚本",
+    )
 
 
 def public_tool_catalog() -> list[Dict[str, Any]]:
