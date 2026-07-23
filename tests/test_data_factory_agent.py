@@ -3252,3 +3252,21 @@ def test_intent_extracts_bank_payment_mode():
     result2 = reduce_intent_fields({}, "支付方式改成余额")
     fields2 = result2.get("resolved_fields", {})
     assert fields2.get("order_payment_mode", {}).get("value") == "balance_first"
+
+
+def test_data_agent_learning_center_has_required_controls():
+    source = Path("static/data-factory-agent.js").read_text(encoding="utf-8")
+
+    for token in (
+        "dataAgentLearningCenter",
+        "learning/candidates",
+        "approveLearningRule",
+        "promoteLearningRule",
+        "rollbackLearningRule",
+        "回归结果",
+        "来源样本",
+        "运行回归",
+        "提升全局",
+        "停用",
+    ):
+        assert token in source

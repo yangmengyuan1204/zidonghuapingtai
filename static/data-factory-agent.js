@@ -541,6 +541,194 @@
     renderModal();
   }
 
+  let learningOverviewState = null;
+  let learningDetailHtml = "";
+
+  function learningStatusLabel(value) {
+    return ({
+      collecting: "收集中",
+      pending_regression: "待回归",
+      regression_failed: "回归失败",
+      pending_review: "待审批",
+      approved: "已批准",
+      rejected: "已拒绝",
+      active: "生效中",
+      superseded: "已替代",
+      disabled: "已停用",
+    })[String(value)] || String(value || "-");
+  }
+
+  function learningReason(actionLabel) {
+    const reason = window.prompt(`请输入${actionLabel}原因（将写入审核记录）`, "");
+    return reason === null ? null : String(reason).trim();
+  }
+
+  function learningJson(value) {
+    return options.escapeHtml(JSON.stringify(value ?? {}, null, 2));
+  }
+
+  function learningReviews(reviews) {
+    const rows = (reviews || []).map((item) => `<li>${options.escapeHtml(item.action || "审核")} · ${options.escapeHtml(item.reason || "-")} · ${options.escapeHtml(item.create_time || "")}</li>`).join("");
+    return rows ? `<ol>${rows}</ol>` : '<div class="empty">暂无审核记录</div>';
+  }
+
+  function learningCandidateActions(item) {
+    const actions = [`<button class="btn secondary" type="button" data-learning-candidate="${item.id}">查看</button>`];
+    if (item.status === "pending_regression") {
+      actions.push(`<button class="btn secondary" type="button" data-learning-regression="${item.id}">运行回归</button>`);
+    }
+    if (item.status === "pending_review") {
+      actions.push(`<button class="btn" type="button" data-learning-approve="${item.id}">批准</button>`);
+      actions.push(`<button class="btn secondary" type="button" data-learning-reject="${item.id}">拒绝</button>`);
+    }
+    return actions.join(" ");
+  }
+
+  function learningRuleActions(item) {
+    const actions = [`<button class="btn secondary" type="button" data-learning-rule="${item.id}">查看版本</button>`];
+    if (item.status === "active" && item.scope === "project") {
+      actions.push(`<button class="btn secondary" type="button" data-learning-promote="${item.id}">提升全局</button>`);
+    }
+    if (item.status === "active") {
+      actions.push(`<button class="btn secondary" type="button" data-learning-disable="${item.id}">停用</button>`);
+    }
+    actions.push(`<button class="btn secondary" type="button" data-learning-rollback="${item.id}">回滚</button>`);
+    return actions.join(" ");
+  }
+
+  function learningTable(title, rows, columns) {
+    const head = columns.map((item) => `<th>${options.escapeHtml(item.label)}</th>`).join("");
+    const body = rows.length
+      ? rows.map((row) => `<tr>${columns.map((item) => `<td>${item.render(row)}</td>`).join("")}</tr>`).join("")
+      : `<tr><td colspan="${columns.length}"><div class="empty">暂无数据</div></td></tr>`;
+    return `<section class="panel"><div class="panel-title"><h3>${options.escapeHtml(title)}</h3></div><div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div></section>`;
+  }
+
+  function renderLearningCenter() {
+    const dialog = document.querySelector("#dataAgentLearningCenter");
+    if (!dialog || !learningOverviewState) return;
+    const overview = learningOverviewState;
+    const candidates = learningTable("规则候选", overview.candidates || [], [
+      { label: "模块", render: (item) => options.escapeHtml(item.module_key || "-") },
+      { label: "规则", render: (item) => options.escapeHtml(item.rule_key || "-") },
+      { label: "出现次数", render: (item) => options.escapeHtml(item.occurrence_count || 0) },
+      { label: "状态", render: (item) => options.escapeHtml(learningStatusLabel(item.status)) },
+      { label: "操作", render: learningCandidateActions },
+    ]);
+    const activeRules = learningTable("当前生效规则", overview.active_rules || [], [
+      { label: "范围", render: (item) => options.escapeHtml(item.scope === "project" ? "当前项目" : "全局") },
+      { label: "规则", render: (item) => options.escapeHtml(item.rule_key || "-") },
+      { label: "版本", render: (item) => `v${options.escapeHtml(item.version || 0)}` },
+      { label: "状态", render: (item) => options.escapeHtml(learningStatusLabel(item.status)) },
+      { label: "操作", render: learningRuleActions },
+    ]);
+    const versions = learningTable("最近版本", overview.recent_versions || [], [
+      { label: "范围", render: (item) => options.escapeHtml(item.scope === "project" ? "当前项目" : "全局") },
+      { label: "规则", render: (item) => options.escapeHtml(item.rule_key || "-") },
+      { label: "版本", render: (item) => `v${options.escapeHtml(item.version || 0)}` },
+      { label: "状态", render: (item) => options.escapeHtml(learningStatusLabel(item.status)) },
+      { label: "操作", render: learningRuleActions },
+    ]);
+    dialog.innerHTML = `
+      <div class="modal-head"><div><h3>数据智能体学习中心</h3><p>规则至少由3次已验证修订生成，回归通过并由管理员批准后才会生效。</p></div><div class="actions"><button class="btn secondary" id="refreshLearningCenter" type="button">刷新</button><button class="btn secondary" id="closeLearningCenter" type="button">关闭</button></div></div>
+      <div class="modal-body">${candidates}${activeRules}${versions}<div id="dataAgentLearningDetail">${learningDetailHtml}</div></div>`;
+    bindLearningCenterActions(dialog);
+  }
+
+  async function refreshLearningCenter() {
+    learningOverviewState = await options.api(`/api/data-scripts/agent/learning/overview?project_id=${encodeURIComponent(options.projectId)}`);
+    renderLearningCenter();
+  }
+
+  async function showLearningCandidate(candidateId) {
+    const detail = await options.api(`/api/data-scripts/agent/learning/candidates/${candidateId}`);
+    const candidate = detail.candidate || {};
+    const samples = (detail.source_samples || []).map((item) => `
+      <div class="panel-body"><strong>#${options.escapeHtml(item.id)}</strong> ${options.escapeHtml(item.instruction || "-")}<pre>${learningJson(item.corrections)}</pre></div>`).join("");
+    learningDetailHtml = `<section class="panel"><div class="panel-title"><h3>候选详情</h3><span>${options.escapeHtml(learningStatusLabel(candidate.status))}</span></div><div class="panel-body"><h4>回归结果</h4><pre>${learningJson(candidate.regression)}</pre><h4>来源样本</h4>${samples || '<div class="empty">暂无来源样本</div>'}<h4>候选规则</h4><pre>${learningJson(candidate.proposal)}</pre><h4>审核记录</h4>${learningReviews(detail.reviews)}</div></section>`;
+    renderLearningCenter();
+  }
+
+  async function showLearningRule(ruleId) {
+    const detail = await options.api(`/api/data-scripts/agent/learning/rules/${ruleId}`);
+    const history = (detail.history || []).map((item) => `<li>v${options.escapeHtml(item.version)} · ${options.escapeHtml(learningStatusLabel(item.status))} · ID ${options.escapeHtml(item.id)}</li>`).join("");
+    learningDetailHtml = `<section class="panel"><div class="panel-title"><h3>规则版本详情</h3></div><div class="panel-body"><pre>${learningJson(detail.rule?.rule || {})}</pre><h4>版本历史</h4><ol>${history || "<li>暂无版本</li>"}</ol><h4>审核记录</h4>${learningReviews(detail.reviews)}</div></section>`;
+    renderLearningCenter();
+    return detail;
+  }
+
+  async function approveLearningRule(candidateId) {
+    const reason = learningReason("批准");
+    if (!reason) return;
+    await options.api(`/api/data-scripts/agent/learning/candidates/${candidateId}/approve`, { method: "POST", body: { reason } });
+    options.showToast("学习规则已批准并在当前项目生效");
+    learningDetailHtml = "";
+    await refreshLearningCenter();
+  }
+
+  async function promoteLearningRule(ruleId) {
+    const reason = learningReason("提升为全局规则");
+    if (!reason) return;
+    await options.api(`/api/data-scripts/agent/learning/rules/${ruleId}/promote`, { method: "POST", body: { reason } });
+    options.showToast("学习规则已提升为全局规则");
+    await refreshLearningCenter();
+  }
+
+  async function rollbackLearningRule(ruleId) {
+    const detail = await options.api(`/api/data-scripts/agent/learning/rules/${ruleId}`);
+    const choices = (detail.history || []).filter((item) => Number(item.id) !== Number(ruleId));
+    const hint = choices.map((item) => `ID ${item.id}: v${item.version}（${learningStatusLabel(item.status)}）`).join("\n");
+    const target = window.prompt(`请输入回滚目标版本ID：\n${hint}`, choices[0]?.id || "");
+    if (target === null || !/^\d+$/.test(String(target).trim())) return;
+    const reason = learningReason("回滚");
+    if (!reason) return;
+    await options.api(`/api/data-scripts/agent/learning/rules/${ruleId}/rollback`, { method: "POST", body: { target_version_id: Number(target), reason } });
+    options.showToast("已创建新的回滚版本并生效");
+    await refreshLearningCenter();
+  }
+
+  async function runLearningAction(url, actionLabel) {
+    await options.api(url, { method: "POST" });
+    options.showToast(actionLabel);
+    learningDetailHtml = "";
+    await refreshLearningCenter();
+  }
+
+  async function runReasonedLearningAction(url, actionLabel) {
+    const reason = learningReason(actionLabel);
+    if (!reason) return;
+    await options.api(url, { method: "POST", body: { reason } });
+    options.showToast(`${actionLabel}完成`);
+    learningDetailHtml = "";
+    await refreshLearningCenter();
+  }
+
+  function bindLearningCenterActions(dialog) {
+    dialog.querySelector("#closeLearningCenter")?.addEventListener("click", () => dialog.close());
+    dialog.querySelector("#refreshLearningCenter")?.addEventListener("click", refreshLearningCenter);
+    dialog.querySelectorAll("[data-learning-candidate]").forEach((button) => button.addEventListener("click", () => showLearningCandidate(button.dataset.learningCandidate)));
+    dialog.querySelectorAll("[data-learning-rule]").forEach((button) => button.addEventListener("click", () => showLearningRule(button.dataset.learningRule)));
+    dialog.querySelectorAll("[data-learning-regression]").forEach((button) => button.addEventListener("click", () => runLearningAction(`/api/data-scripts/agent/learning/candidates/${button.dataset.learningRegression}/regression`, "回归完成")));
+    dialog.querySelectorAll("[data-learning-approve]").forEach((button) => button.addEventListener("click", () => approveLearningRule(button.dataset.learningApprove)));
+    dialog.querySelectorAll("[data-learning-reject]").forEach((button) => button.addEventListener("click", () => runReasonedLearningAction(`/api/data-scripts/agent/learning/candidates/${button.dataset.learningReject}/reject`, "拒绝")));
+    dialog.querySelectorAll("[data-learning-promote]").forEach((button) => button.addEventListener("click", () => promoteLearningRule(button.dataset.learningPromote)));
+    dialog.querySelectorAll("[data-learning-disable]").forEach((button) => button.addEventListener("click", () => runReasonedLearningAction(`/api/data-scripts/agent/learning/rules/${button.dataset.learningDisable}/disable`, "停用")));
+    dialog.querySelectorAll("[data-learning-rollback]").forEach((button) => button.addEventListener("click", () => rollbackLearningRule(button.dataset.learningRollback)));
+  }
+
+  async function openLearningCenter() {
+    let dialog = document.querySelector("#dataAgentLearningCenter");
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.id = "dataAgentLearningCenter";
+      dialog.className = "modal";
+      document.body.appendChild(dialog);
+    }
+    learningDetailHtml = "";
+    await refreshLearningCenter();
+    if (!dialog.open) dialog.showModal();
+  }
+
   function mount(config) {
     options = config;
     permissionAccounts = null;
@@ -553,7 +741,7 @@
     section.className = "panel";
     section.style.marginBottom = "16px";
     section.innerHTML = `
-      <div class="panel-title"><div><h3>DeepSeek 数据智能体</h3><p>用自然语言描述目标，智能体会在受控工具范围内造数并校验实际状态。</p></div><button class="btn secondary" id="dataAgentResume" type="button" ${stored ? "" : "hidden"}>继续查看任务</button></div>
+      <div class="panel-title"><div><h3>DeepSeek 数据智能体</h3><p>用自然语言描述目标，智能体会在受控工具范围内造数并校验实际状态。</p></div><div class="actions"><button class="btn secondary" id="dataAgentLearning" type="button">学习中心</button><button class="btn secondary" id="dataAgentResume" type="button" ${stored ? "" : "hidden"}>继续查看任务</button></div></div>
       <div class="panel-body">
         <form id="dataAgentCreateForm">
           <div class="form-grid">
@@ -565,6 +753,7 @@
       </div>`;
     config.root.prepend(section);
     section.querySelector("#dataAgentCreateForm")?.addEventListener("submit", createSession);
+    section.querySelector("#dataAgentLearning")?.addEventListener("click", openLearningCenter);
     section.querySelector("#dataAgentResume")?.addEventListener("click", openStoredSession);
   }
 
