@@ -1033,48 +1033,45 @@ def _explicit_order_sn(source_text: str) -> str:
     matches = re.findall(r"(?<!\d)\d{14,}-\d{4,}(?!\d)", str(source_text or ""))
     return matches[-1] if matches else ""
 
-
 def _explicit_porder_sn(source_text: str) -> str:
     matches = re.findall(
-        r"(?:???(?:?)?|porder[. _-]*sn)\s*[?:=]?\s*([A-Za-z0-9_-]{6,})",
+        r"(?:配送单(?:号)?|porder[. _-]*sn)\s*[：:=]?\s*([A-Za-z0-9_-]{6,})",
         str(source_text or ""),
         re.IGNORECASE,
     )
     return matches[-1] if matches else ""
 
-
 def _rollback_target_intent(source_text: str) -> tuple[str, str, str]:
     text = _compact_semantic_text(source_text)
-    marker = re.search(r"??|??|??|??|??|??", text)
+    marker = re.search(r"回退|退回|回到|退到|下架|负数", text)
     if not marker:
         return "", "", ""
-    shelf_match = re.search(r"(?:??|??).{0,24}(?:???|??)|(?:???|??).{0,24}(?:??|??)", text)
+    shelf_match = re.search(r"(?:下架|负数).{0,24}(?:核查中|核查)|(?:核查中|核查).{0,24}(?:下架|负数)", text)
     if shelf_match:
         return "shelf_checking", shelf_match.group(0), ""
 
-    rollback_markers = list(re.finditer(r"(?:??|??|??|??)(?:?|?|?|?)?", text))
-    destination = text[rollback_markers[-1].end():] if rollback_markers else ""
-    destination = destination.lstrip("????")
-    is_porder = bool(re.search(r"???|porder", text, re.IGNORECASE))
+    rollback_markers = list(re.finditer(r"(?:回退|退回|回到|退到)(?:到|至|为|成)?", text))
+    destination = text[rollback_markers[-1].end() :] if rollback_markers else ""
+    destination = destination.lstrip("到至为成")
+    is_porder = bool(re.search(r"配送单|porder", text, re.IGNORECASE))
     if is_porder:
         targets = (
-            ("porder_wait_translate", r"???"),
-            ("porder_wait_box", r"???|???"),
-            ("porder_wait_offer", r"???"),
+            ("porder_wait_translate", r"待翻译"),
+            ("porder_wait_box", r"待装箱|装箱中"),
+            ("porder_wait_offer", r"待报价"),
         )
     else:
         targets = (
-            ("order_translate", r"????|???|??"),
-            ("order_purchase", r"????|??"),
-            ("order_wait_offer", r"???"),
+            ("order_translate", r"订单翻译|待翻译|翻译"),
+            ("order_purchase", r"订单采购|采购"),
+            ("order_wait_offer", r"待报价"),
         )
     for target, pattern in targets:
         match = re.search(pattern, destination)
         if match:
             return target, match.group(0), ""
-    entity = "???" if is_porder else "??"
-    return "", "", f"???{entity}???????????"
-
+    entity = "配送单" if is_porder else "订单"
+    return "", "", f"请明确{entity}要逐级回退到哪个状态。"
 
 def _rollback_contract(
     messages: list[Dict[str, str]],
@@ -1090,12 +1087,12 @@ def _rollback_contract(
     porder_sn = _explicit_porder_sn(source_text)
     if target.startswith("porder_"):
         if not porder_sn:
-            return "clarifying", {}, "?????????????"
+            return "clarifying", {}, "请提供需要回退的配送单号。"
         mode = "resume_porder"
         order_sn = ""
     else:
         if not order_sn:
-            return "clarifying", {}, "????????????"
+            return "clarifying", {}, "请提供需要回退的订单号。"
         mode = "resume_order"
         porder_sn = ""
 
@@ -1104,10 +1101,10 @@ def _rollback_contract(
         variables["order_sn"] = order_sn
     if porder_sn:
         variables["porder_sn"] = porder_sn
-    purchase_match = re.search(r"(?:???|purchase[. _-]*no)\s*[?:=]?\s*([A-Za-z0-9_-]{4,})", source_text, re.IGNORECASE)
-    purchase_id_match = re.search(r"(?:????(?:ID)?|order[. _-]*purchase[. _-]*id)\s*[?:=]?\s*(\d+)", source_text, re.IGNORECASE)
-    quantity_match = re.search(r"(?:????|??|??)\s*[?:=]?\s*(-\d+)", source_text)
-    grid_match = re.search(r"(?:??(?:ID)?|grid[. _-]*id)\s*[?:=]?\s*([A-Za-z0-9_-]+)", source_text, re.IGNORECASE)
+    purchase_match = re.search(r"(?:交易号|purchase[. _-]*no)\s*[：:=]?\s*([A-Za-z0-9_-]{4,})", source_text, re.IGNORECASE)
+    purchase_id_match = re.search(r"(?:采购记录(?:ID)?|order[. _-]*purchase[. _-]*id)\s*[：:=]?\s*(\d+)", source_text, re.IGNORECASE)
+    quantity_match = re.search(r"(?:下架数量|数量|输入)\s*[：:=]?\s*(-\d+)", source_text)
+    grid_match = re.search(r"(?:库位(?:ID)?|grid[. _-]*id)\s*[：:=]?\s*([A-Za-z0-9_-]+)", source_text, re.IGNORECASE)
     if purchase_match:
         variables["purchase_no"] = purchase_match.group(1)
     if purchase_id_match:
@@ -1121,20 +1118,36 @@ def _rollback_contract(
 
     target_label = ROLLBACK_TARGET_LABELS[target]
     identifier = order_sn or porder_sn
-    operation = {"id": "operation_1", "type": "rollback", "target_node": target, "target_label": target_label, "evidence": evidence}
-    goal = {
-        "mode": mode, "target_node": target, "target_label": target_label, "customer_ids": [], "customer_scope_label": "???????",
-        "order_sn": order_sn, "porder_sn": porder_sn, "variables": variables, "operations": [operation], "options": {}, "unhandled_requests": [],
-        "intent": {"source_text": source_text, "evidence": {"rollback_target": evidence}, "pricing": {}, "corrections": []},
-        "summary": f"?{identifier}?????{target_label}",
-        "assumptions": ["????????????????????????"],
-        "defaults_used": ["??????????-1"] if target == "shelf_checking" and not quantity_match else [],
-        "customer_source": "identifier",
-        "steps": [f"??????????????{target_label}"],
+    operation = {
+        "id": "operation_1",
+        "type": "rollback",
+        "target_node": target,
+        "target_label": target_label,
+        "evidence": evidence,
     }
-    goal["contract_hash"] = hashlib.sha256(json.dumps(goal, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")).hexdigest()[:16]
+    goal = {
+        "mode": mode,
+        "target_node": target,
+        "target_label": target_label,
+        "customer_ids": [],
+        "customer_scope_label": "从单号自动识别",
+        "order_sn": order_sn,
+        "porder_sn": porder_sn,
+        "variables": variables,
+        "operations": [operation],
+        "options": {},
+        "unhandled_requests": [],
+        "intent": {"source_text": source_text, "evidence": {"rollback_target": evidence}, "pricing": {}, "corrections": []},
+        "summary": f"将{identifier}逐级回退到{target_label}",
+        "assumptions": ["严格按相邻状态逐步回退，每一步完成后回查实际状态"],
+        "defaults_used": ["商品负数下架默认数量-1"] if target == "shelf_checking" and not quantity_match else [],
+        "customer_source": "identifier",
+        "steps": [f"只读识别当前状态并逐级回退到{target_label}"],
+    }
+    goal["contract_hash"] = hashlib.sha256(
+        json.dumps(goal, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()[:16]
     return "awaiting_confirmation", goal, ""
-
 
 def _problem_goods_intent(source_text: str) -> tuple[Dict[str, Any], str]:
     text = _compact_semantic_text(source_text)
