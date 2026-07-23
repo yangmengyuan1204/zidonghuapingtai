@@ -189,3 +189,37 @@ def test_shopping_cart_capability_is_enabled_without_second_confirmation():
     assert spec.risk.second_confirmation is False
     assert callable(spec.result_validator)
     assert TOOL_SPECS["fill_shopping_cart"].description.startswith(spec.name)
+
+
+@pytest.mark.parametrize(
+    ("key", "required"),
+    [
+        ("warehouse_delivery", {"warehouse_sku_count", "send_num"}),
+        ("direct_box_to_shelf", {"order_sn"}),
+        ("material_order", {"accessory_name", "goods_id"}),
+        ("material_generation", {"name"}),
+    ],
+)
+def test_warehouse_material_metadata_declares_actual_required_inputs(key, required):
+    spec = capability_catalog()[key]
+    actual = {item.name for item in spec.parameters if item.required}
+
+    assert required <= actual
+    assert callable(spec.result_validator)
+
+
+def test_only_verified_warehouse_capability_is_enabled():
+    catalog = capability_catalog()
+
+    assert catalog["warehouse_delivery"].agent_enabled is True
+    assert TOOL_SPECS["create_and_quote_porder"].description.startswith("仓库提出配送单")
+    assert catalog["direct_box_to_shelf"].agent_enabled is False
+    assert catalog["material_order"].agent_enabled is False
+    assert catalog["material_generation"].agent_enabled is False
+
+
+def test_standard_result_validator_accepts_legacy_script_tuple():
+    validator = capability_catalog()["warehouse_delivery"].result_validator
+
+    assert validator((True, "", "", {"porder_sn": "P-1"})) == (True, "")
+    assert validator((False, "", "", {"reason": "库存不足"})) == (False, "库存不足")

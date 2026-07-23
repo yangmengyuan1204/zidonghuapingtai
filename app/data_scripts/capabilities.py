@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Mapping
 from .registry import SCRIPT_REGISTRY
 
 
-ResultValidator = Callable[[Dict[str, Any]], tuple[bool, str]]
+ResultValidator = Callable[[Any], tuple[bool, str]]
 Runner = Callable[[Any, Dict[str, Any]], Any]
 ALLOWED_RISK_LEVELS = {"low", "medium", "high", "critical"}
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
@@ -164,7 +164,12 @@ def public_capability_catalog(
     ]
 
 
-def validate_script_result(result: Dict[str, Any]) -> tuple[bool, str]:
+def validate_script_result(result: Any) -> tuple[bool, str]:
+    if isinstance(result, tuple) and result:
+        passed = bool(result[0])
+        summary = result[3] if len(result) > 3 and isinstance(result[3], dict) else {}
+        reason = str(summary.get("reason") or "脚本未返回成功证据")
+        return passed, "" if passed else reason
     if not isinstance(result, dict):
         return False, "脚本未返回结构化结果"
     summary = result.get("summary") if isinstance(result.get("summary"), dict) else {}
@@ -330,6 +335,83 @@ def register_builtin_capabilities() -> None:
             agent_enabled=enabled,
         )
         for key, name, module, runner, risk_level, second_confirmation, enabled, identifier in standard_configs
+    )
+    configs += (
+        DataScriptCapability(
+            key="warehouse_delivery",
+            name="仓库提出配送单",
+            module="warehouse",
+            projects=("日本站测试",),
+            intents=("仓库提出配送单", "从仓库商品创建配送单"),
+            examples=("从仓库选2番，每番提出1件并创建配送单",),
+            parameters=(
+                ParameterSpec("warehouse_sku_count", "仓库提出番数", "int", required=True),
+                ParameterSpec("send_num", "每番提出数量", "int", required=True),
+            ),
+            risk=RiskSpec(level="medium", mutating=True, second_confirmation=False),
+            runner=data_scripts.run_warehouse_delivery_script,
+            result_validator=validate_script_result,
+            account_role="frontend_and_backend",
+            result_state="warehouse_delivery_created",
+            resume_key="porder_sn",
+            idempotency_key="contract_hash",
+            agent_enabled=True,
+        ),
+        DataScriptCapability(
+            key="direct_box_to_shelf",
+            name="直接装箱上架",
+            module="warehouse",
+            projects=("日本站测试",),
+            intents=("直接装箱上架",),
+            examples=("订单号明确后直接装箱并上架",),
+            parameters=(ParameterSpec("order_sn", "订单号", "str", required=True),),
+            risk=RiskSpec(level="medium", mutating=True, second_confirmation=False),
+            runner=data_scripts.run_direct_box_to_shelf_script,
+            result_validator=validate_script_result,
+            account_role="frontend_and_backend",
+            result_state="shelf_stored",
+            resume_key="order_sn",
+            idempotency_key="contract_hash",
+            agent_enabled=False,
+        ),
+        DataScriptCapability(
+            key="material_order",
+            name="辅料单",
+            module="material",
+            projects=("日本站测试",),
+            intents=("创建辅料单",),
+            examples=("为商品123创建名称为包装袋的辅料单",),
+            parameters=(
+                ParameterSpec("accessory_name", "辅料名称", "str", required=True),
+                ParameterSpec("goods_id", "商品ID", "int", required=True),
+            ),
+            risk=RiskSpec(level="medium", mutating=True, second_confirmation=False),
+            runner=data_scripts.run_material_order_script,
+            result_validator=validate_script_result,
+            account_role="frontend",
+            result_state="material_order_created",
+            idempotency_key="contract_hash",
+            agent_enabled=False,
+        ),
+        DataScriptCapability(
+            key="material_generation",
+            name="辅料生成",
+            module="material",
+            projects=("日本站测试",),
+            intents=("批量生成辅料",),
+            examples=("以包装袋为基础名称生成3个辅料",),
+            parameters=(
+                ParameterSpec("name", "辅料基础名称", "str", required=True),
+                ParameterSpec("count", "生成数量", "int", default=1),
+            ),
+            risk=RiskSpec(level="medium", mutating=True, second_confirmation=False),
+            runner=data_scripts.run_material_generation_script,
+            result_validator=validate_script_result,
+            account_role="frontend",
+            result_state="materials_created",
+            idempotency_key="contract_hash",
+            agent_enabled=False,
+        ),
     )
     for spec in configs:
         if spec.key not in CAPABILITIES:
