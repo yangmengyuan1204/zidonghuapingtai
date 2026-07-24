@@ -595,7 +595,7 @@ _RESUME_NODE_ORDER = [
     "purchase_wait_modify_price", "purchase_wait_pay", "purchase_paid",
     "checking_started", "shelf_stored", "warehouse_delivery_created",
     "porder_translated", "porder_confirmed", "porder_wait_offer",
-    "porder_offered", "porder_paid", "full_complete",
+    "porder_offered", "porder_paid", "porder_shipped", "full_complete",
 ]
 
 

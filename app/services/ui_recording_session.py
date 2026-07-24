@@ -209,6 +209,7 @@ class _Session:
     case_name: str
     start_url: str
     user_id: int | None = None
+    account_profile_id: int | None = None
     learning_session_id: str = ""
     persistent: bool = False
     events: list[dict[str, Any]] = field(default_factory=list)
@@ -438,11 +439,28 @@ def _session_payload(session_id: str, session: _Session, assertion_text: str = "
         "project_id": session.project_id,
         "case_name": session.case_name,
         "start_url": session.start_url,
+        "account_profile_id": session.account_profile_id,
         "current_url": current_url,
         "count": len(events),
         "items": events,
         "preview_steps": build_ui_steps(session.start_url, current_url, events, assertion_text),
     }
+
+
+async def _attach_page_recorder(session: _Session, page: Any) -> None:
+    async def record_binding(_source: Any, payload: Any) -> None:
+        _append_event(session, payload)
+
+    await page.expose_binding("__recordUiEvent", record_binding)
+
+    def on_frame_navigated(frame: Any) -> None:
+        try:
+            if frame == page.main_frame:
+                _append_event(session, {"action": "url_change", "event_type": "url_change", "url": frame.url, "value": frame.url})
+        except Exception:
+            return
+
+    page.on("framenavigated", on_frame_navigated)
 
 
 async def start_session(
@@ -451,6 +469,7 @@ async def start_session(
     start_url: str,
     user_id: int | None = None,
     storage_state: dict[str, Any] | None = None,
+    account_profile_id: int | None = None,
     preferred_session_id: str | None = None,
     persistent: bool = False,
     persist_learning_events: bool = True,
@@ -473,24 +492,18 @@ async def start_session(
         case_name=case_name,
         start_url=start_url,
         user_id=user_id,
+        account_profile_id=account_profile_id,
         current_url=start_url,
         learning_session_id=str(preferred_session_id or "") if persist_learning_events else "",
         persistent=bool(persistent),
     )
 
-    async def record_binding(_source: Any, payload: Any) -> None:
-        _append_event(session, payload)
+    await _attach_page_recorder(session, page)
 
-    await page.expose_binding("__recordUiEvent", record_binding)
+    def on_new_page(new_page: Any) -> None:
+        asyncio.create_task(_attach_page_recorder(session, new_page))
 
-    def on_frame_navigated(frame: Any) -> None:
-        try:
-            if frame == page.main_frame:
-                _append_event(session, {"action": "url_change", "event_type": "url_change", "url": frame.url, "value": frame.url})
-        except Exception:
-            return
-
-    page.on("framenavigated", on_frame_navigated)
+    context.on("page", on_new_page)
 
     async with _LOCK:
         session_id = str(preferred_session_id or uuid4().hex)

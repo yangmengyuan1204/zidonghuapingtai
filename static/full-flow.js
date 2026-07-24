@@ -31,13 +31,14 @@ if (!window.__fullFlowDataScriptLoaded) {
     { value: "porder_wait_offer", label: "配送单进入待报价完成" },
     { value: "porder_offered", label: "配送单报价完成" },
     { value: "porder_paid", label: "配送单支付完成" },
+    { value: "porder_shipped", label: "配送单已出货" },
   ];
   const RESUME_ORDER_STOP_NODE_OPTIONS = FULL_FLOW_STOP_NODE_OPTIONS.filter(
-    (option) => !["full_complete", "shopping_cart", "order_created", "porder_paid"].includes(option.value),
+    (option) => !["full_complete", "shopping_cart", "order_created"].includes(option.value),
   );
   const RESUME_PORDER_STOP_NODE_OPTIONS = FULL_FLOW_STOP_NODE_OPTIONS.filter(
-    (option) => ["warehouse_delivery_created", "porder_translated", "porder_confirmed", "porder_wait_offer", "porder_offered", "porder_paid"].includes(option.value),
-  ).map((option) => option.value === "porder_paid" ? { ...option, label: "不暂停（配送单全流程结束）" } : option);
+    (option) => ["warehouse_delivery_created", "porder_translated", "porder_confirmed", "porder_wait_offer", "porder_offered", "porder_paid", "porder_shipped"].includes(option.value),
+  ).map((option) => option.value === "porder_shipped" ? { ...option, label: "不暂停（配送单已出货）" } : option);
   const FULL_FLOW_COPY_NAME = "全流程完全体_副本";
   const FULL_FLOW_COPY_ALIASES = new Set([
     FULL_FLOW_COPY_NAME,
@@ -108,13 +109,13 @@ if (!window.__fullFlowDataScriptLoaded) {
     { name: "purchase_no", label: "交易号（可选）" },
     { name: "warehouse_sku_count", label: "仓库提出番数", type: "number", default: 1 },
     { name: "send_num", label: "每番配送数量", type: "number", default: 1 },
-    { name: "stop_after_node", label: "暂停节点", type: "select", options: RESUME_ORDER_STOP_NODE_OPTIONS, default: "porder_offered" },
+    { name: "stop_after_node", label: "暂停节点", type: "select", options: RESUME_ORDER_STOP_NODE_OPTIONS, default: "porder_shipped" },
   ];
 
   SCRIPT_PARAM_SCHEMAS.resume_porder_flow = [
     CUSTOMER_ID_FIELD,
     { name: "porder_sn", label: "配送单号", required: true },
-    { name: "stop_after_node", label: "暂停节点", type: "select", options: RESUME_PORDER_STOP_NODE_OPTIONS, default: "porder_offered" },
+    { name: "stop_after_node", label: "暂停节点", type: "select", options: RESUME_PORDER_STOP_NODE_OPTIONS, default: "porder_shipped" },
   ];
 
   const FULL_FLOW_COPY_FIELD_GROUPS = [
@@ -575,7 +576,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       next.order_item_num = normalizePositiveInt(next.order_item_num, 10);
       next.warehouse_sku_count = normalizePositiveInt(next.warehouse_sku_count || next.porder_sku_count || next.sku_count, 1);
       next.send_num = normalizePositiveInt(next.send_num || next.porder_send_num, 1);
-      next.stop_after_node = String(next.stop_after_node || "porder_offered").trim() || "porder_offered";
+      next.stop_after_node = String(next.stop_after_node || "porder_shipped").trim() || "porder_shipped";
       next.run_backend_flow = true;
       next.run_backend_delivery_flow = true;
       next.run_backend_porder_flow = false;
@@ -601,7 +602,7 @@ if (!window.__fullFlowDataScriptLoaded) {
     if (scriptType === "resume_porder_flow") {
       const next = { ...(variables || {}) };
       next.porder_sn = String(next.porder_sn || "").trim();
-      next.stop_after_node = String(next.stop_after_node || "porder_offered").trim() || "porder_offered";
+      next.stop_after_node = String(next.stop_after_node || "porder_shipped").trim() || "porder_shipped";
       next.run_backend_porder_flow = false;
       next.run_backend_flow = false;
       next.run_backend_delivery_flow = false;
@@ -989,7 +990,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       run_backend_flow: true,
       run_backend_delivery_flow: true,
       run_backend_porder_flow: false,
-      stop_after_node: "porder_offered",
+      stop_after_node: "porder_shipped",
       warehouse_sku_count: 1,
       send_num: 1,
       porder_logistics_id: "14",
@@ -1049,7 +1050,7 @@ if (!window.__fullFlowDataScriptLoaded) {
     }
     const defaultVariables = {
       porder_sn: "",
-      stop_after_node: "porder_offered",
+      stop_after_node: "porder_shipped",
       delivery_quote_logistics_id: "25",
       logistics_price_artificial: "775",
       logistics_id: "1",
@@ -1870,7 +1871,7 @@ if (!window.__fullFlowDataScriptLoaded) {
       projectId: "",
       envId: "",
       caseIds: [],
-      variables: JSON.stringify({ porder_sn: "", stop_after_node: "porder_offered" }),
+      variables: JSON.stringify({ porder_sn: "", stop_after_node: "porder_shipped" }),
     });
     writeFlows(flows);
   } catch (e) {

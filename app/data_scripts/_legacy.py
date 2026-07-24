@@ -55,6 +55,7 @@ FULL_FLOW_NODE_LABELS = {
     "porder_wait_offer": "\u914d\u9001\u5355\u8fdb\u5165\u5f85\u62a5\u4ef7\u5b8c\u6210",
     "porder_offered": "\u914d\u9001\u5355\u62a5\u4ef7\u5b8c\u6210",
     "porder_paid": "\u914d\u9001\u5355\u652f\u4ed8\u5b8c\u6210",
+    "porder_shipped": "\u914d\u9001\u5355\u5df2\u51fa\u8d27",
     FULL_FLOW_COMPLETE_NODE: "\u5168\u6d41\u7a0b\u7ed3\u675f",
 }
 FULL_FLOW_NODE_SEQUENCE = [
@@ -77,6 +78,7 @@ FULL_FLOW_NODE_SEQUENCE = [
     "porder_wait_offer",
     "porder_offered",
     "porder_paid",
+    "porder_shipped",
     FULL_FLOW_COMPLETE_NODE,
 ]
 KEYWORDS = [
@@ -1226,3 +1228,4 @@ from .oem_support import (
     _oem_build_option_for_sku,
     _oem_build_warehouse_for_sku,
 )
+POORDER_SHIPMENT_SCRIPT_NAME = "配送单出货"

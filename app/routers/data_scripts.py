@@ -43,6 +43,7 @@ from ..data_scripts import (
     run_problem_goods_script,
     run_porder_balance_payment_script,
     run_porder_bank_payment_script,
+    run_porder_shipment_script,
     run_purchase_to_shelf_chain,
     run_purchase_to_shelf_script,
     run_resume_order_flow_script,
@@ -303,6 +304,20 @@ def run_resume_order_flow_data_script(
     data["summary"] = summary
     return data
 
+
+@router.post("/data-scripts/porder-shipment")
+def run_porder_shipment_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = data_script_variables(db, payload.variables, project_id)
+    passed, log_text, report_path, summary = _runtime_func("run_porder_shipment_script", run_porder_shipment_script)(env, variables)
+    record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="porder_shipment", env_id=env.id, variables=payload.variables)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
 
 @router.post("/data-scripts/resume-porder-flow")
 def run_resume_porder_flow_data_script(

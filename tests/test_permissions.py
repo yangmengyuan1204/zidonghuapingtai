@@ -1494,6 +1494,16 @@ def full_flow_env():
 
 def patch_full_flow_report(monkeypatch):
     monkeypatch.setattr(data_scripts, "write_allure_result", lambda *args, **kwargs: "mock-report.json")
+    monkeypatch.setattr(
+        data_scripts,
+        "run_porder_shipment_script",
+        lambda env, variables: (
+            True,
+            "shipment-log",
+            "shipment-report",
+            {"porder_sn": variables.get("porder_sn"), "current_node": "porder_shipped"},
+        ),
+    )
 
 
 class BankMinimumDepositFakeClient:
@@ -2133,6 +2143,11 @@ def test_full_flow_runs_nodes_in_order_and_passes_shared_numbers(monkeypatch):
         assert variables["run_backend_porder_flow"] is False
         return True, "porder-pay-log", "porder-pay-report", {"payment_type": "balance", "porder_sn": "PORDER-1"}
 
+    def porder_shipment(env, variables):
+        calls.append("porder_shipment")
+        assert variables["porder_sn"] == "PORDER-1"
+        return True, "shipment-log", "shipment-report", {"porder_sn": "PORDER-1", "current_node": "porder_shipped"}
+
     monkeypatch.setattr(data_scripts, "run_shopping_cart_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("shopping cart should be skipped when cart has enough items")))
     monkeypatch.setattr(data_scripts, "run_order_quote_script", quote)
     monkeypatch.setattr(data_scripts, "run_balance_payment_script", balance)
@@ -2141,11 +2156,12 @@ def test_full_flow_runs_nodes_in_order_and_passes_shared_numbers(monkeypatch):
     monkeypatch.setattr(data_scripts, "run_warehouse_delivery_script", delivery)
     monkeypatch.setattr(data_scripts, "run_porder_balance_payment_script", porder_balance)
     monkeypatch.setattr(data_scripts, "run_porder_bank_payment_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("porder bank fallback not expected")))
+    monkeypatch.setattr(data_scripts, "run_porder_shipment_script", porder_shipment)
 
     passed, _, _, summary = data_scripts.run_full_flow_script(full_flow_env(), {"stop_after_node": "full_complete", "warehouse_sku_count": 3})
 
     assert passed is True
-    assert calls == ["order_quote", "order_balance", "purchase_to_shelf", "warehouse_delivery", "porder_balance"]
+    assert calls == ["order_quote", "order_balance", "purchase_to_shelf", "warehouse_delivery", "porder_balance", "porder_shipment"]
     assert summary["current_node"] == "full_complete"
     assert summary["order_sn"] == "ORDER-1"
     assert summary["purchase_no"] == "PNO-1"
@@ -2445,7 +2461,10 @@ def test_resume_order_flow_resumes_by_order_status(monkeypatch):
     for status in (20, 21, 22, 30):
         state["status"] = status
         calls.clear()
-        passed, _, _, summary = data_scripts.run_resume_order_flow_script(full_flow_env(), {"order_sn": "ORDER-RESUME"})
+        passed, _, _, summary = data_scripts.run_resume_order_flow_script(
+            full_flow_env(),
+            {"order_sn": "ORDER-RESUME", "stop_after_node": "porder_offered"},
+        )
 
         assert passed is True
         assert summary["current_node"] == "porder_offered"
@@ -2488,7 +2507,10 @@ def test_resume_order_flow_pending_purchase_skips_order_quote_and_payment(monkey
     monkeypatch.setattr(data_scripts, "run_purchase_to_shelf_script", shelf)
     monkeypatch.setattr(data_scripts, "run_warehouse_delivery_script", delivery)
 
-    passed, _, _, summary = data_scripts.run_resume_order_flow_script(full_flow_env(), {"order_sn": "ORDER-PENDING"})
+    passed, _, _, summary = data_scripts.run_resume_order_flow_script(
+        full_flow_env(),
+        {"order_sn": "ORDER-PENDING", "stop_after_node": "porder_offered"},
+    )
 
     assert passed is True
     assert calls == ["shelf", "delivery"]
@@ -2575,7 +2597,10 @@ def test_resume_order_flow_shelf_stored_skips_shelf_and_runs_delivery(monkeypatc
     monkeypatch.setattr(data_scripts, "run_purchase_to_shelf_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("shelf should be skipped")))
     monkeypatch.setattr(data_scripts, "run_warehouse_delivery_script", delivery)
 
-    passed, _, _, summary = data_scripts.run_resume_order_flow_script(full_flow_env(), {"order_sn": "ORDER-STORED"})
+    passed, _, _, summary = data_scripts.run_resume_order_flow_script(
+        full_flow_env(),
+        {"order_sn": "ORDER-STORED", "stop_after_node": "porder_offered"},
+    )
 
     assert passed is True
     assert calls == ["delivery"]
@@ -2614,6 +2639,56 @@ def test_resume_order_flow_endpoint_returns_summary(monkeypatch):
     assert summary["detected_start_node"] == "order_offered"
     assert summary["order_sn"] == "ORDER-ENDPOINT"
     assert summary["porder_sn"] == "PORDER-ENDPOINT"
+
+
+def test_resume_order_flow_can_continue_through_porder_shipment(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    calls = []
+
+    monkeypatch.setattr(
+        data_scripts,
+        "_detect_resume_order_state",
+        lambda env, variables, order_sn, log: (
+            True,
+            {
+                "order_sn": order_sn,
+                "order_status": 60,
+                "detected_start_node": "shelf_stored",
+                "order_detail_id": "DETAIL-SHIP",
+                "order_detail_ids": ["DETAIL-SHIP"],
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        data_scripts,
+        "run_warehouse_delivery_script",
+        lambda env, variables: (
+            calls.append("delivery")
+            or (True, "delivery-log", "delivery-report", {"order_sn": "ORDER-SHIP", "porder_sn": "PORDER-SHIP"})
+        ),
+    )
+
+    def pay(env, variables, porder=False):
+        calls.append("porder_pay")
+        assert porder is True
+        return True, "pay-log", "pay-report", {"payment_type": "balance", "porder_sn": "PORDER-SHIP"}
+
+    def shipment(env, variables):
+        calls.append("shipment")
+        return True, "shipment-log", "shipment-report", {"porder_sn": "PORDER-SHIP", "current_node": "porder_shipped"}
+
+    monkeypatch.setattr(data_scripts, "_payment_with_bank_fallback", pay)
+    monkeypatch.setattr(data_scripts, "run_porder_shipment_script", shipment)
+
+    passed, _, _, summary = data_scripts.run_resume_order_flow_script(
+        full_flow_env(),
+        {"order_sn": "ORDER-SHIP", "stop_after_node": "porder_shipped"},
+    )
+
+    assert passed is True
+    assert calls == ["delivery", "porder_pay", "shipment"]
+    assert summary["current_node"] == "porder_shipped"
+    assert summary["porder_sn"] == "PORDER-SHIP"
 
 
 def test_resume_porder_flow_porder_paid_runs_payment(monkeypatch):
@@ -2656,6 +2731,54 @@ def test_resume_porder_flow_porder_paid_runs_payment(monkeypatch):
     assert summary["current_node"] == "porder_paid"
     assert summary["porder_sn"] == "PORDER-PAID"
     assert [item["node"] for item in summary["steps"]] == ["porder_offered", "porder_paid"]
+
+
+def test_resume_porder_flow_paid_state_runs_shipment_without_repaying(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(data_scripts, "write_allure_result", lambda *args, **kwargs: "mock-report.json")
+    monkeypatch.setattr(
+        data_scripts,
+        "_detect_resume_porder_state",
+        lambda env, variables, porder_sn, log: (
+            True,
+            {"porder_sn": porder_sn, "detected_start_node": "porder_paid"},
+        ),
+    )
+    monkeypatch.setattr(
+        data_scripts,
+        "_run_backend_porder_flow_resume",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("backend flow should be skipped")),
+    )
+    monkeypatch.setattr(
+        data_scripts,
+        "_payment_with_bank_fallback",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("payment should not run twice")),
+    )
+
+    def shipment(env, variables):
+        calls.append("shipment")
+        assert variables["porder_sn"] == "PORDER-SHIP"
+        return True, "shipment-log", "shipment-report", {"porder_sn": "PORDER-SHIP", "current_node": "porder_shipped"}
+
+    monkeypatch.setattr(data_scripts, "run_porder_shipment_script", shipment)
+
+    passed, _, _, summary = data_scripts.run_resume_porder_flow_script(
+        full_flow_env(),
+        {"porder_sn": "PORDER-SHIP", "stop_after_node": "porder_shipped"},
+    )
+
+    assert passed is True
+    assert calls == ["shipment"]
+    assert summary["current_node"] == "porder_shipped"
+    assert summary["porder_sn"] == "PORDER-SHIP"
+    assert summary["steps"][-1]["node"] == "porder_shipped"
+
+
+def test_porder_status_text_detects_paid_and_shipped_nodes():
+    assert data_scripts._porder_node_from_status_texts(["待出货"]) == "porder_paid"
+    assert data_scripts._porder_node_from_status_texts(["已发出"]) == "porder_shipped"
+    assert data_scripts._porder_node_from_status_texts(["已出货"]) == "porder_shipped"
 
 
 def test_detect_resume_porder_state_uses_detail_status_text(monkeypatch):

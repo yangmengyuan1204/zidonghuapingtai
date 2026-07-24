@@ -27,6 +27,7 @@ _DOMAIN_ENTRY_NAMES = (
     "run_problem_goods_script",
     "run_porder_balance_payment_script",
     "run_porder_bank_payment_script",
+    "run_porder_shipment_script",
     "run_purchase_to_shelf_chain",
     "run_purchase_to_shelf_script",
     "run_resume_order_flow_script",
@@ -74,6 +75,7 @@ from .order_payments import (
     run_porder_balance_payment_script,
     run_porder_bank_payment_script,
 )
+from .porder_shipment import run_porder_shipment_script
 from .orders import run_order_quote_script
 from .payments import run_balance_recharge_script
 from .problem_goods import run_problem_goods_script
@@ -96,6 +98,7 @@ register_script("purchase_to_shelf_chain", run_purchase_to_shelf_chain)
 register_script("warehouse_delivery", run_warehouse_delivery_script)
 register_script("porder_balance_payment", run_porder_balance_payment_script)
 register_script("porder_bank_payment", run_porder_bank_payment_script)
+register_script("porder_shipment", run_porder_shipment_script)
 register_script("full_flow", run_full_flow_script)
 register_script("direct_box_to_shelf", run_direct_box_to_shelf_script)
 register_script("resume_order_flow", run_resume_order_flow_script)

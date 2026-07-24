@@ -34,6 +34,7 @@
     porder_wait_offer: "配送单待报价",
     porder_offered: "配送单待付款",
     porder_paid: "配送单已付款",
+    porder_shipped: "配送单已出货",
     full_complete: "全部流程已完成",
     problem_goods: "问题产品处理",
     order_wait_offer: "订单待报价",

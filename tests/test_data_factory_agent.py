@@ -94,6 +94,14 @@ def _ready_goal() -> dict:
     }
 
 
+def test_porder_shipped_is_a_supported_agent_target_node():
+    assert agent_service.FULL_FLOW_NODE_LABELS["porder_shipped"] == "配送单已出货"
+    assert agent_service._target_node("配送单已出货") == "porder_shipped"
+    assert agent_service._explicit_target_intent("把配送单出货")[0] == "porder_shipped"
+    assert agent_tools._RESUME_NODE_ORDER.index("porder_paid") < agent_tools._RESUME_NODE_ORDER.index("porder_shipped")
+    assert agent_tools._RESUME_NODE_ORDER.index("porder_shipped") < agent_tools._RESUME_NODE_ORDER.index("full_complete")
+
+
 def test_analysis_applies_only_approved_learning_to_unresolved_fields(monkeypatch):
     project, _ = _agent_context()
     proposal = {

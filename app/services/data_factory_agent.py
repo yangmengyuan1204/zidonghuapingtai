@@ -110,6 +110,7 @@ FULL_FLOW_NODE_LABELS: Dict[str, str] = {
     "porder_wait_offer": "配送单进入待报价",
     "porder_offered": "配送单报价完成",
     "porder_paid": "配送单支付完成",
+    "porder_shipped": "配送单已出货",
     "full_complete": "全流程结束",
 }
 FULL_FLOW_NODE_SEQUENCE = list(FULL_FLOW_NODE_LABELS)
@@ -139,6 +140,8 @@ NODE_ALIASES = {
     "配送单待报价": "porder_wait_offer",
     "配送单报价": "porder_offered",
     "配送单支付": "porder_paid",
+    "配送单出货": "porder_shipped",
+    "配送单已出货": "porder_shipped",
     "全流程": "full_complete",
 }
 
@@ -937,6 +940,7 @@ def _explicit_target_intent(source_text: str) -> tuple[str, str, str]:
     text = _compact_semantic_text(source_text)
     if not text:
         return "", "", ""
+    porder_shipped_match = re.search(r"配送单.{0,8}(?:已出货|出货(?:完成)?|已发出|已發出)", text)
     porder_paid_match = re.search(r"配送单.{0,8}(?:支付完成|已支付|已付款|付款完成)", text)
     porder_offered_match = re.search(r"配送单.{0,8}(?:报价(?:完成)?|已报价)", text)
     delivery_created_match = re.search(r"(?:配送单(?:提出|已提出)|提出配送单)", text)
@@ -950,6 +954,7 @@ def _explicit_target_intent(source_text: str) -> tuple[str, str, str]:
     paid_match = None if porder_paid_match else re.search(r"已付款|已支付|支付完成|付款完成|付完(?:钱|款)", text)
     targets: list[tuple[str, str]] = []
     for match, node in (
+        (porder_shipped_match, "porder_shipped"),
         (porder_paid_match, "porder_paid"),
         (porder_offered_match, "porder_offered"),
         (delivery_created_match, "warehouse_delivery_created"),
@@ -1757,11 +1762,11 @@ def _normalize_goal(
             target_evidence = "智能体自动推断：默认至订单待付款"
         else:
             return "clarifying", {}, question or "希望最终把测试数据造到哪个状态？例如：待拍下、上架入库或配送单支付完成。"
-    if mode == "resume_order" and target_node in {"shopping_cart", "order_created", "full_complete", "porder_paid"}:
-        return "clarifying", {}, "该目标节点不适用于订单号续跑，请选择订单报价至配送单报价之间的节点。"
+    if mode == "resume_order" and target_node in {"shopping_cart", "order_created", "full_complete"}:
+        return "clarifying", {}, "该目标节点不适用于订单号续跑，请选择订单报价至配送单已出货之间的节点。"
     if mode == "resume_porder" and target_node and target_node not in {
         "warehouse_delivery_created", "porder_translated", "porder_confirmed",
-        "porder_wait_offer", "porder_offered", "porder_paid",
+        "porder_wait_offer", "porder_offered", "porder_paid", "porder_shipped",
     }:
         return "clarifying", {}, "配送单号续跑只能选择配送单阶段的目标节点。"
 
@@ -2675,7 +2680,7 @@ def _verify_goal(context: AgentToolContext, last_result: Dict[str, Any]) -> tupl
             verification["reason"] = "未在执行结果中确认银行付款及财务入金"
             return False, verification
 
-    if goal["variables"].get("porder_payment_mode") == "bank" and target in {"porder_paid", "full_complete"}:
+    if goal["variables"].get("porder_payment_mode") == "bank" and target in {"porder_paid", "porder_shipped", "full_complete"}:
         porder_bank_ok = _bank_payment_verified(summary, "porder_sn")
         verification.update({"porder_bank_payment_verified": porder_bank_ok, "porder_finance_confirmed": porder_bank_ok})
         if not porder_bank_ok:
