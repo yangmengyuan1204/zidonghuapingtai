@@ -165,7 +165,7 @@ def _impl_ensure_data_script_api_cases(db: Session) -> None:
 
     for item in DATA_SCRIPT_API_CASES:
         case_name = strip_case_name_prefix(item["case_name"])
-        exists = find_data_script_api_case(db, item, env.project_id) or find_data_script_api_case(db, item)
+        exists = find_data_script_api_case(db, item, env.project_id)
         if exists:
             exists.case_name = case_name
             exists.project_id = env.project_id

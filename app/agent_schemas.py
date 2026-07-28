@@ -1,5 +1,7 @@
 ﻿from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -18,6 +20,11 @@ class DataAgentSessionConfirm(BaseModel):
     plan_version: int
 
 
+class DataAgentContractFeedback(BaseModel):
+    plan_version: int
+    verdict: Literal["correct", "invalid"]
+
+
 class DataAgentRiskConfirm(BaseModel):
     plan_version: int
     contract_hash: str = Field(min_length=16, max_length=64)
@@ -34,12 +41,25 @@ class DataAgentPermissionResume(BaseModel):
 
 class DataAgentGoalUpdate(BaseModel):
     """Partial goal update from user direct edit."""
+    plan_version: int
+    fields: dict[str, object] | None = None
     order_shop_count: int | None = None
     order_per_shop: int | None = None
     order_item_num: int | None = None
     offer_price: str | None = None
     offer_unit_prices: list[str] | None = None
     target_node: str | None = None
+
+
+class DataAgentContractPreview(BaseModel):
+    plan_version: int
+    message: str = Field(min_length=1, max_length=4000)
+
+
+class DataAgentContractPreviewApply(BaseModel):
+    plan_version: int
+    base_contract_hash: str = Field(min_length=16, max_length=64)
+    preview_hash: str = Field(min_length=16, max_length=64)
 
 
 class DataAgentRuleReviewRequest(BaseModel):

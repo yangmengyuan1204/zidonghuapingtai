@@ -6,7 +6,7 @@ import json
 import re
 import time
 import unicodedata
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from types import SimpleNamespace
 from typing import Any, Dict
@@ -16,11 +16,25 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
+from ..data_scripts.capabilities import (
+    DataScriptCapability,
+    capability_catalog,
+    effective_contract_fields,
+    is_sensitive_field_identifier,
+)
 from ..models import (
     DataAgentLearningSample,
     DataAgentRuleCandidate,
     DataAgentRuleReview,
     DataAgentRuleVersion,
+)
+from .data_agent_contracts import (
+    apply_contract_updates,
+    normalize_contract_field_value,
+    normalize_execution_contract,
+    problem_goods_operation,
+    project_contract_goal,
+    resolve_goal_capability,
 )
 
 
@@ -74,7 +88,14 @@ MAX_MATCH_PHRASES = 8
 MAX_MATCH_PHRASE_LENGTH = 240
 MAX_REGRESSION_IDS = 100
 CANDIDATE_THRESHOLD = 3
-CANDIDATE_RULE_KEYS = {"signature", "field", "match_phrases", "set_fields", "source_count"}
+CANDIDATE_RULE_REQUIRED_KEYS = {"signature", "field", "match_phrases", "source_count"}
+CANDIDATE_RULE_KEYS = CANDIDATE_RULE_REQUIRED_KEYS | {
+    "learning_mode",
+    "learning_scope",
+    "set_fields",
+    "extract_pattern",
+    "set_strategy",
+}
 PRICING_FIELDS = {"mode", "amount", "amounts"}
 PRICING_MODES = {"goods_total", "uniform_unit", "per_item_unit", "default_unit", "unspecified", "ambiguous"}
 FORBIDDEN_CANDIDATE_KEYS = {
@@ -116,19 +137,35 @@ PROBLEM_OVERLAY_FIELDS = {
     "problem_refund_freight",
 }
 SAFE_TARGET_OPERATION_TYPES = {"advance_order", "advance_porder"}
+LEARNING_MODES = {"value", "pattern", "strategy"}
+LEARNING_METADATA_FIELD_MAP = {
+    "problem_scope": "scope",
+    "problem_refund_quantity": "quantity_refund_mode",
+    "problem_refund_freight": "freight_refund_mode",
+}
+SAFE_CANDIDATE_KEY_EXCEPTIONS = {
+    "account_role",
+    "customer_ids",
+    "profile_name",
+}
 
 _SENSITIVE_ASSIGNMENT_START = re.compile(
-    rf"(?i)\b(password|passwd|pwd|access[_ -]?token|admin[_ -]?token|token|cookie|"
+    rf"(?i)(?<![a-z0-9_])(后台密码|后台账号|密码|口令|令牌|凭据|"
+    rf"password|passwd|pwd|access[_ -]?token|admin[_ -]?token|token|cookie|"
     rf"api[_ -]?key|secret|authorization|backend[_ -]?account|backend[_ -]?password|"
     rf"account[_ -]?ciphertext|browser[_ -]?state[_ -]?encrypted|sensitive[_ -]?variables)"
-    rf"\s*[:=]\s*"
+    rf"\s*(?::|=|是|为)\s*"
 )
 _BEARER_ASSIGNMENT = re.compile(r"(?i)\bauthorization\s*:\s*bearer\s+[^\s,;]+")
 
 
 def _sensitive_key(key: str) -> bool:
-    normalized = re.sub(r"[^a-z0-9]+", "_", str(key or "").strip().lower()).strip("_")
-    return normalized.endswith(("_encrypted", "_ciphertext")) or normalized in SENSITIVE_KEYS or any(
+    normalized = re.sub(
+        r"[^a-z0-9]+",
+        "_",
+        unicodedata.normalize("NFKC", str(key or "")).strip().casefold(),
+    ).strip("_")
+    return is_sensitive_field_identifier(key) or normalized.endswith(("_encrypted", "_ciphertext")) or normalized in SENSITIVE_KEYS or any(
         normalized.endswith(f"_{suffix}")
         for suffix in SENSITIVE_KEYS
     )
@@ -204,7 +241,8 @@ def _redact_sensitive_assignments(text: str) -> str:
 
 
 def _sanitize_text(value: str) -> str:
-    redacted = _BEARER_ASSIGNMENT.sub("Authorization: ***", value)
+    normalized = unicodedata.normalize("NFKC", value)
+    redacted = _BEARER_ASSIGNMENT.sub("Authorization: ***", normalized)
     return _redact_sensitive_assignments(redacted)[:MAX_STRING_LENGTH]
 
 
@@ -306,7 +344,8 @@ def _candidate_signature(field: str, after: Any) -> str:
 
 
 def _normalized_key(key: Any) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", str(key or "").strip().lower()).strip("_")
+    normalized = unicodedata.normalize("NFKC", str(key or "")).strip().casefold()
+    return re.sub(r"[^a-z0-9]+", "_", normalized).strip("_")
 
 
 def _normalized_candidate_value(value: Any) -> Any:
@@ -321,10 +360,36 @@ def _normalized_candidate_value(value: Any) -> Any:
 
 
 def _forbidden_candidate_key(key: Any) -> bool:
+    if is_sensitive_field_identifier(key):
+        return True
     normalized = _normalized_key(key)
+    if (
+        normalized in SAFE_CANDIDATE_KEY_EXCEPTIONS
+        or normalized in _declared_learning_modes()
+    ):
+        return False
     parts = set(normalized.split("_"))
-    return normalized in FORBIDDEN_CANDIDATE_KEYS or bool(
-        parts & {"permission", "threshold", "backend", "account", "password", "profile", "system", "url", "sql", "tool", "token", "cookie", "authorization", "secret", "browser", "ciphertext", "customer", "identity"}
+    return _sensitive_key(normalized) or normalized in FORBIDDEN_CANDIDATE_KEYS or bool(
+        parts & {
+            "permission",
+            "threshold",
+            "backend",
+            "account",
+            "password",
+            "profile",
+            "system",
+            "url",
+            "sql",
+            "tool",
+            "token",
+            "cookie",
+            "authorization",
+            "secret",
+            "browser",
+            "ciphertext",
+            "credential",
+            "identity",
+        }
     )
 
 
@@ -353,6 +418,20 @@ def _validate_pricing_value(value: Any) -> None:
             raise ValueError(f"pricing 候选字段不允许嵌套对象：{key}")
         if isinstance(item, list) and any(isinstance(entry, (dict, list, tuple)) for entry in item):
             raise ValueError(f"pricing 候选字段不允许复杂列表：{key}")
+    amounts = []
+    if "amount" in value:
+        amounts.append(value.get("amount"))
+    if "amounts" in value:
+        if not isinstance(value.get("amounts"), list):
+            raise ValueError("pricing 候选逐项金额必须是列表")
+        amounts.extend(value.get("amounts") or [])
+    for amount in amounts:
+        try:
+            number = Decimal(str(amount).strip())
+        except (InvalidOperation, TypeError, ValueError) as exc:
+            raise ValueError("pricing 候选金额必须是非负数字") from exc
+        if not number.is_finite() or number < 0:
+            raise ValueError("pricing 候选金额必须是非负数字")
 
 
 def _validate_overlay_value(field: str, value: Any) -> None:
@@ -383,6 +462,68 @@ def _validate_overlay_value(field: str, value: Any) -> None:
         raise ValueError("order_payment_mode 候选值不合法")
 
 
+def _validate_identifier_pattern(field: str, pattern: Any) -> None:
+    if not isinstance(pattern, dict) or set(pattern) != {"field", "kind", "aliases", "shapes"}:
+        raise ValueError("标识符模式结构无效")
+    if _normalized_key(pattern.get("field")) != field:
+        raise ValueError("标识符模式字段不匹配")
+    if pattern.get("kind") not in {"identifier", "list"}:
+        raise ValueError("标识符模式类型无效")
+    aliases = pattern.get("aliases")
+    if not isinstance(aliases, list) or any(not isinstance(item, str) for item in aliases):
+        raise ValueError("标识符模式别名无效")
+    shapes = pattern.get("shapes")
+    if not isinstance(shapes, list) or not shapes or len(shapes) > 8:
+        raise ValueError("标识符模式形状无效")
+    for shape in shapes:
+        if not isinstance(shape, dict) or set(shape) != {"length", "pattern"}:
+            raise ValueError("标识符模式形状无效")
+        length = shape.get("length")
+        shape_pattern = shape.get("pattern")
+        if (
+            isinstance(length, bool)
+            or not isinstance(length, int)
+            or length < 1
+            or length > 240
+            or not isinstance(shape_pattern, str)
+            or not re.fullmatch(
+                r"(?:D[1-9]\d{0,2}|A[1-9]\d{0,2}|P[0-9a-f]{2,32})(?:\|(?:D[1-9]\d{0,2}|A[1-9]\d{0,2}|P[0-9a-f]{2,32}))*",
+                shape_pattern,
+            )
+        ):
+            raise ValueError("标识符模式形状无效")
+
+
+def _declared_learning_modes() -> dict[str, set[str]]:
+    declared: dict[str, set[str]] = {}
+    for capability in capability_catalog().values():
+        for field in effective_contract_fields(capability):
+            if field.learnable and field.learning_mode != "none":
+                declared.setdefault(field.name, set()).add(field.learning_mode)
+    declared.setdefault("pricing", set()).add("value")
+    for public_name, metadata_name in LEARNING_METADATA_FIELD_MAP.items():
+        modes = declared.get(metadata_name)
+        if modes:
+            declared.setdefault(public_name, set()).update(modes)
+    return declared
+
+
+def candidate_signature(rule: dict) -> str:
+    field = _normalized_key(rule.get("field"))
+    if isinstance(rule.get("set_fields"), dict):
+        payload = rule["set_fields"].get(field)
+    else:
+        payload = next(
+            (
+                rule[key]
+                for key in ("extract_pattern", "set_strategy")
+                if key in rule
+            ),
+            None,
+        )
+    return _candidate_signature(field, _normalized_candidate_value(payload))
+
+
 def validate_candidate_rule(rule: dict) -> dict:
     if not isinstance(rule, dict):
         raise ValueError("候选规则必须是对象")
@@ -390,32 +531,88 @@ def validate_candidate_rule(rule: dict) -> dict:
     unknown = sorted(set(rule) - CANDIDATE_RULE_KEYS)
     if unknown:
         raise ValueError(f"候选规则包含不允许字段：{', '.join(unknown)}")
-    missing = sorted(CANDIDATE_RULE_KEYS - set(rule))
+    missing = sorted(CANDIDATE_RULE_REQUIRED_KEYS - set(rule))
     if missing:
         raise ValueError(f"候选规则缺少字段：{', '.join(missing)}")
 
     source_field = _normalized_key(rule.get("field"))
     field = REVISION_FIELD_MAP.get(source_field, source_field)
-    if field not in CANDIDATE_FIELDS:
+    declared_modes = _declared_learning_modes()
+    if field not in declared_modes:
         raise ValueError(f"候选规则包含禁止字段：{field or 'field'}")
-    set_fields = rule.get("set_fields")
-    if not isinstance(set_fields, dict) or len(set_fields) != 1:
-        raise ValueError("候选规则 set_fields 只允许当前规范字段")
-    raw_set_field, raw_set_value = next(iter(set_fields.items()))
-    source_set_field = _normalized_key(raw_set_field)
-    set_field = REVISION_FIELD_MAP.get(source_set_field, source_set_field)
-    if set_field != field:
-        raise ValueError("候选规则 set_fields 只允许当前规范字段")
-    safe_value = _normalized_candidate_value(raw_set_value)
-    if isinstance(safe_value, dict) and field != "pricing":
-        raise ValueError(f"候选规则字段不允许嵌套对象：{field}")
-    if field == "pricing":
-        _validate_pricing_value(safe_value)
-    _validate_overlay_value(field, safe_value)
+    if field in {"offer_price", "offer_unit_prices"}:
+        raise ValueError("价格候选不允许绕过规范 pricing 字段")
+    learning_mode = str(rule.get("learning_mode") or "").strip() or (
+        next(iter(declared_modes[field])) if len(declared_modes[field]) == 1 else "value"
+    )
+    if learning_mode not in LEARNING_MODES or learning_mode not in declared_modes[field]:
+        raise ValueError("候选规则 learning_mode 与字段元数据不一致")
+    learning_scope = str(rule.get("learning_scope") or "project").strip()
+    if learning_scope not in {"project", "global"}:
+        raise ValueError("候选规则 learning_scope 不合法")
+    if learning_mode in {"pattern", "strategy"} and learning_scope != "project":
+        raise ValueError("该候选规则只允许项目范围")
+
+    payload_keys = set(rule).intersection({"set_fields", "extract_pattern", "set_strategy"})
+    expected_payload_key = {
+        "value": "set_fields",
+        "pattern": "extract_pattern",
+        "strategy": "set_strategy",
+    }[learning_mode]
+    if payload_keys != {expected_payload_key}:
+        raise ValueError(f"候选规则 {learning_mode} 模式负载不合法")
+    safe_payload = _normalized_candidate_value(rule[expected_payload_key])
+    if learning_mode == "value":
+        if not isinstance(safe_payload, dict) or len(safe_payload) != 1:
+            raise ValueError("候选规则 set_fields 只允许当前规范字段")
+        raw_set_field, safe_value = next(iter(safe_payload.items()))
+        source_set_field = _normalized_key(raw_set_field)
+        set_field = REVISION_FIELD_MAP.get(source_set_field, source_set_field)
+        if set_field != field:
+            raise ValueError("候选规则 set_fields 只允许当前规范字段")
+        if isinstance(safe_value, dict) and field != "pricing":
+            raise ValueError(f"候选规则字段不允许嵌套对象：{field}")
+        if field == "pricing":
+            _validate_pricing_value(safe_value)
+        _validate_overlay_value(field, safe_value)
+        safe_payload = {field: safe_value}
+    elif learning_mode == "pattern":
+        if not isinstance(safe_payload, dict) or not safe_payload:
+            raise ValueError("候选规则 extract_pattern 必须是对象")
+        _validate_identifier_pattern(field, safe_payload)
+    elif learning_mode == "strategy":
+        declared_specs = [
+            declared_field
+            for capability in capability_catalog().values()
+            for declared_field in effective_contract_fields(capability)
+            if declared_field.name == field
+            and declared_field.learnable
+            and declared_field.learning_mode == learning_mode
+        ]
+        if any(spec.value_type == "dict" for spec in declared_specs) and (
+            not isinstance(safe_payload, dict) or not safe_payload
+        ):
+            raise ValueError("账号策略候选必须包含安全档案策略")
+        if field == "permission_account_strategy":
+            if not isinstance(safe_payload, dict) or set(safe_payload) != {
+                "profile_name",
+                "role",
+            }:
+                raise ValueError("账号策略只允许 profile_name 和 role")
+            safe_payload = {
+                "profile_name": str(safe_payload.get("profile_name") or "").strip(),
+                "role": str(safe_payload.get("role") or "").strip(),
+            }
+            if not all(safe_payload.values()):
+                raise ValueError("账号策略 profile_name 和 role 不能为空")
 
     signature = str(rule.get("signature") or "").strip()
-    if signature != _candidate_signature(field, safe_value):
-        raise ValueError("候选规则 signature 不是规范 field/after 摘要")
+    if learning_mode == "value":
+        safe_value = safe_payload[field]
+        if signature != _candidate_signature(field, safe_value):
+            raise ValueError("候选规则 signature 不是规范 field/after 摘要")
+    elif not re.fullmatch(rf"{re.escape(field)}:[0-9a-f]{{16}}", signature):
+        raise ValueError("候选规则 signature 格式无效")
     phrases = rule.get("match_phrases")
     if not isinstance(phrases, list) or any(not isinstance(item, str) for item in phrases):
         raise ValueError("候选规则 match_phrases 必须是字符串列表")
@@ -439,13 +636,16 @@ def validate_candidate_rule(rule: dict) -> dict:
     source_count = rule.get("source_count")
     if isinstance(source_count, bool) or not isinstance(source_count, int) or source_count < 1:
         raise ValueError("候选规则 source_count 必须是正整数")
-    return {
+    validated = {
         "signature": signature,
         "field": field,
+        "learning_mode": learning_mode,
+        "learning_scope": learning_scope,
         "match_phrases": safe_phrases,
-        "set_fields": {field: safe_value},
         "source_count": source_count,
     }
+    validated[expected_payload_key] = safe_payload
+    return validated
 
 
 def _normalized_match_text(value: Any) -> str:
@@ -559,7 +759,7 @@ def learning_context(
         .filter(
             DataAgentLearningSample.project_id == int(project_id),
             DataAgentLearningSample.module_key == safe_module,
-            DataAgentLearningSample.outcome == "success",
+            DataAgentLearningSample.outcome.in_({"verified", "success"}),
             DataAgentLearningSample.verified == 1,
         )
         .order_by(DataAgentLearningSample.id.desc())
@@ -599,10 +799,37 @@ def apply_learning_context(
     goal: dict,
     context: dict,
     hard_fields: set[str] | None = None,
+    capability: DataScriptCapability | None = None,
 ) -> dict:
     """Apply approved overlays while preserving explicit and deterministic fields."""
     result = copy.deepcopy(goal)
     protected = set(hard_fields or set())
+    allowed_fields: set[str] | None = None
+    contract_value_fields: set[str] = set()
+    contract_strategy_fields: set[str] = set()
+    if capability is not None:
+        contract_value_fields = {
+            field.name
+            for field in effective_contract_fields(capability)
+            if not field.readonly
+            and field.learnable
+            and field.learning_mode == "value"
+        }
+        contract_strategy_fields = {
+            field.name
+            for field in effective_contract_fields(capability)
+            if field.readonly
+            and field.learnable
+            and field.learning_mode == "strategy"
+        }
+        allowed_fields = set(contract_value_fields).union(contract_strategy_fields)
+        if contract_value_fields.intersection({"offer_price", "offer_unit_prices"}):
+            allowed_fields.add("pricing")
+        allowed_fields.update(
+            public_name
+            for public_name, metadata_name in LEARNING_METADATA_FIELD_MAP.items()
+            if metadata_name in contract_value_fields
+        )
     applied: list[dict] = []
     for item in context.get("rules") or []:
         if not isinstance(item, dict) or not isinstance(item.get("rule"), dict):
@@ -612,10 +839,25 @@ def apply_learning_context(
         except (TypeError, ValueError):
             continue
         field = str(rule["field"])
-        if field in protected:
+        if field in protected or (
+            allowed_fields is not None and field not in allowed_fields
+        ):
             continue
         try:
-            result = apply_candidate_overlay(result, rule)
+            if capability is not None and field in contract_value_fields:
+                result, _ = apply_contract_updates(
+                    result,
+                    {field: copy.deepcopy(rule["set_fields"][field])},
+                    capability,
+                )
+            elif capability is not None and field in contract_strategy_fields:
+                variables = result.get("variables")
+                if not isinstance(variables, dict):
+                    variables = {}
+                    result["variables"] = variables
+                variables[field] = copy.deepcopy(rule["set_strategy"])
+            else:
+                result = apply_candidate_overlay(result, rule)
         except (TypeError, ValueError):
             continue
         protected.add(field)
@@ -708,17 +950,12 @@ def _compile_overlay_pricing(goal: dict, value: dict) -> tuple[dict, dict]:
     return pricing, variables
 
 
-def _problem_operation(goal: dict) -> dict | None:
-    for operation in goal.get("operations") or []:
-        if isinstance(operation, dict) and operation.get("type") == "problem_goods":
-            return operation
-    return None
-
-
 def apply_candidate_overlay(goal: dict, proposal: dict) -> dict:
     if not isinstance(goal, dict):
         raise ValueError("候选 overlay 目标合同必须是对象")
     validated = validate_candidate_rule(copy.deepcopy(proposal))
+    if validated["learning_mode"] != "value":
+        raise ValueError("pattern/strategy 候选不直接覆盖合同")
     overlaid = copy.deepcopy(goal)
     field = validated["field"]
     value = copy.deepcopy(validated["set_fields"][field])
@@ -751,7 +988,7 @@ def apply_candidate_overlay(goal: dict, proposal: dict) -> dict:
 
     if field in PROBLEM_OVERLAY_FIELDS:
         variables = overlaid.get("variables")
-        operation = _problem_operation(overlaid)
+        operation = problem_goods_operation(overlaid)
         if not isinstance(variables, dict) or operation is None:
             raise ValueError("问题产品候选只能应用到已有问题产品合同")
         variables[field] = value
@@ -777,41 +1014,202 @@ def apply_candidate_overlay(goal: dict, proposal: dict) -> dict:
     raise ValueError("候选 overlay 字段不受支持")
 
 
+def identifier_shape(value: Any, field: str) -> dict:
+    def shape_one(item: Any) -> dict:
+        text_value = unicodedata.normalize("NFKC", str(item or "").strip())
+        segments: list[str] = []
+        for token in re.findall(r"\d+|[A-Za-z]+|[^\dA-Za-z]+", text_value):
+            if token.isdigit():
+                segments.append(f"D{len(token)}")
+            elif token.isalpha() and token.isascii():
+                segments.append(f"A{len(token)}")
+            else:
+                safe_literal = re.sub(r"[\w\u4e00-\u9fff]+", "", token)
+                if safe_literal:
+                    segments.append(f"P{safe_literal[:16].encode('utf-8').hex()}")
+        return {"pattern": "|".join(segments), "length": len(text_value)}
+
+    values = value if isinstance(value, (list, tuple)) else [value]
+    shapes = [shape_one(item) for item in values if str(item or "").strip()]
+    if not shapes:
+        raise ValueError("标识符模式缺少有效样本")
+    return {
+        "field": _normalized_key(field),
+        "kind": "list" if isinstance(value, (list, tuple)) else "identifier",
+        "shapes": shapes[:8],
+    }
+
+
+def _instruction_phrases(
+    instruction: Any,
+    aliases: Any,
+    redacted_values: Any = None,
+) -> list[str]:
+    safe_instruction = str(sanitize_learning_value(instruction or "")).strip()
+    values = redacted_values if isinstance(redacted_values, (list, tuple)) else [redacted_values]
+    for value in values:
+        text_value = str(value or "").strip()
+        if text_value:
+            safe_instruction = safe_instruction.replace(text_value, "[标识符]")
+    phrases = [
+        str(sanitize_learning_value(alias)).strip()
+        for alias in list(aliases or [])
+        if str(alias or "").strip()
+    ]
+    if safe_instruction:
+        phrases.append(safe_instruction)
+    return sorted(set(phrases))[:MAX_MATCH_PHRASES]
+
+
+def _metadata_path_value(contract: Any, path: str) -> Any:
+    current = contract
+    for part in str(path or "").split("."):
+        if not isinstance(current, dict) or part not in current:
+            return None
+        current = current[part]
+    return current
+
+
+def _identifier_values(value: Any) -> list[str]:
+    if isinstance(value, (list, tuple, set)):
+        return [item for nested in value for item in _identifier_values(nested)]
+    text_value = str(value or "").strip()
+    return [text_value] if text_value else []
+
+
+def _sample_pattern_identifier_values(
+    sample: DataAgentLearningSample,
+    contract_fields: Any,
+) -> list[str]:
+    pattern_fields = {
+        field.name: field
+        for field in contract_fields
+        if field.learnable and field.learning_mode == "pattern"
+    }
+    values: set[str] = set()
+    for raw_contract in (sample.initial_contract_json, sample.final_contract_json):
+        try:
+            contract = json.loads(raw_contract or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        for field in pattern_fields.values():
+            values.update(_identifier_values(_metadata_path_value(contract, field.path)))
+    try:
+        corrections = json.loads(sample.corrections_json or "[]")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        corrections = []
+    for correction in corrections if isinstance(corrections, list) else []:
+        if not isinstance(correction, dict):
+            continue
+        field_name = REVISION_FIELD_MAP.get(
+            _normalized_key(correction.get("field")),
+            _normalized_key(correction.get("field")),
+        )
+        if field_name not in pattern_fields:
+            continue
+        values.update(_identifier_values(correction.get("before")))
+        values.update(_identifier_values(correction.get("after")))
+    return sorted(values, key=lambda item: (-len(item), item))
+
+
+def _sample_capability(sample: DataAgentLearningSample):
+    capability_key = resolve_goal_capability(
+        {},
+        module_key=sample.module_key,
+        intent_key=sample.intent_key,
+    )
+    return capability_catalog().get(capability_key)
+
+
+def _resolve_correction_field(
+    contract_fields: Any,
+    source_field: str,
+    raw_after: Any,
+) -> tuple[Any, str, Any]:
+    metadata_field = LEARNING_METADATA_FIELD_MAP.get(source_field, source_field)
+    field = next((item for item in contract_fields if item.name == metadata_field), None)
+    proposal_field = source_field
+    proposal_after = raw_after
+    if source_field == "pricing":
+        mode = str((raw_after if isinstance(raw_after, dict) else {}).get("mode") or "")
+        metadata_name = "offer_unit_prices" if mode == "per_item_unit" else "offer_price"
+        field = next((item for item in contract_fields if item.name == metadata_name), None)
+        if field is None and metadata_name == "offer_unit_prices":
+            field = next((item for item in contract_fields if item.name == "offer_price"), None)
+    elif source_field == "offer_price":
+        proposal_field = "pricing"
+        proposal_after = {"mode": "uniform_unit", "amount": raw_after}
+    elif source_field == "offer_unit_prices":
+        if field is None:
+            field = next((item for item in contract_fields if item.name == "offer_price"), None)
+        proposal_field = "pricing"
+        proposal_after = {"mode": "per_item_unit", "amounts": raw_after}
+    return field, proposal_field, proposal_after
+
+
+def correction_rule_proposal(
+    sample: DataAgentLearningSample,
+    correction: dict,
+) -> dict:
+    if not isinstance(correction, dict):
+        raise ValueError("纠正样本必须是对象")
+    capability = _sample_capability(sample)
+    source_field = REVISION_FIELD_MAP.get(
+        _normalized_key(correction.get("field")),
+        _normalized_key(correction.get("field")),
+    )
+    contract_fields = effective_contract_fields(capability) if capability else ()
+    raw_after = _normalized_candidate_value(correction.get("after"))
+    field, proposal_field, proposal_after = _resolve_correction_field(
+        contract_fields,
+        source_field,
+        raw_after,
+    )
+    if field is None or not field.learnable or field.learning_mode == "none":
+        raise ValueError("字段未声明为可学习")
+
+    learning_mode = "value" if proposal_field == "pricing" else field.learning_mode
+    redacted_values = _sample_pattern_identifier_values(sample, contract_fields)
+    if learning_mode == "pattern":
+        redacted_values.extend(_identifier_values(raw_after))
+    base = {
+        "field": proposal_field,
+        "learning_mode": learning_mode,
+        "learning_scope": field.learning_scope,
+        "match_phrases": _instruction_phrases(
+            sample.instruction_text,
+            field.aliases,
+            redacted_values,
+        ),
+        "source_count": 1,
+    }
+    if learning_mode == "pattern":
+        base["extract_pattern"] = {
+            **identifier_shape(raw_after, field.name),
+            "aliases": sorted(set(field.aliases)),
+        }
+    elif learning_mode == "strategy":
+        base["set_strategy"] = sanitize_learning_value(raw_after)
+    else:
+        base["set_fields"] = {proposal_field: sanitize_learning_value(proposal_after)}
+    base["signature"] = candidate_signature(base)
+    return validate_candidate_rule(base)
+
+
 def _normalized_correction(item: Any) -> dict | None:
     if not isinstance(item, dict):
         return None
     source_field = _normalized_key(item.get("field"))
     field = REVISION_FIELD_MAP.get(source_field, source_field)
-    if field not in LEARNABLE_FIELDS:
-        if _forbidden_candidate_key(source_field):
-            raise ValueError(f"候选规则包含禁止字段：{source_field or 'field'}")
+    if not field:
         return None
+    if _forbidden_candidate_key(source_field):
+        raise ValueError(f"候选规则包含禁止字段：{source_field or 'field'}")
     raw_after = _normalized_candidate_value(item.get("after"))
     raw_before = _normalized_candidate_value(item.get("before"))
     if raw_after is None or raw_before == raw_after:
         return None
-    if field == "offer_price":
-        field = "pricing"
-        after = {"mode": "uniform_unit", "amount": raw_after}
-        before = {"mode": "uniform_unit", "amount": raw_before}
-    elif field == "offer_unit_prices":
-        field = "pricing"
-        after = {"mode": "per_item_unit", "amounts": raw_after}
-        before = {"mode": "per_item_unit", "amounts": raw_before}
-    else:
-        after = raw_after
-        before = raw_before
-    signature = _candidate_signature(field, after)
-    validate_candidate_rule(
-        {
-            "signature": signature,
-            "field": field,
-            "match_phrases": ["candidate"],
-            "set_fields": {field: after},
-            "source_count": 1,
-        }
-    )
-    return {"signature": signature, "field": field, "before": before, "after": after}
+    return {"field": field, "before": raw_before, "after": raw_after}
 
 
 def _sample_corrections(sample: DataAgentLearningSample) -> list[dict]:
@@ -819,7 +1217,31 @@ def _sample_corrections(sample: DataAgentLearningSample) -> list[dict]:
         raw = json.loads(sample.corrections_json or "[]")
     except (TypeError, ValueError):
         return []
-    return [normalized for item in raw if (normalized := _normalized_correction(item)) is not None]
+    proposals: list[dict] = []
+    for item in raw:
+        normalized = _normalized_correction(item)
+        if normalized is None:
+            continue
+        try:
+            proposals.append(correction_rule_proposal(sample, normalized))
+        except ValueError:
+            capability = _sample_capability(sample)
+            contract_fields = effective_contract_fields(capability) if capability else ()
+            declared_field, _, _ = _resolve_correction_field(
+                contract_fields,
+                normalized.get("field"),
+                normalized.get("after"),
+            )
+            if (
+                _forbidden_candidate_key(normalized.get("field"))
+                or (
+                    declared_field is not None
+                    and declared_field.learnable
+                    and declared_field.learning_mode != "none"
+                )
+            ):
+                raise
+    return proposals
 
 
 def refresh_rule_candidate(
@@ -833,6 +1255,7 @@ def refresh_rule_candidate(
     if not signature:
         raise ValueError("候选规则 signature 不能为空")
     matching_samples: list[DataAgentLearningSample] = []
+    matching_rules: list[dict] = []
     matched_rule: dict | None = None
     samples = (
         db.query(DataAgentLearningSample)
@@ -840,7 +1263,7 @@ def refresh_rule_candidate(
             DataAgentLearningSample.project_id == int(project_id),
             DataAgentLearningSample.module_key == str(module_key),
             DataAgentLearningSample.intent_key == str(intent_key),
-            DataAgentLearningSample.outcome == "success",
+            DataAgentLearningSample.outcome.in_({"verified", "success"}),
             DataAgentLearningSample.verified == 1,
         )
         .order_by(DataAgentLearningSample.id.asc())
@@ -855,26 +1278,23 @@ def refresh_rule_candidate(
         if signature in sample_matches:
             matching_samples.append(sample)
             matched_rule = sample_matches[signature]
+            matching_rules.append(matched_rule)
     if not matching_samples or matched_rule is None:
         raise ValueError("没有匹配的已验证纠正样本")
 
     source_ids = sorted({int(sample.id) for sample in matching_samples})
     phrases = sorted(
         {
-            str(sanitize_learning_value(sample.instruction_text or "")).strip()[:MAX_MATCH_PHRASE_LENGTH]
-            for sample in matching_samples
-            if str(sample.instruction_text or "").strip()
+            str(sanitize_learning_value(phrase)).strip()[:MAX_MATCH_PHRASE_LENGTH]
+            for rule in matching_rules
+            for phrase in rule.get("match_phrases") or []
+            if str(phrase or "").strip()
         }
     )[:MAX_MATCH_PHRASES]
-    proposal = validate_candidate_rule(
-        {
-            "signature": signature,
-            "field": matched_rule["field"],
-            "match_phrases": phrases,
-            "set_fields": {matched_rule["field"]: matched_rule["after"]},
-            "source_count": len(source_ids),
-        }
-    )
+    proposal_input = copy.deepcopy(matched_rule)
+    proposal_input["match_phrases"] = phrases
+    proposal_input["source_count"] = len(source_ids)
+    proposal = validate_candidate_rule(proposal_input)
     proposal_json = _stable_json(proposal)
     source_ids_json = _stable_json(source_ids)
     now = datetime.now()
@@ -962,7 +1382,11 @@ def refresh_candidates_for_sample(
     db: Session,
     sample: DataAgentLearningSample,
 ) -> list[DataAgentRuleCandidate]:
-    if sample is None or sample.outcome != "success" or int(sample.verified or 0) != 1:
+    if (
+        sample is None
+        or sample.outcome not in {"verified", "success"}
+        or int(sample.verified or 0) != 1
+    ):
         return []
     signatures = sorted({item["signature"] for item in _sample_corrections(sample)})
     return [
@@ -986,18 +1410,41 @@ def _revision_value(value: Any) -> Any:
 def _corrections(session: Any) -> list[Dict[str, Any]]:
     corrections: list[Dict[str, Any]] = []
     for event in list(getattr(session, "events", None) or []):
-        if not isinstance(event, dict) or event.get("kind") != "goal_updated":
+        if not isinstance(event, dict):
+            continue
+        if event.get("kind") == "permission_profile_selected":
+            strategy = event.get("strategy")
+            if isinstance(strategy, dict) and set(strategy) == {"profile_name", "role"}:
+                safe_strategy = {
+                    "profile_name": str(strategy.get("profile_name") or "").strip(),
+                    "role": str(strategy.get("role") or "").strip(),
+                }
+                if all(safe_strategy.values()):
+                    corrections.append(
+                        {
+                            "field": "permission_account_strategy",
+                            "before": {},
+                            "after": safe_strategy,
+                            "source": "manual_profile_selection",
+                        }
+                    )
+            continue
+        if event.get("kind") != "goal_updated":
             continue
         for item in event.get("corrections") or []:
-            if isinstance(item, dict) and item.get("field") in LEARNABLE_FIELDS:
-                corrections.append(
-                    {
-                        "field": item["field"],
-                        "before": item.get("before"),
-                        "after": item.get("after"),
-                        "source": "direct_edit",
-                    }
-                )
+            if not isinstance(item, dict):
+                continue
+            field = _normalized_key(item.get("field"))
+            if not field or _sensitive_key(field):
+                continue
+            corrections.append(
+                {
+                    "field": field,
+                    "before": item.get("before"),
+                    "after": item.get("after"),
+                    "source": str(item.get("source") or "direct_edit"),
+                }
+            )
     intent_state = getattr(session, "intent_state", None)
     intent_state = intent_state if isinstance(intent_state, dict) else {}
     for item in intent_state.get("revisions") or []:
@@ -1005,7 +1452,7 @@ def _corrections(session: Any) -> list[Dict[str, Any]]:
             continue
         source_field = str(item.get("field") or "")
         field = REVISION_FIELD_MAP.get(source_field, source_field)
-        if field not in LEARNABLE_FIELDS:
+        if not field or _sensitive_key(field):
             continue
         before = _revision_value(item.get("before"))
         after = _revision_value(item.get("after"))
@@ -1024,7 +1471,8 @@ def _corrections(session: Any) -> list[Dict[str, Any]]:
 
 def _confirmed(session: Any) -> bool:
     return any(
-        isinstance(event, dict) and event.get("kind") == "confirmation"
+        isinstance(event, dict)
+        and event.get("kind") in {"confirmation", "risk_confirmed"}
         for event in list(getattr(session, "events", None) or [])
     )
 
@@ -1057,16 +1505,170 @@ def _operations_verified(session: Any, result: Dict[str, Any]) -> bool:
 
 
 def _sample_scope(goal: Dict[str, Any]) -> tuple[str, str]:
-    operations = [item for item in goal.get("operations") or [] if isinstance(item, dict)]
-    operation_type = str((operations[0] if operations else {}).get("type") or "data_agent")
-    module_key = {
-        "advance_order": "order",
-        "advance_porder": "porder",
-        "problem_goods": "problem_goods",
-    }.get(operation_type, operation_type)
+    capability_key = resolve_goal_capability(goal)
+    capability = capability_catalog().get(capability_key)
+    if capability is None:
+        raise LearningInputError("合同能力未声明，无法生成规范学习指纹")
     mode = str(goal.get("mode") or "").strip()
-    intent_key = "create" if mode == "new" else mode or operation_type
-    return module_key[:80], intent_key[:120]
+    intent_key = str(goal.get("capability_key") or "").strip()
+    if not intent_key:
+        if capability_key == "problem_goods":
+            intent_key = capability_key
+        else:
+            intent_key = "create" if mode == "new" else mode or capability_key
+    return capability.module[:80], intent_key[:120]
+
+
+def _learning_sample_values(session: Any) -> dict:
+    goal = getattr(session, "goal", None)
+    if not isinstance(goal, dict) or not goal:
+        raise LearningInputError("合同缺少可学习目标")
+    messages = list(getattr(session, "messages", None) or [])
+    instruction = next(
+        (
+            str(message.get("content") or "")
+            for message in messages
+            if isinstance(message, dict) and message.get("role") == "user"
+        ),
+        "",
+    )
+    safe_instruction = sanitize_learning_value(instruction)
+    safe_final_contract = sanitize_learning_value(goal)
+    initial_contract = getattr(session, "initial_contract", None)
+    safe_initial_contract = sanitize_learning_value(
+        initial_contract if isinstance(initial_contract, dict) else {}
+    )
+    module_key, intent_key = _sample_scope(goal)
+    capability = capability_catalog().get(resolve_goal_capability(goal))
+    if capability is None:
+        raise LearningInputError("合同能力未声明，无法生成规范学习指纹")
+    try:
+        execution_contract = normalize_execution_contract(
+            project_contract_goal(goal, capability),
+            capability,
+        )
+    except ValueError as exc:
+        raise LearningInputError("合同无法生成规范学习指纹") from exc
+    canonical_contract = {
+        "capability_key": capability.key,
+        "execution_contract": execution_contract,
+    }
+    return {
+        "project_id": int(session.project_id),
+        "session_id": str(session.id)[:64],
+        "module_key": module_key,
+        "intent_key": intent_key,
+        "instruction_text": str(safe_instruction),
+        "model_candidate_json": "{}",
+        "initial_contract_json": json.dumps(
+            safe_initial_contract, ensure_ascii=False, sort_keys=True, default=str
+        ),
+        "final_contract_json": json.dumps(
+            safe_final_contract, ensure_ascii=False, sort_keys=True, default=str
+        ),
+        "corrections_json": json.dumps(
+            _corrections(session), ensure_ascii=False, sort_keys=True, default=str
+        ),
+        "fingerprint": sample_fingerprint(
+            int(session.project_id), "", canonical_contract
+        ),
+    }
+
+
+def _upsert_session_sample(
+    db: Session,
+    session: Any,
+) -> tuple[DataAgentLearningSample, bool]:
+    values = _learning_sample_values(session)
+    session_sample = (
+        db.query(DataAgentLearningSample)
+        .filter(
+            DataAgentLearningSample.project_id == values["project_id"],
+            DataAgentLearningSample.session_id == values["session_id"],
+        )
+        .first()
+    )
+    if session_sample is not None:
+        previous_fingerprint = str(session_sample.fingerprint or "")
+        fingerprint_owner = (
+            db.query(DataAgentLearningSample)
+            .filter(DataAgentLearningSample.fingerprint == values["fingerprint"])
+            .first()
+        )
+        if fingerprint_owner not in {None, session_sample}:
+            values["fingerprint"] = hashlib.sha256(
+                (
+                    f'{values["fingerprint"]}:{values["project_id"]}:'
+                    f'{values["session_id"]}'
+                ).encode("utf-8")
+            ).hexdigest()
+        for key, value in values.items():
+            if key in {"project_id", "session_id"}:
+                continue
+            setattr(session_sample, key, value)
+        return session_sample, previous_fingerprint != values["fingerprint"]
+    sample = (
+        db.query(DataAgentLearningSample)
+        .filter(DataAgentLearningSample.fingerprint == values["fingerprint"])
+        .first()
+    )
+    if sample is not None:
+        values["fingerprint"] = hashlib.sha256(
+            (
+                f'{values["fingerprint"]}:{values["project_id"]}:'
+                f'{values["session_id"]}'
+            ).encode("utf-8")
+        ).hexdigest()
+    sample = DataAgentLearningSample(
+        **values,
+        outcome="pending",
+        verified=0,
+        create_time=datetime.now(),
+    )
+    db.add(sample)
+    return sample, True
+
+
+def _transition_sample_outcome(
+    sample: DataAgentLearningSample,
+    requested_outcome: str,
+    contract_changed: bool,
+) -> None:
+    if requested_outcome not in {"pending", "verified", "invalid"}:
+        raise LearningInputError("学习样本状态无效")
+    if requested_outcome == "invalid":
+        sample.outcome = "invalid"
+        sample.verified = 0
+        return
+    if not contract_changed and sample.outcome == "invalid":
+        sample.verified = 0
+        return
+    if (
+        not contract_changed
+        and sample.outcome in {"verified", "success"}
+        and int(sample.verified or 0) == 1
+    ):
+        return
+    sample.outcome = requested_outcome
+    sample.verified = 1 if requested_outcome == "verified" else 0
+
+
+def record_contract_feedback(
+    db: Session,
+    session: Any,
+    verdict: str,
+) -> DataAgentLearningSample:
+    if verdict not in {"correct", "invalid"}:
+        raise LearningInputError("合同反馈无效")
+    sample, contract_changed = _upsert_session_sample(db, session)
+    _transition_sample_outcome(
+        sample,
+        "pending" if verdict == "correct" else "invalid",
+        contract_changed,
+    )
+    db.commit()
+    db.refresh(sample)
+    return sample
 
 
 def capture_learning_sample(
@@ -1080,63 +1682,20 @@ def capture_learning_sample(
     goal = getattr(session, "goal", None)
     if not isinstance(goal, dict) or not goal:
         return None
-    messages = list(getattr(session, "messages", None) or [])
-    instruction = ""
-    for message in messages:
-        if isinstance(message, dict) and message.get("role") == "user":
-            instruction = str(message.get("content") or "")
-            break
-    safe_instruction = sanitize_learning_value(instruction)
-    safe_final_contract = sanitize_learning_value(goal)
-    initial_contract = getattr(session, "initial_contract", None)
-    safe_initial_contract = sanitize_learning_value(
-        initial_contract if isinstance(initial_contract, dict) else {}
-    )
-    fingerprint = sample_fingerprint(int(session.project_id), safe_instruction, safe_final_contract)
-    existing = (
-        db.query(DataAgentLearningSample)
-        .filter(DataAgentLearningSample.fingerprint == fingerprint)
-        .first()
-    )
-    if existing:
-        return existing
+    sample, contract_changed = _upsert_session_sample(db, session)
     verified = bool(
         final_status == "succeeded"
         and _confirmed(session)
         and _operations_verified(session, result if isinstance(result, dict) else {})
     )
-    module_key, intent_key = _sample_scope(goal)
-    corrections = _corrections(session)
-    sample = DataAgentLearningSample(
-        project_id=int(session.project_id),
-        session_id=str(session.id)[:64],
-        module_key=module_key,
-        intent_key=intent_key,
-        instruction_text=str(safe_instruction),
-        model_candidate_json="{}",
-        initial_contract_json=json.dumps(safe_initial_contract, ensure_ascii=False, sort_keys=True, default=str),
-        final_contract_json=json.dumps(safe_final_contract, ensure_ascii=False, sort_keys=True, default=str),
-        corrections_json=json.dumps(corrections, ensure_ascii=False, sort_keys=True, default=str),
-        outcome="success" if verified else "failure",
-        verified=1 if verified else 0,
-        fingerprint=fingerprint,
-        create_time=datetime.now(),
+    _transition_sample_outcome(
+        sample,
+        "verified" if verified else "pending",
+        contract_changed,
     )
-    db.add(sample)
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        existing = (
-            db.query(DataAgentLearningSample)
-            .filter(DataAgentLearningSample.fingerprint == fingerprint)
-            .first()
-        )
-        if existing:
-            return existing
-        raise
+    db.commit()
     db.refresh(sample)
-    if verified and corrections:
+    if sample.outcome in {"verified", "success"} and int(sample.verified or 0) == 1 and _load_json_list(sample.corrections_json):
         _refresh_candidates_with_retry(db, sample)
         db.refresh(sample)
     return sample
@@ -1259,7 +1818,7 @@ def _contract_field_value(goal: dict, field: str) -> Any:
         variables = goal.get("variables") if isinstance(goal.get("variables"), dict) else {}
         if field in variables:
             return _normalized_candidate_value(variables.get(field))
-        operation = _problem_operation(goal) if field in PROBLEM_OVERLAY_FIELDS else None
+        operation = problem_goods_operation(goal) if field in PROBLEM_OVERLAY_FIELDS else None
         if operation is None:
             return None
         if field == "problem_scope":
@@ -1350,7 +1909,7 @@ def _candidate_contract_structure_valid(goal: dict, field: str) -> bool:
             and bool(intent["pricing"])
         )
     if field in PROBLEM_OVERLAY_FIELDS:
-        return field in variables and _problem_operation(goal) is not None
+        return field in variables and problem_goods_operation(goal) is not None
     return False
 
 
@@ -1371,7 +1930,7 @@ def evaluate_candidate(db: Session, candidate: DataAgentRuleCandidate) -> dict:
         db.query(DataAgentLearningSample)
         .filter(
             DataAgentLearningSample.project_id == int(candidate.project_id),
-            DataAgentLearningSample.outcome == "success",
+            DataAgentLearningSample.outcome.in_({"verified", "success"}),
             DataAgentLearningSample.verified == 1,
         )
         .order_by(DataAgentLearningSample.id.asc())
@@ -1407,7 +1966,12 @@ def evaluate_candidate(db: Session, candidate: DataAgentRuleCandidate) -> dict:
         _add_error_code(summary, "source_coverage_invalid")
         return _finish_summary(summary)
     source_id_set = set(source_ids)
-    proposal_after = _normalized_candidate_value(proposal["set_fields"][proposal["field"]])
+    learning_mode = proposal["learning_mode"]
+    proposal_after = (
+        _normalized_candidate_value(proposal["set_fields"][proposal["field"]])
+        if learning_mode == "value"
+        else None
+    )
 
     parsed_samples: list[tuple[DataAgentLearningSample, dict, dict]] = []
     for sample in samples:
@@ -1445,7 +2009,10 @@ def evaluate_candidate(db: Session, candidate: DataAgentRuleCandidate) -> dict:
                 case.get("candidate"),
             )
             result = copy.deepcopy(baseline)
-            if candidate_matches_instruction(proposal, str(case.get("instruction") or "")):
+            if (
+                learning_mode == "value"
+                and candidate_matches_instruction(proposal, str(case.get("instruction") or ""))
+            ):
                 result["goal"] = apply_candidate_overlay(baseline.get("goal") or {}, proposal)
                 if result["goal"] != (baseline.get("goal") or {}):
                     summary["failed_case_ids"].append(case_id)
@@ -1466,6 +2033,14 @@ def evaluate_candidate(db: Session, candidate: DataAgentRuleCandidate) -> dict:
                 summary["conflict_sample_ids"].append(sample_id)
                 continue
             if not matched:
+                continue
+            if learning_mode != "value":
+                if sample_id in source_id_set:
+                    sample_signatures = {
+                        item["signature"] for item in _sample_corrections(sample)
+                    }
+                    if proposal["signature"] not in sample_signatures:
+                        summary["conflict_sample_ids"].append(sample_id)
                 continue
             if not _candidate_contract_structure_valid(
                 initial_contract,
@@ -1661,6 +2236,297 @@ def _serialize_review(review: DataAgentRuleReview) -> dict:
     }
 
 
+def _normalized_sample_status(sample: DataAgentLearningSample) -> str:
+    outcome = str(sample.outcome or "").strip().lower()
+    return {"success": "verified", "failure": "pending"}.get(outcome, outcome)
+
+
+def _sample_contracts(
+    sample: DataAgentLearningSample,
+) -> tuple[dict, dict, str, str, DataScriptCapability | None, list[str]]:
+    issues = []
+    try:
+        initial = _load_json_object(sample.initial_contract_json)
+    except (TypeError, ValueError):
+        initial = {}
+        issues.append("invalid_initial_contract")
+    try:
+        final = _load_json_object(sample.final_contract_json)
+    except (TypeError, ValueError):
+        final = {}
+        issues.append("invalid_final_contract")
+    catalog = capability_catalog()
+    initial_key = resolve_goal_capability(
+        initial,
+        module_key=sample.module_key,
+        intent_key=sample.intent_key,
+    )
+    final_key = resolve_goal_capability(
+        final,
+        module_key=sample.module_key,
+        intent_key=sample.intent_key,
+    )
+    capability = catalog.get(final_key) if initial_key == final_key else None
+    return initial, final, initial_key, final_key, capability, issues
+
+
+_DISPLAY_ONLY_CONTRACT_KEYS = {
+    "assumptions",
+    "contract_editor",
+    "evidence",
+    "field_sources",
+    "inferred_fields",
+    "plan_version",
+    "source_text",
+    "summary",
+}
+
+
+def _generic_execution_contract(value: Any) -> Any:
+    if isinstance(value, dict):
+        result = {}
+        for key, item in value.items():
+            normalized_key = _normalized_key(key)
+            if (
+                _sensitive_key(normalized_key)
+                or normalized_key in {"credential", "credentials"}
+                or normalized_key in _DISPLAY_ONLY_CONTRACT_KEYS
+                or normalized_key.endswith("_label")
+            ):
+                continue
+            result[str(key)] = _generic_execution_contract(item)
+        return result
+    if isinstance(value, list):
+        return [_generic_execution_contract(item) for item in value]
+    return sanitize_learning_value(value)
+
+
+def _normalized_execution_correction_value(
+    field: str,
+    value: Any,
+    capability: DataScriptCapability | None,
+) -> Any:
+    revision_value = _revision_value(value)
+    if field == "pricing":
+        normalized = _normalized_candidate_value(revision_value)
+        _validate_pricing_value(normalized)
+        return normalized
+    if capability is None:
+        return _normalized_candidate_value(revision_value)
+    metadata_field = LEARNING_METADATA_FIELD_MAP.get(field, field)
+    return normalize_contract_field_value(capability, metadata_field, revision_value)
+
+
+def _execution_corrections(
+    value: Any,
+    capability: DataScriptCapability | None,
+) -> tuple[list[dict], list[str]]:
+    corrections = value if isinstance(value, list) else []
+    allowed_fields = set(LEARNABLE_FIELDS)
+    if capability is not None:
+        allowed_fields.update(
+            field.name
+            for field in effective_contract_fields(capability)
+            if field.execution_field
+        )
+    result = []
+    issues = []
+    for item in corrections:
+        if not isinstance(item, dict):
+            issues.append("invalid_corrections")
+            continue
+        source_field = _normalized_key(item.get("field"))
+        field = REVISION_FIELD_MAP.get(source_field, source_field)
+        if (
+            not field
+            or _sensitive_key(source_field)
+            or field not in allowed_fields
+        ):
+            continue
+        try:
+            before = _normalized_execution_correction_value(
+                field, item.get("before"), capability
+            )
+            after = _normalized_execution_correction_value(
+                field, item.get("after"), capability
+            )
+        except (TypeError, ValueError):
+            issues.append("invalid_correction_value")
+            continue
+        if before == after:
+            continue
+        result.append(
+            sanitize_learning_value(
+                {
+                    "field": field,
+                    "before": before,
+                    "after": after,
+                    "source": str(item.get("source") or "direct_edit"),
+                }
+            )
+        )
+    return result, issues
+
+
+def _analyze_learning_sample(sample: DataAgentLearningSample) -> dict:
+    initial, final, initial_key, final_key, capability, issues = _sample_contracts(sample)
+    try:
+        raw_corrections = _load_json_list(sample.corrections_json)
+    except (TypeError, ValueError):
+        raw_corrections = []
+        issues.append("invalid_corrections")
+    corrections, correction_issues = _execution_corrections(
+        raw_corrections, capability
+    )
+    issues.extend(correction_issues)
+    contracts_match = False
+    if initial_key != final_key:
+        contracts_match = False
+    elif capability is not None:
+        try:
+            normalized_initial = normalize_execution_contract(
+                project_contract_goal(initial, capability), capability
+            )
+            normalized_final = normalize_execution_contract(
+                project_contract_goal(final, capability), capability
+            )
+            contracts_match = normalized_initial == normalized_final
+        except (TypeError, ValueError):
+            issues.append("invalid_execution_contract")
+    else:
+        contracts_match = _generic_execution_contract(
+            initial
+        ) == _generic_execution_contract(final)
+    status_value = _normalized_sample_status(sample)
+    data_quality_issues = sorted(set(issues))
+    return {
+        "initial": initial,
+        "final": final,
+        "corrections": corrections,
+        "status": status_value,
+        "first_hit": bool(
+            not data_quality_issues and contracts_match and not corrections
+        ),
+        "data_quality": "invalid" if data_quality_issues else "valid",
+        "data_quality_issues": data_quality_issues,
+    }
+
+
+def _learning_metric_sample(sample: DataAgentLearningSample) -> dict:
+    analysis = _analyze_learning_sample(sample)
+    return {
+        "script_key": _safe_metadata(sample.intent_key),
+        "corrections": analysis["corrections"],
+        "status": _safe_metadata(analysis["status"]),
+        "first_hit": analysis["first_hit"],
+        "data_quality": analysis["data_quality"],
+    }
+
+
+def serialize_learning_sample(sample: DataAgentLearningSample) -> dict:
+    analysis = _analyze_learning_sample(sample)
+    return {
+        "id": int(sample.id),
+        "project_id": int(sample.project_id),
+        "session_id": _safe_metadata(sample.session_id),
+        "module_key": _safe_metadata(sample.module_key),
+        "script_key": _safe_metadata(sample.intent_key),
+        "instruction": sanitize_learning_value(sample.instruction_text or ""),
+        "initial_contract": sanitize_learning_value(analysis["initial"]),
+        "final_contract": sanitize_learning_value(analysis["final"]),
+        "corrections": analysis["corrections"],
+        "status": _safe_metadata(analysis["status"]),
+        "first_hit": analysis["first_hit"],
+        "verified": analysis["status"] == "verified",
+        "data_quality": analysis["data_quality"],
+        "data_quality_issues": analysis["data_quality_issues"],
+        "create_time": (
+            sample.create_time.strftime("%Y-%m-%d %H:%M:%S")
+            if sample.create_time
+            else None
+        ),
+    }
+
+
+def _learning_metrics_from_samples(samples: list[dict], days: int) -> dict:
+    pending_count = 0
+    invalid_count = 0
+    verified_samples = []
+    for sample in samples:
+        if sample.get("data_quality") != "valid" or sample["status"] == "invalid":
+            invalid_count += 1
+        elif sample["status"] == "verified":
+            verified_samples.append(sample)
+        else:
+            pending_count += 1
+
+    by_script: dict[str, dict] = {}
+    correction_counts: dict[str, int] = {}
+    first_hit_count = 0
+    for sample in verified_samples:
+        script_key = str(sample["script_key"])
+        item = by_script.setdefault(
+            script_key,
+            {"verified_count": 0, "first_hit_count": 0},
+        )
+        item["verified_count"] += 1
+        if sample["first_hit"]:
+            first_hit_count += 1
+            item["first_hit_count"] += 1
+        for correction in sample["corrections"]:
+            field = str(correction["field"])
+            correction_counts[field] = correction_counts.get(field, 0) + 1
+
+    script_metrics = []
+    for script_key in sorted(by_script):
+        item = by_script[script_key]
+        rate = item["first_hit_count"] / item["verified_count"]
+        script_metrics.append(
+            {
+                "script_key": script_key,
+                **item,
+                "first_hit_rate": min(1.0, max(0.0, rate)),
+            }
+        )
+    verified_count = len(verified_samples)
+    overall_rate = first_hit_count / verified_count if verified_count else None
+    return {
+        "days": days,
+        "sample_count": len(samples),
+        "verified_count": verified_count,
+        "pending_count": pending_count,
+        "invalid_count": invalid_count,
+        "first_hit_count": first_hit_count,
+        "first_hit_rate": (
+            min(1.0, max(0.0, overall_rate)) if overall_rate is not None else None
+        ),
+        "by_script": script_metrics,
+        "by_correction_field": [
+            {"field": field, "count": correction_counts[field]}
+            for field in sorted(correction_counts)
+        ],
+    }
+
+
+def learning_metrics(db: Session, project_id: int, days: int) -> dict:
+    if isinstance(days, bool) or days not in {7, 30}:
+        raise LearningInputError("命中率统计仅支持 7 天或 30 天")
+    cutoff = datetime.now() - timedelta(days=days)
+    rows = (
+        db.query(DataAgentLearningSample)
+        .filter(
+            DataAgentLearningSample.project_id == int(project_id),
+            DataAgentLearningSample.create_time >= cutoff,
+        )
+        .order_by(DataAgentLearningSample.id.desc())
+        .all()
+    )
+    return _learning_metrics_from_samples(
+        [_learning_metric_sample(row) for row in rows],
+        days,
+    )
+
+
 def _create_review(
     db: Session,
     *,
@@ -1757,6 +2623,27 @@ def _strict_version_rule(rule: DataAgentRuleVersion) -> dict:
 
 
 def get_learning_overview(db: Session, project_id: int) -> dict:
+    now = datetime.now()
+    samples = (
+        db.query(DataAgentLearningSample)
+        .filter(
+            DataAgentLearningSample.project_id == int(project_id),
+            DataAgentLearningSample.create_time >= now - timedelta(days=30),
+        )
+        .order_by(DataAgentLearningSample.id.desc())
+        .all()
+    )
+    serialized_samples = [
+        serialize_learning_sample(item) for item in samples[:100]
+    ]
+    metric_samples = serialized_samples + [
+        _learning_metric_sample(item) for item in samples[100:]
+    ]
+    serialized_days_7 = [
+        payload
+        for sample, payload in zip(samples, metric_samples)
+        if sample.create_time >= now - timedelta(days=7)
+    ]
     candidates = (
         db.query(DataAgentRuleCandidate)
         .filter(DataAgentRuleCandidate.project_id == int(project_id))
@@ -1810,7 +2697,26 @@ def get_learning_overview(db: Session, project_id: int) -> dict:
         "active_rules": [_serialize_rule(item) for item in active_rules],
         "recent_versions": [_serialize_rule(item) for item in recent_versions],
         "recent_reviews": [_serialize_review(item) for item in reviews],
+        "samples": serialized_samples,
+        "metrics": {
+            "days_7": _learning_metrics_from_samples(serialized_days_7, 7),
+            "days_30": _learning_metrics_from_samples(metric_samples, 30),
+        },
     }
+
+
+def get_learning_sample(db: Session, sample_id: int, project_id: int) -> dict:
+    sample = (
+        db.query(DataAgentLearningSample)
+        .filter(
+            DataAgentLearningSample.id == int(sample_id),
+            DataAgentLearningSample.project_id == int(project_id),
+        )
+        .first()
+    )
+    if sample is None:
+        raise LearningNotFoundError("学习样本不存在")
+    return serialize_learning_sample(sample)
 
 
 def get_candidate_detail(db: Session, candidate_id: int) -> dict:
@@ -1974,6 +2880,8 @@ def promote_rule(db: Session, rule_version_id: int, user_id: int, reason: str) -
         ):
             raise LearningConflictError("仅 active 项目规则可提升")
         rule = _strict_version_rule(source)
+        if rule["learning_mode"] in {"pattern", "strategy"}:
+            raise LearningConflictError("该学习规则仅允许项目范围")
         _supersede_active(db, 0, "global", source.rule_key)
         version = DataAgentRuleVersion(
             candidate_id=int(source.candidate_id),

@@ -15,6 +15,7 @@ _COMPAT_NAMES = (
     'ORDER_SCRIPT_NAME',
     'POORDER_BALANCE_PAYMENT_SCRIPT_NAME',
     'POORDER_BANK_PAYMENT_SCRIPT_NAME',
+    'POORDER_SHIPMENT_SCRIPT_NAME',
     'PURCHASE_TO_SHELF_SCRIPT_NAME',
     'RESUME_ORDER_FLOW_SCRIPT_NAME',
     'RESUME_PORDER_FLOW_SCRIPT_NAME',
@@ -45,6 +46,7 @@ _COMPAT_NAMES = (
     'datetime',
     'ensure_report_dirs',
     'run_order_quote_script',
+    'run_porder_shipment_script',
     'run_purchase_to_shelf_script',
     'run_resume_order_flow_script',
     'run_resume_porder_flow_script',
@@ -94,6 +96,25 @@ def _call_with_progress(callback: Any, node: str, runner: Any) -> Any:
     actual_node = str(summary.get("current_node") or summary.get("stopped_after_node") or node)
     _emit_progress(callback, actual_node, "completed" if passed else "failed")
     return result
+
+
+def _run_porder_shipment_node(
+    env: Env,
+    variables: Dict[str, Any],
+    porder_sn: str,
+    log: Dict[str, Any],
+    progress_callback: Any,
+) -> tuple[bool, Dict[str, Any]]:
+    shipment_vars = dict(variables)
+    shipment_vars["porder_sn"] = porder_sn
+    passed, _, report, summary = _call_with_progress(
+        progress_callback,
+        "porder_shipped",
+        lambda: run_porder_shipment_script(env, shipment_vars),
+    )
+    summary = dict(summary or {})
+    _full_flow_record_step(log, "porder_shipped", POORDER_SHIPMENT_SCRIPT_NAME, passed, summary, report)
+    return passed, summary
 
 
 def _impl_run_full_flow_script(
@@ -334,6 +355,19 @@ def _impl_run_full_flow_script(
         if _full_flow_stop_reached(variables, "porder_paid"):
             return _full_flow_finish(log, True, "porder_paid", paused=True)
 
+        shipment_passed, shipment_summary = _run_porder_shipment_node(
+            env, variables, porder_sn, log, progress_callback,
+        )
+        if not shipment_passed:
+            return _full_flow_finish(
+                log,
+                False,
+                "porder_shipped",
+                reason=str(shipment_summary.get("reason") or shipment_summary.get("error") or "配送单出货失败"),
+            )
+        if _full_flow_stop_reached(variables, "porder_shipped"):
+            return _full_flow_finish(log, True, "porder_shipped", paused=True)
+
         return _full_flow_finish(log, True, FULL_FLOW_COMPLETE_NODE)
     except Exception as exc:
         log["error"] = str(exc)
@@ -354,7 +388,7 @@ def _impl_run_resume_order_flow_script(
     variables.setdefault("after_box_submit_delay", 0.2)
     variables.setdefault("after_complete_box_delay", 0.2)
     input_adjustments = _full_flow_prepare_warehouse_counts(variables)
-    stop_after = _stop_after_node(variables) or "porder_offered"
+    stop_after = _stop_after_node(variables) or "porder_shipped"
     variables["stop_after_node"] = stop_after
     order_sn = str(variables.get("order_sn") or variables.get("last_order_sn") or "").strip()
     log: Dict[str, Any] = {
@@ -552,8 +586,52 @@ def _impl_run_resume_order_flow_script(
             )
         if _is_paused(delivery_summary):
             return _resume_flow_finish(log, True, str(delivery_summary.get("current_node") or "porder_offered"), paused=True)
+        if _full_flow_stop_reached(variables, "porder_offered"):
+            return _resume_flow_finish(log, True, "porder_offered", paused=True)
 
-        return _resume_flow_finish(log, True, "porder_offered")
+        porder_sn = str(delivery_summary.get("porder_sn") or log["shared_data"].get("porder_sn") or "").strip()
+        if not porder_sn:
+            return _resume_flow_finish(log, False, "porder_offered", reason="配送单流转未返回配送单号")
+        variables["porder_sn"] = porder_sn
+
+        porder_pay_vars = dict(variables)
+        porder_pay_vars["porder_sn"] = porder_sn
+        porder_pay_vars["run_backend_porder_flow"] = False
+        pay_passed, pay_log, pay_report, pay_summary = _call_with_progress(
+            progress_callback,
+            "porder_paid",
+            lambda: _payment_with_bank_fallback(env, porder_pay_vars, porder=True),
+        )
+        pay_summary = dict(pay_summary or {})
+        _full_flow_record_step(
+            log,
+            "porder_paid",
+            pay_summary.get("payment_type") == "bank" and POORDER_BANK_PAYMENT_SCRIPT_NAME or POORDER_BALANCE_PAYMENT_SCRIPT_NAME,
+            pay_passed,
+            pay_summary,
+            pay_report,
+        )
+        if not pay_passed:
+            return _resume_flow_finish(
+                log,
+                False,
+                "porder_paid",
+                reason=str(pay_summary.get("reason") or pay_summary.get("error") or "配送单支付失败"),
+            )
+        if _full_flow_stop_reached(variables, "porder_paid"):
+            return _resume_flow_finish(log, True, "porder_paid", paused=True)
+
+        shipment_passed, shipment_summary = _run_porder_shipment_node(
+            env, variables, porder_sn, log, progress_callback,
+        )
+        if not shipment_passed:
+            return _resume_flow_finish(
+                log,
+                False,
+                "porder_shipped",
+                reason=str(shipment_summary.get("reason") or shipment_summary.get("error") or "配送单出货失败"),
+            )
+        return _resume_flow_finish(log, True, "porder_shipped")
     except Exception as exc:
         log["error"] = str(exc)
         return _resume_flow_finish(log, False, str(log["steps"][-1]["node"] if log["steps"] else "order_created"), reason=str(exc))
@@ -570,7 +648,7 @@ def _impl_run_resume_porder_flow_script(
     variables.setdefault("sleep", 0)
     variables.setdefault("after_box_submit_delay", 0.2)
     variables.setdefault("after_complete_box_delay", 0.2)
-    stop_after = _stop_after_node(variables) or "porder_offered"
+    stop_after = _stop_after_node(variables) or "porder_shipped"
     variables["stop_after_node"] = stop_after
     porder_sn = str(variables.get("porder_sn") or "").strip()
     log: Dict[str, Any] = {
@@ -605,7 +683,24 @@ def _impl_run_resume_porder_flow_script(
         detected_start_node = str(detect_summary.get("detected_start_node") or "")
 
         # 如果已报价，跳过后台流程直接支付
-        if detected_start_node == "porder_offered":
+        if detected_start_node == "porder_shipped":
+            _resume_record_skipped(
+                log,
+                ["porder_translated", "porder_confirmed", "porder_wait_offer", "porder_offered", "porder_paid", "porder_shipped"],
+                "配送单已出货，跳过已完成流程",
+            )
+            return _resume_flow_finish(log, True, "porder_shipped")
+
+        already_paid = detected_start_node == "porder_paid"
+        if already_paid:
+            _resume_record_skipped(
+                log,
+                ["porder_translated", "porder_confirmed", "porder_wait_offer", "porder_offered", "porder_paid"],
+                "配送单已支付，跳过后台流程和支付",
+            )
+            if _full_flow_stop_reached(variables, "porder_paid"):
+                return _resume_flow_finish(log, True, "porder_paid")
+        elif detected_start_node == "porder_offered":
             _resume_record_skipped(
                 log,
                 ["porder_translated", "porder_confirmed", "porder_wait_offer", "porder_offered"],
@@ -642,6 +737,19 @@ def _impl_run_resume_porder_flow_script(
             if _is_paused(backend_summary):
                 return _resume_flow_finish(log, True, str(backend_summary.get("current_node") or "porder_offered"), paused=True)
 
+        if already_paid:
+            shipment_passed, shipment_summary = _run_porder_shipment_node(
+                env, variables, porder_sn, log, progress_callback,
+            )
+            if not shipment_passed:
+                return _resume_flow_finish(
+                    log,
+                    False,
+                    "porder_shipped",
+                    reason=str(shipment_summary.get("reason") or shipment_summary.get("error") or "配送单出货失败"),
+                )
+            return _resume_flow_finish(log, True, "porder_shipped")
+
         # 支付：余额优先，余额不足自动降级银行支付
         porder_pay_vars = dict(variables)
         porder_pay_vars["porder_sn"] = porder_sn
@@ -667,7 +775,20 @@ def _impl_run_resume_porder_flow_script(
                 "porder_paid",
                 reason=str(pay_summary.get("reason") or pay_summary.get("error") or "配送单支付失败"),
             )
-        return _resume_flow_finish(log, True, "porder_paid")
+        if _full_flow_stop_reached(variables, "porder_paid"):
+            return _resume_flow_finish(log, True, "porder_paid")
+
+        shipment_passed, shipment_summary = _run_porder_shipment_node(
+            env, variables, porder_sn, log, progress_callback,
+        )
+        if not shipment_passed:
+            return _resume_flow_finish(
+                log,
+                False,
+                "porder_shipped",
+                reason=str(shipment_summary.get("reason") or shipment_summary.get("error") or "配送单出货失败"),
+            )
+        return _resume_flow_finish(log, True, "porder_shipped")
     except Exception as exc:
         log["error"] = str(exc)
         return _resume_flow_finish(log, False, str(log["steps"][-1]["node"] if log["steps"] else "warehouse_delivery_created"), reason=str(exc))

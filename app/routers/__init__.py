@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from .action_templates import router as action_templates_router
 from .ai_config import router as ai_config_router
 from .api_cases import router as api_cases_router
+from .api_harvester import router as api_harvester_router
 from .auth import router as auth_router
 from .browser_record import router as browser_record_router
 from .case_generation import router as case_generation_router
@@ -36,6 +37,7 @@ def register_routers(app: FastAPI) -> None:
         projects_router,
         envs_router,
         api_cases_router,
+        api_harvester_router,
         ui_cases_router,
         test_accounts_router,
         action_templates_router,

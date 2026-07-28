@@ -1,4 +1,4 @@
-﻿import os
+import os
 from typing import Any
 
 from fastapi import FastAPI
@@ -64,3 +64,31 @@ def configure_app(app: FastAPI) -> None:
     report_dir = BASE_DIR / "reports"
     if report_dir.exists():
         app.mount("/reports", StaticFiles(directory=str(report_dir)), name="reports")
+
+    # Vue3 迁移工程挂载（Phase 0）
+    # 仅新增，不修改任何已有路由
+    # frontend/dist 不存在时跳过，不影响旧应用
+    # 使用自定义路由 + StaticFiles 支持 SPA History 模式 fallback
+    frontend_dist = BASE_DIR / "frontend" / "dist"
+    if frontend_dist.exists():
+        from fastapi import Response
+        from starlette.requests import Request
+
+        v3_static = StaticFiles(directory=str(frontend_dist))
+
+        @app.get("/v3", include_in_schema=False)
+        @app.get("/v3/", include_in_schema=False)
+        async def _v3_index(request: Request):
+            """根路径 /v3/ 返回 index.html"""
+            index_path = frontend_dist / "index.html"
+            return Response(content=index_path.read_bytes(), media_type="text/html")
+
+        @app.get("/v3/{path:path}", include_in_schema=False)
+        async def _v3_assets(request: Request, path: str):
+            """静态资源 /v3/assets/xxx 直接返回文件；非文件路径回退到 index.html（SPA History 模式）"""
+            full = frontend_dist / path
+            if full.is_file():
+                # 修复：传入 request.scope，避免 Starlette StaticFiles.get_response 读取 scope["method"] 时 KeyError
+                return await v3_static.get_response(path, request.scope)
+            index_path = frontend_dist / "index.html"
+            return Response(content=index_path.read_bytes(), media_type="text/html")

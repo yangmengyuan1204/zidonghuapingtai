@@ -25,15 +25,29 @@ router = APIRouter(tags=["api-cases"])
 def list_api_cases(
     project_id: int | None = Query(default=None),
     env_id: int | None = Query(default=None),
+    page: int | None = Query(default=None, ge=1),
+    page_size: int | None = Query(default=None, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[Dict[str, Any]]:
+) -> Any:
     query = db.query(ApiCase)
     if project_id is not None:
         query = query.filter(ApiCase.project_id == project_id)
     if env_id is not None:
         query = query.filter(ApiCase.env_id == env_id)
-    return serialize_many(query.order_by(ApiCase.id.desc()).all())
+    ordered_query = query.order_by(ApiCase.id.desc())
+    if page is None and page_size is None:
+        return serialize_many(ordered_query.all())
+    current_page = page or 1
+    current_page_size = page_size or 20
+    total = query.count()
+    items = ordered_query.offset((current_page - 1) * current_page_size).limit(current_page_size).all()
+    return {
+        "total": total,
+        "page": current_page,
+        "page_size": current_page_size,
+        "items": serialize_many(items),
+    }
 
 
 @router.post("/api/api-cases")

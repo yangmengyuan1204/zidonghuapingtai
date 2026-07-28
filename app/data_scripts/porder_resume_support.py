@@ -467,10 +467,17 @@ def _impl__porder_detail_status_texts(rows: list[Dict[str, Any]]) -> list[str]:
 
 
 def _impl__porder_node_from_status_texts(texts: list[str]) -> str:
+    normalized = {str(text or "").strip().lower() for text in texts}
+    if normalized.intersection({"60", "已发出", "已發出", "已出货", "已出貨", "shipped"}):
+        return "porder_shipped"
+    if normalized.intersection({"50", "待出货", "待出貨", "已付款", "已支付", "paid"}):
+        return "porder_paid"
     status_text = " ".join(texts).lower()
     if not status_text:
         return ""
     node_keywords = [
+        ("porder_shipped", ["已发出", "已發出", "已出货", "已出貨", "shipped"]),
+        ("porder_paid", ["待出货", "待出貨", "已付款", "已支付", "payment completed"]),
         ("porder_offered", ["已报价", "报价完成", "待付款", "等待付款", "wait_pay", "wait pay", "offered", "quoted"]),
         ("porder_wait_offer", ["待报价", "等待报价", "wait_offer", "wait offer"]),
         ("porder_confirmed", ["已装箱", "装箱完成", "待提交业务", "提交业务", "confirmed"]),
@@ -546,7 +553,9 @@ def _impl__detect_resume_porder_state(
     # 若无箱子 → warehouse_delivery_created 或 porder_translated
     # 有箱子但未完成装箱 → porder_confirmed
     # 箱子已完成 → porder_wait_offer 或 porder_offered
-    if status_detected_node == "porder_offered":
+    if status_detected_node in {"porder_paid", "porder_shipped"}:
+        detected_start_node = status_detected_node
+    elif status_detected_node == "porder_offered":
         detected_start_node = "porder_offered"
     elif not has_boxes:
         # 检查是否已提交翻译：detail 行的 status 如果有 translate 相关标记

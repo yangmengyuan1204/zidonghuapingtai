@@ -8,7 +8,7 @@ import re
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict
@@ -20,7 +20,15 @@ from ..core.account_utils import account_profile_variables, default_account_prof
 from ..core.data_script_catalog import DATA_SCRIPT_PROJECT_NAME
 from ..core.utils import data_script_variables, save_record
 from ..data_scripts.rollback_flow import ROLLBACK_TARGET_LABELS
-from ..data_scripts.capabilities import available_capabilities
+from ..data_scripts.capabilities import (
+    DataScriptCapability,
+    OFFER_UNIT_PRICES_FIELD,
+    PROBLEM_GOODS_FIELDS,
+    available_capabilities,
+    capability_catalog,
+    effective_contract_fields,
+    is_sensitive_field_identifier,
+)
 from ..database import SessionLocal
 from ..functional_testing.model_client import call_local_model_json
 from ..models import AiConfig, Env, Project, TestAccountProfile
@@ -30,12 +38,30 @@ from .data_factory_agent_contract import (
     problem_goods_clarification,
     read_deterministic_problem_fields,
 )
+from .data_agent_contracts import (
+    ContractValidationError,
+    apply_contract_updates,
+    build_contract_editor_schema,
+    diff_execution_contract,
+    normalize_execution_contract,
+    problem_goods_operation,
+    project_contract_goal,
+    required_contract_errors,
+    resolve_goal_capability,
+)
+from .data_agent_contract_compiler import (
+    CORE_SPECIALIZED_CAPABILITIES,
+    compile_metadata_contract,
+    new_contract_seed,
+    select_capability,
+)
 from .data_agent_learning import (
     apply_learning_context,
     capture_learning_sample,
     learning_context,
     sanitize_learning_value,
 )
+from . import data_agent_learning as learning_service
 from .data_factory_agent_prompts import (
     SYSTEM_PROMPT,
     SYSTEM_PROMPT_ACTION,
@@ -48,6 +74,9 @@ from .data_factory_agent_tools import (
     aggregate_log,
     execute_agent_tool,
     public_tool_catalog,
+    redact_sensitive_observation,
+    redact_sensitive_text,
+    redact_sensitive_value,
     sanitize_observation,
 )
 
@@ -110,6 +139,7 @@ FULL_FLOW_NODE_LABELS: Dict[str, str] = {
     "porder_wait_offer": "配送单进入待报价",
     "porder_offered": "配送单报价完成",
     "porder_paid": "配送单支付完成",
+    "porder_shipped": "配送单已出货",
     "full_complete": "全流程结束",
 }
 FULL_FLOW_NODE_SEQUENCE = list(FULL_FLOW_NODE_LABELS)
@@ -139,6 +169,8 @@ NODE_ALIASES = {
     "配送单待报价": "porder_wait_offer",
     "配送单报价": "porder_offered",
     "配送单支付": "porder_paid",
+    "配送单出货": "porder_shipped",
+    "配送单已出货": "porder_shipped",
     "全流程": "full_complete",
 }
 
@@ -225,12 +257,10 @@ DEFAULT_VARIABLES: Dict[str, Any] = {
     "client_remark": "自动化提出订单",
     "translate_remark": "自动化订单翻译",
     "confirm_price": "10",
-    "confirm_freight": "5",
     "confirm_volume": "1x2x3",
     "confirm_weight": "200",
     "confirm_remark": "自动化采购调查",
     "offer_price": "10",
-    "offer_freight": "5",
     "other_price": "0",
     "other_price_remark": "自动化其他费用备注",
     "offer_remark": "自动化业务报价",
@@ -289,6 +319,7 @@ class AgentSessionState:
     env_id: int
     status: str
     plan_version: int = 1
+    capability_key: str = ""
     messages: list[Dict[str, str]] = field(default_factory=list)
     compile_context: Dict[str, Any] = field(default_factory=dict)
     goal: Dict[str, Any] = field(default_factory=dict)
@@ -299,6 +330,7 @@ class AgentSessionState:
     runtime_state: Dict[str, Any] = field(default_factory=dict)
     intent_state: Dict[str, Any] = field(default_factory=dict)
     clarification_counts: Dict[str, int] = field(default_factory=dict)
+    pending_contract_preview: Dict[str, Any] = field(default_factory=dict)
     analysis_record_ids: list[int] = field(default_factory=list)
     cancel_requested: bool = False
     record_id: int | None = None
@@ -361,7 +393,12 @@ def _now_text() -> str:
 
 
 def _event(kind: str, message: str, **data: Any) -> Dict[str, Any]:
-    return {"time": _now_text(), "kind": kind, "message": str(message or ""), **sanitize_observation(data)}
+    return {
+        "time": _now_text(),
+        "kind": kind,
+        "message": redact_sensitive_text(str(message or "")),
+        **redact_sensitive_observation(data),
+    }
 
 
 def _remember_initial_contract(session: AgentSessionState) -> None:
@@ -387,14 +424,195 @@ def _session_or_404(session_id: str, user_id: int) -> AgentSessionState:
         return session
 
 
+CONTRACT_EDITOR_GROUPS = (
+    ("task_scope", "任务范围"),
+    ("business", "业务参数"),
+    ("goods_price", "商品与价格"),
+    ("payment", "支付"),
+    ("problem_goods", "问题产品"),
+    ("execution", "执行信息"),
+)
+PROBLEM_OPERATION_FIELDS = {
+    field.name for field in PROBLEM_GOODS_FIELDS if not field.readonly
+}
+PROBLEM_CONTRACT_FIELDS = {field.name for field in PROBLEM_GOODS_FIELDS}
+SESSION_CORE_CAPABILITIES = {
+    "full_flow",
+    "resume_order_flow",
+    "resume_porder_flow",
+    "problem_goods",
+}
+def _session_contract_capability(
+    base_capability: DataScriptCapability,
+    goal: Dict[str, Any] | None = None,
+) -> DataScriptCapability:
+    if base_capability.key not in SESSION_CORE_CAPABILITIES:
+        return base_capability
+    contract_fields = base_capability.contract_fields
+    if problem_goods_operation(goal or {}) is None:
+        contract_fields = tuple(
+            field
+            for field in contract_fields
+            if field.name not in PROBLEM_CONTRACT_FIELDS
+        )
+    if not any(
+        field.name == OFFER_UNIT_PRICES_FIELD.name
+        for field in contract_fields
+    ):
+        contract_fields += (OFFER_UNIT_PRICES_FIELD,)
+    if contract_fields == base_capability.contract_fields:
+        return base_capability
+    return replace(
+        base_capability,
+        contract_fields=contract_fields,
+    ).validate()
+
+
+def _set_session_capability(session: AgentSessionState) -> None:
+    if session.status == "awaiting_confirmation" and session.goal:
+        session.capability_key = resolve_goal_capability(session.goal)
+        session.goal["capability_key"] = session.capability_key
+
+
+def _analysis_capability_key(trace: Dict[str, Any]) -> str:
+    capability_key = str((trace or {}).get("capability_key") or "").strip()
+    capability = capability_catalog().get(capability_key)
+    return capability_key if capability is not None and capability.agent_enabled else ""
+
+
+def _strip_problem_projection(goal: Dict[str, Any]) -> None:
+    variables = goal.get("variables")
+    if not isinstance(variables, dict):
+        return
+    for name in PROBLEM_OPERATION_FIELDS:
+        variables.pop(name, None)
+
+
+def _synchronize_contract_goal(
+    goal: Dict[str, Any], updated_names: set[str], capability_key: str
+) -> None:
+    if capability_key not in SESSION_CORE_CAPABILITIES:
+        return
+    variables = goal.get("variables")
+    if not isinstance(variables, dict):
+        variables = {}
+        goal["variables"] = variables
+    if "customer_ids" in updated_names:
+        variables["customer_ids"] = copy.deepcopy(goal.get("customer_ids") or [])
+        goal["customer_scope_label"] = "、".join(goal.get("customer_ids") or [])
+        goal["customer_source"] = "direct_edit"
+    if "order_sn" in updated_names:
+        variables["order_sn"] = str(goal.get("order_sn") or "")
+    if "porder_sn" in updated_names:
+        variables["porder_sn"] = str(goal.get("porder_sn") or "")
+    if "order_shop_count" in updated_names:
+        variables["target_shops"] = variables.get("order_shop_count")
+    if "order_per_shop" in updated_names:
+        variables["per_shop"] = variables.get("order_per_shop")
+    if "target_node" in updated_names:
+        target_node = str(goal.get("target_node") or "")
+        goal["target_label"] = FULL_FLOW_NODE_LABELS.get(target_node, target_node)
+        variables["stop_after_node"] = target_node
+        for operation in goal.get("operations") or []:
+            if isinstance(operation, dict) and operation.get("type") in {
+                "advance_order",
+                "advance_porder",
+            }:
+                operation["target_node"] = target_node
+                operation["target_label"] = goal["target_label"]
+                break
+    if updated_names.intersection({"order_payment_mode", "porder_payment_mode"}) and (
+        variables.get("order_payment_mode") == "bank"
+        or variables.get("porder_payment_mode") == "bank"
+    ):
+        variables["finance_confirm"] = True
+
+
+def _apply_session_contract_updates(
+    goal: Dict[str, Any], updates: Dict[str, Any], capability_key: str
+) -> tuple[Dict[str, Any], list[Dict[str, Any]]]:
+    unavailable_problem_fields = set(updates).intersection(PROBLEM_OPERATION_FIELDS)
+    if unavailable_problem_fields and problem_goods_operation(goal) is None:
+        raise ContractValidationError({
+            name: "当前合同没有问题产品操作"
+            for name in sorted(unavailable_problem_fields)
+        })
+    capability = _session_contract_capability(
+        capability_catalog()[capability_key], goal
+    )
+    projected = project_contract_goal(goal, capability)
+    updated, corrections = apply_contract_updates(projected, updates, capability)
+    updated_names = set(updates)
+    sources = dict(updated.get("field_sources") or {})
+    sources.update({name: "direct_edit" for name in updated_names})
+    updated["field_sources"] = sources
+    updated["inferred_fields"] = sorted(
+        set(updated.get("inferred_fields") or []) - updated_names
+    )
+    _synchronize_contract_goal(updated, updated_names, capability_key)
+    finalized, _ = apply_contract_updates(
+        project_contract_goal(updated, capability), {}, capability
+    )
+    _strip_problem_projection(finalized)
+    return finalized, corrections
+
+
 def _serialize_session(session: AgentSessionState) -> Dict[str, Any]:
     with _STORE_LOCK:
+        capability_key = session.capability_key
+        base_capability = capability_catalog().get(capability_key)
+        capability = (
+            _session_contract_capability(base_capability, session.goal)
+            if base_capability
+            else None
+        )
+        editor_fields = (
+            build_contract_editor_schema(
+                capability,
+                project_contract_goal(session.goal, capability, session.plan_version),
+            )
+            if capability and session.goal
+            else []
+        )
+        restore_contract = session.initial_contract or session.goal
+        if capability and restore_contract:
+            initial_editor_fields = {
+                item["name"]: item
+                for item in build_contract_editor_schema(
+                    capability,
+                    project_contract_goal(
+                        restore_contract,
+                        capability,
+                        session.plan_version,
+                    ),
+                )
+            }
+            for item in editor_fields:
+                initial = initial_editor_fields.get(item["name"])
+                if initial and initial.get("inferred") is True:
+                    item["restore_value"] = copy.deepcopy(initial.get("value"))
+                    item["restore_source"] = str(initial.get("source") or "")
+                    item["restore_inferred"] = True
+        present_groups = {item["group"] for item in editor_fields}
+        known_group_keys = {key for key, _ in CONTRACT_EDITOR_GROUPS}
         payload = {
             "id": session.id,
             "project_id": session.project_id,
             "env_id": session.env_id,
             "status": session.status,
             "plan_version": session.plan_version,
+            "capability_key": capability_key,
+            "contract_editor": {
+                "groups": [
+                    {"key": key, "label": label}
+                    for key, label in CONTRACT_EDITOR_GROUPS
+                    if key in present_groups
+                ] + [
+                    {"key": key, "label": key}
+                    for key in sorted(present_groups - known_group_keys)
+                ],
+                "fields": editor_fields,
+            },
             "messages": copy.deepcopy(session.messages),
             "goal": copy.deepcopy(session.goal),
             "question": session.question,
@@ -464,26 +682,55 @@ def validate_agent_context(db: Session, project_id: int, env_id: int) -> tuple[P
     return project, env
 
 
-def _auto_large_refund_profile_id(db: Session, project_id: int) -> int | None:
-    profile = (
+def _normalized_permission_account_strategy(value: Any) -> Dict[str, str] | None:
+    if not isinstance(value, dict) or set(value) != {"profile_name", "role"}:
+        return None
+    strategy = {
+        "profile_name": str(value.get("profile_name") or "").strip(),
+        "role": str(value.get("role") or "").strip(),
+    }
+    return strategy if all(strategy.values()) else None
+
+
+def _auto_large_refund_profile_id(
+    db: Session,
+    project_id: int,
+    strategy: Any,
+    required_role: str,
+) -> int | None:
+    safe_strategy = _normalized_permission_account_strategy(strategy)
+    safe_required_role = str(required_role or "").strip()
+    if not safe_strategy or not safe_required_role or safe_strategy["role"] != safe_required_role:
+        return None
+    profiles = (
         db.query(TestAccountProfile)
         .filter(
             TestAccountProfile.project_id == int(project_id),
             TestAccountProfile.status == "active",
-            TestAccountProfile.profile_name == "后台沈文妮账号",
+            TestAccountProfile.profile_name == safe_strategy["profile_name"],
         )
         .order_by(TestAccountProfile.id.asc())
-        .first()
+        .all()
     )
-    if not profile:
+    if len(profiles) != 1:
         return None
+    profile = profiles[0]
     try:
-        account_values, _ = account_profile_variables(db, int(profile.id), int(project_id))
+        account_values, metadata = account_profile_variables(db, int(profile.id), int(project_id))
     except HTTPException:
         return None
+    profile_name = str(metadata.get("profile_name") or "").strip()
+    profile_role = str(account_values.get("account_role") or account_values.get("role") or "").strip()
     backend_account = account_values.get("backend_account") or account_values.get("username") or account_values.get("account")
     backend_password = account_values.get("backend_password") or account_values.get("password")
-    return int(profile.id) if backend_account and backend_password else None
+    return (
+        int(profile.id)
+        if profile_name == safe_strategy["profile_name"]
+        and profile_role == safe_required_role
+        and backend_account
+        and backend_password
+        else None
+    )
 
 
 def _latest_model_config(db: Session) -> AiConfig:
@@ -500,11 +747,11 @@ def _analysis_prompt(
     capability_specs: list[Any] | None = None,
 ) -> str:
     return build_analysis_prompt(
-        messages=messages,
-        intent_state=intent_state,
+        messages=redact_sensitive_value(messages),
+        intent_state=redact_sensitive_value(intent_state),
         node_labels=FULL_FLOW_NODE_LABELS,
         allowed_variable_keys=ALLOWED_VARIABLE_KEYS,
-        learning_context=approved_learning,
+        learning_context=redact_sensitive_value(approved_learning),
         capability_specs=capability_specs,
     )
 
@@ -588,10 +835,31 @@ def _apply_approved_learning(
     goal: Dict[str, Any],
     approved_learning: Dict[str, Any],
     hard_fields: set[str],
+    capability: DataScriptCapability | None = None,
 ) -> Dict[str, Any]:
-    learned = apply_learning_context(goal, approved_learning, hard_fields=hard_fields)
+    learned = apply_learning_context(
+        goal,
+        approved_learning,
+        hard_fields=hard_fields,
+        capability=capability,
+    )
     applied = learned.get("learning_applied") or []
     if not applied:
+        return learned
+    if (
+        capability is not None
+        and capability.key not in CORE_SPECIALIZED_CAPABILITIES
+    ):
+        sources = dict(learned.get("field_sources") or {})
+        inferred = set(learned.get("inferred_fields") or [])
+        for item in applied:
+            field_name = str(item.get("field") or "")
+            if field_name:
+                sources[field_name] = "learning"
+                inferred.add(field_name)
+        learned["field_sources"] = sources
+        learned["inferred_fields"] = sorted(inferred)
+        learned, _ = apply_contract_updates(learned, {}, capability)
         return learned
     variables = learned.get("variables") if isinstance(learned.get("variables"), dict) else {}
     target_node = str(learned.get("target_node") or "")
@@ -603,6 +871,7 @@ def _apply_approved_learning(
                 "advance_order",
                 "advance_porder",
             }:
+                operation["target_node"] = target_node
                 operation["target_label"] = learned["target_label"]
         learned["steps"] = [
             (
@@ -654,10 +923,20 @@ def _apply_approved_learning(
         ):
             summary_parts.append("并处理问题产品")
         learned["summary"] = "，".join(summary_parts)
+    learning_summary = "受控学习推断：" + "、".join(applied_labels)
+    if capability is not None and problem_goods_operation(learned) is not None:
+        refreshed, _ = apply_contract_updates(
+            project_contract_goal(learned, capability),
+            {},
+            capability,
+        )
+        learned["summary"] = (
+            str(refreshed.get("summary") or "") + "；" + learning_summary
+        ).strip("；")
+        learned["contract_hash"] = refreshed["contract_hash"]
+        return learned
     learned["summary"] = (
-        str(learned.get("summary") or "")
-        + "；受控学习推断："
-        + "、".join(applied_labels)
+        str(learned.get("summary") or "") + "；" + learning_summary
     ).strip("；")
     learned.pop("contract_hash", None)
     learned["contract_hash"] = hashlib.sha256(
@@ -937,7 +1216,10 @@ def _explicit_target_intent(source_text: str) -> tuple[str, str, str]:
     text = _compact_semantic_text(source_text)
     if not text:
         return "", "", ""
-    porder_paid_match = re.search(r"配送单.{0,8}(?:支付完成|已支付|已付款|付款完成)", text)
+    porder_shipped_match = re.search(r"配送单.{0,8}(?:已出货|出货(?:完成)?|已发出|已發出)", text)
+    porder_paid_match = re.search(
+        r"配送单.{0,8}(?:支付(?:完成)?|已支付|已付款|付款完成)", text
+    )
     porder_offered_match = re.search(r"配送单.{0,8}(?:报价(?:完成)?|已报价)", text)
     delivery_created_match = re.search(r"(?:配送单(?:提出|已提出)|提出配送单)", text)
     shelf_match = re.search(r"(?:上架入库|上架|入库)", text)
@@ -950,6 +1232,7 @@ def _explicit_target_intent(source_text: str) -> tuple[str, str, str]:
     paid_match = None if porder_paid_match else re.search(r"已付款|已支付|支付完成|付款完成|付完(?:钱|款)", text)
     targets: list[tuple[str, str]] = []
     for match, node in (
+        (porder_shipped_match, "porder_shipped"),
         (porder_paid_match, "porder_paid"),
         (porder_offered_match, "porder_offered"),
         (delivery_created_match, "warehouse_delivery_created"),
@@ -1183,11 +1466,48 @@ def _compile_price_intent(
     }, ""
 
 
+def _explicit_order_freight_amounts(source_text: str) -> Dict[str, set[str]]:
+    text = _compact_semantic_text(source_text)
+    if not text:
+        return {"confirm_freight": set(), "offer_freight": set()}
+    amount = r"-?\d+(?:\.\d+)?"
+
+    def matched_amounts(value: str, label: str) -> set[str]:
+        values: set[str] = set()
+        separator = r"(?:设置为|设为|改为|改成|调整为|为|是|=|:)?"
+        patterns = (
+            rf"(?:{label}){separator}({amount})(?:元)?",
+            rf"({amount})(?:元)?(?:的)?(?:{label})",
+        )
+        for pattern in patterns:
+            for raw_value in re.findall(pattern, value, re.IGNORECASE):
+                try:
+                    values.add(_decimal_value(raw_value, "国内运费"))
+                except ValueError:
+                    continue
+        return values
+
+    confirm_label = r"(?:采购调查|采购确认)(?:的)?(?:(?:中国)?国内运费|运费)"
+    offer_label = r"业务报价(?:的)?(?:(?:中国)?国内运费|运费)"
+    stage_label = rf"(?:{confirm_label}|{offer_label})"
+    generic_text = re.sub(stage_label, "", text, flags=re.IGNORECASE)
+    generic_amounts = matched_amounts(generic_text, r"(?:中国)?国内运费")
+    return {
+        "confirm_freight": matched_amounts(text, confirm_label) | generic_amounts,
+        "offer_freight": matched_amounts(text, offer_label) | generic_amounts,
+    }
+
+
 def _explicit_customer_ids(source_text: str) -> tuple[list[str], str]:
     text = _compact_semantic_text(source_text)
     if not text:
         return [], ""
-    matches = re.findall(r"(?:客户|用户)(?:id)?(?:是|为|=|:)?(\d{4,})|执行id(?:是|为|=|:)?(\d{6,})", text, re.IGNORECASE)
+    matches = re.findall(
+        r"(?:客户|用户)(?:id)?(?:改成|改为|调整为|是|为|=|:)?(\d{4,})|"
+        r"执行id(?:改成|改为|调整为|是|为|=|:)?(\d{6,})",
+        text,
+        re.IGNORECASE,
+    )
     values: list[str] = []
     for left, right in matches:
         value = left or right
@@ -1606,6 +1926,25 @@ def _normalize_goal(
     deterministic_problem_fields = read_deterministic_problem_fields(resolved_fields)
     corrections: list[Dict[str, Any]] = []
     evidence: Dict[str, str] = {}
+    explicit_freight_amounts = _explicit_order_freight_amounts(source_text)
+    for field_name in ("confirm_freight", "offer_freight"):
+        field_value = raw_variables.get(field_name)
+        if field_value in (None, ""):
+            raw_variables.pop(field_name, None)
+            continue
+        try:
+            normalized_value = _decimal_value(field_value, "国内运费")
+        except ValueError:
+            raw_variables.pop(field_name, None)
+            continue
+        if normalized_value not in explicit_freight_amounts[field_name]:
+            corrections.append({
+                "field": field_name,
+                "before": field_value,
+                "after": "",
+                "reason": "用户原文未要求填写国内运费",
+            })
+            raw_variables.pop(field_name, None)
 
     problem_operation, problem_question = _problem_goods_intent(source_text)
     if problem_question:
@@ -1757,11 +2096,11 @@ def _normalize_goal(
             target_evidence = "智能体自动推断：默认至订单待付款"
         else:
             return "clarifying", {}, question or "希望最终把测试数据造到哪个状态？例如：待拍下、上架入库或配送单支付完成。"
-    if mode == "resume_order" and target_node in {"shopping_cart", "order_created", "full_complete", "porder_paid"}:
-        return "clarifying", {}, "该目标节点不适用于订单号续跑，请选择订单报价至配送单报价之间的节点。"
+    if mode == "resume_order" and target_node in {"shopping_cart", "order_created", "full_complete"}:
+        return "clarifying", {}, "该目标节点不适用于订单号续跑，请选择订单报价至配送单已出货之间的节点。"
     if mode == "resume_porder" and target_node and target_node not in {
         "warehouse_delivery_created", "porder_translated", "porder_confirmed",
-        "porder_wait_offer", "porder_offered", "porder_paid",
+        "porder_wait_offer", "porder_offered", "porder_paid", "porder_shipped",
     }:
         return "clarifying", {}, "配送单号续跑只能选择配送单阶段的目标节点。"
 
@@ -2095,6 +2434,83 @@ def _normalize_goal(
     return "awaiting_confirmation", goal, ""
 
 
+def _metadata_candidate_field_names(
+    capability: DataScriptCapability,
+) -> set[str]:
+    return {
+        field.name
+        for field in effective_contract_fields(capability)
+        if not field.readonly and not is_sensitive_field_identifier(field.name)
+    }
+
+
+def _metadata_required_question(
+    goal: Dict[str, Any], capability: DataScriptCapability
+) -> str:
+    normalized = normalize_execution_contract(goal, capability)
+    missing = [
+        field.label
+        for field in effective_contract_fields(capability)
+        if field.required
+        and field.execution_field
+        and normalized.get(field.name) in (None, "", [])
+    ]
+    return f"请提供{'、'.join(missing)}。" if missing else ""
+
+
+def _deterministic_core_capability(
+    messages: list[Dict[str, str]],
+) -> str:
+    source_text = _source_text(messages)
+    target_node, _, _ = _explicit_target_intent(source_text)
+    order_sn = _explicit_order_sn(source_text)
+    porder_sn = _explicit_porder_sn(source_text)
+    if target_node:
+        if porder_sn:
+            return "resume_porder_flow"
+        if order_sn:
+            return "resume_order_flow"
+        return "full_flow"
+    if re.search(
+        r"(?:造|创建|新建)(?:一个|个|一份|份)?订单|造订单|下单",
+        _compact_semantic_text(source_text),
+    ):
+        return "full_flow"
+    problem_operation, problem_question = _problem_goods_intent(source_text)
+    if problem_operation or problem_question:
+        return "problem_goods"
+    resume_words = re.search(r"继续|续跑", source_text)
+    if resume_words and porder_sn:
+        return "resume_porder_flow"
+    if resume_words and order_sn:
+        return "resume_order_flow"
+    return ""
+
+
+def _core_candidate_payload(
+    payload: Dict[str, Any],
+    capability: DataScriptCapability,
+    candidate_fields: Dict[str, Any],
+    compile_context: Dict[str, Any] | None,
+) -> Dict[str, Any]:
+    declared = _metadata_candidate_field_names(capability)
+    seed = new_contract_seed(capability, dict(compile_context or {}))
+    projected, _ = apply_contract_updates(
+        seed,
+        redact_sensitive_value({
+            key: value
+            for key, value in candidate_fields.items()
+            if key in declared
+        }),
+        capability,
+    )
+    return {
+        "status": str(payload.get("status") or "ready"),
+        "question": str(payload.get("question") or ""),
+        "goal": _raw_goal_from_contract(projected),
+    }
+
+
 def _analyze_turn(
     db: Session,
     messages: list[Dict[str, str]],
@@ -2137,7 +2553,11 @@ def _analyze_turn(
             }
         capability_specs = available_capabilities(
             DATA_SCRIPT_PROJECT_NAME,
-            {_infer_learning_module(messages)},
+            {
+                capability.module
+                for capability in capability_catalog().values()
+                if capability.agent_enabled
+            },
         )
         prompt = _analysis_prompt(
             messages,
@@ -2146,28 +2566,150 @@ def _analyze_turn(
             capability_specs,
         )
         if force_ready:
-            prompt += "\n\n【强制指令】已多次追问仍未满足所有条件。本轮你必须输出 status=\"ready\"，所有不确定字段使用合理默认值，在 assumptions 中逐一标注你采用的默认值及原因。禁止输出 clarifying。"
+            prompt += "\n\n【强制指令】已多次追问仍未满足所有条件。本轮你必须输出 status=\"ready\"，只返回用户已明确表达的合同字段；其余字段省略并由服务端合同编译器处理。禁止输出 clarifying。"
         payload = call_local_model_json(config, prompt, timeout=120, system_prompt=SYSTEM_PROMPT)
+        if not isinstance(payload, dict):
+            raise ValueError("DeepSeek未返回合法目标JSON")
         if force_ready and isinstance(payload, dict):
             payload["status"] = "ready"
             payload["question"] = ""
-        session_status, goal, question = _normalize_goal(
-            payload,
-            messages,
-            force_ready=force_ready,
-            compile_context=compile_context,
+        candidate_shape = any(
+            key in payload for key in ("capability_key", "fields", "evidence")
         )
+        candidate_fields = (
+            dict(payload.get("fields"))
+            if isinstance(payload.get("fields"), dict)
+            else {}
+        )
+        field_evidence = (
+            dict(payload.get("evidence"))
+            if isinstance(payload.get("evidence"), dict)
+            else {}
+        )
+        candidate_key = str(payload.get("capability_key") or "").strip()
+        rejected_fields = set(
+            set(payload)
+            - (
+                {"status", "capability_key", "fields", "evidence", "question"}
+                if candidate_shape
+                else {"status", "question", "goal", "reason"}
+            )
+        )
+        legacy_goal = payload.get("goal") if isinstance(payload.get("goal"), dict) else {}
+        legacy_capability_key = (
+            resolve_goal_capability(legacy_goal) if not candidate_shape else ""
+        )
+        deterministic_core_key = _deterministic_core_capability(messages)
+        selected = (
+            capability_catalog().get(deterministic_core_key)
+            if deterministic_core_key in CORE_SPECIALIZED_CAPABILITIES
+            else (
+                capability_catalog().get(legacy_capability_key)
+                if legacy_capability_key in CORE_SPECIALIZED_CAPABILITIES
+                else select_capability(candidate_key, latest_instruction, capability_specs)
+            )
+        )
+        if selected is not None:
+            declared_fields = _metadata_candidate_field_names(selected)
+            rejected_fields.update(set(candidate_fields) - declared_fields)
+            rejected_fields.update(set(field_evidence) - declared_fields)
+
+        try:
+            if not candidate_shape:
+                session_status, goal, question = _normalize_goal(
+                    payload,
+                    messages,
+                    force_ready=force_ready,
+                    compile_context=compile_context,
+                )
+                normalized_key = resolve_goal_capability(goal)
+                if normalized_key in CORE_SPECIALIZED_CAPABILITIES:
+                    selected = capability_catalog().get(normalized_key)
+            elif selected is not None and selected.key in CORE_SPECIALIZED_CAPABILITIES:
+                specialized_fields = dict(candidate_fields)
+                if selected.key == "resume_porder_flow":
+                    porder_sn = _explicit_porder_sn(_source_text(messages))
+                    if porder_sn:
+                        specialized_fields["porder_sn"] = porder_sn
+                specialized_payload = (
+                    _core_candidate_payload(
+                        payload,
+                        selected,
+                        specialized_fields,
+                        compile_context,
+                    )
+                )
+                session_status, goal, question = _normalize_goal(
+                    specialized_payload,
+                    messages,
+                    force_ready=force_ready,
+                    compile_context=compile_context,
+                )
+            elif selected is not None:
+                goal, compiler_rejected = compile_metadata_contract(
+                    selected,
+                    candidate_fields,
+                    dict(compile_context or {}),
+                )
+                rejected_fields.update(compiler_rejected)
+                missing_question = _metadata_required_question(goal, selected)
+                requested_question = str(payload.get("question") or "").strip()
+                if missing_question:
+                    session_status, goal, question = (
+                        "clarifying",
+                        {},
+                        missing_question,
+                    )
+                elif (
+                    str(payload.get("status") or "").strip().lower() == "clarifying"
+                    and requested_question
+                ):
+                    session_status, goal, question = (
+                        "clarifying",
+                        {},
+                        requested_question,
+                    )
+                else:
+                    session_status, question = "awaiting_confirmation", ""
+                    evidence_keys = declared_fields.intersection(field_evidence)
+                    if evidence_keys:
+                        sources = dict(goal.get("field_sources") or {})
+                        sources.update({key: "natural_language" for key in evidence_keys})
+                        goal["field_sources"] = sources
+            else:
+                session_status, goal, question = (
+                    "clarifying",
+                    {},
+                    str(payload.get("question") or "").strip()
+                    or "请明确要执行的脚本能力。",
+                )
+        except ContractValidationError as exc:
+            labels = "、".join(sorted(exc.errors))
+            session_status, goal, question = (
+                "clarifying",
+                {},
+                f"请确认合同字段：{labels}。",
+            )
         if session_status == "awaiting_confirmation" and goal:
             goal = _apply_approved_learning(
                 goal,
                 approved_learning,
                 _learning_hard_fields(messages, intent_state, goal),
+                capability=selected,
             )
         trace = {
             "turn_index": max(0, len(messages) - 1),
             "model": str(config.model or ""),
             "message": copy.deepcopy(messages[-1]) if messages else {},
             "model_candidate": sanitize_observation(payload),
+            "capability_key": selected.key if selected is not None else candidate_key,
+            "rejected_fields": sorted(rejected_fields),
+            "field_evidence": sanitize_observation({
+                key: value
+                for key, value in field_evidence.items()
+                if selected is not None
+                and key in _metadata_candidate_field_names(selected)
+            }),
             "intent_state": sanitize_observation(intent_state),
             "normalized_intent": sanitize_observation(goal.get("intent") or {}),
             "learning_rule_ids": [
@@ -2275,6 +2817,7 @@ def create_agent_session(
         project_id=int(project_id),
         env_id=int(env_id),
         status=session_status,
+        capability_key=_analysis_capability_key(analysis_trace),
         messages=messages,
         compile_context=compile_context,
         intent_state=intent_state,
@@ -2294,17 +2837,15 @@ def create_agent_session(
             session_status, goal, question, analysis_trace = _analyze_turn(
                 db, messages, intent_state, force_ready=True, compile_context=compile_context,
             )
-            if session_status == "clarifying":
-                goal = goal or {"mode": "new", "target_node": "order_offered", "target_label": "订单待付款", "customer_ids": [], "order_sn": "", "porder_sn": "", "variables": dict(DEFAULT_VARIABLES), "operations": [], "summary": "智能体自动推断：默认单店单品至订单待付款", "assumptions": ["追问次数已达上限，智能体自动推断默认参数"], "steps": ["创建并执行至订单待付款"], "contract_hash": ""}
-                session_status = "awaiting_confirmation"
-                question = ""
             session.intent_state = _update_pending_fields(intent_state, session_status, question)
             session.status = session_status
             session.goal = goal
             session.question = question
             session.events[0] = _event(
-                "analysis",
-                "追问次数已达上限，智能体已自动推断默认参数生成执行合同",
+                "clarification" if session_status == "clarifying" else "analysis",
+                question
+                if session_status == "clarifying"
+                else "追问次数已达上限，智能体已生成执行合同",
             )
         else:
             session.question = bounded["message"]
@@ -2314,6 +2855,7 @@ def create_agent_session(
                 field=_clarification_field(question),
                 count=bounded["count"],
             )
+    _set_session_capability(session)
     _remember_initial_contract(session)
     _save_analysis_record(db, session, analysis_trace, session.status, session.question)
     with _STORE_LOCK:
@@ -2324,13 +2866,17 @@ def create_agent_session(
 
 def add_agent_message(db: Session, session_id: str, user_id: int, message: str) -> Dict[str, Any]:
     session = _session_or_404(session_id, user_id)
+    message_text = str(message or "").strip()
     with _STORE_LOCK:
         if session.status not in {"clarifying", "awaiting_confirmation"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前任务状态不允许补充消息")
-        session.messages.append({"role": "user", "content": str(message or "").strip()})
-        session.intent_state = _reduce_intent_state(session.intent_state, str(message or ""))
+        base_plan_version = session.plan_version
+        base_status = session.status
         messages = copy.deepcopy(session.messages)
+        messages.append({"role": "user", "content": message_text})
+        intent_state = _reduce_intent_state(copy.deepcopy(session.intent_state), message_text)
         previous_goal = copy.deepcopy(session.goal)
+        compile_context = copy.deepcopy(session.compile_context)
     capability_gap = _unsupported_capability(messages)
     if capability_gap:
         session_status, goal, question = "blocked", {}, ""
@@ -2338,11 +2884,11 @@ def add_agent_message(db: Session, session_id: str, user_id: int, message: str) 
             "turn_index": len(messages) - 1,
             "message": messages[-1],
             "capability_gap": capability_gap,
-            "intent_state": sanitize_observation(session.intent_state),
+            "intent_state": sanitize_observation(intent_state),
         }
     else:
         session_status, goal, question, analysis_trace = _analyze_turn(
-            db, messages, session.intent_state, compile_context=session.compile_context,
+            db, messages, intent_state, compile_context=compile_context,
         )
         session_status, goal, question = _merge_follow_up_analysis(
             previous_goal,
@@ -2350,16 +2896,20 @@ def add_agent_message(db: Session, session_id: str, user_id: int, message: str) 
             goal,
             question,
             messages,
-            session.intent_state,
-            session.compile_context,
+            intent_state,
+            compile_context,
         )
         analysis_trace["final_status"] = session_status
         analysis_trace["final_intent"] = sanitize_observation(goal.get("intent") or {})
         analysis_trace["pending_fields"] = {
             _clarification_field(question): question
         } if question else {}
-    next_intent_state = _update_pending_fields(session.intent_state, session_status, question)
     with _STORE_LOCK:
+        if session.plan_version != base_plan_version or session.status != base_status:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="目标已更新，请重新提交补充消息",
+            )
         if session_status == "clarifying" and question:
             field_name = _clarification_field(question)
             bounded = _bounded_clarification(session, field_name, question)
@@ -2367,9 +2917,9 @@ def add_agent_message(db: Session, session_id: str, user_id: int, message: str) 
                 session_status, goal, question, retry_trace = _analyze_turn(
                     db,
                     messages,
-                    session.intent_state,
+                    intent_state,
                     force_ready=True,
-                    compile_context=session.compile_context,
+                    compile_context=compile_context,
                 )
                 session_status, goal, question = _merge_follow_up_analysis(
                     previous_goal,
@@ -2377,20 +2927,18 @@ def add_agent_message(db: Session, session_id: str, user_id: int, message: str) 
                     goal,
                     question,
                     messages,
-                    session.intent_state,
-                    session.compile_context,
+                    intent_state,
+                    compile_context,
                 )
-                if session_status == "clarifying":
-                    goal = goal or previous_goal or {"mode": "new", "target_node": "order_offered", "target_label": "订单待付款", "customer_ids": [], "order_sn": "", "porder_sn": "", "variables": dict(DEFAULT_VARIABLES), "operations": [], "summary": "智能体自动推断", "assumptions": ["追问次数已达上限"], "steps": [], "contract_hash": ""}
-                    session_status = "awaiting_confirmation"
-                    question = ""
                 analysis_trace = retry_trace
                 analysis_trace["final_status"] = session_status
                 analysis_trace["force_ready"] = True
             else:
                 question = bounded["message"]
+        session.pending_contract_preview = {}
+        session.messages.append({"role": "user", "content": message_text})
         session.status = session_status
-        session.intent_state = next_intent_state
+        session.intent_state = _update_pending_fields(intent_state, session_status, question)
         session.goal = goal
         session.question = question
         if session_status != "blocked":
@@ -2405,6 +2953,10 @@ def add_agent_message(db: Session, session_id: str, user_id: int, message: str) 
                 count=session.clarification_counts.get(_clarification_field(question), 0) if question else 0,
             )
         )
+        traced_capability_key = _analysis_capability_key(analysis_trace)
+        if traced_capability_key:
+            session.capability_key = traced_capability_key
+        _set_session_capability(session)
         _remember_initial_contract(session)
     _save_analysis_record(db, session, analysis_trace, session.status, session.question)
     return _serialize_session(session)
@@ -2415,7 +2967,11 @@ def get_agent_session(session_id: str, user_id: int) -> Dict[str, Any]:
 
 
 def _agent_action_prompt(goal: Dict[str, Any], events: list[Dict[str, Any]], state: Dict[str, Any]) -> str:
-    return build_action_prompt(goal=goal, events=events, state=state)
+    return build_action_prompt(
+        goal=redact_sensitive_value(goal),
+        events=redact_sensitive_value(events),
+        state=redact_sensitive_value(state),
+    )
 
 
 def _next_agent_action(config: AiConfig, goal: Dict[str, Any], events: list[Dict[str, Any]], state: Dict[str, Any]) -> Dict[str, Any]:
@@ -2675,7 +3231,7 @@ def _verify_goal(context: AgentToolContext, last_result: Dict[str, Any]) -> tupl
             verification["reason"] = "未在执行结果中确认银行付款及财务入金"
             return False, verification
 
-    if goal["variables"].get("porder_payment_mode") == "bank" and target in {"porder_paid", "full_complete"}:
+    if goal["variables"].get("porder_payment_mode") == "bank" and target in {"porder_paid", "porder_shipped", "full_complete"}:
         porder_bank_ok = _bank_payment_verified(summary, "porder_sn")
         verification.update({"porder_bank_payment_verified": porder_bank_ok, "porder_finance_confirmed": porder_bank_ok})
         if not porder_bank_ok:
@@ -2700,7 +3256,7 @@ def _append_event(session_id: str, event: Dict[str, Any]) -> None:
         session = _SESSIONS.get(session_id)
         if not session:
             return
-        session.events.append(event)
+        session.events.append(redact_sensitive_observation(event))
         session.updated_at = datetime.now()
 
 
@@ -2819,7 +3375,15 @@ def _finalize_session(
     try:
         capture_learning_sample(db, session, final_status, aggregate)
     except Exception as exc:
-        db.rollback()
+        _safe_learning_rollback(db, session.id)
+        _append_event(
+            session_id,
+            _event(
+                "learning_error",
+                "终态学习样本保存失败",
+                error_type=type(exc).__name__,
+            ),
+        )
         logger.error(
             "数据智能体学习样本保存失败 session_id=%s error=%s",
             session.id,
@@ -2840,6 +3404,101 @@ def _finalize_session(
 def _goal_operations(goal: Dict[str, Any]) -> list[Dict[str, Any]]:
     operations = goal.get("operations") if isinstance(goal.get("operations"), list) else []
     return [item for item in operations if isinstance(item, dict) and item.get("type")]
+
+
+def _validate_confirmable_contract(
+    goal: Dict[str, Any], capability_key: str
+) -> DataScriptCapability:
+    effective_key = str(capability_key or resolve_goal_capability(goal) or "")
+    capability = capability_catalog().get(effective_key)
+    if capability is None or not capability.agent_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="目标合同未绑定可执行能力",
+        )
+    try:
+        errors = required_contract_errors(goal, capability)
+    except ContractValidationError as exc:
+        raise _contract_validation_http_error(exc) from exc
+    if errors:
+        raise _contract_validation_http_error(ContractValidationError(errors))
+    operations = _goal_operations(goal)
+    if not operations:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="目标合同没有可验证的注册操作",
+        )
+    if capability.key not in CORE_SPECIALIZED_CAPABILITIES:
+        registered = [
+            item for item in operations if item.get("type") == "registered_capability"
+        ]
+        if (
+            len(operations) != 1
+            or len(registered) != 1
+            or str(registered[0].get("capability_key") or "") != capability.key
+            or not callable(capability.runner)
+            or not callable(capability.result_validator)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="目标合同没有可验证的注册操作",
+            )
+    return capability
+
+
+def _execute_registered_capability_operation(
+    operation: Dict[str, Any], context: AgentToolContext
+) -> tuple[bool, Dict[str, Any]]:
+    capability_key = str(operation.get("capability_key") or "")
+    goal_key = str(context.goal.get("capability_key") or "")
+    capability = capability_catalog().get(capability_key)
+    verification: Dict[str, Any] = {
+        "operation_type": "registered_capability",
+        "capability_key": capability_key,
+        "passed": False,
+    }
+    if (
+        capability is None
+        or not capability.agent_enabled
+        or capability.key in CORE_SPECIALIZED_CAPABILITIES
+        or capability_key != goal_key
+        or not callable(capability.runner)
+        or not callable(capability.result_validator)
+    ):
+        verification["reason"] = "注册能力不可执行或缺少结果校验器"
+        return False, verification
+    try:
+        contract_variables = {
+            key: value
+            for key, value in normalize_execution_contract(
+                context.goal, capability
+            ).items()
+            if value is not None
+        }
+        variables = dict(context.variables)
+        variables.update(contract_variables)
+        missing = required_contract_errors(context.goal, capability)
+        if missing:
+            verification["reason"] = "注册能力合同缺少必填字段"
+            verification["fields"] = sorted(missing)
+            return False, verification
+        result = capability.runner(context.env, variables)
+        validator_result = capability.result_validator(result)
+        if not isinstance(validator_result, tuple) or len(validator_result) < 2:
+            verification["reason"] = "注册能力结果校验器返回格式无效"
+            return False, verification
+        passed = validator_result[0] is True
+        message = redact_sensitive_text(str(validator_result[1] or ""))
+        verification["passed"] = passed
+        if not passed:
+            verification["reason"] = message or "注册能力结果校验失败"
+        return passed, verification
+    except Exception as exc:
+        verification["reason"] = (
+            "注册能力执行或结果校验异常："
+            + redact_sensitive_text(type(exc).__name__)
+        )
+        return False, verification
 
 
 def _current_operation(goal: Dict[str, Any], state: Dict[str, Any]) -> tuple[int, Dict[str, Any] | None]:
@@ -2945,6 +3604,48 @@ def _run_agent_session(session_id: str) -> None:
             state["current_operation_id"] = operation.get("id")
             state["current_operation_type"] = operation.get("type")
             _sync_runtime_state(session_id, state)
+            if operation.get("type") == "registered_capability":
+                passed, verification = _execute_registered_capability_operation(
+                    operation, context
+                )
+                _append_event(
+                    session_id,
+                    _event(
+                        "verification",
+                        "已执行注册能力并校验实际结果",
+                        **verification,
+                    ),
+                )
+                if passed:
+                    _complete_operation(state, operation, verification)
+                    _sync_runtime_state(session_id, state)
+                    _append_event(
+                        session_id,
+                        _event(
+                            "operation_completed",
+                            f"操作{operation_index + 1}已完成",
+                            operation_id=operation.get("id"),
+                            operation_type=operation.get("type"),
+                        ),
+                    )
+                    continue
+                results = dict(state.get("operation_results") or {})
+                results[str(operation.get("id") or operation_index)] = {
+                    "type": "registered_capability",
+                    "status": "failed",
+                    "verification": sanitize_observation(verification),
+                }
+                state["operation_results"] = results
+                final_status = "blocked"
+                final_result = {
+                    "reason": str(
+                        verification.get("reason")
+                        or "注册能力未通过实际结果校验"
+                    ),
+                    "operation_results": sanitize_observation(results),
+                    **sanitize_observation(state),
+                }
+                break
             operation_key = str(operation.get("id") or operation_index)
             if (
                 goal.get("mode") in {"resume_order", "resume_porder"}
@@ -3138,8 +3839,21 @@ def _run_agent_session(session_id: str) -> None:
                 break
             if operation.get("type") == "problem_goods" and tool_summary.get("awaiting_permission"):
                 retry_count = _problem_quantity(context.state.get("permission_retry_count", 0))
+                required_role = str(
+                    tool_summary.get("required_account_role") or "department_leader"
+                ).strip()
+                context.state["required_account_role"] = required_role
                 if tool_summary.get("permission_required") and retry_count < 1:
-                    profile_id = _auto_large_refund_profile_id(db, project_id)
+                    variables = goal.get("variables") if isinstance(goal.get("variables"), dict) else {}
+                    strategy = _normalized_permission_account_strategy(
+                        variables.get("permission_account_strategy")
+                    )
+                    profile_id = _auto_large_refund_profile_id(
+                        db,
+                        project_id,
+                        strategy,
+                        required_role,
+                    )
                     if profile_id:
                         context.state.update(
                             {
@@ -3155,7 +3869,7 @@ def _run_agent_session(session_id: str) -> None:
                             _event(
                                 "permission_auto_resumed",
                                 "已自动切换当前项目后台账号并重试一次",
-                                backend_account_profile_id=profile_id,
+                                strategy=strategy,
                                 permission_retry_count=1,
                             ),
                         )
@@ -3236,10 +3950,252 @@ def _run_agent_session(session_id: str) -> None:
         db.close()
 
 
+def _contract_validation_http_error(exc: ContractValidationError) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail={"message": "合同字段校验失败", "fields": exc.errors},
+    )
+
+
+def _execution_contract_hash(goal: Dict[str, Any], capability_key: str) -> str:
+    capability = _session_contract_capability(
+        capability_catalog()[capability_key], goal
+    )
+    normalized = normalize_execution_contract(
+        project_contract_goal(goal, capability), capability
+    )
+    return hashlib.sha256(
+        json.dumps(
+            normalized,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        ).encode("utf-8")
+    ).hexdigest()[:16]
+
+
+def _contract_preview_hash(preview: Dict[str, Any]) -> str:
+    payload = {
+        "base_plan_version": int(preview.get("base_plan_version") or 0),
+        "base_contract_hash": str(preview.get("base_contract_hash") or ""),
+        "candidate_contract": (
+            preview.get("candidate_contract")
+            if isinstance(preview.get("candidate_contract"), dict)
+            else {}
+        ),
+        "diff": preview.get("diff") if isinstance(preview.get("diff"), list) else [],
+    }
+    return hashlib.sha256(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        ).encode("utf-8")
+    ).hexdigest()[:16]
+
+
+def preview_agent_contract(
+    db: Session,
+    session_id: str,
+    user_id: int,
+    plan_version: int,
+    message: str,
+) -> Dict[str, Any]:
+    session = _session_or_404(session_id, user_id)
+    with _STORE_LOCK:
+        if session.status not in {"awaiting_confirmation", "clarifying"} or not session.goal:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="当前任务没有可重新生成的合同",
+            )
+        if int(plan_version) != session.plan_version:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="目标已更新，请刷新后重试",
+            )
+        base_plan_version = session.plan_version
+        base_goal = copy.deepcopy(session.goal)
+        messages = copy.deepcopy(session.messages)
+        messages.append({"role": "user", "content": str(message or "").strip()})
+        intent_state = _reduce_intent_state(session.intent_state, str(message or ""))
+        compile_context = copy.deepcopy(session.compile_context)
+        capability_key = session.capability_key or resolve_goal_capability(base_goal)
+        base_contract_hash = _execution_contract_hash(base_goal, capability_key)
+
+    session_status, candidate_goal, question, _ = _analyze_turn(
+        db,
+        messages,
+        intent_state,
+        compile_context=compile_context,
+    )
+    session_status, candidate_goal, question = _merge_follow_up_analysis(
+        base_goal,
+        session_status,
+        candidate_goal,
+        question,
+        messages,
+        intent_state,
+        compile_context,
+    )
+    if session_status != "awaiting_confirmation" or not candidate_goal:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=question or "自然语言纠正未生成可确认合同",
+        )
+
+    capability = _session_contract_capability(
+        capability_catalog()[capability_key], base_goal
+    )
+    try:
+        candidate_diff = diff_execution_contract(
+            project_contract_goal(base_goal, capability),
+            project_contract_goal(candidate_goal, capability),
+            capability,
+            "natural_language_correction",
+        )
+        updates = {
+            item["field"]: copy.deepcopy(item.get("after"))
+            for item in candidate_diff
+            if item.get("after") is not None
+        }
+        preview_goal, _ = _apply_session_contract_updates(
+            base_goal, updates, capability_key
+        )
+        preview_diff = diff_execution_contract(
+            project_contract_goal(base_goal, capability),
+            project_contract_goal(preview_goal, capability),
+            capability,
+            "natural_language_correction",
+        )
+    except ContractValidationError as exc:
+        raise _contract_validation_http_error(exc) from None
+    if not preview_diff:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="未识别到合同字段变化",
+        )
+
+    pending = {
+        "base_plan_version": base_plan_version,
+        "base_contract_hash": base_contract_hash,
+        "candidate_contract": preview_goal,
+        "diff": preview_diff,
+    }
+    pending["preview_hash"] = _contract_preview_hash(pending)
+    with _STORE_LOCK:
+        if session.plan_version != base_plan_version:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="目标已更新，请重新生成预览",
+            )
+        if session.status not in {"awaiting_confirmation", "clarifying"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="当前任务状态不允许保存合同预览",
+            )
+        current_capability_key = (
+            session.capability_key or resolve_goal_capability(session.goal)
+        )
+        if _execution_contract_hash(
+            session.goal, current_capability_key
+        ) != base_contract_hash:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="目标合同已更新，请重新生成预览",
+            )
+        session.pending_contract_preview = copy.deepcopy(pending)
+    return {
+        "plan_version": base_plan_version,
+        "base_contract_hash": base_contract_hash,
+        "preview_hash": pending["preview_hash"],
+        "diff": copy.deepcopy(preview_diff),
+    }
+
+
+def apply_agent_contract_preview(
+    session_id: str,
+    user_id: int,
+    plan_version: int,
+    base_contract_hash: str,
+    preview_hash: str,
+) -> Dict[str, Any]:
+    session = _session_or_404(session_id, user_id)
+    with _STORE_LOCK:
+        if session.status not in {"awaiting_confirmation", "clarifying"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="当前任务没有可应用的合同预览",
+            )
+        pending = copy.deepcopy(session.pending_contract_preview)
+        if not pending:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="合同预览已失效，请重新生成",
+            )
+        base_plan_version = int(pending.get("base_plan_version") or 0)
+        pending_base_contract_hash = str(
+            pending.get("base_contract_hash") or ""
+        )
+        if (
+            int(plan_version) != session.plan_version
+            or base_plan_version != session.plan_version
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="目标已更新，请重新生成预览",
+            )
+        if (
+            not pending_base_contract_hash
+            or str(base_contract_hash) != pending_base_contract_hash
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="目标合同校验失败，请重新生成预览",
+            )
+        current_capability_key = (
+            session.capability_key or resolve_goal_capability(session.goal)
+        )
+        if _execution_contract_hash(
+            session.goal, current_capability_key
+        ) != pending_base_contract_hash:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="目标合同已更新，请重新生成预览",
+            )
+        expected_hash = _contract_preview_hash(pending)
+        if str(preview_hash) != expected_hash or str(
+            pending.get("preview_hash") or ""
+        ) != expected_hash:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="合同预览校验失败，请重新生成",
+            )
+        _remember_initial_contract(session)
+        session.goal = copy.deepcopy(pending["candidate_contract"])
+        session.capability_key = resolve_goal_capability(session.goal)
+        session.goal["capability_key"] = session.capability_key
+        session.pending_contract_preview = {}
+        session.plan_version += 1
+        session.updated_at = datetime.now()
+        session.events.append(
+            _event(
+                "goal_updated",
+                "用户应用了自然语言合同纠正",
+                source="natural_language_correction",
+                corrections=pending["diff"],
+            )
+        )
+    return _serialize_session(session)
+
+
 def update_agent_goal(
     session_id: str,
     user_id: int,
     updates: Dict[str, Any],
+    plan_version: int,
 ) -> Dict[str, Any]:
     """Directly edit goal fields without DeepSeek re-analysis."""
     session = _session_or_404(session_id, user_id)
@@ -3249,125 +4205,94 @@ def update_agent_goal(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="仅允许在待确认或待补充状态下修改目标",
             )
-        goal = dict(session.goal)
-        if any(isinstance(item, dict) and item.get("type") == "rollback" for item in goal.get("operations") or []):
+        if int(plan_version) != session.plan_version:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="目标已更新，请刷新后重试",
+            )
+        if any(
+            isinstance(item, dict) and item.get("type") == "rollback"
+            for item in session.goal.get("operations") or []
+        ):
             if updates:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="???????????????????????????",
+                    detail="回退合同不允许直接修改，请重新发起任务",
                 )
             return _serialize_session(session)
+        normalized_updates = copy.deepcopy(updates)
+        if "target_node" in normalized_updates:
+            resolved = _target_node(normalized_updates["target_node"])
+            if not resolved:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "合同字段校验失败",
+                        "fields": {"target_node": "无法识别的目标状态"},
+                    },
+                )
+            normalized_updates["target_node"] = resolved
+        capability_key = session.capability_key or resolve_goal_capability(session.goal)
         _remember_initial_contract(session)
-        variables = dict(goal.get("variables") or {})
-        intent = dict(goal.get("intent") or {})
-        pricing = dict(intent.get("pricing") or {})
-        price_edited = False
-        allowed = {"order_shop_count", "order_per_shop", "order_item_num",
-                   "offer_price", "offer_unit_prices", "target_node"}
-        before_values = {
-            key: copy.deepcopy(goal.get("target_node") if key == "target_node" else variables.get(key))
-            for key, value in updates.items()
-            if key in allowed and value is not None
-        }
-        for key, value in updates.items():
-            if key not in allowed or value is None:
-                continue
-            if key == "target_node":
-                resolved = _target_node(value)
-                if not resolved:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"无法识别的目标节点：{value}",
-                    )
-                goal["target_node"] = resolved
-                goal["target_label"] = FULL_FLOW_NODE_LABELS.get(resolved, resolved)
-                variables["stop_after_node"] = resolved
-                for operation in goal.get("operations") or []:
-                    if isinstance(operation, dict) and operation.get("type") in {"advance_order", "advance_porder"}:
-                        operation["target_node"] = resolved
-                        operation["target_label"] = FULL_FLOW_NODE_LABELS.get(resolved, resolved)
-                        break
-            elif key in ("offer_unit_prices",):
-                prices = _price_list(value)
-                if not prices:
-                    continue
-                variables[key] = prices
-                variables.pop("offer_price", None)
-                price_edited = True
-            elif key in ("offer_price",):
-                variables[key] = _decimal_value(value, key)
-                variables.pop("offer_unit_prices", None)
-                price_edited = True
-            elif key in POSITIVE_INT_FIELDS:
-                variables[key] = _positive_int(value, key)
-            else:
-                variables[key] = value
-        expected_items = int(variables.get("order_shop_count") or 1) * int(variables.get("order_per_shop") or 1)
-        quantity = int(variables.get("order_item_num") or 1)
-        if price_edited:
-            values = _price_list(variables.get("offer_unit_prices") or variables.get("offer_price"))
-            if len(values) == 1:
-                values *= expected_items
-            if len(values) != expected_items:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"当前共{expected_items}个商品，请填写1个统一单价或{expected_items}个逐商品单价")
-            total = sum(Decimal(value) * quantity for value in values)
-            pricing = {
-                "mode": "user_unit_override",
-                "mode_label": "用户指定执行单价",
-                "requested_goods_total": "",
-                "effective_unit_prices": values,
-                "effective_goods_total": format(total.normalize(), "f"),
-                "includes_fees": False,
-                "evidence": "用户直接编辑目标数据",
-            }
-        elif pricing.get("mode") == "goods_total" and any(key in updates for key in ("order_shop_count", "order_per_shop", "order_item_num")):
-            compiled, compile_question = _compile_price_intent(
-                {"mode": "goods_total", "amount": pricing.get("requested_goods_total"), "evidence": pricing.get("evidence")},
-                variables,
-                expected_items,
-                quantity,
+        try:
+            updated_goal, corrections = _apply_session_contract_updates(
+                session.goal, normalized_updates, capability_key
             )
-            if compile_question:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=compile_question)
-            pricing = compiled
-        intent["pricing"] = pricing
-        goal["intent"] = intent
-        # Rebuild summary
-        price_text = (
-            "、".join(variables.get("offer_unit_prices") or [])
-            if variables.get("offer_unit_prices")
-            else str(variables.get("offer_price") or "10")
-        )
-        variables.setdefault("target_shops", variables.get("order_shop_count", 1))
-        variables.setdefault("per_shop", variables.get("order_per_shop", 2))
-        goal["variables"] = variables
-        goal["summary"] = (
-            f"{variables.get('order_shop_count', 1)}个店铺，每店{variables.get('order_per_shop', 2)}个商品，"
-            f"每种购买数量{variables.get('order_item_num', 1)}，执行单价{price_text}元，目标{goal.get('target_label', '')}"
-        )
-        if any(isinstance(item, dict) and item.get("type") == "problem_goods" for item in goal.get("operations") or []):
-            goal["summary"] += "，然后提出并处理问题产品"
-        goal["contract_hash"] = hashlib.sha256(
-            json.dumps(goal, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
-        ).hexdigest()[:16]
-        session.goal = goal
+        except ContractValidationError as exc:
+            raise _contract_validation_http_error(exc) from None
+        base_capability = capability_catalog().get(capability_key)
+        if base_capability and session.initial_contract:
+            capability = _session_contract_capability(base_capability, updated_goal)
+            try:
+                initial_values = normalize_execution_contract(
+                    project_contract_goal(session.initial_contract, capability),
+                    capability,
+                )
+                updated_values = normalize_execution_contract(updated_goal, capability)
+            except ContractValidationError:
+                initial_values = {}
+                updated_values = {}
+            initial_inferred = set(
+                session.initial_contract.get("inferred_fields") or []
+            )
+            restored_names = {
+                name
+                for name in normalized_updates
+                if name in initial_inferred
+                and name in initial_values
+                and updated_values.get(name) == initial_values.get(name)
+            }
+            if restored_names:
+                initial_sources = (
+                    session.initial_contract.get("field_sources")
+                    if isinstance(
+                        session.initial_contract.get("field_sources"), dict
+                    )
+                    else {}
+                )
+                sources = dict(updated_goal.get("field_sources") or {})
+                inferred = set(updated_goal.get("inferred_fields") or [])
+                for name in restored_names:
+                    source = str(initial_sources.get(name) or "")
+                    if source:
+                        sources[name] = source
+                    else:
+                        sources.pop(name, None)
+                    inferred.add(name)
+                updated_goal["field_sources"] = sources
+                updated_goal["inferred_fields"] = sorted(inferred)
+        session.pending_contract_preview = {}
+        session.capability_key = capability_key
+        session.goal = updated_goal
         session.plan_version += 1
         session.updated_at = datetime.now()
-        after_values = {
-            key: copy.deepcopy(goal.get("target_node") if key == "target_node" else variables.get(key))
-            for key in before_values
-        }
-        corrections = [
-            {
-                "field": key,
-                "before": before_values[key],
-                "after": after_values[key],
-                "source": "direct_edit",
-            }
-            for key in before_values
-            if before_values[key] != after_values[key]
-        ]
-        session.events.append(_event("goal_updated", "用户直接编辑了目标数据", corrections=corrections))
+        session.events.append(
+            _event(
+                "goal_updated",
+                "用户直接编辑了目标数据",
+                corrections=corrections,
+            )
+        )
     return _serialize_session(session)
 
 def _requires_risk_confirmation(goal: Dict[str, Any]) -> bool:
@@ -3376,6 +4301,71 @@ def _requires_risk_confirmation(goal: Dict[str, Any]) -> bool:
         risk.get("second_confirmation") is True
         and str(risk.get("level") or "") in {"high", "critical"}
     )
+
+
+def _record_pending_contract_feedback(
+    db: Session,
+    session: AgentSessionState,
+) -> None:
+    try:
+        learning_service.record_contract_feedback(db, session, "correct")
+    except Exception as exc:
+        _safe_learning_rollback(db, session.id)
+        session.events.append(
+            _event("learning_error", "合同学习样本保存失败", error_type=type(exc).__name__)
+        )
+        logger.error(
+            "数据智能体合同学习样本保存失败 session_id=%s error=%s",
+            session.id,
+            type(exc).__name__,
+        )
+
+
+def _safe_learning_rollback(db: Session, session_id: str) -> None:
+    rollback = getattr(db, "rollback", None)
+    if not callable(rollback):
+        return
+    try:
+        rollback()
+    except Exception as exc:
+        logger.error(
+            "数据智能体学习事务回滚失败 session_id=%s error=%s",
+            session_id,
+            type(exc).__name__,
+        )
+
+
+def record_agent_contract_feedback(
+    db: Session,
+    session_id: str,
+    user_id: int,
+    plan_version: int,
+    verdict: str,
+) -> Dict[str, Any]:
+    session = _session_or_404(session_id, user_id)
+    with _STORE_LOCK:
+        if session.status not in {"awaiting_confirmation", "clarifying"} or not session.goal:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="仅允许在可编辑合同状态下反馈",
+            )
+        if int(plan_version) != session.plan_version:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="目标已更新，请刷新后重试",
+            )
+        _remember_initial_contract(session)
+        learning_service.record_contract_feedback(db, session, verdict)
+        session.events.append(
+            _event(
+                "contract_feedback",
+                "合同反馈已记录",
+                verdict=verdict,
+                plan_version=session.plan_version,
+            )
+        )
+        session.updated_at = datetime.now()
+    return _serialize_session(session)
 
 
 def confirm_agent_session(
@@ -3393,9 +4383,11 @@ def confirm_agent_session(
         _remember_initial_contract(session)
         if int(plan_version) != session.plan_version:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="目标已更新，请重新查看后确认")
+        _validate_confirmable_contract(session.goal, session.capability_key)
         running_session = _ENV_RUNNING.get(session.env_id)
         if running_session and running_session != session.id:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前环境已有数据智能体任务正在执行")
+        _record_pending_contract_feedback(db, session)
         if _requires_risk_confirmation(session.goal):
             session.status = "awaiting_risk_confirmation"
             session.question = "该合同包含高风险业务写入，请核对范围、金额和执行账号后进行二次确认。"
@@ -3445,6 +4437,7 @@ def confirm_agent_risk(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请明确勾选已核对高风险操作范围")
         if int(plan_version) != session.plan_version:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="目标已更新，请重新查看后确认")
+        _validate_confirmable_contract(session.goal, session.capability_key)
         expected_hash = str(session.goal.get("contract_hash") or "")
         if not expected_hash or str(contract_hash) != expected_hash:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="合同摘要已变化，请重新查看后确认")
@@ -3506,11 +4499,23 @@ def resume_agent_permission(
             detail="临时后台账号和密码必须同时填写",
         )
     if has_profile:
-        account_values, _ = account_profile_variables(
+        account_values, profile_metadata = account_profile_variables(
             db,
             int(backend_account_profile_id),
             session.project_id,
         )
+        required_role = str(
+            session.runtime_state.get("required_account_role") or "department_leader"
+        ).strip()
+        profile_role = str(
+            account_values.get("account_role") or account_values.get("role") or ""
+        ).strip()
+        profile_name = str(profile_metadata.get("profile_name") or "").strip()
+        if not profile_name or profile_role != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="所选后台账号档案角色与当前权限要求不匹配",
+            )
         profile_account = account_values.get("backend_account") or account_values.get("username") or account_values.get("account")
         profile_password = account_values.get("backend_password") or account_values.get("password")
         if not profile_account or not profile_password:
@@ -3538,11 +4543,15 @@ def resume_agent_permission(
         session.result = {}
         session.cancel_requested = False
         session.updated_at = datetime.now()
-        event_data = (
-            {"backend_account_profile_id": int(backend_account_profile_id)}
-            if has_profile
-            else {"temporary_credentials": True}
-        )
+        if has_profile:
+            session.events.append(
+                _event(
+                    "permission_profile_selected",
+                    "已手动选择符合权限要求的后台账号档案",
+                    strategy={"profile_name": profile_name, "role": profile_role},
+                )
+            )
+        event_data = {"saved_profile": True} if has_profile else {"temporary_credentials": True}
         session.events.append(
             _event("permission_resumed", "已提供后台权限，继续问题产品处理", **event_data)
         )

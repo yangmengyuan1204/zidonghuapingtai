@@ -13,22 +13,23 @@ from .. import data_scripts
 from ..core.account_utils import account_profile_variables
 from ..core.utils import save_record
 from ..data_scripts.problem_goods import inspect_problem_goods
-from ..data_scripts.capabilities import capability_catalog
+from ..data_scripts.capabilities import (
+    capability_catalog,
+    is_sensitive_field_identifier,
+)
 from ..data_scripts.orders import inspect_order_options as _inspect_order_options_script
 from ..models import Env
 
 
-SENSITIVE_KEYS = {
-    "access_token",
-    "admin_token",
-    "api_key",
-    "authorization",
-    "backend_password",
-    "compute_token",
-    "password",
-    "token",
-    "usertoken",
-}
+REDACTED_VALUE = "[REDACTED]"
+_SENSITIVE_ASSIGNMENT = re.compile(
+    r"(?i)(?<![0-9A-Za-z_])"
+    r"(?P<quote>['\"]?)(?P<key>[0-9A-Za-z_\-\u4e00-\u9fff]+)(?P=quote)"
+    r"\s*(?:[:=：]|是|为)\s*"
+)
+_SENSITIVE_BEARER = re.compile(
+    r"(?i)(?<![0-9A-Za-z_])authorization\s*[:=：]\s*bearer\s+[^\s,;，；]+"
+)
 
 
 @dataclass(frozen=True)
@@ -191,9 +192,125 @@ def public_tool_catalog() -> list[Dict[str, Any]]:
     ]
 
 
-def _masked_key(key: Any) -> bool:
-    text = str(key or "").strip().lower()
-    return text in SENSITIVE_KEYS or text.endswith("_password") or text.endswith("_token")
+def _single_sensitive_value_end(text: str, start: int) -> int:
+    if start >= len(text):
+        return start
+    opening = text[start]
+    if opening in {'"', "'"}:
+        escaped = False
+        for index in range(start + 1, len(text)):
+            character = text[index]
+            if character == opening and not escaped:
+                return index + 1
+            escaped = character == "\\" and not escaped
+            if character != "\\":
+                escaped = False
+        return len(text)
+    if opening in "{[":
+        stack = ["}" if opening == "{" else "]"]
+        quote = ""
+        escaped = False
+        for index in range(start + 1, len(text)):
+            character = text[index]
+            if quote:
+                if character == quote and not escaped:
+                    quote = ""
+                escaped = character == "\\" and not escaped
+                if character != "\\":
+                    escaped = False
+                continue
+            if character in {'"', "'"}:
+                quote = character
+            elif character in "{[":
+                stack.append("}" if character == "{" else "]")
+            elif character == stack[-1]:
+                stack.pop()
+                if not stack:
+                    return index + 1
+        return len(text)
+    index = start
+    while (
+        index < len(text)
+        and not text[index].isspace()
+        and text[index] not in ",;，；"
+    ):
+        index += 1
+    return index
+
+
+def _sensitive_value_end(text: str, start: int, key: str) -> int:
+    end = _single_sensitive_value_end(text, start)
+    if "cookie" not in re.sub(r"[^0-9a-z]+", "", key.casefold()):
+        return end
+    while end < len(text):
+        continuation = re.match(r"\s*;\s*[^;,\s=]+\s*=\s*", text[end:])
+        if not continuation:
+            break
+        next_start = end + continuation.end()
+        next_end = _single_sensitive_value_end(text, next_start)
+        if next_end <= next_start:
+            break
+        end = next_end
+    return end
+
+
+def redact_sensitive_text(value: str) -> str:
+    text = _SENSITIVE_BEARER.sub(f"Authorization={REDACTED_VALUE}", str(value))
+    pieces: list[str] = []
+    cursor = 0
+    search_from = 0
+    while match := _SENSITIVE_ASSIGNMENT.search(text, search_from):
+        if not is_sensitive_field_identifier(match.group("key")):
+            search_from = match.end()
+            continue
+        value_end = _sensitive_value_end(text, match.end(), match.group("key"))
+        pieces.extend(
+            (text[cursor:match.start()], f"{match.group('key')}={REDACTED_VALUE}")
+        )
+        cursor = max(value_end, match.end())
+        search_from = cursor
+    pieces.append(text[cursor:])
+    return "".join(pieces)
+
+
+def redact_sensitive_value(value: Any, *, depth: int = 0) -> Any:
+    if depth >= 20:
+        return "..."
+    if isinstance(value, dict):
+        return {
+            str(key): (
+                REDACTED_VALUE
+                if is_sensitive_field_identifier(key)
+                else redact_sensitive_value(item, depth=depth + 1)
+            )
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [redact_sensitive_value(item, depth=depth + 1) for item in value]
+    if isinstance(value, str):
+        return redact_sensitive_text(value)
+    return value
+
+
+def _limit_observation(value: Any, *, depth: int = 0) -> Any:
+    if depth >= 5:
+        return "..."
+    if isinstance(value, dict):
+        result: Dict[str, Any] = {}
+        for key, item in list(value.items())[:80]:
+            result[str(key)] = _limit_observation(item, depth=depth + 1)
+        return result
+    if isinstance(value, (list, tuple)):
+        return [_limit_observation(item, depth=depth + 1) for item in list(value)[:30]]
+    if isinstance(value, str):
+        return value[:1000]
+    if isinstance(value, (int, float, bool)) or value is None:
+        return value
+    return str(value)[:1000]
+
+
+def redact_sensitive_observation(value: Any, *, depth: int = 0) -> Any:
+    return _limit_observation(redact_sensitive_value(value), depth=depth)
 
 
 def sanitize_observation(value: Any, *, depth: int = 0) -> Any:
@@ -202,14 +319,14 @@ def sanitize_observation(value: Any, *, depth: int = 0) -> Any:
     if isinstance(value, dict):
         result: Dict[str, Any] = {}
         for key, item in list(value.items())[:80]:
-            if _masked_key(key):
+            if is_sensitive_field_identifier(key):
                 continue
             result[str(key)] = sanitize_observation(item, depth=depth + 1)
         return result
     if isinstance(value, (list, tuple)):
         return [sanitize_observation(item, depth=depth + 1) for item in list(value)[:30]]
     if isinstance(value, str):
-        return value[:1000]
+        return redact_sensitive_text(value)[:1000]
     if isinstance(value, (int, float, bool)) or value is None:
         return value
     return str(value)[:1000]
@@ -595,7 +712,7 @@ _RESUME_NODE_ORDER = [
     "purchase_wait_modify_price", "purchase_wait_pay", "purchase_paid",
     "checking_started", "shelf_stored", "warehouse_delivery_created",
     "porder_translated", "porder_confirmed", "porder_wait_offer",
-    "porder_offered", "porder_paid", "full_complete",
+    "porder_offered", "porder_paid", "porder_shipped", "full_complete",
 ]
 
 

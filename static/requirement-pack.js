@@ -751,7 +751,7 @@
           <div class="field compact"><label>项目</label><select id="functionalProjectFilter">${optionList(projects, "id", "name", state.filters.projectId)}</select></div>
         </div>
         <div class="actions">
-          ${isAdmin() ? `<button class="btn secondary" id="aiConfigBtn">AI配置</button><button class="btn" id="newFunctionalTask">新增需求测试包</button>` : ""}
+          ${isAdmin() ? `<button class="btn" id="newFunctionalTask">新增需求测试包</button>` : ""}
         </div>
       </div>
       <div class="functional-layout">
@@ -800,7 +800,6 @@
     });
     if (isAdmin()) {
       document.querySelector("#newFunctionalTask")?.addEventListener("click", () => openFunctionalTaskForm(projects));
-      document.querySelector("#aiConfigBtn")?.addEventListener("click", openAiConfigForm);
     }
     if (!task) return;
     bindFunctionalActions(task, accounts, projects);

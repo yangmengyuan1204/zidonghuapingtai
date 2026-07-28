@@ -11,7 +11,7 @@ LOGIN_CASE_NAME = "\u767b\u5f55"
 
 CART_CASE_NAME = "\u52a0\u5165\u8d2d\u7269\u8f66"
 
-FRONTEND_UNIVERSAL_ACCOUNT_PASSWORD = os.getenv("FRONTEND_ACCOUNT_PASSWORD", "raku@123456``")
+FRONTEND_UNIVERSAL_ACCOUNT_PASSWORD = os.getenv("FRONTEND_ACCOUNT_PASSWORD", "xiaolin666@@")
 
 DATA_SCRIPT_API_CASES = [
     {
@@ -201,6 +201,36 @@ DATA_SCRIPT_API_CASES = [
         "url": "/admin.login",
         "body": {"username": "{{backend_account}}", "password": "{{backend_password}}", "system": "{{backend_system}}", "compute_token": "{{backend_compute_token}}", "code": "{{backend_code}}"},
         "extract": {"adminToken": "json.data.access_token", "compute_token": "json.data.compute_token"},
+    },
+    {
+        "key": "admin_balance_adjustment_client_info",
+        "case_name": "数据脚本-出入金调整查询客户",
+        "url": "/jpanfirm.clientInfo",
+        "body": {"user_id": "{{customer_id}}"},
+    },
+    {
+        "key": "admin_balance_adjustment_create",
+        "case_name": "数据脚本-创建出入金调整申请",
+        "url": "/bill.adjustApplication.create",
+        "body": {
+            "user_id": "{{customer_id}}",
+            "adjust_reason": "{{adjust_reason}}",
+            "type": "{{adjustment_type}}",
+            "amount": "{{amount}}",
+            "client_bill_reason": "{{client_bill_reason}}",
+        },
+    },
+    {
+        "key": "admin_balance_adjustment_list",
+        "case_name": "数据脚本-出入金调整申请列表",
+        "url": "/bill.adjustApplication.list",
+        "body": {"keywords": "", "status": "{{status}}", "page": "1", "pageSize": "100"},
+    },
+    {
+        "key": "admin_balance_adjustment_confirm",
+        "case_name": "数据脚本-审核出入金调整申请",
+        "url": "/bill.adjustApplication.confirm",
+        "body": {"id": "{{application_id}}", "confirm_remark": "{{confirm_remark}}"},
     },
     {
         "key": "admin_order_detail",

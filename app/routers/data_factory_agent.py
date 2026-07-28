@@ -6,6 +6,9 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from ..agent_schemas import (
+    DataAgentContractFeedback,
+    DataAgentContractPreview,
+    DataAgentContractPreviewApply,
     DataAgentGoalUpdate,
     DataAgentPermissionResume,
     DataAgentRuleReviewRequest,
@@ -25,6 +28,9 @@ from ..services.data_factory_agent import (
     confirm_agent_risk,
     create_agent_session,
     get_agent_session,
+    apply_agent_contract_preview,
+    preview_agent_contract,
+    record_agent_contract_feedback,
     resume_agent_permission,
     update_agent_goal,
 )
@@ -67,6 +73,22 @@ def confirm_session(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     return confirm_agent_session(db, session_id, current_user.id, payload.plan_version)
+
+
+@router.post("/sessions/{session_id}/contract-feedback")
+def contract_feedback(
+    session_id: str,
+    payload: DataAgentContractFeedback,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    return record_agent_contract_feedback(
+        db,
+        session_id,
+        current_user.id,
+        payload.plan_version,
+        payload.verdict,
+    )
 
 
 @router.post("/sessions/{session_id}/risk-confirm")
@@ -137,8 +159,49 @@ def update_goal(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     """Direct edit of goal fields without re-invoking DeepSeek."""
+    values = payload.model_dump(exclude_none=True)
+    plan_version = values.pop("plan_version", None)
+    declared_fields = values.pop("fields", None)
+    if declared_fields is not None:
+        if plan_version is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="缺少合同版本",
+            )
+        values = dict(declared_fields)
     return update_agent_goal(
-        session_id, current_user.id, payload.model_dump(exclude_none=True)
+        session_id, current_user.id, values, plan_version
+    )
+
+
+@router.post("/sessions/{session_id}/contract-preview")
+def preview_contract(
+    session_id: str,
+    payload: DataAgentContractPreview,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    return preview_agent_contract(
+        db,
+        session_id,
+        current_user.id,
+        payload.plan_version,
+        payload.message,
+    )
+
+
+@router.post("/sessions/{session_id}/contract-preview/apply")
+def apply_contract_preview(
+    session_id: str,
+    payload: DataAgentContractPreviewApply,
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    return apply_agent_contract_preview(
+        session_id,
+        current_user.id,
+        payload.plan_version,
+        payload.base_contract_hash,
+        payload.preview_hash,
     )
 
 
@@ -179,6 +242,19 @@ def learning_overview(
 ) -> Dict[str, Any]:
     try:
         return learning_service.get_learning_overview(db, project_id)
+    except _LEARNING_ROUTE_ERRORS as exc:
+        _raise_learning_http_error(exc)
+
+
+@router.get("/learning/samples/{sample_id}")
+def learning_sample_detail(
+    sample_id: int,
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    try:
+        return learning_service.get_learning_sample(db, sample_id, project_id)
     except _LEARNING_ROUTE_ERRORS as exc:
         _raise_learning_http_error(exc)
 

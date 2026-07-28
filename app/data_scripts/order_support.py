@@ -166,6 +166,13 @@ def _impl__decimal_text(value: Any, fallback: str = "0") -> str:
     return "0" if text == "-0" else text
 
 
+def _impl__optional_decimal_text(*values: Any) -> str | None:
+    for value in values:
+        if value not in (None, ""):
+            return _decimal_text(value)
+    return None
+
+
 def _impl__money_total(num: Any, price: Any, freight: Any = "0") -> str:
     try:
         total = Decimal(str(num)) * Decimal(str(price)) + Decimal(str(freight))
@@ -389,7 +396,7 @@ def _impl__prepare_translate_data(order_data: Dict[str, Any], variables: Dict[st
 
 def _impl__build_confirm_data(order_data: Dict[str, Any], variables: Dict[str, Any], item_quantity: int) -> Dict[str, Any]:
     quote_price = _decimal_text(variables.get("confirm_price") or variables.get("quote_unit_price") or "10")
-    freight = _decimal_text(variables.get("confirm_freight") or variables.get("freight") or "5")
+    freight = _impl__optional_decimal_text(variables.get("confirm_freight"), variables.get("freight"))
     volume = str(variables.get("confirm_volume") or "1x2x3")
     weight = _as_int(variables.get("confirm_weight") or variables.get("weight"), 200)
     remark = str(variables.get("confirm_remark") or "自动化采购调查")
@@ -399,19 +406,19 @@ def _impl__build_confirm_data(order_data: Dict[str, Any], variables: Dict[str, A
         if not isinstance(detail, dict) or detail.get("id") in (None, ""):
             continue
         quantity = _as_int(detail.get("num") or item_quantity, item_quantity)
-        confirm_details.append(
-            {
-                "id": detail.get("id"),
-                "confirm_num": str(quantity),
-                "confirm_price": quote_price,
-                "confirm_freight": freight,
-                "confirm_dicker_price": quote_price,
-                "confirm_dicker_freight": freight,
-                "g_remark": remark,
-                "volume": volume,
-                "weight": weight,
-            }
-        )
+        confirm_detail = {
+            "id": detail.get("id"),
+            "confirm_num": str(quantity),
+            "confirm_price": quote_price,
+            "confirm_dicker_price": quote_price,
+            "g_remark": remark,
+            "volume": volume,
+            "weight": weight,
+        }
+        if freight is not None:
+            confirm_detail["confirm_freight"] = freight
+            confirm_detail["confirm_dicker_freight"] = freight
+        confirm_details.append(confirm_detail)
     return {"order_sn": order_data.get("order_sn"), "order_detail": confirm_details}
 
 
@@ -532,7 +539,7 @@ def _impl__prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, A
     prepared = copy.deepcopy(order_data)
     quote_price = _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10")
     unit_prices = _impl__offer_unit_price_values(variables.get("offer_unit_prices"))
-    offer_freight = _decimal_text(variables.get("offer_freight") or variables.get("confirm_freight") or "5")
+    offer_freight = _impl__optional_decimal_text(variables.get("offer_freight"))
     prepared["other_price"] = _decimal_text(variables.get("other_price") or prepared.get("other_price") or "0")
     prepared["other_price_remark"] = str(variables.get("other_price_remark") or prepared.get("other_price_remark") or "自动化其他费用备注")
     prepared["y_reply"] = str(variables.get("y_reply") or prepared.get("y_reply") or "")
@@ -559,8 +566,12 @@ def _impl__prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, A
             detail["confirm_dicker_price"] = quote_price
             detail["offer_num"] = offer_quantity
             detail["offer_price"] = item_offer_price
-            detail["offer_freight"] = offer_freight
-            detail["offer_total"] = _money_total(offer_quantity, item_offer_price, offer_freight)
+            detail.pop("offer_freight", None)
+            if offer_freight is not None:
+                detail["offer_freight"] = offer_freight
+            detail["offer_total"] = _money_total(
+                offer_quantity, item_offer_price, offer_freight or "0"
+            )
     return prepared
 
 
