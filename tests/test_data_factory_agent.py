@@ -1,4 +1,7 @@
 from datetime import datetime, timedelta
+from dataclasses import replace
+import copy
+import hashlib
 import json
 from pathlib import Path
 import threading
@@ -6,12 +9,14 @@ from types import SimpleNamespace
 import uuid
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app import data_scripts
 from app.database import SessionLocal
 from app.main import app
 from app.core.account_utils import encrypt_account_payload
+from app.data_scripts.capabilities import CAPABILITIES
 from app.models import (
     AiConfig,
     Env,
@@ -23,6 +28,7 @@ from app.services import data_factory_agent as agent_service
 from app.services import data_agent_learning as learning_service
 from app.services import data_factory_agent_tools as agent_tools
 from app.services.data_factory_agent_tools import AgentToolContext, execute_agent_tool
+from app.services.data_agent_contracts import normalize_execution_contract
 
 
 class ImmediateExecutor:
@@ -92,6 +98,14 @@ def _ready_goal() -> dict:
             },
         },
     }
+
+
+def test_porder_shipped_is_a_supported_agent_target_node():
+    assert agent_service.FULL_FLOW_NODE_LABELS["porder_shipped"] == "配送单已出货"
+    assert agent_service._target_node("配送单已出货") == "porder_shipped"
+    assert agent_service._explicit_target_intent("把配送单出货")[0] == "porder_shipped"
+    assert agent_tools._RESUME_NODE_ORDER.index("porder_paid") < agent_tools._RESUME_NODE_ORDER.index("porder_shipped")
+    assert agent_tools._RESUME_NODE_ORDER.index("porder_shipped") < agent_tools._RESUME_NODE_ORDER.index("full_complete")
 
 
 def test_analysis_applies_only_approved_learning_to_unresolved_fields(monkeypatch):
@@ -197,6 +211,117 @@ def test_learning_lookup_failure_does_not_block_core_contract(monkeypatch):
     assert trace["learning_rule_ids"] == []
 
 
+@pytest.mark.parametrize(
+    "capability_key",
+    [
+        key
+        for key, capability in CAPABILITIES.items()
+        if capability.agent_enabled
+        and key
+        not in {"full_flow", "resume_order_flow", "resume_porder_flow", "problem_goods"}
+    ],
+)
+def test_every_enabled_non_core_confirmation_runs_registered_runner_and_validator_once(
+    monkeypatch,
+    capability_key,
+):
+    project, env = _agent_context()
+    calls = {"runner": 0, "validator": 0}
+    candidate_fields = {
+        "shopping_cart": {},
+        "order_quote": {"order_sn": "20260701-1"},
+        "purchase_to_shelf": {"order_sn": "20260701-1"},
+        "purchase_to_shelf_chain": {"order_sn": "20260701-1"},
+        "warehouse_delivery": {"warehouse_sku_count": 2, "send_num": 1},
+    }[capability_key]
+    runner_variables = []
+    runner_result = {
+        "passed": True,
+        "summary": {"completed_all": True, "capability_key": capability_key},
+    }
+    runtime_variables = {
+        "account": "runtime-account",
+        "password": "runtime-password",
+        "api_paths": {"login": "/runtime/login"},
+        "order_sn": "stale-runtime-order",
+    }
+
+    def fake_runner(_env, variables):
+        calls["runner"] += 1
+        assert _env.id == env.id
+        runner_variables.append(variables)
+        return runner_result
+
+    def fake_validator(result):
+        calls["validator"] += 1
+        assert result is runner_result
+        return True, ""
+
+    monkeypatch.setitem(
+        CAPABILITIES,
+        capability_key,
+        replace(
+            CAPABILITIES[capability_key],
+            runner=fake_runner,
+            result_validator=fake_validator,
+        ),
+    )
+    monkeypatch.setattr(
+        agent_service,
+        "data_script_variables",
+        lambda *_args, **_kwargs: dict(runtime_variables),
+    )
+    monkeypatch.setattr(agent_service, "_EXECUTOR", ImmediateExecutor())
+    monkeypatch.setattr(
+        agent_service,
+        "call_local_model_json",
+        lambda *args, **kwargs: {
+            "status": "ready",
+            "capability_key": capability_key,
+            "fields": candidate_fields,
+            "evidence": {key: f"明确字段 {key}" for key in candidate_fields},
+            "question": "",
+        },
+    )
+
+    with TestClient(app) as client:
+        headers = _login(client)
+        created = client.post(
+            "/api/data-scripts/agent/sessions",
+            headers=headers,
+            json={
+                "project_id": project.id,
+                "env_id": env.id,
+                "instruction": f"执行已登记能力 {capability_key}",
+            },
+        ).json()
+        response = client.post(
+            f"/api/data-scripts/agent/sessions/{created['id']}/confirm",
+            headers=headers,
+            json={"plan_version": created["plan_version"]},
+        )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "succeeded"
+    assert calls == {"runner": 1, "validator": 1}
+    expected_variables = dict(runtime_variables)
+    expected_variables.update(
+        {
+            key: value
+            for key, value in normalize_execution_contract(
+                created["goal"], CAPABILITIES[capability_key]
+            ).items()
+            if value is not None
+        }
+    )
+    assert runner_variables == [expected_variables]
+    verification = response.json()["result"]["operation_results"][
+        f"operation_{capability_key}_1"
+    ]["verification"]
+    assert verification["capability_key"] == capability_key
+    assert verification["passed"] is True
+
+
 def _tool_context() -> AgentToolContext:
     return AgentToolContext(
         db=None,
@@ -245,6 +370,7 @@ def _permission_pause_result() -> dict:
         "summary": {
             "paused": True,
             "permission_required": True,
+            "required_account_role": "department_leader",
             "awaiting_permission": True,
             "reason": "预计退款达到500元，需要部长账号权限",
             "problem_goods_id": 901,
@@ -257,12 +383,13 @@ def _add_backend_profile(
     project_id: int | None,
     *,
     name: str = "后台沈文妮账号",
+    role: str = "department_leader",
     profile_status: str = "active",
 ) -> AccountProfile:
     profile = AccountProfile(
         project_id=project_id,
         profile_name=name,
-        variables="{}",
+        variables=json.dumps({"account_role": role}, ensure_ascii=False),
         sensitive_variables=encrypt_account_payload(
             {"backend_account": "leader", "backend_password": "profile-secret"}
         ),
@@ -315,8 +442,9 @@ def test_agent_uses_topbar_customer_when_instruction_has_none(monkeypatch):
     assert created["goal"]["customer_source"] == "topbar"
 
 
-def test_agent_uses_bound_account_customer_when_other_sources_are_absent():
-    project, _ = _agent_context()
+def test_agent_uses_bound_account_customer_when_other_sources_are_absent(monkeypatch):
+    project, env = _agent_context()
+    monkeypatch.setattr(agent_service, "call_local_model_json", lambda *args, **kwargs: _ready_goal())
     db = SessionLocal()
     profile = AccountProfile(
         project_id=project.id,
@@ -341,6 +469,17 @@ def test_agent_uses_bound_account_customer_when_other_sources_are_absent():
         db.add(binding)
         db.commit()
 
+        with TestClient(app) as client:
+            created = client.post(
+                "/api/data-scripts/agent/sessions",
+                headers=_login(client),
+                json={
+                    "project_id": project.id,
+                    "env_id": env.id,
+                    "instruction": "造两店各一件，报价1元和2元，银行入金，到待拍下",
+                },
+            ).json()
+
         compile_context = agent_service.build_agent_compile_context(db, project.id, [])
         status, goal, question = agent_service._normalize_goal(
             _ready_goal(),
@@ -356,6 +495,8 @@ def test_agent_uses_bound_account_customer_when_other_sources_are_absent():
         }
         assert goal["customer_ids"] == ["300003"]
         assert goal["customer_source"] == "bound_account"
+        assert created["goal"]["customer_ids"] == ["300003"]
+        assert created["goal"]["customer_source"] == "bound_account"
     finally:
         if binding is not None and binding.id is not None:
             db.query(AccountBinding).filter(AccountBinding.id == binding.id).delete(synchronize_session=False)
@@ -421,6 +562,17 @@ def test_data_agent_frontend_passes_topbar_customer_context():
 
     assert "dataScriptCustomerIds" in source
     assert "topbar_customer_ids" in source
+
+
+def test_data_agent_frontend_goal_save_includes_current_plan_version():
+    source = Path("static/data-factory-agent.js").read_text(encoding="utf-8")
+    save_source = source[
+        source.index("async function saveGoalEdits") : source.index(
+            "async function confirmRisk"
+        )
+    ]
+
+    assert "body: { ...updates, plan_version: currentSession.plan_version }" in save_source
 
 
 def test_agent_builds_confirmable_goal_contract(monkeypatch):
@@ -578,6 +730,139 @@ def test_per_item_offer_prices_follow_stable_detail_order():
             {"offer_unit_prices": ["1", "2", "3"]},
             10,
         )
+
+
+def test_agent_removes_unevidenced_domestic_freight_from_new_contract():
+    instruction = "帮我创建一个订单，一番商品一件，商品单价10，到待付款"
+    payload = {
+        "status": "ready",
+        "goal": {
+            "mode": "new",
+            "target_node": "order_offered",
+            "variables": {
+                "order_shop_count": 1,
+                "order_per_shop": 1,
+                "order_item_num": 1,
+                "offer_price": "10",
+                "confirm_freight": "5",
+                "offer_freight": "5",
+            },
+            "intent": {
+                "pricing": {
+                    "mode": "uniform_unit",
+                    "amount": "10",
+                    "evidence": "商品单价10",
+                }
+            },
+        },
+    }
+
+    status, goal, question = agent_service._normalize_goal(
+        payload, [{"role": "user", "content": instruction}]
+    )
+
+    assert (status, question) == ("awaiting_confirmation", "")
+    assert "confirm_freight" not in goal["variables"]
+    assert "offer_freight" not in goal["variables"]
+
+
+def test_agent_preserves_explicit_zero_and_positive_domestic_freight():
+    instruction = "帮我创建订单，采购调查国内运费0，业务报价国内运费7.5，到待付款"
+    payload = {
+        "status": "ready",
+        "goal": {
+            "mode": "new",
+            "target_node": "order_offered",
+            "variables": {
+                "order_shop_count": 1,
+                "order_per_shop": 1,
+                "order_item_num": 1,
+                "offer_price": "10",
+                "confirm_freight": "0",
+                "offer_freight": "7.5",
+            },
+        },
+    }
+
+    status, goal, question = agent_service._normalize_goal(
+        payload, [{"role": "user", "content": instruction}]
+    )
+
+    assert (status, question) == ("awaiting_confirmation", "")
+    assert goal["variables"]["confirm_freight"] == "0"
+    assert goal["variables"]["offer_freight"] == "7.5"
+
+    generic_payload = copy.deepcopy(payload)
+    generic_payload["goal"]["variables"]["confirm_freight"] = "5"
+    generic_payload["goal"]["variables"]["offer_freight"] = "5"
+    _, generic_goal, _ = agent_service._normalize_goal(
+        generic_payload,
+        [{"role": "user", "content": "中国国内运费改成5，到待付款"}],
+    )
+    assert generic_goal["variables"]["confirm_freight"] == "5"
+    assert generic_goal["variables"]["offer_freight"] == "5"
+
+
+def test_agent_binds_domestic_freight_evidence_to_stage_and_ignores_nearby_prices():
+    payload = {
+        "status": "ready",
+        "goal": {
+            "mode": "new",
+            "target_node": "order_offered",
+            "variables": {
+                "order_shop_count": 1,
+                "order_per_shop": 1,
+                "order_item_num": 1,
+                "offer_price": "10",
+                "confirm_freight": "3",
+                "offer_freight": "3",
+            },
+        },
+    }
+
+    _, stage_goal, _ = agent_service._normalize_goal(
+        payload, [{"role": "user", "content": "采购确认国内运费3，商品单价10，到待付款"}]
+    )
+    assert stage_goal["variables"]["confirm_freight"] == "3"
+    assert "offer_freight" not in stage_goal["variables"]
+
+    _, negative_goal, _ = agent_service._normalize_goal(
+        payload, [{"role": "user", "content": "国内运费不填写，商品单价10，到待付款"}]
+    )
+    assert "confirm_freight" not in negative_goal["variables"]
+    assert "offer_freight" not in negative_goal["variables"]
+
+
+def test_order_payloads_omit_missing_domestic_freight_but_preserve_explicit_values():
+    order_data = {"order_sn": "ORDER-1", "order_detail": [{"id": 11, "num": 2}]}
+
+    confirm_without = data_scripts._build_confirm_data(order_data, {"confirm_price": "10"}, 2)
+    confirm_detail = confirm_without["order_detail"][0]
+    assert "confirm_freight" not in confirm_detail
+    assert "confirm_dicker_freight" not in confirm_detail
+
+    offer_without = data_scripts._prepare_offer_data(order_data, {"offer_price": "10"}, 2)
+    offer_detail = offer_without["order_detail"][0]
+    assert "offer_freight" not in offer_detail
+    assert offer_detail["offer_total"] == "20"
+
+    offer_with_confirm_only = data_scripts._prepare_offer_data(
+        order_data, {"offer_price": "10", "confirm_freight": "3"}, 2
+    )["order_detail"][0]
+    assert "offer_freight" not in offer_with_confirm_only
+    assert offer_with_confirm_only["offer_total"] == "20"
+
+    confirm_zero = data_scripts._build_confirm_data(
+        order_data, {"confirm_price": "10", "confirm_freight": 0}, 2
+    )["order_detail"][0]
+    assert confirm_zero["confirm_freight"] == "0"
+    assert confirm_zero["confirm_dicker_freight"] == "0"
+
+    offer_positive = data_scripts._prepare_offer_data(
+        order_data, {"offer_price": "10", "offer_freight": "7.5"}, 2
+    )["order_detail"][0]
+    assert offer_positive["offer_freight"] == "7.5"
+    assert offer_positive["offer_total"] == "27.5"
 
 
 def test_unknown_tool_never_calls_business_runner():
@@ -2474,7 +2759,14 @@ def test_permission_resume_endpoint_uses_selected_account(monkeypatch):
     monkeypatch.setattr(
         agent_service,
         "account_profile_variables",
-        lambda *args, **kwargs: ({"backend_account": "leader", "backend_password": "secret"}, {}),
+        lambda *args, **kwargs: (
+            {
+                "account_role": "department_leader",
+                "backend_account": "leader",
+                "backend_password": "secret",
+            },
+            {"profile_name": "后台部长账号"},
+        ),
     )
 
     with TestClient(app) as client:
@@ -2490,7 +2782,12 @@ def test_permission_resume_endpoint_uses_selected_account(monkeypatch):
         ).json()
         session = agent_service._SESSIONS[created["id"]]
         session.status = "awaiting_permission"
-        session.runtime_state = {"operation_index": 0, "awaiting_permission": True, "problem_goods_ids": [901]}
+        session.runtime_state = {
+            "operation_index": 0,
+            "awaiting_permission": True,
+            "problem_goods_ids": [901],
+            "required_account_role": "department_leader",
+        }
         response = client.post(
             f"/api/data-scripts/agent/sessions/{created['id']}/permission",
             headers=headers,
@@ -2503,6 +2800,16 @@ def test_permission_resume_endpoint_uses_selected_account(monkeypatch):
     assert response.json()["current_state"]["allow_large_refund"] is True
     assert response.json()["current_state"]["permission_retry_count"] == 1
     assert len(deferred.calls) == 1
+    selected = next(event for event in session.events if event.get("kind") == "permission_profile_selected")
+    assert selected["strategy"] == {
+        "profile_name": "后台部长账号",
+        "role": "department_leader",
+    }
+    serialized = json.dumps(selected, ensure_ascii=False)
+    assert all(
+        value not in serialized
+        for value in ("backend_account_profile_id", '"backend_account"', '"backend_password"', "secret")
+    )
 
 
 def test_large_refund_permission_auto_profile_retries_same_operation_once(monkeypatch):
@@ -2510,6 +2817,10 @@ def test_large_refund_permission_auto_profile_retries_same_operation_once(monkey
     db = SessionLocal()
     profile = _add_backend_profile(db, project.id)
     session = _permission_session(project, env)
+    session.goal["variables"]["permission_account_strategy"] = {
+        "profile_name": profile.profile_name,
+        "role": "department_leader",
+    }
     calls = []
 
     def fake_execute(name, context, arguments):
@@ -2559,13 +2870,20 @@ def test_large_refund_permission_auto_profile_retries_same_operation_once(monkey
     assert session.runtime_state["permission_retry_count"] == 1
     assert session.runtime_state["allow_large_refund"] is True
     assert session.runtime_state["backend_account_profile_id"] == profile.id
+    assert any(
+        event.get("kind") == "permission_auto_resumed"
+        and event.get("strategy")
+        == {"profile_name": profile.profile_name, "role": "department_leader"}
+        for event in session.events
+    )
+    auto_event = next(event for event in session.events if event.get("kind") == "permission_auto_resumed")
+    assert "backend_account_profile_id" not in auto_event
 
 
 def test_large_refund_permission_without_auto_profile_waits_for_manual_resume(monkeypatch):
     project, env = _agent_context()
     session = _permission_session(project, env)
     calls = []
-    monkeypatch.setattr(agent_service, "_auto_large_refund_profile_id", lambda *args: None)
     monkeypatch.setattr(
         agent_service,
         "execute_agent_tool",
@@ -2586,7 +2904,12 @@ def test_large_refund_auto_profile_still_restricted_does_not_loop(monkeypatch):
     db = SessionLocal()
     profile = _add_backend_profile(db, project.id)
     session = _permission_session(project, env)
+    session.goal["variables"]["permission_account_strategy"] = {
+        "profile_name": profile.profile_name,
+        "role": "department_leader",
+    }
     calls = []
+    deferred = DeferredExecutor()
 
     def fake_execute(name, context, arguments):
         calls.append(
@@ -2598,8 +2921,19 @@ def test_large_refund_auto_profile_still_restricted_does_not_loop(monkeypatch):
         return _permission_pause_result()
 
     monkeypatch.setattr(agent_service, "execute_agent_tool", fake_execute)
+    monkeypatch.setattr(agent_service, "_EXECUTOR", deferred)
     try:
         agent_service._run_agent_session(session.id)
+        assert session.status == "awaiting_permission"
+        assert session.runtime_state["current_operation_id"] == "operation_problem_goods_1"
+
+        continued = agent_service.resume_agent_permission(
+            db,
+            session.id,
+            session.user_id,
+            session.plan_version,
+            profile.id,
+        )
     finally:
         db.delete(profile)
         db.commit()
@@ -2609,12 +2943,14 @@ def test_large_refund_auto_profile_still_restricted_does_not_loop(monkeypatch):
         ("operation_problem_goods_1", 0),
         ("operation_problem_goods_1", 1),
     ]
-    assert session.status == "awaiting_permission"
+    assert continued["status"] == "running"
+    assert continued["current_state"]["current_operation_id"] == "operation_problem_goods_1"
     assert session.runtime_state["permission_retry_count"] == 1
     assert session.runtime_state["backend_account_profile_id"] == profile.id
+    assert len(deferred.calls) == 1
 
 
-def test_auto_large_refund_profile_is_current_project_active_exact_name():
+def test_auto_large_refund_profile_requires_unique_active_project_name_and_role():
     db = SessionLocal()
     project = Project(name=f"permission-scope-{uuid.uuid4()}", desc="", create_time=datetime.now())
     other_project = Project(name=f"permission-other-{uuid.uuid4()}", desc="", create_time=datetime.now())
@@ -2628,12 +2964,33 @@ def test_auto_large_refund_profile_is_current_project_active_exact_name():
         _add_backend_profile(db, project.id),
         _add_backend_profile(db, project.id),
     ]
-    expected_id = profiles[-2].id
+    strategy = {"profile_name": "后台沈文妮账号", "role": "department_leader"}
     try:
-        assert agent_service._auto_large_refund_profile_id(db, project.id) == expected_id
+        assert agent_service._auto_large_refund_profile_id(
+            db,
+            project.id,
+            strategy,
+            "department_leader",
+        ) is None
+        db.delete(profiles[-1])
+        db.commit()
+        assert agent_service._auto_large_refund_profile_id(
+            db,
+            project.id,
+            strategy,
+            "department_leader",
+        ) == profiles[-2].id
+        assert agent_service._auto_large_refund_profile_id(
+            db,
+            project.id,
+            {"profile_name": "后台沈文妮账号", "role": "operator"},
+            "department_leader",
+        ) is None
     finally:
         for profile in profiles:
-            db.delete(profile)
+            stored = db.get(AccountProfile, profile.id)
+            if stored is not None:
+                db.delete(stored)
         db.delete(other_project)
         db.delete(project)
         db.commit()
@@ -3286,3 +3643,955 @@ def test_data_agent_high_risk_confirmation_uses_explicit_summary_form():
         "我已核对上述范围、金额、方向和执行账号",
     ):
         assert token in source
+
+
+class AuthorizedAgentClient:
+    def __init__(self, client, headers, project_id, env_id):
+        self.client = client
+        self.headers = headers
+        self.project_id = project_id
+        self.env_id = env_id
+
+    def get(self, path):
+        return self.client.get(path, headers=self.headers)
+
+    def post(self, path, json):
+        return self.client.post(path, headers=self.headers, json=json)
+
+    def patch(self, path, json):
+        return self.client.patch(path, headers=self.headers, json=json)
+
+
+@pytest.fixture
+def agent_client(monkeypatch):
+    project, env = _agent_context()
+    monkeypatch.setattr(
+        agent_service, "call_local_model_json", lambda *args, **kwargs: _ready_goal()
+    )
+    with TestClient(app) as client:
+        yield AuthorizedAgentClient(client, _login(client), project.id, env.id)
+
+
+def create_ready_session(agent_client, instruction):
+    response = agent_client.post(
+        "/api/data-scripts/agent/sessions",
+        json={
+            "project_id": agent_client.project_id,
+            "env_id": agent_client.env_id,
+            "instruction": instruction,
+        },
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
+def test_session_exposes_grouped_contract_editor(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    assert created["capability_key"] == "full_flow", created
+    names = {item["name"] for item in created["contract_editor"]["fields"]}
+    assert {
+        "customer_ids",
+        "order_shop_count",
+        "order_per_shop",
+        "order_item_num",
+        "target_node",
+    } <= names
+    assert "offer_unit_prices" in names
+    assert not names.intersection(agent_service.PROBLEM_OPERATION_FIELDS)
+
+
+def test_analysis_model_prompts_redact_sensitive_values_across_session_routes(
+    monkeypatch, agent_client
+):
+    prompts = []
+
+    def ready_goal(customer_id):
+        payload = _ready_goal()
+        payload["goal"]["customer_ids"] = [customer_id]
+        return payload
+
+    responses = iter(
+        [ready_goal("300001"), ready_goal("300001"), ready_goal("300003")]
+    )
+
+    def capture_model(*args, **kwargs):
+        prompts.append(args[1])
+        return next(responses)
+
+    monkeypatch.setattr(agent_service, "call_local_model_json", capture_model)
+    route_messages = [
+        (
+            "造两店各一件到待拍下，password=create-pass-1 token=create-token-1 "
+            "cookie=create-cookie-1 Authorization: Bearer create-auth-1 "
+            "secret=create-secret-1 密码=create-cn-pass-1"
+        ),
+        (
+            "其他不变，password=message-pass-2 token=message-token-2 "
+            "cookie=message-cookie-2 Authorization: Bearer message-auth-2 "
+            "secret=message-secret-2 密码=message-cn-pass-2"
+        ),
+        (
+            "客户改成300003，password=preview-pass-3 token=preview-token-3 "
+            "cookie=preview-cookie-3 Authorization: Bearer preview-auth-3 "
+            "secret=preview-secret-3 密码=preview-cn-pass-3"
+        ),
+    ]
+    secret_values = [
+        value
+        for message in route_messages
+        for value in (
+            match.split("=", 1)[-1]
+            for match in message.replace("Authorization: Bearer ", "Authorization=").split()
+            if "=" in match
+        )
+    ]
+
+    created = create_ready_session(agent_client, route_messages[0])
+    messaged = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/messages",
+        json={"message": route_messages[1]},
+    )
+    assert messaged.status_code == 200, messaged.text
+    preview = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview",
+        json={
+            "plan_version": messaged.json()["plan_version"],
+            "message": route_messages[2],
+        },
+    )
+    assert preview.status_code == 200, preview.text
+
+    assert len(prompts) == 3
+    assert all("[REDACTED]" in prompt for prompt in prompts)
+    assert all(secret not in prompt for prompt in prompts for secret in secret_values)
+    current = agent_client.get(
+        f"/api/data-scripts/agent/sessions/{created['id']}"
+    ).json()
+    assert current["messages"] == [
+        {"role": "user", "content": route_messages[0]},
+        {"role": "user", "content": route_messages[1]},
+    ]
+    events = json.dumps(current["events"], ensure_ascii=False)
+    assert all(secret not in events for secret in secret_values)
+
+
+def test_agent_events_redact_password_and_cookie_values():
+    event = agent_service._event(
+        "analysis",
+        "模型拒绝了请求，密码=event-password-secret",
+        detail="cookie=session=event-cookie-secret; csrf=event-cookie-extra-secret",
+    )
+
+    serialized = json.dumps(event, ensure_ascii=False)
+    assert "[REDACTED]" in serialized
+    assert "event-password-secret" not in serialized
+    assert "event-cookie-secret" not in serialized
+    assert "event-cookie-extra-secret" not in serialized
+
+
+def test_json_like_sensitive_assignments_are_redacted_from_prompts_and_events(
+    monkeypatch,
+):
+    message = (
+        'payload={"password":"json-password-secret","cookie":"json-cookie-secret"} '
+        "metadata={'compute_token':'json-compute-secret'}"
+    )
+    analysis_prompt = agent_service._analysis_prompt(
+        [{"role": "user", "content": message}], {}
+    )
+    captured = []
+
+    def capture_action_model(*args, **kwargs):
+        captured.append(args[1])
+        return {"action": "finish", "reason": "probe"}
+
+    monkeypatch.setattr(agent_service, "call_local_model_json", capture_action_model)
+    event = agent_service._event("probe", message)
+    agent_service._next_agent_action(
+        SimpleNamespace(),
+        {"mode": "new", "variables": {"note": message}},
+        [event],
+        {},
+    )
+
+    outputs = [analysis_prompt, captured[0], json.dumps(event, ensure_ascii=False)]
+    secrets = (
+        "json-password-secret",
+        "json-cookie-secret",
+        "json-compute-secret",
+    )
+    assert all("[REDACTED]" in output for output in outputs)
+    assert all(secret not in output for output in outputs for secret in secrets)
+
+
+def test_sensitive_key_detection_avoids_substring_false_positives():
+    payload = {
+        "secretary_name": "Alice",
+        "token_count": 42,
+        "compute_token": "compute-secret",
+        "usertoken": "user-secret",
+        "backend_password": "password-secret",
+        "authorization": "authorization-secret",
+        "cookie": "cookie-secret",
+        "secret": "plain-secret",
+        "中文密码": "chinese-password-secret",
+        "credentials_encrypted": "encrypted-credentials-secret",
+    }
+
+    redacted = agent_tools.redact_sensitive_value(payload)
+
+    assert redacted["secretary_name"] == "Alice"
+    assert redacted["token_count"] == 42
+    for key in payload.keys() - {"secretary_name", "token_count"}:
+        assert redacted[key] == "[REDACTED]"
+
+
+def test_shared_sensitive_key_policy_handles_compound_and_metadata_keys():
+    sensitive = {
+        "passwordHash": "password-hash-secret",
+        "tokenValue": "token-value-secret",
+        "clientSecretKey": "client-secret-key-secret",
+        "privateKey": "private-key-secret",
+        "backend_password": "backend-password-secret",
+        "compute_token": "compute-token-secret",
+        "usertoken": "usertoken-secret",
+        "authorization": "authorization-secret",
+        "cookie": "cookie-secret",
+        "secret": "plain-secret",
+        "中文密码": "chinese-password-secret",
+        "加密凭据": "encrypted-credential-secret",
+    }
+    metadata = {
+        "secretaryName": "Alice",
+        "tokenCount": 2,
+        "cookieCount": 3,
+        "authorizationStatus": "active",
+        "encryptedFlag": True,
+    }
+
+    redacted = agent_tools.redact_sensitive_value(
+        {"items": [{**sensitive}, {**metadata}]}
+    )["items"]
+
+    assert all(redacted[0][key] == "[REDACTED]" for key in sensitive)
+    assert redacted[1] == metadata
+
+
+def test_compound_json_sensitive_keys_are_redacted_without_masking_metadata(
+    monkeypatch,
+):
+    message = (
+        '{"passwordHash":"json-password-hash-secret",'
+        '"tokenValue":"json-token-value-secret",'
+        '"clientSecretKey":"json-client-secret",'
+        '"privateKey":"json-private-key-secret",'
+        '"tokenCount":2,"cookieCount":7,'
+        '"authorizationStatus":"enabled","encryptedFlag":true,'
+        '"secretaryName":"Alice"}'
+    )
+    analysis_prompt = agent_service._analysis_prompt(
+        [{"role": "user", "content": message}], {}
+    )
+    captured = []
+
+    def capture_action_model(*args, **kwargs):
+        captured.append(args[1])
+        return {"action": "finish", "reason": "probe"}
+
+    monkeypatch.setattr(agent_service, "call_local_model_json", capture_action_model)
+    event = agent_service._event("probe", message)
+    agent_service._next_agent_action(
+        SimpleNamespace(),
+        {"mode": "new", "variables": {"note": message}},
+        [event],
+        {},
+    )
+
+    outputs = [analysis_prompt, captured[0], json.dumps(event, ensure_ascii=False)]
+    sensitive_values = (
+        "json-password-hash-secret",
+        "json-token-value-secret",
+        "json-client-secret",
+        "json-private-key-secret",
+    )
+    assert all(secret not in output for output in outputs for secret in sensitive_values)
+    assert all("[REDACTED]" in output for output in outputs)
+    assert all("authorizationStatus" in output for output in outputs)
+    assert all("enabled" in output for output in outputs)
+
+
+def test_structured_sensitive_values_are_redacted_from_all_model_prompts_and_events(
+    monkeypatch,
+):
+    secrets = {
+        "cookie": "structured-cookie-secret",
+        "compute_token": "structured-compute-secret",
+        "usertoken": "structured-user-secret",
+        "中文密码": "structured-cn-password-secret",
+        "credentials_encrypted": "structured-encrypted-secret",
+    }
+    structured = {
+        "cookie": secrets["cookie"],
+        "nested": [
+            {"compute_token": secrets["compute_token"]},
+            {"usertoken": secrets["usertoken"]},
+            {"中文密码": secrets["中文密码"]},
+            {"credentials_encrypted": secrets["credentials_encrypted"]},
+        ],
+    }
+    analysis_prompt = agent_service._analysis_prompt(
+        [{"role": "user", "content": "创建订单到待拍下"}],
+        {"resolved_fields": structured},
+    )
+    captured = []
+
+    def capture_action_model(*args, **kwargs):
+        captured.append(args[1])
+        return {"action": "finish", "reason": "probe"}
+
+    monkeypatch.setattr(agent_service, "call_local_model_json", capture_action_model)
+    event = agent_service._event("probe", "结构化敏感值探针", payload=structured)
+    agent_service._next_agent_action(
+        SimpleNamespace(),
+        {"mode": "new", "variables": structured},
+        [event],
+        {"runtime": structured},
+    )
+
+    outputs = [analysis_prompt, captured[0], json.dumps(event, ensure_ascii=False)]
+    assert all("[REDACTED]" in output for output in outputs)
+    assert all(
+        secret not in output
+        for output in outputs
+        for secret in secrets.values()
+    )
+
+
+def test_append_event_applies_unified_structured_redaction():
+    session = agent_service.AgentSessionState(
+        id="SESSION-EVENT-REDACTION",
+        user_id=1,
+        project_id=1,
+        env_id=1,
+        status="running",
+    )
+    agent_service._SESSIONS[session.id] = session
+
+    agent_service._append_event(
+        session.id,
+        {
+            "kind": "probe",
+            "payload": {
+                "compute_token": "append-event-token-secret",
+                "cookie": "append-event-cookie-secret",
+            },
+        },
+    )
+
+    serialized = json.dumps(session.events, ensure_ascii=False)
+    assert "[REDACTED]" in serialized
+    assert "append-event-token-secret" not in serialized
+    assert "append-event-cookie-secret" not in serialized
+
+
+def test_goal_patch_updates_declared_fields_and_checks_version(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    response = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"],
+            "fields": {"customer_ids": ["300003"], "order_item_num": 2},
+        },
+    )
+    assert response.status_code == 200, response.text
+    updated = response.json()
+    assert updated["goal"]["customer_ids"] == ["300003"]
+    assert updated["goal"]["variables"]["order_item_num"] == 2
+    assert updated["plan_version"] == created["plan_version"] + 1
+
+
+def test_goal_patch_returns_field_errors_without_mutating_session(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    response = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"],
+            "fields": {"order_item_num": 0},
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"]["fields"]["order_item_num"]
+    current = agent_client.get(
+        f"/api/data-scripts/agent/sessions/{created['id']}"
+    ).json()
+    assert current["plan_version"] == created["plan_version"]
+
+
+def test_goal_patch_rejects_stale_version_without_mutating_session(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    response = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"] - 1,
+            "fields": {"order_item_num": 2},
+        },
+    )
+
+    assert response.status_code == 409
+    current = agent_client.get(
+        f"/api/data-scripts/agent/sessions/{created['id']}"
+    ).json()
+    assert current["goal"] == created["goal"]
+    assert current["plan_version"] == created["plan_version"]
+
+
+def test_goal_patch_rejects_legacy_six_field_payload_without_version(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    response = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={"order_item_num": 2, "target_node": "订单待付款"},
+    )
+
+    assert response.status_code == 422
+    current = agent_client.get(
+        f"/api/data-scripts/agent/sessions/{created['id']}"
+    ).json()
+    assert current["goal"] == created["goal"]
+    assert current["plan_version"] == created["plan_version"]
+
+
+def test_goal_patch_accepts_versioned_legacy_six_field_payload(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    response = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"],
+            "order_item_num": 2,
+            "target_node": "订单待付款",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    updated = response.json()
+    assert updated["goal"]["variables"]["order_item_num"] == 2
+    expected_target = agent_service._target_node("订单待付款")
+    assert updated["goal"]["target_node"] == expected_target
+    assert updated["goal"]["operations"][0]["target_node"] == expected_target
+    assert updated["plan_version"] == created["plan_version"] + 1
+
+
+def test_goal_patch_rejects_stale_versioned_legacy_six_field_payload(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    response = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"] - 1,
+            "order_item_num": 2,
+            "target_node": "订单待付款",
+        },
+    )
+
+    assert response.status_code == 409
+    current = agent_client.get(
+        f"/api/data-scripts/agent/sessions/{created['id']}"
+    ).json()
+    assert current["goal"] == created["goal"]
+    assert current["plan_version"] == created["plan_version"]
+
+
+def test_goal_patch_switches_uniform_price_to_legacy_per_item_prices(
+    monkeypatch, agent_client
+):
+    monkeypatch.setattr(
+        agent_service,
+        "call_local_model_json",
+        lambda *args, **kwargs: {
+            "status": "ready",
+            "goal": {
+                "mode": "new",
+                "target_node": "pending_purchase",
+                "variables": {
+                    "order_shop_count": 2,
+                    "order_per_shop": 1,
+                    "order_item_num": 1,
+                    "offer_price": "10",
+                },
+            },
+        },
+    )
+    created = create_ready_session(
+        agent_client, "造两店各一件，每件单价10元，到待拍下"
+    )
+    assert created["goal"]["variables"]["offer_price"] == "10"
+    response = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"],
+            "offer_unit_prices": ["3", "4"],
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    updated = response.json()
+    assert updated["goal"]["variables"]["offer_unit_prices"] == ["3", "4"]
+    assert "offer_price" not in updated["goal"]["variables"]
+    assert "逐商品单价3、4" in updated["goal"]["summary"]
+    capability = agent_service._session_contract_capability(
+        agent_service.capability_catalog()[updated["capability_key"]],
+        updated["goal"],
+    )
+    normalized = normalize_execution_contract(updated["goal"], capability)
+    payload = json.dumps(
+        normalized,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+    assert updated["goal"]["contract_hash"] == hashlib.sha256(
+        payload.encode("utf-8")
+    ).hexdigest()[:16]
+
+
+def test_problem_contract_patch_updates_existing_operation(monkeypatch, agent_client):
+    monkeypatch.setattr(
+        agent_service,
+        "call_local_model_json",
+        lambda *args, **kwargs: {
+            "status": "ready",
+            "goal": {
+                "mode": "resume_order",
+                "order_sn": "2026071715475684-300001",
+                "variables": {},
+            },
+        },
+    )
+    created = create_ready_session(
+        agent_client,
+        "订单2026071715475684-300001第1番提出问题产品，单价改成0",
+    )
+    editor_names = {
+        item["name"] for item in created["contract_editor"]["fields"]
+    }
+    assert agent_service.PROBLEM_OPERATION_FIELDS <= editor_names
+    response = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"],
+            "fields": {
+                "price_adjustment_mode": "fixed",
+                "price_adjustment_value": "2.5",
+                "freight_refund_mode": "all",
+                "option_refund_mode": "all",
+            },
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    updated = response.json()
+    operation = next(
+        item for item in updated["goal"]["operations"]
+        if item["type"] == "problem_goods"
+    )
+    assert operation["price_adjustment_mode"] == "fixed"
+    assert operation["price_adjustment_value"] == "2.5"
+    assert operation["freight_refund_mode"] == "all"
+    assert operation["option_refund_mode"] == "all"
+    assert not set(agent_service.PROBLEM_OPERATION_FIELDS).intersection(
+        updated["goal"]["variables"]
+    )
+
+
+def test_problem_contract_validation_does_not_mutate_operation(
+    monkeypatch, agent_client
+):
+    monkeypatch.setattr(
+        agent_service,
+        "call_local_model_json",
+        lambda *args, **kwargs: {
+            "status": "ready",
+            "goal": {
+                "mode": "resume_order",
+                "order_sn": "2026071715475684-300001",
+                "variables": {},
+            },
+        },
+    )
+    created = create_ready_session(
+        agent_client,
+        "订单2026071715475684-300001第1番提出问题产品，单价改成0",
+    )
+    response = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"],
+            "fields": {"freight_refund_mode": "unsupported"},
+        },
+    )
+
+    assert response.status_code == 400
+    current = agent_client.get(
+        f"/api/data-scripts/agent/sessions/{created['id']}"
+    ).json()
+    assert current["goal"] == created["goal"]
+    assert current["plan_version"] == created["plan_version"]
+
+
+def test_problem_contract_fields_require_existing_operation(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    response = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"],
+            "fields": {"freight_refund_mode": "all"},
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["fields"]["freight_refund_mode"]
+    current = agent_client.get(
+        f"/api/data-scripts/agent/sessions/{created['id']}"
+    ).json()
+    assert current["goal"] == created["goal"]
+    assert current["plan_version"] == created["plan_version"]
+
+
+def test_natural_language_correction_is_previewed_before_apply(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    preview = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview",
+        json={
+            "plan_version": created["plan_version"],
+            "message": "客户改成300003",
+        },
+    ).json()
+    assert preview["diff"] == [{
+        "field": "customer_ids",
+        "before": created["goal"]["customer_ids"],
+        "after": ["300003"],
+        "source": "natural_language_correction",
+    }]
+    unchanged = agent_client.get(
+        f"/api/data-scripts/agent/sessions/{created['id']}"
+    ).json()
+    assert unchanged["goal"] == created["goal"]
+    applied = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview/apply",
+        json={
+            "plan_version": created["plan_version"],
+            "base_contract_hash": preview["base_contract_hash"],
+            "preview_hash": preview["preview_hash"],
+        },
+    ).json()
+    assert applied["goal"]["customer_ids"] == ["300003"]
+    assert applied["plan_version"] == created["plan_version"] + 1
+
+
+def test_contract_preview_rejects_stale_version_without_mutating_goal(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    response = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview",
+        json={
+            "plan_version": created["plan_version"] - 1,
+            "message": "客户改成300003",
+        },
+    )
+
+    assert response.status_code == 409
+    current = agent_client.get(
+        f"/api/data-scripts/agent/sessions/{created['id']}"
+    ).json()
+    assert current["goal"] == created["goal"]
+    assert current["plan_version"] == created["plan_version"]
+
+
+def test_contract_preview_hash_binds_base_contract_hash():
+    preview = {
+        "base_plan_version": 1,
+        "base_contract_hash": "a" * 16,
+        "candidate_contract": {"customer_ids": ["300003"]},
+        "diff": [{"field": "customer_ids", "after": ["300003"]}],
+    }
+    changed_base = {**preview, "base_contract_hash": "b" * 16}
+
+    assert agent_service._contract_preview_hash(preview) != (
+        agent_service._contract_preview_hash(changed_base)
+    )
+
+
+def test_contract_preview_apply_rejects_same_version_contract_mutation(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    preview = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview",
+        json={
+            "plan_version": created["plan_version"],
+            "message": "客户改成300003",
+        },
+    )
+    assert preview.status_code == 200, preview.text
+    preview_payload = preview.json()
+    assert len(preview_payload["base_contract_hash"]) == 16
+
+    session = agent_service._SESSIONS[created["id"]]
+    session.goal["customer_ids"] = ["399999"]
+    response = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview/apply",
+        json={
+            "plan_version": created["plan_version"],
+            "base_contract_hash": preview_payload["base_contract_hash"],
+            "preview_hash": preview_payload["preview_hash"],
+        },
+    )
+
+    assert response.status_code == 409
+    assert session.goal["customer_ids"] == ["399999"]
+    assert session.plan_version == created["plan_version"]
+
+
+def test_contract_preview_apply_checks_hash_and_keeps_risk_contract(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    session = agent_service._SESSIONS[created["id"]]
+    session.goal["risk"] = {
+        "level": "high",
+        "second_confirmation": True,
+        "summary": "高风险写入",
+    }
+    preview = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview",
+        json={
+            "plan_version": created["plan_version"],
+            "message": "客户改成300003",
+        },
+    ).json()
+    rejected = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview/apply",
+        json={
+            "plan_version": created["plan_version"],
+            "base_contract_hash": preview["base_contract_hash"],
+            "preview_hash": "0" * 16,
+        },
+    )
+    assert rejected.status_code == 409
+
+    applied = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview/apply",
+        json={
+            "plan_version": created["plan_version"],
+            "base_contract_hash": preview["base_contract_hash"],
+            "preview_hash": preview["preview_hash"],
+        },
+    )
+    assert applied.status_code == 200, applied.text
+    assert applied.json()["goal"]["risk"] == session.goal["risk"]
+    assert applied.json()["plan_version"] == created["plan_version"] + 1
+
+
+def test_direct_edit_invalidates_pending_contract_preview(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    preview = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview",
+        json={
+            "plan_version": created["plan_version"],
+            "message": "客户改成300003",
+        },
+    ).json()
+    edited = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"],
+            "fields": {"order_item_num": 2},
+        },
+    ).json()
+
+    assert agent_service._SESSIONS[created["id"]].pending_contract_preview == {}
+    response = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview/apply",
+        json={
+            "plan_version": edited["plan_version"],
+            "base_contract_hash": preview["base_contract_hash"],
+            "preview_hash": preview["preview_hash"],
+        },
+    )
+    assert response.status_code == 409
+
+
+def test_invalid_direct_edit_keeps_pending_contract_preview(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    preview = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview",
+        json={
+            "plan_version": created["plan_version"],
+            "message": "客户改成300003",
+        },
+    ).json()
+    rejected = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"],
+            "fields": {"order_item_num": 0},
+        },
+    )
+
+    assert rejected.status_code == 400
+    pending = agent_service._SESSIONS[created["id"]].pending_contract_preview
+    assert pending["preview_hash"] == preview["preview_hash"]
+    applied = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview/apply",
+        json={
+            "plan_version": created["plan_version"],
+            "base_contract_hash": preview["base_contract_hash"],
+            "preview_hash": preview["preview_hash"],
+        },
+    )
+    assert applied.status_code == 200, applied.text
+    assert applied.json()["goal"]["customer_ids"] == ["300003"]
+
+
+def test_concurrent_goal_patch_is_not_overwritten_by_message_analysis(
+    monkeypatch, agent_client
+):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    session = agent_service._SESSIONS[created["id"]]
+    analyzed_goal = json.loads(json.dumps(session.goal, ensure_ascii=False))
+    original_messages = json.loads(json.dumps(session.messages, ensure_ascii=False))
+    original_intent_state = json.loads(json.dumps(session.intent_state, ensure_ascii=False))
+    entered = threading.Event()
+    release = threading.Event()
+    outcome = {}
+
+    def blocked_analysis(*args, **kwargs):
+        entered.set()
+        assert release.wait(5)
+        return "awaiting_confirmation", analyzed_goal, "", {}
+
+    def add_message():
+        db = SessionLocal()
+        try:
+            outcome["result"] = agent_service.add_agent_message(
+                db, created["id"], session.user_id, "每种购买数量改成3"
+            )
+        except HTTPException as exc:
+            outcome["error"] = exc
+        finally:
+            db.close()
+
+    monkeypatch.setattr(agent_service, "_analyze_turn", blocked_analysis)
+    worker = threading.Thread(target=add_message)
+    worker.start()
+    assert entered.wait(5)
+    patched = agent_client.patch(
+        f"/api/data-scripts/agent/sessions/{created['id']}/goal",
+        json={
+            "plan_version": created["plan_version"],
+            "fields": {"order_item_num": 2},
+        },
+    )
+    assert patched.status_code == 200, patched.text
+    release.set()
+    worker.join(5)
+
+    assert not worker.is_alive()
+    assert outcome["error"].status_code == 409
+    current = agent_client.get(
+        f"/api/data-scripts/agent/sessions/{created['id']}"
+    ).json()
+    assert current["goal"]["variables"]["order_item_num"] == 2
+    assert current["plan_version"] == created["plan_version"] + 1
+    assert session.messages == original_messages
+    assert session.intent_state == original_intent_state
+    assert session.pending_contract_preview == {}
+
+
+def test_new_message_invalidates_pending_contract_preview(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待拍下"
+    )
+    preview_response = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview",
+        json={
+            "plan_version": created["plan_version"],
+            "message": "客户改成300003",
+        },
+    )
+    assert preview_response.status_code == 200, preview_response.text
+    response = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/messages",
+        json={"message": "每种购买数量改成2"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert agent_service._SESSIONS[created["id"]].pending_contract_preview == {}
+
+
+def test_problem_contract_preview_apply_updates_existing_operation(
+    monkeypatch, agent_client
+):
+    monkeypatch.setattr(
+        agent_service,
+        "call_local_model_json",
+        lambda *args, **kwargs: {
+            "status": "ready",
+            "goal": {
+                "mode": "resume_order",
+                "order_sn": "2026071715475684-300001",
+                "variables": {},
+            },
+        },
+    )
+    created = create_ready_session(
+        agent_client,
+        "订单2026071715475684-300001第1番提出问题产品，单价改成0，国内运费保持不变",
+    )
+    preview = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview",
+        json={
+            "plan_version": created["plan_version"],
+            "message": "国内运费也全部退，附加服务也全部退",
+        },
+    )
+    assert preview.status_code == 200, preview.text
+    applied = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview/apply",
+        json={
+            "plan_version": created["plan_version"],
+            "base_contract_hash": preview.json()["base_contract_hash"],
+            "preview_hash": preview.json()["preview_hash"],
+        },
+    )
+    assert applied.status_code == 200, applied.text
+    operation = next(
+        item for item in applied.json()["goal"]["operations"]
+        if item["type"] == "problem_goods"
+    )
+    assert operation["freight_refund_mode"] == "all"
+    assert operation["option_refund_mode"] == "all"

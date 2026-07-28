@@ -1,11 +1,16 @@
 import json
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app import data_scripts
+from app.core import bootstrap
 from app.core.data_script_catalog import DATA_SCRIPT_API_CASES
 from app.data_scripts import balance_adjustment
 from app.data_scripts.balance_adjustment import (
@@ -14,7 +19,7 @@ from app.data_scripts.balance_adjustment import (
 )
 from app.database import SessionLocal
 from app.main import app
-from app.models import ApiCase, Project
+from app.models import ApiCase, Base, Env, Project
 
 
 def _env():
@@ -303,8 +308,9 @@ def test_confirm_uncertain_can_be_proven_by_read_only_verification(patched):
 
 
 def test_script_registry_registered():
-    assert data_scripts.SCRIPT_REGISTRY["balance_adjustment"]["func"] is run_balance_adjustment_script
-    assert data_scripts.SCRIPT_REGISTRY["balance_adjustment"]["name"] == "出入金调整"
+    registered = data_scripts.SCRIPT_REGISTRY["balance_adjustment"]
+    assert registered["func"] is run_balance_adjustment_script
+    assert registered["name"] == registered["capability"].name == "客户出入金调整"
 
 
 def test_api_cases_are_seeded_into_japan_project():
@@ -331,6 +337,60 @@ def test_api_cases_are_seeded_into_japan_project():
         }
     finally:
         db.close()
+
+
+def test_data_script_seed_does_not_reassign_same_url_case_from_other_project():
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    db = sessionmaker(bind=engine)()
+    seed = next(
+        item for item in DATA_SCRIPT_API_CASES
+        if item["key"] == "admin_balance_adjustment_client_info"
+    )
+    try:
+        target = Project(name="日本站测试", desc="", create_time=datetime.now())
+        other = Project(name="其他项目", desc="", create_time=datetime.now())
+        db.add_all([target, other])
+        db.flush()
+        target_env = Env(project_id=target.id, env_name="target", base_url="https://target.test")
+        other_env = Env(project_id=other.id, env_name="other", base_url="https://other.test")
+        db.add_all([target_env, other_env])
+        db.flush()
+        foreign_case = ApiCase(
+            project_id=other.id,
+            env_id=other_env.id,
+            case_name=bootstrap.strip_case_name_prefix(seed["case_name"]),
+            method="POST",
+            url=seed["url"],
+            headers="{}",
+            params="{}",
+            body="{}",
+            assert_rule="{}",
+            status="active",
+            create_time=datetime.now(),
+        )
+        db.add(foreign_case)
+        db.commit()
+
+        bootstrap.ensure_data_script_api_cases(db)
+        bootstrap.ensure_data_script_api_cases(db)
+        db.refresh(foreign_case)
+
+        target_cases = db.query(ApiCase).filter(
+            ApiCase.project_id == target.id,
+            ApiCase.url == seed["url"],
+        ).all()
+        assert foreign_case.project_id == other.id
+        assert foreign_case.env_id == other_env.id
+        assert len(target_cases) == 1
+        assert target_cases[0].env_id == target_env.id
+    finally:
+        db.close()
+        engine.dispose()
 
 
 def _login(client, username, password):

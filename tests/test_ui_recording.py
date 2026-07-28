@@ -1,5 +1,7 @@
 import asyncio
+from types import SimpleNamespace
 
+from app.routers import ui_record
 from app.services import ui_recording_session
 from app.services.ui_recording_session import build_ui_steps
 
@@ -97,3 +99,154 @@ def test_get_session_storage_state_returns_live_browser_state():
         assert ui_recording_session._SESSIONS[session_id].persistent is True
     finally:
         ui_recording_session._SESSIONS.pop(session_id, None)
+
+
+def test_recording_session_state_exposes_account_profile_id():
+    session_id = "account-profile-test"
+    ui_recording_session._SESSIONS[session_id] = ui_recording_session._Session(
+        playwright=None,
+        browser=None,
+        context=None,
+        page=None,
+        project_id=1,
+        case_name="前台订单录制",
+        start_url="https://example.test/orders",
+    )
+    try:
+        state = ui_recording_session.get_session_state(session_id)
+        assert state["account_profile_id"] is None
+    finally:
+        ui_recording_session._SESSIONS.pop(session_id, None)
+
+
+def test_attach_page_recorder_captures_navigation_from_second_tab():
+    class FakePage:
+        def __init__(self):
+            self.main_frame = object()
+            self.handlers = {}
+            self.binding_name = ""
+
+        async def expose_binding(self, name, _callback):
+            self.binding_name = name
+
+        def on(self, event, callback):
+            self.handlers[event] = callback
+
+    page = FakePage()
+    session = ui_recording_session._Session(
+        playwright=None,
+        browser=None,
+        context=None,
+        page=None,
+        project_id=1,
+        case_name="多标签页录制",
+        start_url="https://example.test",
+    )
+    asyncio.run(ui_recording_session._attach_page_recorder(session, page))
+
+    page.main_frame = SimpleNamespace(url="https://example.test/detail")
+    page.handlers["framenavigated"](page.main_frame)
+
+    assert page.binding_name == "__recordUiEvent"
+    assert session.events[-1]["url"] == "https://example.test/detail"
+
+
+def test_create_recording_session_restores_selected_account_browser_state(monkeypatch):
+    captured = {}
+    profile = SimpleNamespace(
+        id=12,
+        project_id=1,
+        status="active",
+        browser_state_encrypted="encrypted-state",
+    )
+
+    class FakeDb:
+        def get(self, _model, profile_id):
+            assert profile_id == 12
+            return profile
+
+    async def fake_start_session(*args, **kwargs):
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return "recording-session"
+
+    monkeypatch.setattr(ui_record, "ensure_project_exists", lambda *_: None)
+    monkeypatch.setattr(ui_record.ui_recording_session, "start_session", fake_start_session)
+    monkeypatch.setattr(
+        ui_record,
+        "decrypt_account_payload",
+        lambda _: {"storage_state": {"cookies": [{"name": "front-session"}]}},
+        raising=False,
+    )
+
+    result = asyncio.run(
+        ui_record.create_ui_record_session(
+            {"project_id": 1, "case_name": "前台订单", "start_url": "https://example.test/orders", "account_profile_id": 12},
+            db=FakeDb(),
+            current_user=SimpleNamespace(id=7),
+        )
+    )
+
+    assert result["account_profile_id"] == 12
+    assert captured["kwargs"]["account_profile_id"] == 12
+    assert captured["kwargs"]["storage_state"]["cookies"][0]["name"] == "front-session"
+
+
+def test_save_recording_session_updates_selected_account_browser_state(monkeypatch):
+    profile = SimpleNamespace(
+        id=12,
+        project_id=1,
+        status="active",
+        browser_state_encrypted="",
+        browser_session_status="empty",
+        browser_session_validated_at=None,
+        update_time=None,
+    )
+
+    class FakeDb:
+        def get(self, _model, profile_id):
+            assert profile_id == 12
+            return profile
+
+        def add(self, item):
+            item.id = 88
+
+        def flush(self):
+            pass
+
+        def commit(self):
+            pass
+
+        def refresh(self, _item):
+            pass
+
+    monkeypatch.setattr(
+        ui_record.ui_recording_session,
+        "get_session_state",
+        lambda *_: {
+            "project_id": 1,
+            "case_name": "前台订单",
+            "start_url": "https://example.test/orders",
+            "preview_steps": [],
+            "count": 0,
+            "account_profile_id": 12,
+        },
+    )
+
+    async def fake_storage_state(_session_id):
+        return {"cookies": [{"name": "front-session"}], "origins": []}
+
+    async def fake_close_session(_session_id):
+        return None
+
+    bindings = []
+    monkeypatch.setattr(ui_record.ui_recording_session, "get_session_storage_state", fake_storage_state)
+    monkeypatch.setattr(ui_record.ui_recording_session, "close_session", fake_close_session)
+    monkeypatch.setattr(ui_record, "encrypt_account_payload", lambda value: f"encrypted:{value['storage_state']['cookies'][0]['name']}", raising=False)
+    monkeypatch.setattr(ui_record, "save_test_account_binding", lambda _db, target_type, target_id, profile_id: bindings.append((target_type, target_id, profile_id)), raising=False)
+
+    asyncio.run(ui_record.save_ui_record_session("recording-session", db=FakeDb(), current_user=SimpleNamespace(id=7)))
+
+    assert profile.browser_state_encrypted == "encrypted:front-session"
+    assert profile.browser_session_status == "valid"
+    assert bindings == [("ui_case", 88, 12)]

@@ -3,6 +3,7 @@ import json
 import logging
 import threading
 from datetime import datetime
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, inspect, text
@@ -24,6 +25,8 @@ from app.services.data_agent_learning import (
     sample_fingerprint,
     sanitize_learning_value,
 )
+from app.services.data_agent_contracts import ContractValidationError, apply_contract_updates
+from app.data_scripts.capabilities import capability_catalog
 
 
 EXPECTED_TABLES = {
@@ -512,6 +515,977 @@ def _verified_result():
     }
 
 
+def _standalone_problem_goods_goal(**overrides):
+    operation = {
+        "id": "operation_1",
+        "type": "problem_goods",
+        "scope": "selected_item",
+        "item_index": 1,
+        "quantity_refund_mode": "keep",
+        "quantity_refund_value": 0,
+        "price_adjustment_mode": "keep",
+        "price_adjustment_value": "0",
+        "freight_refund_mode": "keep",
+        "option_refund_mode": "keep",
+    }
+    operation.update(overrides)
+    return {
+        "mode": "resume_order",
+        "order_sn": "2026072412000001-300001",
+        "variables": {},
+        "operations": [operation],
+        "summary": "处理问题产品",
+    }
+
+
+def test_contract_correct_creates_pending_sample(learning_db):
+    session = _agent_session(status="awaiting_confirmation")
+
+    sample = learning_service.record_contract_feedback(learning_db, session, "correct")
+
+    assert sample.outcome == "pending"
+    assert sample.verified == 0
+    assert json.loads(sample.final_contract_json)["target_node"] == "order_offered"
+
+
+def test_contract_feedback_upserts_latest_contract_by_project_and_session(learning_db):
+    session = _agent_session(status="awaiting_confirmation")
+    first = learning_service.record_contract_feedback(learning_db, session, "correct")
+    original_fingerprint = first.fingerprint
+    session.goal["target_node"] = "pending_purchase"
+
+    updated = learning_service.record_contract_feedback(learning_db, session, "correct")
+
+    assert updated.id == first.id
+    assert json.loads(updated.final_contract_json)["target_node"] == "pending_purchase"
+    assert updated.fingerprint != original_fingerprint
+    assert learning_db.query(models.DataAgentLearningSample).count() == 1
+
+
+def test_identical_contract_feedback_is_isolated_across_sessions(learning_db):
+    first_session = _agent_session(session_id="same-contract-first")
+    second_session = _agent_session(session_id="same-contract-second")
+    first = learning_service.record_contract_feedback(learning_db, first_session, "correct")
+    verified = learning_service.capture_learning_sample(
+        learning_db,
+        first_session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    second = learning_service.record_contract_feedback(learning_db, second_session, "correct")
+
+    learning_db.refresh(verified)
+    assert first.id == verified.id
+    assert second.id != verified.id
+    assert (verified.outcome, verified.verified) == ("verified", 1)
+    assert (second.outcome, second.verified) == ("pending", 0)
+    assert learning_db.query(models.DataAgentLearningSample).count() == 2
+
+
+def test_confirm_records_pending_before_execution(monkeypatch, learning_db):
+    session = _agent_session(status="awaiting_confirmation")
+    calls = []
+    monkeypatch.setattr(
+        learning_service,
+        "record_contract_feedback",
+        lambda db, current, verdict: calls.append((current.id, verdict)),
+    )
+
+    agent_service._record_pending_contract_feedback(learning_db, session)
+
+    assert calls == [(session.id, "correct")]
+
+
+def test_successful_execution_upgrades_pending_sample(learning_db):
+    session = _agent_session()
+    pending = learning_service.record_contract_feedback(learning_db, session, "correct")
+
+    upgraded = learning_service.capture_learning_sample(
+        learning_db, session, "succeeded", _verified_result()
+    )
+
+    assert upgraded.id == pending.id
+    assert upgraded.outcome == "verified"
+    assert upgraded.verified == 1
+
+
+def test_execution_failure_does_not_turn_recognition_into_failure(learning_db):
+    session = _agent_session()
+    pending = learning_service.record_contract_feedback(learning_db, session, "correct")
+
+    same = learning_service.capture_learning_sample(learning_db, session, "failed", {})
+
+    assert same.id == pending.id
+    assert same.outcome == "pending"
+
+
+def test_invalid_feedback_marks_sample_invalid(learning_db):
+    sample = learning_service.record_contract_feedback(
+        learning_db, _agent_session(status="awaiting_confirmation"), "invalid"
+    )
+
+    assert sample.outcome == "invalid"
+    assert sample.verified == 0
+
+
+def test_invalid_feedback_is_not_upgraded_by_successful_execution(learning_db):
+    session = _agent_session(status="awaiting_confirmation")
+    invalid = learning_service.record_contract_feedback(learning_db, session, "invalid")
+
+    same = learning_service.capture_learning_sample(
+        learning_db,
+        session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert same.id == invalid.id
+    assert (same.outcome, same.verified) == ("invalid", 0)
+
+
+def test_invalid_contract_stays_invalid_through_confirm_and_success(learning_db):
+    session = _agent_session(status="awaiting_confirmation")
+    invalid = learning_service.record_contract_feedback(learning_db, session, "invalid")
+    session.plan_version += 1
+
+    agent_service._record_pending_contract_feedback(learning_db, session)
+    learning_db.refresh(invalid)
+    succeeded = learning_service.capture_learning_sample(
+        learning_db,
+        session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert succeeded.id == invalid.id
+    assert (succeeded.outcome, succeeded.verified) == ("invalid", 0)
+
+
+def test_invalid_contract_ignores_noncanonical_goal_changes(learning_db):
+    session = _agent_session(status="awaiting_confirmation")
+    session.goal = {
+        **session.goal,
+        "contract_hash": "stable-contract-hash",
+        "summary": "原摘要",
+    }
+    invalid = learning_service.record_contract_feedback(learning_db, session, "invalid")
+    session.plan_version += 1
+    session.goal["summary"] = "只修改展示摘要"
+
+    learning_service.record_contract_feedback(learning_db, session, "correct")
+    succeeded = learning_service.capture_learning_sample(
+        learning_db,
+        session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert succeeded.id == invalid.id
+    assert (succeeded.outcome, succeeded.verified) == ("invalid", 0)
+
+
+def test_invalid_contract_ignores_message_reanalysis_and_display_changes(learning_db):
+    session = _agent_session(status="awaiting_confirmation")
+    session.goal = {
+        **session.goal,
+        "capability_key": "full_flow",
+        "contract_hash": "stable-but-untrusted",
+        "summary": "原摘要",
+        "intent": {"evidence": "原依据"},
+    }
+    invalid = learning_service.record_contract_feedback(learning_db, session, "invalid")
+    session.messages = [{"role": "user", "content": "重新分析后的展示消息"}]
+    session.goal.update(
+        {
+            "summary": "新摘要",
+            "assumptions": ["新假设"],
+            "steps": ["新展示步骤"],
+            "intent": {"evidence": "新依据"},
+            "risk": {"level": "high"},
+        }
+    )
+
+    learning_service.record_contract_feedback(learning_db, session, "correct")
+    succeeded = learning_service.capture_learning_sample(
+        learning_db,
+        session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert succeeded.id == invalid.id
+    assert (succeeded.outcome, succeeded.verified) == ("invalid", 0)
+
+
+def test_invalid_contract_ignores_forged_or_stale_goal_contract_hash(learning_db):
+    session = _agent_session(status="awaiting_confirmation")
+    session.goal = {
+        **session.goal,
+        "capability_key": "full_flow",
+        "contract_hash": "first-untrusted-hash",
+        "summary": "原摘要",
+    }
+    invalid = learning_service.record_contract_feedback(learning_db, session, "invalid")
+    session.goal["contract_hash"] = "forged-new-hash"
+    session.goal["summary"] = "只修改展示摘要"
+
+    learning_service.record_contract_feedback(learning_db, session, "correct")
+    succeeded = learning_service.capture_learning_sample(
+        learning_db,
+        session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert succeeded.id == invalid.id
+    assert (succeeded.outcome, succeeded.verified) == ("invalid", 0)
+
+
+@pytest.mark.parametrize(
+    ("field", "after"),
+    [
+        ("scope", "all_candidates"),
+        ("item_index", 2),
+        ("quantity_refund_mode", "all"),
+        ("quantity_refund_value", 2),
+        ("price_adjustment_mode", "fixed"),
+        ("price_adjustment_value", "12.5"),
+        ("freight_refund_mode", "all"),
+        ("option_refund_mode", "all"),
+    ],
+)
+def test_problem_goods_execution_field_change_reopens_invalid_contract(
+    learning_db,
+    field,
+    after,
+):
+    session = _agent_session(
+        status="awaiting_confirmation",
+        goal={
+            **_standalone_problem_goods_goal(),
+            "capability_key": "problem_goods",
+        },
+    )
+    invalid = learning_service.record_contract_feedback(learning_db, session, "invalid")
+    original_fingerprint = invalid.fingerprint
+    session.goal["operations"][0][field] = after
+
+    pending = learning_service.record_contract_feedback(learning_db, session, "correct")
+    verified = learning_service.capture_learning_sample(
+        learning_db,
+        session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert pending.id == invalid.id == verified.id
+    assert verified.fingerprint != original_fingerprint
+    assert (verified.outcome, verified.verified) == ("verified", 1)
+
+
+def test_standalone_legacy_problem_goods_goal_generates_learning_fingerprint(
+    learning_db,
+):
+    session = _agent_session(
+        status="awaiting_confirmation",
+        goal=_standalone_problem_goods_goal(),
+    )
+
+    sample = learning_service.record_contract_feedback(learning_db, session, "correct")
+
+    assert sample.module_key == "problem_goods"
+    assert sample.intent_key == "problem_goods"
+    assert sample.fingerprint
+
+
+def test_unknown_goal_mode_cannot_generate_learning_fingerprint(learning_db):
+    session = _agent_session(
+        status="awaiting_confirmation",
+        goal={"mode": "unknown_mode", "variables": {}, "operations": []},
+    )
+
+    with pytest.raises(learning_service.LearningInputError, match="能力未声明"):
+        learning_service.record_contract_feedback(learning_db, session, "correct")
+
+
+def test_unknown_legacy_scope_cannot_use_full_flow_learning_metadata(learning_db):
+    sample = _verified_corrected_sample(
+        learning_db,
+        module_key="unknown_module",
+        intent_key="unknown_intent",
+    )
+
+    with pytest.raises(ValueError, match="字段未声明为可学习"):
+        learning_service.correction_rule_proposal(
+            sample,
+            {"field": "order_item_num", "before": 1, "after": 2},
+        )
+
+
+def test_problem_goods_display_change_does_not_reopen_invalid_contract(learning_db):
+    session = _agent_session(
+        status="awaiting_confirmation",
+        goal={
+            **_standalone_problem_goods_goal(),
+            "capability_key": "problem_goods",
+        },
+    )
+    invalid = learning_service.record_contract_feedback(learning_db, session, "invalid")
+    session.goal["summary"] = "仅修改展示摘要"
+    session.goal["evidence"] = {"reason": "仅修改展示证据"}
+
+    learning_service.record_contract_feedback(learning_db, session, "correct")
+    succeeded = learning_service.capture_learning_sample(
+        learning_db,
+        session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert succeeded.id == invalid.id
+    assert (succeeded.outcome, succeeded.verified) == ("invalid", 0)
+
+
+@pytest.mark.parametrize(
+    "execution_update",
+    [
+        {"target_node": "pending_purchase"},
+        {"variables": {"order_item_num": 2}},
+        {"variables": {"order_item_num": 1, "offer_price": "20"}},
+        {"variables": {"order_item_num": 1, "offer_unit_prices": ["10", "20"]}},
+    ],
+)
+def test_invalid_contract_allows_declared_execution_field_change(
+    learning_db,
+    execution_update,
+):
+    session = _agent_session(status="awaiting_confirmation")
+    session.goal = {
+        **session.goal,
+        "capability_key": "full_flow",
+        "contract_hash": "forged-stable-hash",
+    }
+    invalid = learning_service.record_contract_feedback(learning_db, session, "invalid")
+    session.goal.update(execution_update)
+
+    pending = learning_service.record_contract_feedback(learning_db, session, "correct")
+    verified = learning_service.capture_learning_sample(
+        learning_db,
+        session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert pending.id == invalid.id == verified.id
+    assert (verified.outcome, verified.verified) == ("verified", 1)
+
+
+def test_edited_invalid_contract_can_become_pending_then_verified(learning_db):
+    session = _agent_session(status="awaiting_confirmation")
+    invalid = learning_service.record_contract_feedback(learning_db, session, "invalid")
+    original_fingerprint = invalid.fingerprint
+    session.plan_version += 1
+    session.goal = {
+        **session.goal,
+        "target_node": "pending_purchase",
+        "contract_hash": "edited-contract-hash",
+    }
+
+    pending = learning_service.record_contract_feedback(learning_db, session, "correct")
+    verified = learning_service.capture_learning_sample(
+        learning_db,
+        session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert pending.id == invalid.id == verified.id
+    assert pending.fingerprint != original_fingerprint
+    assert (verified.outcome, verified.verified) == ("verified", 1)
+
+
+def test_risk_confirmation_is_valid_confirmation_evidence(learning_db):
+    session = _agent_session(confirmed=False)
+    session.events.append({"kind": "risk_confirmed"})
+    learning_service.record_contract_feedback(learning_db, session, "correct")
+
+    sample = learning_service.capture_learning_sample(
+        learning_db,
+        session,
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert (sample.outcome, sample.verified) == ("verified", 1)
+
+
+def test_order_identifier_candidate_learns_pattern_not_task_value(learning_db):
+    session = _agent_session(
+        instruction="把订单2026071715475684-300001继续到待付款",
+        goal={
+            "capability_key": "resume_order_flow",
+            "order_sn": "2026071715475684-300001",
+            "target_node": "order_offered",
+            "variables": {},
+            "operations": [{"id": "operation_1", "type": "advance_order"}],
+        },
+    )
+    sample = learning_service.capture_learning_sample(
+        learning_db, session, "succeeded", _verified_result()
+    )
+
+    proposal = learning_service.correction_rule_proposal(
+        sample, {"field": "order_sn", "before": "", "after": session.goal["order_sn"]}
+    )
+
+    assert proposal["learning_mode"] == "pattern"
+    assert "2026071715475684-300001" not in json.dumps(proposal, ensure_ascii=False)
+
+
+def test_value_candidate_redacts_all_pattern_identifiers_from_proposal_and_candidate(learning_db):
+    raw_identifiers = []
+    first_proposal = None
+    for index in range(3):
+        order_sn = f"2026072{index}15475684-30000{index + 1}"
+        porder_sn = f"P2026072{index}-DELIVERY-{index + 1}"
+        raw_identifiers.extend((order_sn, porder_sn))
+        initial = _regression_goal()
+        initial.update(
+            {
+                "capability_key": "full_flow",
+                "order_sn": order_sn,
+                "porder_sn": porder_sn,
+                "target_node": "pending_purchase",
+            }
+        )
+        final = {**initial, "target_node": "order_offered"}
+        sample = _verified_corrected_sample(
+            learning_db,
+            field="target_node",
+            before="pending_purchase",
+            after="order_offered",
+            intent_key="full_flow",
+            instruction=f"把订单{order_sn}和配送单{porder_sn}继续到待付款",
+            outcome="verified",
+            initial_contract=initial,
+            final_contract=final,
+        )
+        proposal = learning_service.correction_rule_proposal(
+            sample,
+            {"field": "target_node", "before": "pending_purchase", "after": "order_offered"},
+        )
+        first_proposal = first_proposal or proposal
+        learning_service.refresh_candidates_for_sample(learning_db, sample)
+
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+    serialized = json.dumps(first_proposal, ensure_ascii=False) + candidate.proposal_json
+    assert (candidate.occurrence_count, candidate.status) == (3, "pending_regression")
+    assert all(identifier not in serialized for identifier in raw_identifiers)
+
+
+def test_account_strategy_is_learnable_but_credentials_are_rejected():
+    safe = learning_service.validate_candidate_rule(
+        {
+            "signature": "permission_account_strategy:abc1234567890def",
+            "field": "permission_account_strategy",
+            "learning_mode": "strategy",
+            "match_phrases": ["问题产品超过500"],
+            "set_strategy": {
+                "profile_name": "后台沈文妮账号",
+                "role": "department_leader",
+            },
+            "source_count": 3,
+        }
+    )
+
+    assert safe["set_strategy"]["profile_name"] == "后台沈文妮账号"
+    assert safe["set_strategy"]["role"] == "department_leader"
+    with pytest.raises(ValueError):
+        learning_service.validate_candidate_rule(
+            {
+                **safe,
+                "set_strategy": {
+                    "profile_name": "后台沈文妮账号",
+                    "role": "department_leader",
+                    "backend_account_profile_id": 7,
+                },
+            }
+        )
+
+
+def test_approved_permission_strategy_is_applied_server_side_but_direct_edit_is_readonly():
+    capability = capability_catalog()["problem_goods"]
+    strategy = {"profile_name": "后台部长账号", "role": "department_leader"}
+    rule = {
+        "signature": learning_service._candidate_signature("permission_account_strategy", strategy),
+        "field": "permission_account_strategy",
+        "learning_mode": "strategy",
+        "learning_scope": "project",
+        "match_phrases": ["问题产品超过退款权限"],
+        "set_strategy": strategy,
+        "source_count": 3,
+    }
+
+    applied = apply_learning_context(
+        {"variables": {}},
+        {"rules": [{"id": 12, "scope": "project", "rule": rule}]},
+        capability=capability,
+    )
+
+    assert applied["variables"]["permission_account_strategy"] == strategy
+    with pytest.raises(ContractValidationError) as exc_info:
+        apply_contract_updates(
+            {"variables": {}},
+            {"permission_account_strategy": strategy},
+            capability,
+        )
+    assert "只读" in exc_info.value.errors["permission_account_strategy"]
+
+
+def test_only_manual_saved_permission_strategy_becomes_a_safe_learning_correction():
+    session = SimpleNamespace(
+        events=[
+            {
+                "kind": "permission_profile_selected",
+                "strategy": {"profile_name": "后台部长账号", "role": "department_leader"},
+            },
+            {
+                "kind": "permission_auto_resumed",
+                "strategy": {"profile_name": "后台自动账号", "role": "department_leader"},
+            },
+            {"kind": "permission_resumed", "temporary_credentials": True},
+        ],
+        intent_state={},
+    )
+
+    corrections = learning_service._corrections(session)
+
+    assert corrections == [
+        {
+            "field": "permission_account_strategy",
+            "before": {},
+            "after": {"profile_name": "后台部长账号", "role": "department_leader"},
+            "source": "manual_profile_selection",
+        }
+    ]
+    serialized = json.dumps(corrections, ensure_ascii=False)
+    assert all(
+        key not in serialized
+        for key in ("profile_id", '"backend_account"', '"backend_password"', "secret")
+    )
+
+
+def test_permission_account_strategy_metadata_generates_candidate_after_three_verified_samples(
+    learning_db,
+):
+    profile_name = "后台沈文妮账号"
+    strategy = {"profile_name": profile_name, "role": "department_leader"}
+    for index in range(3):
+        goal = {
+            "capability_key": "problem_goods",
+            "order_sn": f"2026072{index}15475684-30000{index + 1}",
+            "target_node": "order_offered",
+            "variables": {
+                "permission_account_strategy": strategy,
+            },
+            "operations": [{"id": "operation_1", "type": "problem_goods"}],
+        }
+        sample = _verified_corrected_sample(
+            learning_db,
+            field="permission_account_strategy",
+            before={},
+            after=strategy,
+            module_key="problem_goods",
+            intent_key="problem_goods",
+            instruction=f"订单超过权限阈值时使用后台账号档案-{index}",
+            outcome="verified",
+            initial_contract={**goal, "variables": {}},
+            final_contract=goal,
+        )
+        proposal = learning_service.correction_rule_proposal(
+            sample,
+            {
+                "field": "permission_account_strategy",
+                "before": {},
+                "after": strategy,
+            },
+        )
+        assert proposal["learning_scope"] == "project"
+        assert proposal["set_strategy"] == strategy
+        learning_service.refresh_candidates_for_sample(learning_db, sample)
+
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+    assert (candidate.occurrence_count, candidate.status) == (3, "pending_regression")
+
+
+def test_declared_permission_strategy_error_is_not_silently_ignored(learning_db):
+    sample = _verified_corrected_sample(
+        learning_db,
+        field="permission_account_strategy",
+        before={},
+        after={"backend_password": "secret"},
+        module_key="problem_goods",
+        intent_key="problem_goods",
+        outcome="verified",
+        initial_contract={"variables": {}},
+        final_contract={"variables": {}},
+    )
+
+    with pytest.raises(ValueError, match="禁止字段"):
+        learning_service.refresh_candidates_for_sample(learning_db, sample)
+
+
+@pytest.mark.parametrize(
+    ("field", "before", "after"),
+    [
+        (
+            "pricing",
+            {"mode": "goods_total", "amount": "10"},
+            {"mode": "goods_total", "amount": "not-a-number"},
+        ),
+        ("offer_unit_prices", ["10", "20"], ["10", {"bad": "value"}]),
+    ],
+)
+def test_malformed_declared_pricing_is_not_silently_ignored(
+    learning_db,
+    field,
+    before,
+    after,
+):
+    sample = _verified_corrected_sample(
+        learning_db,
+        field=field,
+        before=before,
+        after=after,
+        intent_key="full_flow",
+        outcome="verified",
+    )
+
+    with pytest.raises(ValueError, match="候选"):
+        learning_service.refresh_candidates_for_sample(learning_db, sample)
+
+
+def test_nonlearnable_contract_field_does_not_generate_candidate(learning_db):
+    sample = _verified_corrected_sample(
+        learning_db,
+        field="plan_version",
+        before=1,
+        after=2,
+        intent_key="full_flow",
+    )
+
+    assert learning_service.refresh_candidates_for_sample(learning_db, sample) == []
+
+
+def test_customer_identifier_pattern_is_project_scoped_and_contains_no_task_value(learning_db):
+    sample = _verified_corrected_sample(
+        learning_db,
+        field="customer_ids",
+        before=["300001"],
+        after=["300001", "300002"],
+        intent_key="full_flow",
+        instruction="客户300001和300002各创建一单",
+    )
+
+    proposal = learning_service.correction_rule_proposal(
+        sample,
+        {"field": "customer_ids", "before": ["300001"], "after": ["300001", "300002"]},
+    )
+
+    assert (proposal["learning_mode"], proposal["learning_scope"]) == ("pattern", "project")
+    serialized = json.dumps(proposal, ensure_ascii=False)
+    assert "300001" not in serialized
+    assert "300002" not in serialized
+
+
+def test_identifier_pattern_rejects_global_scope_and_raw_literal():
+    base = {
+        "signature": "order_sn:abc1234567890def",
+        "field": "order_sn",
+        "learning_mode": "pattern",
+        "learning_scope": "project",
+        "match_phrases": ["订单编号"],
+        "extract_pattern": {
+            "field": "order_sn",
+            "kind": "identifier",
+            "aliases": ["订单编号"],
+            "shapes": [
+                {
+                    "length": 23,
+                    "segments": [{"kind": "literal", "value": "2026071715475684-300001"}],
+                }
+            ],
+        },
+        "source_count": 3,
+    }
+    with pytest.raises(ValueError, match="项目范围"):
+        learning_service.validate_candidate_rule({**base, "learning_scope": "global"})
+    with pytest.raises(ValueError, match="标识符模式"):
+        learning_service.validate_candidate_rule(base)
+
+
+def test_three_verified_identifier_samples_reach_candidate_without_raw_values(learning_db):
+    identifiers = [
+        "2026071715475684-300001",
+        "2026071815475684-300002",
+        "2026071915475684-300003",
+    ]
+    for identifier in identifiers:
+        sample = _verified_corrected_sample(
+            learning_db,
+            field="order_sn",
+            before="",
+            after=identifier,
+            intent_key="resume_order_flow",
+            instruction=f"把订单{identifier}继续到待付款",
+            outcome="verified",
+        )
+        learning_service.refresh_candidates_for_sample(learning_db, sample)
+
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+    serialized = candidate.proposal_json
+    assert (candidate.occurrence_count, candidate.status) == (3, "pending_regression")
+    assert all(identifier not in serialized for identifier in identifiers)
+
+
+def test_identifier_pattern_candidate_can_complete_regression(learning_db):
+    identifiers = [
+        "2026071715475684-300001",
+        "2026071815475684-300002",
+        "2026071915475684-300003",
+    ]
+    for index, identifier in enumerate(identifiers):
+        goal = {
+            "capability_key": "resume_order_flow",
+            "order_sn": identifier,
+            "target_node": "order_offered",
+            "variables": {},
+            "operations": [{"id": "operation_1", "type": "advance_order"}],
+        }
+        session = _agent_session(
+            session_id=f"pattern-regression-{index}",
+            instruction=f"把订单{identifier}继续到待付款",
+            goal=goal,
+        )
+        session.events.append(
+            {
+                "kind": "goal_updated",
+                "corrections": [{"field": "order_sn", "before": "", "after": identifier}],
+            }
+        )
+        learning_service.capture_learning_sample(
+            learning_db,
+            session,
+            "succeeded",
+            _verified_result(),
+        )
+
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+
+    assert result.status == "pending_review"
+    assert "regression_exception" not in json.loads(result.regression_json)["error_codes"]
+
+
+def test_strategy_candidate_can_complete_regression(learning_db):
+    initial = {
+        "capability_key": "full_flow",
+        "mode": "new",
+        "target_node": "order_offered",
+        "variables": {"order_payment_mode": "balance_first"},
+        "operations": [{"id": "operation_1", "type": "advance_order"}],
+    }
+    for index in range(3):
+        goal = json.loads(json.dumps(initial, ensure_ascii=False))
+        goal["variables"]["order_payment_mode"] = "bank"
+        session = _agent_session(
+            session_id=f"strategy-regression-{index}",
+            instruction=f"订单支付改成银行-{index}",
+            goal=goal,
+        )
+        session.initial_contract = json.loads(json.dumps(initial, ensure_ascii=False))
+        session.events.append(
+            {
+                "kind": "goal_updated",
+                "corrections": [
+                    {
+                        "field": "order_payment_mode",
+                        "before": "balance_first",
+                        "after": "bank",
+                    }
+                ],
+            }
+        )
+        learning_service.capture_learning_sample(
+            learning_db,
+            session,
+            "succeeded",
+            _verified_result(),
+        )
+
+    candidate = learning_db.query(models.DataAgentRuleCandidate).one()
+    result = learning_service.run_candidate_regression(learning_db, candidate.id)
+
+    assert result.status == "pending_review"
+    assert "regression_exception" not in json.loads(result.regression_json)["error_codes"]
+
+
+def test_contract_feedback_endpoint_records_only_owned_editable_version(
+    learning_db,
+    monkeypatch,
+):
+    session = _agent_session(status="awaiting_confirmation")
+    session.user_id = 7
+    agent_service._SESSIONS[session.id] = session
+    app.dependency_overrides[get_db] = lambda: learning_db
+    app.dependency_overrides[get_current_user] = lambda: type(
+        "AdminUser", (), {"id": 7, "role": "admin"}
+    )()
+    monkeypatch.setattr(
+        agent_service._EXECUTOR,
+        "submit",
+        lambda *args, **kwargs: pytest.fail("合同反馈不得执行任务"),
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                f"/api/data-scripts/agent/sessions/{session.id}/contract-feedback",
+                json={"plan_version": session.plan_version, "verdict": "correct"},
+            )
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+        agent_service._SESSIONS.pop(session.id, None)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "awaiting_confirmation"
+    assert learning_db.query(models.DataAgentLearningSample).one().outcome == "pending"
+    assert session.events[-1] == {
+        "time": session.events[-1]["time"],
+        "kind": "contract_feedback",
+        "message": "合同反馈已记录",
+        "verdict": "correct",
+        "plan_version": session.plan_version,
+    }
+
+
+@pytest.mark.parametrize(
+    ("owner_id", "status_value", "plan_delta", "expected_status"),
+    [
+        (8, "awaiting_confirmation", 0, 404),
+        (7, "running", 0, 409),
+        (7, "awaiting_confirmation", -1, 409),
+    ],
+)
+def test_contract_feedback_endpoint_rejects_wrong_owner_state_or_version(
+    learning_db,
+    owner_id,
+    status_value,
+    plan_delta,
+    expected_status,
+):
+    session = _agent_session(status=status_value)
+    session.user_id = 7
+    agent_service._SESSIONS[session.id] = session
+    app.dependency_overrides[get_db] = lambda: learning_db
+    app.dependency_overrides[get_current_user] = lambda: type(
+        "AdminUser", (), {"id": owner_id, "role": "admin"}
+    )()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                f"/api/data-scripts/agent/sessions/{session.id}/contract-feedback",
+                json={
+                    "plan_version": session.plan_version + plan_delta,
+                    "verdict": "invalid",
+                },
+            )
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+        agent_service._SESSIONS.pop(session.id, None)
+
+    assert response.status_code == expected_status
+    assert learning_db.query(models.DataAgentLearningSample).count() == 0
+
+
+def test_confirm_records_pending_before_executor_dispatch(monkeypatch, learning_db):
+    session = _agent_session(status="awaiting_confirmation")
+    agent_service._SESSIONS[session.id] = session
+    calls = []
+    monkeypatch.setattr(agent_service, "validate_agent_context", lambda *args: None)
+    monkeypatch.setattr(agent_service, "_latest_model_config", lambda *args: object())
+    monkeypatch.setattr(
+        agent_service,
+        "_record_pending_contract_feedback",
+        lambda db, current: calls.append(("feedback", current.id)),
+    )
+    monkeypatch.setattr(
+        agent_service._EXECUTOR,
+        "submit",
+        lambda function, session_id: calls.append(("dispatch", session_id)),
+    )
+    try:
+        agent_service.confirm_agent_session(
+            learning_db,
+            session.id,
+            session.user_id,
+            session.plan_version,
+        )
+    finally:
+        agent_service._SESSIONS.pop(session.id, None)
+        agent_service._ENV_RUNNING.pop(session.env_id, None)
+
+    assert calls == [("feedback", session.id), ("dispatch", session.id)]
+
+
+def test_pending_learning_error_is_safe_and_does_not_change_status(
+    learning_db,
+    monkeypatch,
+    caplog,
+):
+    session = _agent_session(status="awaiting_confirmation")
+    monkeypatch.setattr(
+        learning_service,
+        "record_contract_feedback",
+        lambda *args: (_ for _ in ()).throw(RuntimeError("password=raw-secret")),
+    )
+
+    with caplog.at_level(logging.ERROR, logger="app.services.data_factory_agent"):
+        agent_service._record_pending_contract_feedback(learning_db, session)
+
+    assert session.status == "awaiting_confirmation"
+    assert session.events[-1]["kind"] == "learning_error"
+    assert session.events[-1]["error_type"] == "RuntimeError"
+    assert "raw-secret" not in json.dumps(session.events, ensure_ascii=False)
+    assert "RuntimeError" in caplog.text
+    assert "raw-secret" not in caplog.text
+
+
+def test_pending_learning_rollback_error_does_not_block_confirmation(
+    learning_db,
+    monkeypatch,
+):
+    session = _agent_session(status="awaiting_confirmation")
+    monkeypatch.setattr(
+        learning_service,
+        "record_contract_feedback",
+        lambda *args: (_ for _ in ()).throw(RuntimeError("learning failed")),
+    )
+    monkeypatch.setattr(
+        learning_db,
+        "rollback",
+        lambda: (_ for _ in ()).throw(RuntimeError("rollback failed")),
+    )
+
+    agent_service._record_pending_contract_feedback(learning_db, session)
+
+    assert session.status == "awaiting_confirmation"
+    assert session.events[-1]["kind"] == "learning_error"
+    assert session.events[-1]["error_type"] == "RuntimeError"
+
+
 def test_confirmed_succeeded_and_verified_session_becomes_positive_sample(learning_db):
     sample = capture_learning_sample(
         learning_db,
@@ -520,7 +1494,7 @@ def test_confirmed_succeeded_and_verified_session_becomes_positive_sample(learni
         _verified_result(),
     )
 
-    assert (sample.outcome, sample.verified) == ("success", 1)
+    assert (sample.outcome, sample.verified) == ("verified", 1)
 
 
 @pytest.mark.parametrize(
@@ -531,7 +1505,7 @@ def test_confirmed_succeeded_and_verified_session_becomes_positive_sample(learni
         (True, {"verification": {"passed": False}}),
     ],
 )
-def test_succeeded_without_confirmation_or_actual_verification_is_failure(
+def test_succeeded_without_confirmation_or_actual_verification_stays_pending(
     learning_db,
     confirmed,
     result,
@@ -543,11 +1517,11 @@ def test_succeeded_without_confirmation_or_actual_verification_is_failure(
         result,
     )
 
-    assert (sample.outcome, sample.verified) == ("failure", 0)
+    assert (sample.outcome, sample.verified) == ("pending", 0)
 
 
 @pytest.mark.parametrize("final_status", ["failed", "blocked", "cancelled"])
-def test_non_success_terminal_status_never_becomes_positive(learning_db, final_status):
+def test_non_success_terminal_status_stays_pending(learning_db, final_status):
     sample = capture_learning_sample(
         learning_db,
         _agent_session(),
@@ -555,7 +1529,7 @@ def test_non_success_terminal_status_never_becomes_positive(learning_db, final_s
         _verified_result(),
     )
 
-    assert (sample.outcome, sample.verified) == ("failure", 0)
+    assert (sample.outcome, sample.verified) == ("pending", 0)
 
 
 def test_capture_accepts_explicit_verification_test_seam(learning_db):
@@ -566,7 +1540,29 @@ def test_capture_accepts_explicit_verification_test_seam(learning_db):
         {"verification": {"passed": True}},
     )
 
-    assert (sample.outcome, sample.verified) == ("success", 1)
+    assert (sample.outcome, sample.verified) == ("verified", 1)
+
+
+@pytest.mark.parametrize(
+    "instruction",
+    [
+        "请使用后台密码为cn-secret继续",
+        "请填写密码是cn-secret",
+    ],
+)
+def test_learning_sample_redacts_credentials_after_contiguous_chinese_text(
+    learning_db,
+    instruction,
+):
+    sample = capture_learning_sample(
+        learning_db,
+        _agent_session(instruction=instruction),
+        "succeeded",
+        _verified_result(),
+    )
+
+    assert "cn-secret" not in sample.instruction_text
+    assert "***" in sample.instruction_text
 
 
 def test_recursive_redaction_removes_sensitive_keys_and_string_assignments(learning_db):
@@ -578,9 +1574,16 @@ def test_recursive_redaction_removes_sensitive_keys_and_string_assignments(learn
             "backend_account": "temporary-account-raw",
             "backend_password": "backend-raw",
             "account_ciphertext": "account-cipher-raw",
+            "密码": "chinese-structured-secret",
+            "ｐａｓｓｗｏｒｄ": "fullwidth-structured-secret",
+            "ｔｏｋｅｎ＿ｃｏｕｎｔ": "metadata-count-marker",
         },
         "operations": [],
-        "note": "Authorization: Bearer bearer-raw; token: token-raw",
+        "note": (
+            "Authorization: Bearer bearer-raw; token: token-raw "
+            "后台密码：cn-inline-secret 密码是 cn-is-secret "
+            "ｐａｓｓｗｏｒｄ＝fw-inline-secret ｔｏｋｅｎ＝fw-token-secret"
+        ),
     }
     session = _agent_session(
         instruction=(
@@ -641,9 +1644,16 @@ def test_recursive_redaction_removes_sensitive_keys_and_string_assignments(learn
         "bearer-raw",
         "token-raw",
         "event-raw",
+        "chinese-structured-secret",
+        "fullwidth-structured-secret",
+        "cn-inline-secret",
+        "cn-is-secret",
+        "fw-inline-secret",
+        "fw-token-secret",
     ):
         assert secret not in serialized
     assert "create order" in sample.instruction_text
+    assert "metadata-count-marker" in sample.final_contract_json
     assert sanitize_learning_value({"Sensitive_Variables": {"token": "raw"}}) == {
         "Sensitive_Variables": "***"
     }
@@ -735,7 +1745,8 @@ def test_direct_goal_edit_records_only_changed_allowed_fields():
         agent_service.update_agent_goal(
             session.id,
             session.user_id,
-            {"order_shop_count": 1, "order_item_num": "3", "backend_password": "raw"},
+            {"order_shop_count": 1, "order_item_num": "3"},
+            session.plan_version,
         )
     finally:
         agent_service._SESSIONS.pop(session.id, None)
@@ -762,7 +1773,12 @@ def test_initial_contract_remains_first_confirmable_goal_after_direct_edit(learn
     session = _agent_session(goal=goal, status="awaiting_confirmation")
     agent_service._SESSIONS[session.id] = session
     try:
-        agent_service.update_agent_goal(session.id, session.user_id, {"order_item_num": 4})
+        agent_service.update_agent_goal(
+            session.id,
+            session.user_id,
+            {"order_item_num": 4},
+            session.plan_version,
+        )
         sample = capture_learning_sample(
             learning_db,
             session,
@@ -776,6 +1792,11 @@ def test_initial_contract_remains_first_confirmable_goal_after_direct_edit(learn
     final = json.loads(sample.final_contract_json)
     assert initial["variables"]["order_item_num"] == 1
     assert final["variables"]["order_item_num"] == 4
+
+
+def test_direct_goal_edit_requires_plan_version_argument():
+    with pytest.raises(TypeError):
+        agent_service.update_agent_goal("missing", 1, {})
 
 
 def test_missing_initial_contract_is_not_replaced_with_final_contract(learning_db):
@@ -911,8 +1932,44 @@ def test_finalize_learning_failure_preserves_business_record_and_terminal_state(
     assert commit_calls == 2
     assert learning_db.get(models.TestRecord, saved.id) is not None
     assert (session.status, session.record_id) == ("succeeded", saved.id)
+    assert session.events[-1]["kind"] == "learning_error"
+    assert session.events[-1]["error_type"] == "LearningCommitError"
     assert "LearningCommitError" in caplog.text
     assert "secret exception body" not in caplog.text
+
+
+def test_finalize_learning_rollback_error_preserves_terminal_state(
+    learning_db,
+    monkeypatch,
+):
+    session = _agent_session()
+    agent_service._SESSIONS[session.id] = session
+    saved = models.TestRecord(id=9876)
+    monkeypatch.setattr(agent_service, "save_record", lambda *args, **kwargs: saved)
+    monkeypatch.setattr(
+        agent_service,
+        "capture_learning_sample",
+        lambda *args: (_ for _ in ()).throw(RuntimeError("learning failed")),
+    )
+    monkeypatch.setattr(
+        learning_db,
+        "rollback",
+        lambda: (_ for _ in ()).throw(RuntimeError("rollback failed")),
+    )
+    try:
+        agent_service._finalize_session(
+            learning_db,
+            session.id,
+            "succeeded",
+            _verified_result(),
+            None,
+        )
+    finally:
+        agent_service._SESSIONS.pop(session.id, None)
+
+    assert (session.status, session.record_id) == ("succeeded", saved.id)
+    assert session.events[-1]["kind"] == "learning_error"
+    assert session.events[-1]["error_type"] == "RuntimeError"
 
 
 def test_learning_state_is_not_exposed_by_session_serializer():
@@ -925,6 +1982,7 @@ def test_learning_state_is_not_exposed_by_session_serializer():
 
 
 def test_repeated_matching_corrections_reach_regression_threshold_only_on_third_sample(learning_db):
+    assert learning_service.CANDIDATE_THRESHOLD == 3
     expected_statuses = ["collecting", "collecting", "pending_regression"]
 
     for index, expected_status in enumerate(expected_statuses, start=1):
@@ -962,10 +2020,10 @@ def test_different_after_values_have_independent_signatures_and_counts(learning_
 
 def test_candidate_counts_are_isolated_by_project_module_and_intent(learning_db):
     scopes = [
-        (1, "order", "create"),
-        (2, "order", "create"),
-        (1, "porder", "create"),
-        (1, "order", "update"),
+        (1, "order", "full_flow"),
+        (2, "order", "full_flow"),
+        (1, "porder", "resume_porder_flow"),
+        (1, "order", "resume_order_flow"),
     ]
     for index, (project_id, module_key, intent_key) in enumerate(scopes):
         sample = _verified_corrected_sample(
@@ -1073,6 +2131,24 @@ def test_source_ids_and_safe_match_phrases_are_stable_unique_and_bounded(learnin
             "field": "order_item_num",
             "match_phrases": [],
             "set_fields": {"order_item_num": {"permission": {"amount_threshold": 100}}},
+            "source_count": 1,
+        },
+        {
+            "signature": "permission_account_strategy:unsafe",
+            "field": "permission_account_strategy",
+            "learning_mode": "strategy",
+            "learning_scope": "project",
+            "match_phrases": ["问题产品超过500"],
+            "set_strategy": {"密码": "raw-secret"},
+            "source_count": 1,
+        },
+        {
+            "signature": "permission_account_strategy:unsafe",
+            "field": "permission_account_strategy",
+            "learning_mode": "strategy",
+            "learning_scope": "project",
+            "match_phrases": ["问题产品超过500"],
+            "set_strategy": {"ｐａｓｓｗｏｒｄ": "raw-secret"},
             "source_count": 1,
         },
     ],
@@ -2050,6 +3126,7 @@ def test_regression_result_cannot_overwrite_evidence_added_during_evaluation(
 
 LEARNING_ROUTE_CONTRACT = {
     ("GET", "/api/data-scripts/agent/learning/overview"),
+    ("GET", "/api/data-scripts/agent/learning/samples/{sample_id}"),
     ("GET", "/api/data-scripts/agent/learning/candidates/{candidate_id}"),
     ("POST", "/api/data-scripts/agent/learning/candidates/{candidate_id}/regression"),
     ("POST", "/api/data-scripts/agent/learning/candidates/{candidate_id}/approve"),
@@ -2117,6 +3194,7 @@ def test_learning_routes_block_normal_users_before_lookup_or_body_validation():
     )()
     requests = [
         ("get", "/api/data-scripts/agent/learning/overview?project_id=1", None),
+        ("get", "/api/data-scripts/agent/learning/samples/999?project_id=1", None),
         ("get", "/api/data-scripts/agent/learning/candidates/999", None),
         ("post", "/api/data-scripts/agent/learning/candidates/999/regression", None),
         ("post", "/api/data-scripts/agent/learning/candidates/999/approve", {"reason": "x"}),
@@ -2141,6 +3219,59 @@ def test_learning_routes_block_normal_users_before_lookup_or_body_validation():
         app.dependency_overrides.pop(get_current_user, None)
 
     assert [response.status_code for response in responses] == [403] * len(requests)
+
+
+def test_learning_sample_detail_is_project_isolated_and_sanitized(learning_db):
+    visible = _sample(
+        project_id=1,
+        session_id="visible-sample",
+        instruction_text="创建订单 token=visible-sample-secret",
+        initial_contract_json=json.dumps(
+            {"variables": {"order_item_num": 1}, "password": "initial-secret"}
+        ),
+        final_contract_json=json.dumps(
+            {"variables": {"order_item_num": 1}, "cookie": "final-secret"}
+        ),
+        corrections_json="[]",
+        outcome="verified",
+        verified=1,
+        fingerprint="e" * 64,
+    )
+    hidden = _sample(
+        project_id=2,
+        session_id="hidden-sample",
+        instruction_text="hidden",
+        initial_contract_json="{}",
+        final_contract_json="{}",
+        corrections_json="[]",
+        outcome="verified",
+        verified=1,
+        fingerprint="f" * 64,
+    )
+    learning_db.add_all([visible, hidden])
+    learning_db.commit()
+    app.dependency_overrides[get_db] = lambda: learning_db
+    app.dependency_overrides[get_current_user] = lambda: type(
+        "AdminUser", (), {"id": 7, "role": "admin"}
+    )()
+    try:
+        with TestClient(app) as client:
+            response = client.get(
+                f"/api/data-scripts/agent/learning/samples/{visible.id}?project_id=1"
+            )
+            cross_project = client.get(
+                f"/api/data-scripts/agent/learning/samples/{hidden.id}?project_id=1"
+            )
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert response.status_code == 200
+    assert response.json()["session_id"] == "visible-sample"
+    assert cross_project.status_code == 404
+    assert "visible-sample-secret" not in response.text
+    assert "initial-secret" not in response.text
+    assert "final-secret" not in response.text
 
 
 def test_overview_is_project_isolated_and_resanitizes_legacy_rows(learning_db):
@@ -2490,6 +3621,68 @@ def test_promote_rejects_project_scope_row_with_global_project_id(learning_db):
     assert invalid_source.status == "active"
     assert learning_db.query(models.DataAgentRuleVersion).count() == 1
     assert learning_db.query(models.DataAgentRuleReview).count() == 0
+
+
+@pytest.mark.parametrize(
+    "proposal",
+    [
+        {
+            "signature": "order_sn:abc1234567890def",
+            "field": "order_sn",
+            "learning_mode": "pattern",
+            "learning_scope": "project",
+            "match_phrases": ["订单编号"],
+            "extract_pattern": {
+                "field": "order_sn",
+                "kind": "identifier",
+                "aliases": ["订单编号"],
+                "shapes": [{"length": 23, "pattern": "D16|P2d|D6"}],
+            },
+            "source_count": 3,
+        },
+        {
+            "signature": "permission_account_strategy:abc1234567890def",
+            "field": "permission_account_strategy",
+            "learning_mode": "strategy",
+            "learning_scope": "project",
+            "match_phrases": ["问题产品超过500"],
+            "set_strategy": {
+                "profile_name": "后台沈文妮账号",
+                "role": "department_leader",
+            },
+            "source_count": 3,
+        },
+    ],
+)
+def test_promote_rejects_project_only_learning_modes(learning_db, proposal):
+    validated = learning_service.validate_candidate_rule(proposal)
+    candidate = _candidate(
+        project_id=1,
+        module_key="order",
+        intent_key="full_flow",
+        rule_key=validated["signature"],
+        proposal_json=json.dumps(validated, ensure_ascii=False, sort_keys=True),
+    )
+    learning_db.add(candidate)
+    learning_db.flush()
+    source = _rule_version(
+        candidate_id=candidate.id,
+        project_id=1,
+        scope="project",
+        rule_key=candidate.rule_key,
+        rule_json=candidate.proposal_json,
+        status="active",
+        activated_at=datetime.now(),
+    )
+    learning_db.add(source)
+    learning_db.commit()
+
+    with pytest.raises(learning_service.LearningConflictError, match="项目范围"):
+        learning_service.promote_rule(learning_db, source.id, 7, "unsafe global")
+
+    learning_db.refresh(source)
+    assert source.status == "active"
+    assert learning_db.query(models.DataAgentRuleVersion).filter_by(scope="global").count() == 0
 
 
 @pytest.mark.parametrize("failure_stage", ["insert", "review", "commit"])

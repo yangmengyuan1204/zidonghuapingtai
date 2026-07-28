@@ -30,6 +30,26 @@
     "name": "test_run_template"
   },
   {
+    "method": "POST",
+    "path": "/api/api-harvester/analyze",
+    "name": "analyze_api_harvester"
+  },
+  {
+    "method": "POST",
+    "path": "/api/api-harvester/crawl",
+    "name": "crawl_api_harvester"
+  },
+  {
+    "method": "GET",
+    "path": "/api/api-harvester/extract",
+    "name": "extract_api_harvester"
+  },
+  {
+    "method": "GET",
+    "path": "/api/api-harvester/task/{task_id}",
+    "name": "get_api_harvester_task"
+  },
+  {
     "method": "GET",
     "path": "/api/ai-config",
     "name": "get_ai_config"
@@ -246,6 +266,11 @@
   },
   {
     "method": "GET",
+    "path": "/api/data-scripts/agent/learning/samples/{sample_id}",
+    "name": "learning_sample_detail"
+  },
+  {
+    "method": "GET",
     "path": "/api/data-scripts/agent/learning/candidates/{candidate_id}",
     "name": "learning_candidate_detail"
   },
@@ -303,6 +328,21 @@
     "method": "POST",
     "path": "/api/data-scripts/agent/sessions/{session_id}/confirm",
     "name": "confirm_session"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/sessions/{session_id}/contract-feedback",
+    "name": "contract_feedback"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/sessions/{session_id}/contract-preview",
+    "name": "preview_contract"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/agent/sessions/{session_id}/contract-preview/apply",
+    "name": "apply_contract_preview"
   },
   {
     "method": "PATCH",
@@ -1243,5 +1283,20 @@
     "method": "DELETE",
     "path": "/api/test-accounts/{account_id}/browser-session",
     "name": "clear_test_account_browser_session"
+  },
+  {
+    "method": "GET",
+    "path": "/v3",
+    "name": "_v3_index"
+  },
+  {
+    "method": "GET",
+    "path": "/v3/",
+    "name": "_v3_index"
+  },
+  {
+    "method": "GET",
+    "path": "/v3/{path:path}",
+    "name": "_v3_assets"
   }
 ]

@@ -248,5 +248,5 @@ def test_admin_login_failure_fails(patched):
 def test_script_registry_registered():
     reg = data_scripts.SCRIPT_REGISTRY
     assert "balance_recharge" in reg
-    assert reg["balance_recharge"]["name"] == data_scripts.BALANCE_RECHARGE_SCRIPT_NAME
+    assert reg["balance_recharge"]["name"] == reg["balance_recharge"]["capability"].name == "客户余额充值"
     assert reg["balance_recharge"]["func"] is run_balance_recharge_script

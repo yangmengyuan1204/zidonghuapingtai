@@ -5,11 +5,13 @@ import pytest
 import app.data_scripts as data_scripts
 from app.data_scripts.capabilities import (
     CAPABILITIES,
+    ContractFieldSpec,
     DataScriptCapability,
     ParameterSpec,
     RiskSpec,
     available_capabilities,
     capability_catalog,
+    effective_contract_fields,
     public_capability_catalog,
     register_capability,
 )
@@ -45,6 +47,133 @@ def _capability(**overrides):
     }
     values.update(overrides)
     return DataScriptCapability(**values)
+
+
+def test_contract_field_rejects_secret_learning():
+    field = ContractFieldSpec(
+        name="backend_password",
+        label="后台密码",
+        path="variables.backend_password",
+        group="execution",
+        value_type="str",
+        learnable=True,
+    )
+
+    with pytest.raises(ValueError, match="sensitive"):
+        field.validate()
+
+
+@pytest.mark.parametrize(
+    ("path", "aliases"),
+    [
+        ("variables.headers.Authorization", ()),
+        ("variables.credential", ()),
+        ("variables.credentials", ()),
+        ("variables.backend", ("api-token",)),
+    ],
+)
+def test_contract_field_rejects_sensitive_learning_identifiers(path, aliases):
+    field = ContractFieldSpec(
+        name="backend_setting",
+        label="后台设置",
+        path=path,
+        group="execution",
+        value_type="str",
+        aliases=aliases,
+        learnable=True,
+    )
+
+    with pytest.raises(ValueError, match="sensitive"):
+        field.validate()
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    [
+        "password_hash",
+        "passwordHash",
+        "PasswordHash",
+        "token_value",
+        "tokenValue",
+        "client_secret_key",
+        "clientSecretKey",
+        "clientAPIKey",
+        "private_key",
+        "privateKey",
+        "backend_password",
+        "compute_token",
+        "usertoken",
+        "authorization",
+        "cookie",
+        "secret",
+        "中文密码",
+        "加密凭据",
+        "ｐａｓｓｗｏｒｄ",
+        "ｔｏｋｅｎ",
+    ],
+)
+def test_contract_field_rejects_shared_sensitive_identifiers(identifier):
+    field = ContractFieldSpec(
+        name=identifier,
+        label="测试字段",
+        path=f"variables.{identifier}",
+        group="execution",
+        value_type="str",
+        learnable=True,
+    )
+
+    with pytest.raises(ValueError, match="sensitive"):
+        field.validate()
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    [
+        "secretary_name",
+        "secretaryName",
+        "token_count",
+        "tokenCount",
+        "TokenCount",
+        "cookie_count",
+        "cookieCount",
+        "authorization_status",
+        "authorizationStatus",
+        "encrypted_flag",
+        "encryptedFlag",
+        "ｔｏｋｅｎ＿ｃｏｕｎｔ",
+    ],
+)
+def test_contract_field_allows_noncredential_metadata_identifiers(identifier):
+    field = ContractFieldSpec(
+        name=identifier,
+        label="测试字段",
+        path=f"variables.{identifier}",
+        group="execution",
+        value_type="str",
+        learnable=True,
+    )
+
+    assert field.validate() is field
+
+
+def test_legacy_parameters_are_synthesized_as_contract_fields():
+    capability = DataScriptCapability(
+        key="demo",
+        name="演示",
+        module="order",
+        projects=("日本站测试",),
+        intents=("演示",),
+        examples=("执行演示",),
+        parameters=(ParameterSpec("order_sn", "订单号", "str", required=True),),
+        risk=RiskSpec(level="low", mutating=False, second_confirmation=False),
+        runner=lambda **_: {},
+        result_validator=None,
+    ).validate()
+
+    field = effective_contract_fields(capability)[0]
+    assert (field.name, field.path, field.editor) == (
+        "order_sn", "variables.order_sn", "text"
+    )
 
 
 def test_register_capability_projects_runner_into_legacy_registry():
@@ -113,6 +242,18 @@ def test_core_agent_capability_is_complete(key):
     assert spec.examples
     assert callable(spec.result_validator)
     assert spec.idempotency_key == "contract_hash"
+
+
+def test_problem_goods_declares_project_permission_account_strategy_metadata():
+    fields = {
+        field.name: field
+        for field in effective_contract_fields(capability_catalog()["problem_goods"])
+    }
+
+    field = fields["permission_account_strategy"]
+    assert field.path == "variables.permission_account_strategy"
+    assert field.learnable is True
+    assert (field.learning_mode, field.learning_scope) == ("strategy", "project")
 
 
 @pytest.mark.parametrize(
@@ -341,6 +482,7 @@ def test_high_risk_contract_requires_matching_second_confirmation(monkeypatch):
     )
     monkeypatch.setattr(agent_service, "validate_agent_context", lambda *args: (object(), object()))
     monkeypatch.setattr(agent_service, "_latest_model_config", lambda *args: object())
+    monkeypatch.setattr(agent_service, "_validate_confirmable_contract", lambda *args: object())
     monkeypatch.setattr(agent_service._EXECUTOR, "submit", lambda func, session_id: submitted.append(session_id))
     agent_service._SESSIONS[session.id] = session
     try:
