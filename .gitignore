@@ -68,6 +68,22 @@ fix_*.js
 fix_*.ps1
 fix_route_script.py
 axure_to_cases.py
+_tmp_*.txt
+analyze_round*.json
+crawl_round*.json
+front_apis.json
+js_crawl_result.json
+check_db.py
+run_js_crawl.py
+run_round*.py
+
+# Generated audit artifacts
+docs/vue3-*.html
+docs/*audit*.html
+docs/data-script-name-test-failure-investigation-*.html
+
+# Local tunnel launcher
+启动并穿透.bat
 
 # OS
 Thumbs.db
