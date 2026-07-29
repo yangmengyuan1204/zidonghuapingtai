@@ -12,7 +12,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
-// 菜单配置（对齐旧应用 views 数组，10 个条目）
+// 菜单配置（与 Static 运行时菜单对齐：需求验证中心已合并 AI用例生成 + 功能验证中心）
 // adminOnly 的页面（users）非 admin 不可见
 export const menuViews = [
   { key: 'dashboard', label: '工作台总览' },
@@ -20,8 +20,7 @@ export const menuViews = [
   { key: 'apiCases', label: '接口用例库' },
   { key: 'apiHarvester', label: '接口抓取' },
   { key: 'dataScripts', label: '数据工厂' },
-  { key: 'caseGeneration', label: 'AI用例生成' },
-  { key: 'functionalTests', label: '功能验证中心' },
+  { key: 'requirementVerification', label: '需求验证中心' },
   { key: 'uiCases', label: 'UI自动化' },
   { key: 'records', label: '执行报告' },
   { key: 'users', label: '权限中心', adminOnly: true },

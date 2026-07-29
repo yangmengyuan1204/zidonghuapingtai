@@ -20,15 +20,15 @@
         <span class="role-pill">{{ auth.user?.role || '' }}</span>
         <a
           v-if="auth.isAdmin"
+          class="sidebar-admin-link"
           href="/static/admin/templates.html"
           target="_blank"
-          style="display:block;font-size:12px;margin-top:6px;color:var(--accent)"
         >模板管理</a>
         <a
           v-if="auth.isAdmin"
+          class="sidebar-admin-link"
           href="/static/admin/heal-logs.html"
           target="_blank"
-          style="display:block;font-size:12px;color:var(--accent)"
         >自愈记录</a>
       </div>
     </aside>
@@ -46,18 +46,7 @@
             @click="showAiConfigPlaceholder"
           >全局 AI 配置</button>
 
-          <!-- 主题切换 -->
-          <div class="theme-picker">
-            <button
-              v-for="t in themeOptions"
-              :key="t.value"
-              class="theme-dot"
-              :class="{ active: themeStore.theme === t.value }"
-              :style="{ background: t.color }"
-              :title="t.title"
-              @click="themeStore.applyTheme(t.value)"
-            />
-          </div>
+          <!-- V2：Forest Light 唯一主题，产品层不再提供多主题切换 -->
 
           <!-- 退出 -->
           <button class="btn secondary" type="button" @click="handleLogout">退出</button>
@@ -85,16 +74,9 @@ import { menuViews } from '../router/index.js'
 import { navigateToView, navigateAfterLogout } from '../services/navigation.js'
 
 const auth = useAuthStore()
-const themeStore = useThemeStore()
+useThemeStore() // 初始化 Forest Light 主题锁定
 const toast = useToastStore()
 const route = useRoute()
-
-const themeOptions = [
-  { value: 'shuimo', color: '#2f4f46', title: '水墨' },
-  { value: 'zhuanye', color: '#6366f1', title: '专业蓝灰' },
-  { value: 'qingxuan', color: '#3b82f6', title: '清爽浅色' },
-  { value: 'xiaolan', color: '#ff6b9d', title: '小兰' },
-]
 
 // 过滤 adminOnly 菜单
 const visibleViews = computed(() =>
@@ -135,7 +117,3 @@ onMounted(async () => {
   }
 })
 </script>
-
-<style scoped>
-/* 使用旧应用 .shell / .sidebar / .nav / .topbar / .content 样式（来自 legacy.css） */
-</style>

@@ -4,11 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI 功能测试工作台 · Vue3</title>
-    <!-- 引入旧应用 styles.css，保证视觉一致 -->
+    <!-- 旧 styles + V2 Design System（Token 在后，覆盖为 Forest Light） -->
     <link rel="stylesheet" href="/static/styles.css?v=20260629-frontend-redesign" />
+    <link rel="stylesheet" href="/static/design-tokens.css?v=20260728-phase1" />
+    <link rel="stylesheet" href="/static/design-system-base.css?v=20260728-phase1" />
+    <link rel="stylesheet" href="/static/login.css?v=20260728-phase26" />
+    <script src="/static/v2-theme-lock.js?v=20260728-phase1"></script>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app" class="frontend-v2"></div>
     <div id="toast" class="toast" hidden></div>
     <dialog id="modal" class="modal"></dialog>
     <script type="module" src="/src/main.js"></script>

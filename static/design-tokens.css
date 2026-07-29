@@ -1,0 +1,341 @@
+/**
+ * Frontend V2 — Design Tokens (Forest Light)
+ * ------------------------------------------------
+ * 唯一设计真相源（Semantic Token）。
+ * Static 与 Vue 均通过 /static/design-tokens.css 消费。
+ *
+ * 规则：
+ * - 业务组件禁止直接写颜色 / 魔法数（仅本文件可定义原始色值）
+ * - 产品层唯一主题：Forest Light（data-theme="forest-light"）
+ * - 旧主题 key（shuimo/zhuanye/qingxuan/xiaolan）CSS 兼容块仍保留在 styles.css，
+ *   本文件在其后加载，将产品表现统一映射为 Forest Light
+ * - Dark Mode：V3，不在此定义
+ *
+ * 加载顺序（重要）：
+ *   styles.css → design-tokens.css → design-system-base.css
+ */
+
+/* =============================================================================
+   1. Forest Light — Semantic Tokens
+   ============================================================================= */
+
+:root,
+html[data-theme="forest-light"],
+html[data-theme="shuimo"],
+html[data-theme="zhuanye"],
+html[data-theme="qingxuan"],
+html[data-theme="xiaolan"] {
+  /* ----- Brand ----- */
+  --color-brand-primary: #2f5c4f;
+  --color-brand-secondary: #7a9a88;
+  --color-brand-hover: #254a40;
+  --color-brand-muted: #d8e5de;
+
+  /* ----- Background / Surface ----- */
+  --color-bg-canvas: #f3f1ea;
+  --color-bg-surface: #fffdf8;
+  --color-bg-subtle: #ece8df;
+  --color-bg-muted: #e4e0d6;
+  --color-sidebar: #24352f;
+  --color-topbar: #fffdf8;
+
+  /* ----- Text ----- */
+  --color-text-primary: #22332e;
+  --color-text-secondary: #5c6b63;
+  --color-text-muted: #7a877f;
+  --color-text-inverse: #f4f7f4;
+  --color-text-on-brand: #ffffff;
+
+  /* ----- Border ----- */
+  --color-border: rgba(68, 82, 74, 0.22);
+  --color-border-light: rgba(68, 82, 74, 0.12);
+  --color-border-strong: rgba(68, 82, 74, 0.36);
+
+  /* ----- Status ----- */
+  --color-success: #2f7b5f;
+  --color-success-subtle: #d8eee4;
+  --color-warning: #b5812f;
+  --color-warning-subtle: #f5ead2;
+  --color-danger: #9b3a32;
+  --color-danger-subtle: #f3ddd9;
+  --color-info: #4a7c6f;
+  --color-info-subtle: #d9e8e2;
+
+  /* ----- Focus ----- */
+  --color-focus: #2f5c4f;
+  --color-focus-ring: rgba(47, 92, 79, 0.28);
+
+  /* ----- Overlay ----- */
+  --color-overlay: rgba(34, 51, 46, 0.42);
+  --color-log-bg: #24352f;
+  --color-log-text: #e6ebe7;
+
+  /* ----- Typography ----- */
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
+  --font-mono: "JetBrains Mono", "Fira Code", Consolas, "Courier New", monospace;
+  --font-numeric: var(--font-sans);
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 600;
+
+  --text-display-size: 28px;
+  --text-display-line: 1.25;
+  --text-h1-size: 22px;
+  --text-h1-line: 1.3;
+  --text-h2-size: 18px;
+  --text-h2-line: 1.35;
+  --text-h3-size: 16px;
+  --text-h3-line: 1.4;
+  --text-body-size: 14px;
+  --text-body-line: 1.55;
+  --text-caption-size: 12px;
+  --text-caption-line: 1.45;
+  --text-code-size: 13px;
+  --text-code-line: 1.6;
+
+  --letter-spacing-tight: 0.01em;
+  --letter-spacing-normal: 0.02em;
+  --letter-spacing-wide: 0.04em;
+
+  /* ----- Spacing scale ----- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+
+  /* ----- Radius ----- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* ----- Shadow (no glow) — Semantic only; Legacy Bridge must NOT reassign these ----- */
+  --shadow-none: none;
+  --shadow-xs: 0 1px 2px rgba(34, 51, 46, 0.05);
+  --shadow-sm: 0 4px 14px rgba(34, 51, 46, 0.08);
+
+  /* ----- Motion ----- */
+  --motion-hover: 140ms;
+  --motion-click: 100ms;
+  --motion-dialog: 180ms;
+  --motion-toast: 180ms;
+  --motion-progress: 200ms;
+  --motion-skeleton: 1.4s;
+  --ease-out: ease-out;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ----- Z-index ----- */
+  --z-base: 1;
+  --z-sticky: 5;
+  --z-sidebar: 10;
+  --z-dropdown: 20;
+  --z-modal: 40;
+  --z-toast: 50;
+  --z-overlay: 45;
+
+  /* ----- Layout / Grid / Breakpoint refs ----- */
+  --layout-sidebar-width: 248px;
+  --layout-topbar-height: 64px;
+  --layout-content-padding-x: var(--space-7);
+  --layout-content-padding-y: var(--space-6);
+  --grid-gap: var(--space-4);
+  --bp-sm: 560px;
+  --bp-md: 900px;
+  --bp-lg: 1200px;
+  --bp-xl: 1440px;
+
+  /* ----- Sidebar / Topbar ----- */
+  --sidebar-bg: var(--color-sidebar);
+  --sidebar-text: var(--color-text-inverse);
+  --sidebar-text-muted: #c5d0c8;
+  --sidebar-hover-bg: rgba(255, 255, 245, 0.08);
+  --sidebar-active-bg: rgba(216, 229, 222, 0.14);
+  --sidebar-active-indicator: var(--color-brand-secondary);
+  --topbar-bg: var(--color-topbar);
+  --topbar-height: var(--layout-topbar-height);
+  --topbar-border: var(--color-border);
+
+  /* ----- Button ----- */
+  --btn-height: 36px;
+  --btn-padding-x: var(--space-4);
+  --btn-radius: var(--radius-sm);
+  --btn-font-size: 13px;
+  --btn-font-weight: var(--font-weight-semibold);
+  --btn-primary-bg: var(--color-brand-primary);
+  --btn-primary-hover: var(--color-brand-hover);
+  --btn-primary-text: var(--color-text-on-brand);
+  --btn-secondary-bg: var(--color-bg-surface);
+  --btn-secondary-text: var(--color-text-primary);
+  --btn-secondary-border: var(--color-border);
+  --btn-danger-bg: var(--color-danger);
+  --btn-danger-hover: #7e2f29;
+  --btn-ghost-text: var(--color-text-secondary);
+
+  /* ----- Input ----- */
+  --input-height: 42px;
+  --input-padding-x: 14px;
+  --input-radius: var(--radius-sm);
+  --input-bg: var(--color-bg-surface);
+  --input-border: var(--color-border);
+  --input-border-focus: var(--color-brand-primary);
+  --input-text: var(--color-text-primary);
+  --input-placeholder: var(--color-text-muted);
+
+  /* ----- Card / Panel ----- */
+  --card-bg: var(--color-bg-surface);
+  --card-border: var(--color-border);
+  --card-radius: var(--radius-md);
+  --card-shadow: var(--shadow-xs);
+  --card-padding: var(--space-5);
+
+  /* ----- Table ----- */
+  --table-header-bg: var(--color-bg-subtle);
+  --table-header-text: var(--color-text-secondary);
+  --table-row-hover: rgba(47, 92, 79, 0.04);
+  --table-border: var(--color-border-light);
+  --table-cell-padding-y: 12px;
+  --table-cell-padding-x: 16px;
+  --table-font-size: var(--text-body-size);
+
+  /* ----- Modal ----- */
+  --modal-bg: var(--color-bg-surface);
+  --modal-radius: var(--radius-lg);
+  --modal-shadow: var(--shadow-sm);
+  --modal-header-bg: var(--color-bg-subtle);
+  --modal-width-sm: 420px;
+  --modal-width-md: 640px;
+  --modal-width-lg: 880px;
+  --modal-padding: var(--space-6);
+
+  /* ----- Toast ----- */
+  --toast-bg: #2a3b34;
+  --toast-text: var(--color-text-inverse);
+  --toast-border: var(--color-brand-secondary);
+  --toast-radius: var(--radius-sm);
+  --toast-shadow: var(--shadow-sm);
+  --toast-max-width: 440px;
+  --toast-offset: var(--space-6);
+  --toast-lifetime: 2600ms;
+
+  /* ----- Badge / Tag ----- */
+  --badge-radius: var(--radius-pill);
+  --badge-font-size: var(--text-caption-size);
+  --badge-neutral-bg: var(--color-bg-subtle);
+  --badge-neutral-text: var(--color-text-secondary);
+  --badge-success-bg: var(--color-success-subtle);
+  --badge-success-text: #1f5a44;
+  --badge-warning-bg: var(--color-warning-subtle);
+  --badge-warning-text: #7a5618;
+  --badge-danger-bg: var(--color-danger-subtle);
+  --badge-danger-text: #7a2c26;
+
+  /* ----- Timeline / Permission / Log ----- */
+  --timeline-line: var(--color-border);
+  --timeline-dot-pending: var(--color-text-muted);
+  --timeline-dot-running: var(--color-warning);
+  --timeline-dot-success: var(--color-success);
+  --timeline-dot-danger: var(--color-danger);
+  --permission-panel-bg: var(--color-bg-subtle);
+  --permission-panel-border: var(--color-border);
+  --log-bg: var(--color-log-bg);
+  --log-text: var(--color-log-text);
+  --log-border: var(--color-border-strong);
+  --log-radius: var(--radius-sm);
+
+  /* ----- Loading / Skeleton / Empty / Error ----- */
+  --loading-color: var(--color-brand-primary);
+  --skeleton-base: var(--color-bg-subtle);
+  --skeleton-shine: rgba(255, 253, 248, 0.55);
+  --empty-text: var(--color-text-muted);
+  --error-bg: var(--color-danger-subtle);
+  --error-border: rgba(155, 58, 50, 0.28);
+  --error-text: #7a2c26;
+
+  /* =============================================================================
+     2. Legacy bridge — map OLD styles.css variable NAMES → semantic tokens
+     Rules (Phase 1.6 P0):
+     - Semantic tokens (--shadow-none/xs/sm, --color-*, etc.) stay authoritative
+     - Legacy names only alias INTO semantics; never reassign semantic names
+     - Do NOT write: --shadow-sm: var(--shadow-xs)  // that was the P0 conflict
+     ============================================================================= */
+
+  --bg: var(--color-bg-canvas);
+  --bg-image: none;
+  --bg-size: auto;
+  --login-bg: var(--color-bg-canvas);
+  --body-overlay: none;
+  --login-overlay: none;
+  --surface: var(--color-bg-surface);
+  --surface-solid: var(--color-bg-surface);
+  --soft: var(--color-bg-subtle);
+  --line: var(--color-border);
+  --text: var(--color-text-primary);
+  --muted: var(--color-text-secondary);
+  --nav: var(--color-sidebar);
+  --nav-solid: var(--color-sidebar);
+  --nav-soft: var(--sidebar-hover-bg);
+  --nav-text: var(--sidebar-text);
+  --accent: var(--color-brand-primary);
+  --accent-light: var(--color-brand-secondary);
+  --accent-dark: var(--color-brand-hover);
+  --accent-gradient: var(--color-brand-primary);
+  --accent-glow: transparent;
+  --warn: var(--color-warning);
+  --warn-light: var(--color-warning);
+  --danger: var(--color-danger);
+  --danger-light: var(--color-danger);
+  --success: var(--color-success);
+  --success-light: var(--color-success);
+  --sidebar-bg: var(--color-sidebar);
+  --sidebar-glow-1: transparent;
+  --sidebar-glow-2: transparent;
+  --sidebar-glow-3: transparent;
+  --brand-gradient: var(--color-text-inverse);
+  --brand-glow: transparent;
+  --brand-sub: var(--sidebar-text-muted);
+  --nav-hover-bg: var(--sidebar-hover-bg);
+  --nav-active-bg: var(--sidebar-active-bg);
+  --nav-indicator-shadow: transparent;
+  --role-pill-bg: rgba(255, 255, 245, 0.1);
+  --role-pill-border: rgba(255, 255, 245, 0.16);
+  --role-pill-shadow: transparent;
+  --panel-title-bg: var(--color-bg-subtle);
+  --th-bg: var(--table-header-bg);
+  --row-hover: var(--table-row-hover);
+  --btn-secondary-hover-bg: var(--color-bg-subtle);
+  --btn-secondary-hover-border: var(--color-brand-secondary);
+  --btn-secondary-hover-shadow: transparent;
+  --modal-head-bg: var(--modal-header-bg);
+  --select-option-bg: var(--color-bg-subtle);
+  --context-select-border-focus: var(--color-focus-ring);
+  --context-select-shadow-focus: transparent;
+
+  /*
+   * Legacy shadow aliases (old styles.css used --shadow / --shadow-lg).
+   * --shadow-sm is SEMANTIC — left untouched above; old rules that call
+   * var(--shadow-sm) correctly receive the semantic sm value.
+   */
+  --shadow: var(--shadow-xs);
+  --shadow-lg: var(--shadow-sm);
+
+  --radius: var(--radius-md);
+  --transition: color var(--motion-hover) var(--ease-out),
+    background-color var(--motion-hover) var(--ease-out),
+    border-color var(--motion-hover) var(--ease-out),
+    box-shadow var(--motion-hover) var(--ease-out),
+    opacity var(--motion-hover) var(--ease-out);
+}
+
+/* Prefer color-scheme for form controls */
+:root {
+  color-scheme: light;
+}

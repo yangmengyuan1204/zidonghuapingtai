@@ -1,0 +1,657 @@
+/**
+ * Frontend V2 — Design System Base (Forest Light)
+ * ------------------------------------------------
+ * Phase 1 基础组件与壳层规范。
+ * 依赖：design-tokens.css（必须先加载）
+ * 目的：统一 Button / Toast / Shell / Focus / Motion；
+ *       不改业务逻辑，不重写全部页面结构。
+ *
+ * 加载顺序：
+ *   styles.css → design-tokens.css → design-system-base.css
+ */
+
+/* =============================================================================
+   Product theme lock — hide multi-theme picker (zhuanye/qingxuan/xiaolan)
+   Legacy CSS theme blocks remain in styles.css for compatibility only.
+   ============================================================================= */
+
+.theme-picker {
+  display: none !important;
+}
+
+/* =============================================================================
+   Global foundation
+   ============================================================================= */
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-primary);
+  background: var(--color-bg-canvas);
+  background-image: none;
+}
+
+body::before {
+  background: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* =============================================================================
+   Typography utilities
+   ============================================================================= */
+
+.ds-display,
+.login-panel h1,
+.brand strong {
+  font-family: var(--font-display);
+  font-size: var(--text-display-size);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--text-display-line);
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-text-primary);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  text-shadow: var(--shadow-none);
+}
+
+.brand strong {
+  color: var(--color-text-inverse);
+  -webkit-text-fill-color: var(--color-text-inverse);
+}
+
+.topbar h2,
+.ds-h1 {
+  font-size: var(--text-h1-size);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--text-h1-line);
+  letter-spacing: var(--letter-spacing-normal);
+  color: var(--color-text-primary);
+}
+
+.panel-title h3,
+.modal-head h3,
+.ds-h2 {
+  font-size: var(--text-h2-size);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--text-h2-line);
+}
+
+.ds-h3 {
+  font-size: var(--text-h3-size);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--text-h3-line);
+}
+
+.ds-caption,
+.field label,
+th {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  letter-spacing: var(--letter-spacing-wide);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.ds-code,
+.log-view,
+.mini-log,
+.factory-vars textarea,
+.field textarea {
+  font-family: var(--font-mono);
+}
+
+.stat strong {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--color-brand-primary);
+  font-size: 28px;
+  font-weight: var(--font-weight-semibold);
+}
+
+/* =============================================================================
+   Layout — Sidebar / Topbar
+   ============================================================================= */
+
+.shell {
+  grid-template-columns: var(--layout-sidebar-width) minmax(0, 1fr);
+}
+
+.sidebar {
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  border-right: 1px solid var(--color-border-light);
+}
+
+.sidebar::before {
+  background: none;
+}
+
+.brand {
+  padding: var(--space-7) var(--space-4) var(--space-6);
+  border-bottom: 1px solid rgba(255, 255, 245, 0.08);
+}
+
+.brand span {
+  color: var(--sidebar-text-muted);
+  font-size: var(--text-body-size);
+  font-weight: var(--font-weight-medium);
+}
+
+.nav {
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
+}
+
+.nav button {
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-md);
+  color: var(--sidebar-text);
+  font-size: 15px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-normal);
+  transition: background-color var(--motion-hover) var(--ease-out),
+    color var(--motion-hover) var(--ease-out);
+}
+
+.nav button::before {
+  width: 3px;
+  background: var(--sidebar-active-indicator);
+  box-shadow: var(--shadow-none);
+}
+
+.nav button.active,
+.nav button:hover {
+  color: var(--color-text-inverse);
+  background: var(--sidebar-hover-bg);
+}
+
+.nav button.active {
+  background: var(--sidebar-active-bg);
+  box-shadow: var(--shadow-none);
+}
+
+.topbar {
+  min-height: var(--topbar-height);
+  padding: 0 var(--layout-content-padding-x);
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--topbar-border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.content {
+  padding: var(--layout-content-padding-y) var(--layout-content-padding-x);
+}
+
+.sidebar-foot a {
+  display: block;
+  font-size: var(--text-caption-size);
+  margin-top: var(--space-2);
+  color: var(--color-brand-secondary);
+  text-decoration: none;
+}
+
+.sidebar-foot a:hover {
+  color: var(--color-text-inverse);
+}
+
+/* =============================================================================
+   Button — Primary / Secondary / Danger / Ghost / Text
+   No gradient, no glow, no sweep animation
+   ============================================================================= */
+
+.btn {
+  min-height: var(--btn-height);
+  padding: 0 var(--btn-padding-x);
+  border-radius: var(--btn-radius);
+  color: var(--btn-primary-text);
+  background: var(--btn-primary-bg);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-font-weight);
+  letter-spacing: var(--letter-spacing-tight);
+  box-shadow: var(--shadow-none);
+  transition: background-color var(--motion-hover) var(--ease-out),
+    border-color var(--motion-hover) var(--ease-out),
+    color var(--motion-hover) var(--ease-out),
+    opacity var(--motion-click) var(--ease-out);
+  position: relative;
+  overflow: visible;
+}
+
+.btn::after {
+  content: none;
+  display: none;
+}
+
+.btn:hover {
+  background: var(--btn-primary-hover);
+  transform: none;
+  box-shadow: var(--shadow-none);
+}
+
+.btn:active {
+  transform: none;
+  opacity: 0.92;
+}
+
+.btn.secondary {
+  color: var(--btn-secondary-text);
+  background: var(--btn-secondary-bg);
+  border: 1px solid var(--btn-secondary-border);
+  box-shadow: var(--shadow-none);
+}
+
+.btn.secondary:hover {
+  background: var(--btn-secondary-hover-bg);
+  border-color: var(--btn-secondary-hover-border);
+  box-shadow: var(--shadow-none);
+}
+
+.btn.warn {
+  background: var(--color-warning);
+  box-shadow: var(--shadow-none);
+}
+
+.btn.warn:hover {
+  background: #9a6e24;
+  box-shadow: var(--shadow-none);
+}
+
+.btn.danger {
+  background: var(--btn-danger-bg);
+  box-shadow: var(--shadow-none);
+}
+
+.btn.danger:hover {
+  background: var(--btn-danger-hover);
+  box-shadow: var(--shadow-none);
+}
+
+.btn.ghost,
+.btn.text {
+  color: var(--btn-ghost-text);
+  background: transparent;
+  border: 0;
+  box-shadow: var(--shadow-none);
+}
+
+.btn.ghost:hover,
+.btn.text:hover {
+  color: var(--color-brand-primary);
+  background: var(--color-brand-muted);
+}
+
+/* =============================================================================
+   Input / Select / Textarea / Checkbox
+   ============================================================================= */
+
+.field input,
+.field select,
+.field textarea,
+.input {
+  min-height: var(--input-height);
+  padding: 10px var(--input-padding-x);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  color: var(--input-text);
+  background: var(--input-bg);
+  box-shadow: var(--shadow-none);
+  transition: border-color var(--motion-hover) var(--ease-out),
+    box-shadow var(--motion-hover) var(--ease-out);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.input:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.check-field {
+  border-color: var(--color-border);
+  background: var(--color-bg-surface);
+}
+
+.check-field input {
+  accent-color: var(--color-brand-primary);
+}
+
+/* =============================================================================
+   Card / Panel
+   ============================================================================= */
+
+.panel,
+.stat,
+.quickrun-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.panel:hover,
+.stat:hover,
+.quickrun-panel:hover {
+  transform: none;
+  box-shadow: var(--card-shadow);
+}
+
+.stat::before {
+  display: none;
+}
+
+.login-panel {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.login-panel::before {
+  background: var(--color-brand-primary);
+  height: 3px;
+}
+
+.login-wrap {
+  background: var(--color-bg-canvas);
+}
+
+.login-wrap::before,
+.login-wrap::after {
+  display: none;
+}
+
+/* =============================================================================
+   Table
+   ============================================================================= */
+
+th {
+  background: var(--table-header-bg);
+  color: var(--table-header-text);
+  font-size: var(--text-caption-size);
+}
+
+th,
+td {
+  padding: var(--table-cell-padding-y) var(--table-cell-padding-x);
+  border-bottom: 1px solid var(--table-border);
+  font-size: var(--table-font-size);
+}
+
+tr:hover td {
+  background: var(--table-row-hover);
+}
+
+/* =============================================================================
+   Modal
+   ============================================================================= */
+
+.modal {
+  width: min(var(--modal-width-md), calc(100vw - 32px));
+  border: 1px solid var(--color-border);
+  border-radius: var(--modal-radius);
+  background: var(--modal-bg);
+  box-shadow: var(--modal-shadow);
+}
+
+.modal::backdrop {
+  background: var(--color-overlay);
+  backdrop-filter: none;
+}
+
+.modal-head {
+  padding: var(--space-4) var(--modal-padding);
+  background: var(--modal-header-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-body {
+  padding: var(--modal-padding);
+}
+
+.modal-foot {
+  padding: var(--space-4) var(--modal-padding);
+  border-top: 1px solid var(--color-border);
+}
+
+/* =============================================================================
+   Toast — single style for Static + Vue
+   Position: bottom-right | Motion: 180ms | Lifetime: ~2600ms
+   ============================================================================= */
+
+.toast {
+  position: fixed;
+  right: var(--toast-offset);
+  bottom: var(--toast-offset);
+  top: auto;
+  left: auto;
+  transform: none;
+  z-index: var(--z-toast);
+  max-width: var(--toast-max-width);
+  padding: 14px var(--space-5);
+  border-radius: var(--toast-radius);
+  color: var(--toast-text);
+  background: var(--toast-bg);
+  box-shadow: var(--toast-shadow);
+  font-size: var(--text-body-size);
+  font-weight: var(--font-weight-medium);
+  border-left: 3px solid var(--toast-border);
+  animation: ds-toast-in var(--motion-toast) var(--ease-out);
+}
+
+.toast[hidden] {
+  display: none !important;
+}
+
+@keyframes ds-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =============================================================================
+   Badge / Tag
+   ============================================================================= */
+
+.badge {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: var(--badge-radius);
+  background: var(--badge-neutral-bg);
+  color: var(--badge-neutral-text);
+  font-size: var(--badge-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.badge.ok {
+  color: var(--badge-success-text);
+  background: var(--badge-success-bg);
+}
+
+.badge.fail {
+  color: var(--badge-danger-text);
+  background: var(--badge-danger-bg);
+}
+
+.badge.warn {
+  color: var(--badge-warning-text);
+  background: var(--badge-warning-bg);
+}
+
+/* =============================================================================
+   Progress / Timeline foundations
+   ============================================================================= */
+
+.progress-track {
+  background: var(--color-bg-subtle);
+}
+
+.progress-fill {
+  background: var(--color-brand-primary);
+  transition: width var(--motion-progress) var(--ease-out);
+}
+
+.progress-fill::after {
+  display: none;
+}
+
+.progress-fill.failed {
+  background: var(--color-danger);
+}
+
+.functional-progress-item,
+.step-log-item {
+  border-color: var(--color-border);
+  background: var(--color-bg-surface);
+}
+
+/* =============================================================================
+   Log Viewer
+   ============================================================================= */
+
+.log-view,
+.scan-progress-log,
+.diagnosis-detail pre {
+  color: var(--log-text);
+  background: var(--log-bg);
+  border: 1px solid var(--log-border);
+  border-radius: var(--log-radius);
+  box-shadow: var(--shadow-none);
+}
+
+/* =============================================================================
+   Empty / Error / Loading / Skeleton
+   ============================================================================= */
+
+.empty,
+.empty-state {
+  color: var(--empty-text);
+  text-align: center;
+  padding: var(--space-8) var(--space-6);
+}
+
+.empty-state .empty-mark {
+  background: var(--color-brand-muted);
+  opacity: 1;
+  animation: none;
+}
+
+.empty-state .empty-mark::after {
+  border-color: var(--color-brand-secondary);
+  animation: none;
+}
+
+.alert.error {
+  border: 1px solid var(--error-border);
+  border-radius: var(--radius-sm);
+  color: var(--error-text);
+  background: var(--error-bg);
+}
+
+.ds-skeleton {
+  display: block;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-base) 0%,
+    var(--skeleton-shine) 50%,
+    var(--skeleton-base) 100%
+  );
+  background-size: 200% 100%;
+  animation: ds-skeleton-shine var(--motion-skeleton) ease-in-out infinite;
+}
+
+@keyframes ds-skeleton-shine {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.ds-loading {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-brand-muted);
+  border-top-color: var(--loading-color);
+  border-radius: 50%;
+  animation: ds-spin 0.8s linear infinite;
+}
+
+@keyframes ds-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* AI Permission / Timeline placeholders for later phases */
+.ds-permission-panel {
+  padding: var(--space-4);
+  border: 1px solid var(--permission-panel-border);
+  border-radius: var(--radius-md);
+  background: var(--permission-panel-bg);
+}
+
+.ds-timeline {
+  display: grid;
+  gap: var(--space-3);
+  border-left: 2px solid var(--timeline-line);
+  padding-left: var(--space-4);
+}
+
+.ds-timeline-item {
+  position: relative;
+}
+
+.ds-timeline-item::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--space-4) - 5px);
+  top: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--timeline-dot-pending);
+}
+
+.ds-timeline-item.is-running::before { background: var(--timeline-dot-running); }
+.ds-timeline-item.is-success::before { background: var(--timeline-dot-success); }
+.ds-timeline-item.is-danger::before { background: var(--timeline-dot-danger); }
+
+/* =============================================================================
+   Reduced motion
+   ============================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .toast {
+    animation: none;
+  }
+
+  .ds-skeleton,
+  .ds-loading {
+    animation: none;
+  }
+}

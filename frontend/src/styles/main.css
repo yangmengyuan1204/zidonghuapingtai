@@ -1,20 +1,19 @@
 /**
  * Vue3 应用全局样式入口
  *
- * 策略（对齐实施计划 1.5 CSS 保留方案）：
- * 1. 旧应用 styles.css 通过 index.html 的 <link> 引入（运行时加载，不内联）
- *    保证迁移期视觉与旧应用完全一致
- * 2. 新增 Vue3 特有样式覆盖（如 #app 高度 100%）
- * 3. 不重写 CSS，迁移完成后再评估重构
+ * Phase 1：
+ * 1. design-tokens.css / design-system-base.css 由 index.html 外链加载（与 Static 同源）
+ * 2. 本文件仅保留 Vue 挂载点必要覆盖，禁止在此写颜色魔法数
  */
 
-/* Vue3 应用特有覆盖 */
 html, body, #app {
   height: 100%;
   margin: 0;
 }
 
-/* Vue3 挂载点与旧应用 #app 一致 */
 #app {
   min-height: 100vh;
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background: var(--color-bg-canvas);
 }

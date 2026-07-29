@@ -1,0 +1,49 @@
+.frontend-v2,
+  .frontend-v2-portal {
+    /* Text */
+    --v2-text-primary: var(--v2-color-neutral-950);
+    --v2-text-secondary: var(--v2-color-neutral-700);
+    --v2-text-muted: var(--v2-color-neutral-500);
+    --v2-text-inverse: var(--v2-color-white);
+    --v2-text-disabled: var(--v2-color-neutral-400);
+    --v2-text-danger: var(--v2-color-red-600);
+    --v2-text-success: var(--v2-color-forest-600);
+
+    /* Surface */
+    --v2-surface-canvas: var(--v2-color-neutral-75);
+    --v2-surface-default: var(--v2-color-neutral-0);
+    --v2-surface-soft: var(--v2-color-neutral-100);
+    --v2-surface-hover: var(--v2-color-neutral-150);
+    --v2-surface-pressed: var(--v2-color-neutral-200);
+    --v2-surface-disabled: var(--v2-color-neutral-50);
+    --v2-surface-selected: var(--v2-color-forest-50);
+    --v2-surface-inverse: var(--v2-color-neutral-950);
+    --v2-surface-overlay: var(--v2-color-overlay-strong);
+
+    /* Border */
+    --v2-border-default: var(--v2-color-neutral-250);
+    --v2-border-strong: var(--v2-color-neutral-300);
+    --v2-border-focus: var(--v2-color-forest-600);
+    --v2-border-danger: var(--v2-color-red-600);
+
+    /* Action */
+    --v2-action-primary: var(--v2-color-forest-600);
+    --v2-action-primary-hover: var(--v2-color-forest-700);
+    --v2-action-primary-pressed: var(--v2-color-forest-700);
+    --v2-action-primary-soft: var(--v2-color-forest-50);
+
+    /* Feedback */
+    --v2-feedback-success: var(--v2-color-forest-600);
+    --v2-feedback-success-soft: var(--v2-color-forest-50);
+    --v2-feedback-warning: var(--v2-color-amber-600);
+    --v2-feedback-warning-soft: var(--v2-color-amber-50);
+    --v2-feedback-danger: var(--v2-color-red-600);
+    --v2-feedback-danger-soft: var(--v2-color-red-50);
+    --v2-feedback-info: var(--v2-color-blue-600);
+    --v2-feedback-info-soft: var(--v2-color-blue-50);
+
+    /* State */
+    --v2-state-focus-ring: var(--v2-shadow-focus);
+    --v2-state-disabled-opacity: var(--v2-opacity-disabled);
+    --v2-state-selected-shadow: var(--v2-shadow-selected);
+}

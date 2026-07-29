@@ -1,0 +1,57 @@
+.frontend-v2,
+  .frontend-v2-portal {
+    font-family: var(--v2-font-family-sans);
+    font-size: var(--v2-font-size-body);
+    line-height: var(--v2-line-height-body);
+    letter-spacing: var(--v2-letter-spacing-normal);
+    color: var(--v2-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  .frontend-v2 :where(a, button, input, select, textarea, [tabindex]):focus-visible,
+  .frontend-v2-portal :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--v2-border-focus);
+    outline-offset: 2px;
+    box-shadow: var(--v2-state-focus-ring);
+  }
+
+  .frontend-v2 :where(button, [role="button"]):active:not(:disabled),
+  .frontend-v2-portal :where(button, [role="button"]):active:not(:disabled) {
+    opacity: var(--v2-opacity-pressed);
+  }
+
+  .frontend-v2 :where(button, input, select, textarea):disabled,
+  .frontend-v2 :where([aria-disabled="true"]),
+  .frontend-v2-portal :where(button, input, select, textarea):disabled,
+  .frontend-v2-portal :where([aria-disabled="true"]) {
+    cursor: not-allowed;
+    opacity: var(--v2-opacity-disabled);
+  }
+
+  .frontend-v2 ::selection,
+  .frontend-v2-portal ::selection {
+    color: var(--v2-text-primary);
+    background: var(--v2-action-primary-soft);
+  }
+
+  .frontend-v2 .v2-visually-hidden,
+  .frontend-v2-portal .v2-visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  .frontend-v2 .v2-focus-ring,
+  .frontend-v2-portal .v2-focus-ring {
+    outline: 2px solid var(--v2-border-focus);
+    outline-offset: 2px;
+    box-shadow: var(--v2-state-focus-ring);
+}

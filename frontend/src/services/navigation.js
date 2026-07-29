@@ -24,6 +24,12 @@ import {
 const LEGACY_APP_BASE = '/'
 const LEGACY_HASH_BASE = '/#/'
 
+/** Static app replaces these Vue menu keys with requirementVerification at runtime. */
+const LEGACY_STATIC_VIEW_ALIASES = {
+  functionalTests: 'requirementVerification',
+  caseGeneration: 'requirementVerification',
+}
+
 /**
  * 跳转到指定视图
  * - 已迁移 → Vue Router
@@ -34,10 +40,11 @@ export async function navigateToView(viewKey) {
   if (!isMigrationConfigLoaded()) {
     await loadMigrationConfig()
   }
-  if (isMigrated(viewKey)) {
-    router.push({ name: viewKey })
+  const resolvedKey = LEGACY_STATIC_VIEW_ALIASES[viewKey] || viewKey
+  if (isMigrated(resolvedKey)) {
+    router.push({ name: resolvedKey })
   } else {
-    window.location.href = LEGACY_HASH_BASE + viewKey
+    window.location.href = LEGACY_HASH_BASE + resolvedKey
   }
 }
 
@@ -53,9 +60,17 @@ export async function navigateToView(viewKey) {
  */
 export async function navigateAfterLogin(redirect) {
   if (redirect && typeof redirect === 'string') {
-    if (redirect.startsWith('/v3')) {
-      // Vue3 内部路由，去掉 /v3 前缀
-      const path = redirect.replace(/^\/v3/, '') || '/'
+    const hasVueBase = /^\/v3(?:\/|[?#]|$)/.test(redirect)
+    const path = hasVueBase ? (redirect.replace(/^\/v3/, '') || '/') : redirect
+    let isVueRoute = hasVueBase && path === '/'
+    if (!isVueRoute && path !== '/' && !path.startsWith('/#/')) {
+      try {
+        isVueRoute = router.resolve(path).matched.length > 0
+      } catch { /* 非法或非 Vue 路径按 legacy 目标处理 */ }
+    }
+
+    if (isVueRoute) {
+      // Vue Router 内部路径不包含 history base，由 createWebHistory('/v3/') 统一补齐
       router.push(path)
     } else {
       // 旧应用路径

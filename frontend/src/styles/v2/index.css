@@ -1,0 +1,7 @@
+@layer v2-reset, v2-tokens, v2-base, v2-components, v2-utilities, v2-overrides;
+
+@import url("./tokens.foundation.css") layer(v2-tokens);
+@import url("./tokens.semantic.css") layer(v2-tokens);
+@import url("./tokens.component.css") layer(v2-tokens);
+@import url("./reset.css") layer(v2-reset);
+@import url("./base.css") layer(v2-base);

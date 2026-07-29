@@ -1,0 +1,44 @@
+.frontend-v2,
+  .frontend-v2 *,
+  .frontend-v2 *::before,
+  .frontend-v2 *::after,
+  .frontend-v2-portal,
+  .frontend-v2-portal *,
+  .frontend-v2-portal *::before,
+  .frontend-v2-portal *::after {
+    box-sizing: border-box;
+  }
+
+  .frontend-v2 :where(button, input, select, textarea),
+  .frontend-v2-portal :where(button, input, select, textarea) {
+    font: inherit;
+  }
+
+  .frontend-v2 :where(svg),
+  .frontend-v2-portal :where(svg) {
+    display: block;
+  }
+
+  .frontend-v2 :where([hidden]),
+  .frontend-v2-portal :where([hidden]) {
+    display: none !important;
+  }
+
+  .frontend-v2 :where(:focus:not(:focus-visible)),
+  .frontend-v2-portal :where(:focus:not(:focus-visible)) {
+    outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frontend-v2 *,
+  .frontend-v2 *::before,
+  .frontend-v2 *::after,
+  .frontend-v2-portal *,
+  .frontend-v2-portal *::before,
+  .frontend-v2-portal *::after {
+    scroll-behavior: auto !important;
+    animation-duration: var(--v2-motion-reduced) !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: var(--v2-motion-reduced) !important;
+  }
+}

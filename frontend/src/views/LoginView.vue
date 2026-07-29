@@ -1,9 +1,12 @@
 <template>
-  <section class="login-wrap">
-    <form class="login-panel" id="loginForm" @submit.prevent="handleLogin">
-      <h1>AI 功能测试工作台</h1>
-      <p>请输入管理员账号登录</p>
-      <div class="form-grid">
+  <section class="login-wrap login-v2">
+    <form class="login-panel login-v2-panel" id="loginForm" @submit.prevent="handleLogin">
+      <div class="login-v2-brand">
+        <span class="login-v2-mark" aria-hidden="true"></span>
+        <h1 class="login-v2-title">AI 功能测试工作台</h1>
+      </div>
+      <p class="login-v2-subtitle">请输入管理员账号登录</p>
+      <div class="form-grid login-v2-form">
         <div class="field">
           <label for="username">账号</label>
           <input
@@ -29,10 +32,16 @@
           <input id="rememberPwd" name="rememberPwd" type="checkbox" v-model="remember" />
           <span>记住密码</span>
         </label>
-        <button class="btn" type="submit" :disabled="loading">
+        <button
+          class="btn login-v2-submit"
+          type="submit"
+          :class="{ 'is-loading': loading }"
+          :disabled="loading"
+        >
           {{ loading ? '登录中...' : '登录' }}
         </button>
       </div>
+      <div class="login-v2-footer">Enterprise AI Workspace</div>
     </form>
   </section>
 </template>
@@ -44,6 +53,8 @@
  * - 读取 savedUsername/savedPassword（base64）
  * - POST /api/auth/login
  * - 登录成功存 token + 记住密码
+ *
+ * Phase 2：仅视觉 class / 布局节点；不改 id、name、登录逻辑。
  *
  * 注：登录后跳转由 services/navigation.js 统一决策，
  *     LoginView 不直接调用 window.location.href。
@@ -101,7 +112,3 @@ async function handleLogin() {
   }
 }
 </script>
-
-<style scoped>
-/* 使用旧应用 .login-wrap / .login-panel / .form-grid / .field 样式（来自 legacy.css） */
-</style>

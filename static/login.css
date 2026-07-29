@@ -1,0 +1,305 @@
+/**
+ * Frontend V2 Phase 2.6 — Login polish (Forest Light)
+ *
+ * Consumes Phase 1 Design Tokens. Does not redefine tokens.
+ * Scope: .login-wrap / .login-panel (+ .login-v2* helpers)
+ * Does not style Shell / Dashboard / other pages.
+ */
+
+/* =============================================================================
+   Canvas — quiet Forest Light depth (no glow / cyber / illustration)
+   ============================================================================= */
+
+.login-wrap.login-v2,
+.login-wrap {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: var(--space-6);
+  background-color: var(--color-bg-canvas);
+  background-image:
+    linear-gradient(
+      180deg,
+      var(--color-bg-subtle) 0%,
+      var(--color-bg-canvas) 42%,
+      var(--color-bg-canvas) 100%
+    ),
+    radial-gradient(
+      ellipse 70% 55% at 18% 12%,
+      var(--color-brand-muted) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 55% 45% at 88% 88%,
+      var(--color-brand-muted) 0%,
+      transparent 58%
+    );
+  background-repeat: no-repeat;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-wrap::before,
+.login-wrap::after {
+  display: none;
+}
+
+/* =============================================================================
+   Panel — 460~480px, content-driven height
+   ============================================================================= */
+
+.login-panel.login-v2-panel,
+.login-wrap .login-panel {
+  width: min(472px, 100%);
+  padding: var(--space-9) var(--space-8) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  position: relative;
+  z-index: var(--z-base);
+}
+
+.login-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-brand-primary);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-none);
+}
+
+/* =============================================================================
+   Brand — logo + title as one quiet block (no checkbox / glow)
+   ============================================================================= */
+
+.login-v2-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.login-v2-mark {
+  display: block;
+  width: calc(var(--space-8) * 1.35);
+  height: calc(var(--space-8) * 1.35);
+  border-radius: var(--radius-lg);
+  background: var(--color-brand-primary);
+  box-shadow: var(--shadow-none);
+}
+
+.login-v2-mark::after {
+  content: none;
+}
+
+.login-panel h1,
+.login-v2-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-display-size);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--text-display-line);
+  letter-spacing: 0.03em;
+  color: var(--color-text-primary);
+  text-align: center;
+  background: none;
+  -webkit-text-fill-color: var(--color-text-primary);
+  text-shadow: var(--shadow-none);
+  white-space: normal;
+}
+
+.login-panel > p,
+.login-v2-subtitle {
+  margin: 0 0 var(--space-8);
+  color: var(--color-text-muted);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+  text-align: center;
+}
+
+.login-v2-footer {
+  margin-top: var(--space-8);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border-light);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+  line-height: var(--text-caption-line);
+  letter-spacing: var(--letter-spacing-wide);
+  opacity: 0.72;
+}
+
+/* =============================================================================
+   Form — even vertical rhythm, more breath
+   ============================================================================= */
+
+.login-v2-form,
+.login-panel .form-grid {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.login-panel .field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.login-panel .field label {
+  color: var(--color-text-secondary);
+  font-size: var(--text-caption-size);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: none;
+}
+
+.login-panel .field input {
+  width: 100%;
+  min-height: var(--input-height);
+  padding: var(--space-2) var(--input-padding-x);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  color: var(--input-text);
+  background: var(--input-bg);
+  box-shadow: var(--shadow-none);
+  transition:
+    border-color var(--motion-hover) var(--ease-out),
+    box-shadow var(--motion-hover) var(--ease-out);
+}
+
+.login-panel .field input::placeholder {
+  color: var(--input-placeholder);
+}
+
+.login-panel .field input:hover {
+  border-color: var(--color-border-strong);
+}
+
+.login-panel .field input:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.login-panel .remember-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: auto;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--text-body-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.login-panel .remember-check input {
+  width: var(--space-5);
+  height: var(--space-5);
+  min-height: 0;
+  accent-color: var(--color-brand-primary);
+  cursor: pointer;
+}
+
+/* =============================================================================
+   Primary submit — Design Token only (no gradient / glow / sweep)
+   ============================================================================= */
+
+.login-panel .btn,
+.login-v2-submit {
+  width: 100%;
+  min-height: var(--btn-height);
+  height: var(--btn-height);
+  margin-top: var(--space-2);
+  border-radius: var(--btn-radius);
+  color: var(--btn-primary-text);
+  background: var(--btn-primary-bg);
+  font-size: var(--text-body-size);
+  font-weight: var(--btn-font-weight);
+  letter-spacing: var(--letter-spacing-normal);
+  box-shadow: var(--shadow-none);
+  transition:
+    background-color var(--motion-hover) var(--ease-out),
+    opacity var(--motion-click) var(--ease-out);
+}
+
+.login-panel .btn::after {
+  display: none;
+}
+
+.login-panel .btn:hover:not(:disabled) {
+  background: var(--btn-primary-hover);
+  transform: none;
+  box-shadow: var(--shadow-none);
+}
+
+.login-panel .btn:active:not(:disabled) {
+  opacity: 0.92;
+  transform: none;
+}
+
+.login-panel .btn:disabled,
+.login-v2-submit.is-loading {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* =============================================================================
+   Responsive — 1366 / 1920 and narrow
+   ============================================================================= */
+
+@media (max-width: 560px) {
+  .login-wrap {
+    padding: var(--space-4);
+    align-items: stretch;
+  }
+
+  .login-panel.login-v2-panel,
+  .login-wrap .login-panel {
+    width: 100%;
+    padding: var(--space-7) var(--space-5) var(--space-6);
+    border-radius: var(--radius-md);
+  }
+
+  .login-panel h1,
+  .login-v2-title {
+    font-size: var(--text-h1-size);
+  }
+
+  .login-v2-mark {
+    width: calc(var(--space-8) * 1.25);
+    height: calc(var(--space-8) * 1.25);
+  }
+}
+
+@media (min-width: 1366px) {
+  .login-panel.login-v2-panel,
+  .login-wrap .login-panel {
+    width: min(476px, 100%);
+  }
+}
+
+@media (min-width: 1920px) {
+  .login-panel.login-v2-panel,
+  .login-wrap .login-panel {
+    width: min(480px, 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-panel .field input,
+  .login-panel .btn {
+    transition: none;
+  }
+}

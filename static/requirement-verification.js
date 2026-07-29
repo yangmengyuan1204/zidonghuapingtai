@@ -7,8 +7,61 @@
   const insertAt = firstLegacyIndex >= 0 ? firstLegacyIndex : Math.max(0, views.findIndex((item) => item.key === "uiCases"));
   views.splice(insertAt, 0, { key: "requirementVerification", label: "需求验证中心" });
 
+  /**
+   * Phase 3.1 nav fix:
+   * Vue AppShell still emits /#/functionalTests|/caseGeneration, but this script
+   * removes those keys from the visible menu. migration-bridge activateInitialHash
+   * then cannot find [data-view=functionalTests] and leaves default dashboard.
+   * Keep hidden alias targets + normalize legacy view keys. No menu order/key change.
+   */
+  function ensureLegacyHashTargets() {
+    const nav = document.querySelector("#mainNav");
+    if (!nav) return false;
+    let added = false;
+    LEGACY_VIEWS.forEach((key) => {
+      if (nav.querySelector(`[data-view="${key}"]`)) return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("data-view", key);
+      btn.setAttribute("aria-hidden", "true");
+      btn.tabIndex = -1;
+      btn.textContent = key;
+      btn.style.cssText =
+        "position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;";
+      nav.appendChild(btn);
+      added = true;
+    });
+    return true;
+  }
+
+  // Install as soon as #mainNav appears (before renderCurrentView awaits),
+  // so migration-bridge hash activation can find legacy data-view targets.
+  (function watchLegacyHashTargets() {
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      const ready = ensureLegacyHashTargets();
+      tries += 1;
+      if ((ready && document.querySelector('#mainNav [data-view="functionalTests"]')) || tries > 60) {
+        window.clearInterval(timer);
+      }
+    }, 50);
+  })();
+
+  const originalRenderShell = renderShell;
+  renderShell = async function renderShellWithLegacyHashTargets(...args) {
+    if (LEGACY_VIEWS.has(state.view)) {
+      state.view = "requirementVerification";
+    }
+    const result = await originalRenderShell.apply(this, args);
+    ensureLegacyHashTargets();
+    return result;
+  };
+
   const originalRenderCurrentView = renderCurrentView;
   renderCurrentView = function () {
+    if (LEGACY_VIEWS.has(state.view)) {
+      state.view = "requirementVerification";
+    }
     if (state.view === "requirementVerification") return window.renderRequirementVerification();
     return originalRenderCurrentView();
   };

@@ -1,0 +1,277 @@
+.frontend-v2,
+  .frontend-v2-portal {
+    /* Button */
+    --v2-button-height: var(--v2-control-height-default);
+    --v2-button-height-compact: var(--v2-control-height-compact);
+    --v2-button-radius: var(--v2-radius-sm);
+    --v2-button-bg: var(--v2-action-primary);
+    --v2-button-bg-hover: var(--v2-action-primary-hover);
+    --v2-button-bg-pressed: var(--v2-action-primary-pressed);
+    --v2-button-text: var(--v2-text-inverse);
+    --v2-button-disabled-opacity: var(--v2-state-disabled-opacity);
+    --v2-button-border-width: var(--v2-border-width);
+    --v2-button-padding: var(--v2-space-3);
+    --v2-button-padding-compact: var(--v2-space-2);
+    --v2-button-gap: var(--v2-space-1);
+    --v2-button-font-size: var(--v2-font-size-caption);
+    --v2-button-font-weight: var(--v2-font-weight-semibold);
+    --v2-button-secondary-bg: var(--v2-surface-default);
+    --v2-button-secondary-bg-hover: var(--v2-surface-hover);
+    --v2-button-secondary-bg-pressed: var(--v2-surface-pressed);
+    --v2-button-secondary-text: var(--v2-text-primary);
+    --v2-button-secondary-border: var(--v2-border-strong);
+    --v2-button-ghost-bg: var(--v2-color-overlay-transparent);
+    --v2-button-ghost-bg-hover: var(--v2-action-primary-soft);
+    --v2-button-ghost-bg-pressed: var(--v2-surface-selected);
+    --v2-button-ghost-text: var(--v2-text-secondary);
+    --v2-button-ghost-text-hover: var(--v2-action-primary);
+    --v2-button-ghost-border: var(--v2-color-overlay-transparent);
+    --v2-button-danger-bg: var(--v2-feedback-danger);
+    --v2-button-danger-bg-hover: var(--v2-color-red-600);
+    --v2-button-danger-bg-pressed: var(--v2-color-red-600);
+    --v2-button-danger-text: var(--v2-text-inverse);
+    --v2-button-danger-border: var(--v2-feedback-danger);
+    --v2-button-loading-indicator-size: var(--v2-icon-size-xs);
+    --v2-button-focus-ring: var(--v2-state-focus-ring);
+
+    /* Icon button */
+    --v2-icon-button-size: var(--v2-control-height-default);
+    --v2-icon-button-size-compact: var(--v2-control-height-compact);
+    --v2-icon-button-radius: var(--v2-radius-sm);
+    --v2-icon-button-text: var(--v2-text-secondary);
+    --v2-icon-button-surface: var(--v2-color-overlay-transparent);
+    --v2-icon-button-surface-hover: var(--v2-surface-hover);
+    --v2-icon-button-surface-pressed: var(--v2-surface-pressed);
+    --v2-icon-button-secondary-surface: var(--v2-surface-default);
+    --v2-icon-button-secondary-border: var(--v2-border-strong);
+    --v2-icon-button-pressed-surface: var(--v2-action-primary-soft);
+    --v2-icon-button-pressed-text: var(--v2-action-primary);
+    --v2-icon-button-icon-size: var(--v2-icon-size-sm);
+    --v2-icon-button-focus-ring: var(--v2-state-focus-ring);
+    --v2-icon-button-disabled-opacity: var(--v2-state-disabled-opacity);
+
+    /* Input */
+    --v2-input-height: var(--v2-control-height-default);
+    --v2-input-height-compact: var(--v2-control-height-compact);
+    --v2-input-radius: var(--v2-radius-sm);
+    --v2-input-surface: var(--v2-surface-default);
+    --v2-input-text: var(--v2-text-primary);
+    --v2-input-placeholder: var(--v2-text-muted);
+    --v2-input-border: var(--v2-border-default);
+    --v2-input-border-focus: var(--v2-border-focus);
+    --v2-input-border-hover: var(--v2-border-strong);
+    --v2-input-border-error: var(--v2-border-danger);
+    --v2-input-surface-disabled: var(--v2-surface-disabled);
+    --v2-input-surface-readonly: var(--v2-surface-soft);
+    --v2-input-label-text: var(--v2-text-secondary);
+    --v2-input-help-text: var(--v2-text-muted);
+    --v2-input-error-text: var(--v2-text-danger);
+    --v2-input-disabled-text: var(--v2-text-disabled);
+    --v2-input-padding: var(--v2-space-2);
+    --v2-input-gap: var(--v2-space-1);
+    --v2-input-label-gap: var(--v2-space-micro);
+    --v2-input-font-size: var(--v2-font-size-body);
+    --v2-input-meta-font-size: var(--v2-font-size-caption);
+    --v2-input-focus-ring: var(--v2-state-focus-ring);
+    --v2-input-disabled-opacity: var(--v2-state-disabled-opacity);
+
+    /* Checkbox */
+    --v2-checkbox-size: var(--v2-icon-size-sm);
+    --v2-checkbox-radius: var(--v2-radius-xs);
+    --v2-checkbox-border: var(--v2-border-strong);
+    --v2-checkbox-selected-surface: var(--v2-action-primary);
+    --v2-checkbox-selected-text: var(--v2-text-inverse);
+    --v2-checkbox-label-text: var(--v2-text-primary);
+    --v2-checkbox-description-text: var(--v2-text-muted);
+    --v2-checkbox-gap: var(--v2-space-1);
+    --v2-checkbox-description-gap: var(--v2-space-micro);
+    --v2-checkbox-font-size: var(--v2-font-size-body);
+    --v2-checkbox-description-font-size: var(--v2-font-size-caption);
+    --v2-checkbox-focus-ring: var(--v2-state-focus-ring);
+    --v2-checkbox-disabled-opacity: var(--v2-state-disabled-opacity);
+
+    /* Sidebar */
+    --v2-sidebar-width: var(--v2-layout-sidebar);
+    --v2-sidebar-width-compact: var(--v2-layout-sidebar-compact);
+    --v2-sidebar-surface: var(--v2-surface-default);
+    --v2-sidebar-border: var(--v2-border-default);
+    --v2-sidebar-text: var(--v2-text-secondary);
+    --v2-sidebar-text-active: var(--v2-text-primary);
+    --v2-sidebar-item-hover: var(--v2-surface-hover);
+
+    /* Topbar */
+    --v2-topbar-height: var(--v2-layout-topbar);
+    --v2-topbar-surface: var(--v2-surface-default);
+    --v2-topbar-border: var(--v2-border-default);
+    --v2-topbar-text: var(--v2-text-primary);
+
+    /* Card */
+    --v2-card-surface: var(--v2-surface-default);
+    --v2-card-border: var(--v2-border-default);
+    --v2-card-radius: var(--v2-radius-md);
+    --v2-card-selected-shadow: var(--v2-state-selected-shadow);
+    --v2-card-surface-soft: var(--v2-surface-soft);
+    --v2-card-surface-hover: var(--v2-surface-hover);
+    --v2-card-surface-pressed: var(--v2-surface-pressed);
+    --v2-card-border-hover: var(--v2-border-strong);
+    --v2-card-padding-compact: var(--v2-space-2);
+    --v2-card-padding-default: var(--v2-space-3);
+    --v2-card-padding-spacious: var(--v2-space-4);
+    --v2-card-section-gap: var(--v2-space-3);
+    --v2-card-focus-ring: var(--v2-state-focus-ring);
+
+    /* Table */
+    --v2-table-header-height: var(--v2-size-table-header);
+    --v2-table-row-height: var(--v2-size-table-row);
+    --v2-table-header-surface: var(--v2-surface-soft);
+    --v2-table-row-hover: var(--v2-surface-hover);
+    --v2-table-border: var(--v2-border-default);
+    --v2-table-text: var(--v2-text-primary);
+    --v2-table-text-muted: var(--v2-text-muted);
+
+    /* Dropdown */
+    --v2-dropdown-width: var(--v2-size-dropdown-width);
+    --v2-dropdown-offset: var(--v2-size-dropdown-offset);
+    --v2-dropdown-surface: var(--v2-surface-default);
+    --v2-dropdown-border: var(--v2-border-default);
+    --v2-dropdown-radius: var(--v2-radius-sm);
+    --v2-dropdown-shadow: var(--v2-shadow-dropdown);
+    --v2-dropdown-z-index: var(--v2-z-dropdown);
+
+    /* Pagination */
+    --v2-pagination-height: var(--v2-size-pagination);
+    --v2-pagination-control-size: var(--v2-control-height-compact);
+    --v2-pagination-radius: var(--v2-radius-sm);
+    --v2-pagination-surface: var(--v2-surface-default);
+    --v2-pagination-surface-hover: var(--v2-action-primary-soft);
+    --v2-pagination-surface-pressed: var(--v2-surface-pressed);
+    --v2-pagination-surface-active: var(--v2-action-primary);
+    --v2-pagination-surface-disabled: var(--v2-surface-disabled);
+    --v2-pagination-text: var(--v2-text-secondary);
+    --v2-pagination-text-hover: var(--v2-action-primary);
+    --v2-pagination-text-active: var(--v2-text-inverse);
+    --v2-pagination-text-disabled: var(--v2-text-disabled);
+    --v2-pagination-border: var(--v2-border-default);
+    --v2-pagination-border-hover: var(--v2-action-primary);
+    --v2-pagination-gap: var(--v2-space-1);
+    --v2-pagination-font-size: var(--v2-font-size-tiny);
+    --v2-pagination-font-weight: var(--v2-font-weight-medium);
+    --v2-pagination-focus-ring: var(--v2-state-focus-ring);
+    --v2-pagination-disabled-opacity: var(--v2-state-disabled-opacity);
+
+    /* Tooltip */
+    --v2-tooltip-surface: var(--v2-surface-inverse);
+    --v2-tooltip-text: var(--v2-text-inverse);
+    --v2-tooltip-radius: var(--v2-radius-sm);
+    --v2-tooltip-shadow: var(--v2-shadow-dropdown);
+    --v2-tooltip-z-index: var(--v2-z-dropdown);
+    --v2-tooltip-font-size: var(--v2-font-size-tiny);
+    --v2-tooltip-line-height: var(--v2-line-height-caption);
+    --v2-tooltip-padding-block: var(--v2-space-micro);
+    --v2-tooltip-padding-inline: var(--v2-space-1);
+    --v2-tooltip-offset: var(--v2-space-1);
+    --v2-tooltip-arrow-size: var(--v2-space-micro);
+    --v2-tooltip-max-width: var(--v2-layout-description-max);
+
+    /* Skeleton */
+    --v2-skeleton-surface: var(--v2-surface-pressed);
+    --v2-skeleton-highlight: var(--v2-surface-default);
+    --v2-skeleton-radius: var(--v2-radius-sm);
+    --v2-skeleton-text-height: var(--v2-space-2);
+    --v2-skeleton-circle-size: var(--v2-space-6);
+    --v2-skeleton-rectangle-height: var(--v2-space-7);
+    --v2-skeleton-line-gap: var(--v2-space-1);
+    --v2-skeleton-duration: var(--v2-motion-duration-dialog);
+    --v2-skeleton-easing: var(--v2-motion-easing-standard);
+
+    /* Empty state */
+    --v2-empty-state-padding: var(--v2-space-6);
+    --v2-empty-state-padding-compact: var(--v2-space-4);
+    --v2-empty-state-gap: var(--v2-space-2);
+    --v2-empty-state-icon-surface: var(--v2-surface-soft);
+    --v2-empty-state-icon-text: var(--v2-text-muted);
+    --v2-empty-state-icon-container-size: var(--v2-space-6);
+    --v2-empty-state-icon-size: var(--v2-icon-size-md);
+    --v2-empty-state-title-text: var(--v2-text-primary);
+    --v2-empty-state-description-text: var(--v2-text-muted);
+    --v2-empty-state-title-size: var(--v2-font-size-section);
+    --v2-empty-state-description-size: var(--v2-font-size-body);
+    --v2-empty-state-content-max-width: var(--v2-layout-description-max);
+
+    /* Error state */
+    --v2-error-state-padding: var(--v2-space-6);
+    --v2-error-state-padding-compact: var(--v2-space-4);
+    --v2-error-state-gap: var(--v2-space-2);
+    --v2-error-state-icon-surface: var(--v2-feedback-danger-soft);
+    --v2-error-state-icon-text: var(--v2-feedback-danger);
+    --v2-error-state-icon-container-size: var(--v2-space-6);
+    --v2-error-state-icon-size: var(--v2-icon-size-md);
+    --v2-error-state-title-text: var(--v2-text-primary);
+    --v2-error-state-message-text: var(--v2-text-secondary);
+    --v2-error-state-details-text: var(--v2-text-muted);
+    --v2-error-state-title-size: var(--v2-font-size-section);
+    --v2-error-state-message-size: var(--v2-font-size-body);
+    --v2-error-state-details-size: var(--v2-font-size-caption);
+    --v2-error-state-content-max-width: var(--v2-layout-description-max);
+
+    /* Badge */
+    --v2-badge-radius: var(--v2-radius-round);
+    --v2-badge-font-size: var(--v2-font-size-caption);
+    --v2-badge-surface: var(--v2-surface-soft);
+    --v2-badge-text: var(--v2-text-secondary);
+    --v2-badge-height: var(--v2-icon-size-md);
+    --v2-badge-height-compact: var(--v2-icon-size-sm);
+    --v2-badge-padding: var(--v2-space-1);
+    --v2-badge-padding-compact: var(--v2-space-micro);
+    --v2-badge-gap: var(--v2-space-micro);
+    --v2-badge-font-size-compact: var(--v2-font-size-tiny);
+    --v2-badge-font-weight: var(--v2-font-weight-semibold);
+    --v2-badge-success-surface: var(--v2-feedback-success-soft);
+    --v2-badge-success-text: var(--v2-feedback-success);
+    --v2-badge-warning-surface: var(--v2-feedback-warning-soft);
+    --v2-badge-warning-text: var(--v2-feedback-warning);
+    --v2-badge-danger-surface: var(--v2-feedback-danger-soft);
+    --v2-badge-danger-text: var(--v2-feedback-danger);
+    --v2-badge-info-surface: var(--v2-feedback-info-soft);
+    --v2-badge-info-text: var(--v2-feedback-info);
+    --v2-badge-dot-size: var(--v2-space-micro);
+
+    /* Chip */
+    --v2-chip-height: var(--v2-control-height-compact);
+    --v2-chip-radius: var(--v2-radius-round);
+    --v2-chip-surface: var(--v2-surface-default);
+    --v2-chip-surface-selected: var(--v2-action-primary-soft);
+    --v2-chip-text: var(--v2-text-secondary);
+    --v2-chip-text-selected: var(--v2-action-primary);
+    --v2-chip-border: var(--v2-border-default);
+    --v2-chip-border-hover: var(--v2-border-strong);
+    --v2-chip-border-selected: var(--v2-action-primary);
+    --v2-chip-surface-hover: var(--v2-surface-hover);
+    --v2-chip-surface-pressed: var(--v2-surface-pressed);
+    --v2-chip-padding: var(--v2-space-2);
+    --v2-chip-gap: var(--v2-space-1);
+    --v2-chip-font-size: var(--v2-font-size-caption);
+    --v2-chip-font-weight: var(--v2-font-weight-medium);
+    --v2-chip-count-surface: var(--v2-surface-soft);
+    --v2-chip-count-surface-selected: var(--v2-surface-default);
+    --v2-chip-count-text: var(--v2-text-muted);
+    --v2-chip-count-text-selected: var(--v2-action-primary);
+    --v2-chip-focus-ring: var(--v2-state-focus-ring);
+    --v2-chip-disabled-opacity: var(--v2-state-disabled-opacity);
+
+    /* Modal */
+    --v2-modal-surface: var(--v2-surface-default);
+    --v2-modal-overlay: var(--v2-surface-overlay);
+    --v2-modal-border: var(--v2-border-default);
+    --v2-modal-radius: var(--v2-radius-md);
+    --v2-modal-shadow: var(--v2-shadow-overlay);
+    --v2-modal-z-index: var(--v2-z-modal);
+    --v2-modal-overlay-z-index: var(--v2-z-overlay);
+
+    /* Toast */
+    --v2-toast-surface: var(--v2-surface-inverse);
+    --v2-toast-text: var(--v2-text-inverse);
+    --v2-toast-radius: var(--v2-radius-sm);
+    --v2-toast-shadow: var(--v2-shadow-dropdown);
+    --v2-toast-z-index: var(--v2-z-toast);
+}

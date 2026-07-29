@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Testing Workspace · API Cases</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --canvas: #f7f8fa;
+      --surface: #ffffff;
+      --surface-soft: #f4f6f5;
+      --line: #e3e7e5;
+      --line-strong: #d5dcd8;
+      --ink: #171d1a;
+      --ink-2: #4e5953;
+      --ink-3: #7d8781;
+      --green: #277052;
+      --green-strong: #1e5b43;
+      --green-soft: #edf6f1;
+      --red: #a44741;
+      --red-soft: #fbeeed;
+      --amber: #8b651f;
+      --amber-soft: #fbf3df;
+      --blue: #3e6678;
+      --blue-soft: #edf3f6;
+      --surface-hover: #f3f5f4;
+      --surface-pressed: #e9eeeb;
+      --surface-disabled: #f8f9f8;
+      --ink-disabled: #b8bfbb;
+      --viewport-min: 1080px;
+      --sidebar: 208px;
+      --sidebar-compact: 204px;
+      --topbar: 64px;
+      --workspace-max: 1500px;
+      --workspace-description-max: 680px;
+      --topbar-left: minmax(230px, 1fr);
+      --topbar-search: minmax(300px, 520px);
+      --topbar-right: minmax(250px, 1fr);
+      --case-grid: 32px minmax(300px, 1.9fr) minmax(128px, .75fr) 112px 128px 80px;
+      --control-default: 40px;
+      --control-compact: 32px;
+      --card-stat-height: 144px;
+      --card-action-height: 96px;
+      --table-head-height: 48px;
+      --table-row-height: 80px;
+      --pagination-height: 64px;
+      --menu-width: 132px;
+      --menu-offset: 40px;
+      --search-max: 328px;
+      --search-fluid: 29vw;
+      --spark-width: 72px;
+      --icon-xs: 12px;
+      --icon-sm: 16px;
+      --icon-md: 24px;
+      --indicator-size: 8px;
+      --nav-indicator-width: 2px;
+      --nav-indicator-height: 16px;
+      --border-width: 1px;
+      --r-xs: 4px;
+      --r-sm: 6px;
+      --r-md: 10px;
+      --r-round: 999px;
+      --shadow-menu: 0 12px 34px rgba(24, 36, 30, .14);
+      --shadow-focus: 0 0 0 3px rgba(39, 112, 82, .18);
+      --shadow-selected: 0 1px 2px rgba(25, 38, 32, .08);
+      --motion-duration: 120ms;
+      --motion-reduced: .01ms;
+      --motion-ease: ease;
+      --pressed-opacity: .82;
+      --disabled-opacity: .48;
+      --space-1: 8px;
+      --space-2: 12px;
+      --space-3: 16px;
+      --space-4: 24px;
+      --space-5: 32px;
+      --space-6: 48px;
+      --space-7: 64px;
+      --type-display: 32px;
+      --type-heading: 24px;
+      --type-section: 18px;
+      --type-body: 14px;
+      --type-caption: 12px;
+      --type-tiny: 11px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-width: var(--viewport-min); min-height: 100%; background: var(--canvas); color: var(--ink); }
+    body { font-size: var(--type-body); -webkit-font-smoothing: antialiased; }
+    button, input, select { font: inherit; }
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+    :where(button, input, select) {
+      transition:
+        color var(--motion-duration) var(--motion-ease),
+        background-color var(--motion-duration) var(--motion-ease),
+        border-color var(--motion-duration) var(--motion-ease),
+        box-shadow var(--motion-duration) var(--motion-ease),
+        opacity var(--motion-duration) var(--motion-ease);
+    }
+    :where(button, input, select):focus-visible {
+      outline: 0;
+      box-shadow: var(--shadow-focus);
+    }
+    button:active:not(:disabled) { opacity: var(--pressed-opacity); }
+    button:disabled {
+      color: var(--ink-disabled);
+      background: var(--surface-disabled);
+      cursor: not-allowed;
+      opacity: var(--disabled-opacity);
+    }
+    svg { display: block; }
+    .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .icon { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Shell */
+    .shell {
+      display: grid;
+      grid-template-columns: var(--sidebar) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #fbfcfc;
+      border-right: 1px solid var(--line);
+      z-index: 20;
+    }
+
+    .product {
+      height: var(--topbar);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 0 var(--space-3);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .product-mark {
+      width: var(--control-compact);
+      height: var(--control-compact);
+      display: grid;
+      place-items: center;
+      border-radius: var(--r-sm);
+      color: #fff;
+      background: var(--green);
+    }
+
+    .product-mark .icon { width: var(--icon-sm); height: var(--icon-sm); }
+    .product-copy { min-width: 0; }
+    .product-name { font-size: var(--type-body); line-height: 1.2; font-weight: 700; letter-spacing: -.01em; }
+    .product-edition { margin-top: 0; color: var(--ink-3); font-size: var(--type-tiny); line-height: 1.2; }
+
+    .nav-scroll {
+      min-height: 0;
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-4) var(--space-1);
+      scrollbar-width: thin;
+      scrollbar-color: #d8dedb transparent;
+    }
+
+    .nav-group + .nav-group { margin-top: var(--space-4); }
+    .nav-label {
+      margin: 0 var(--space-1) var(--space-1);
+      color: #98a19c;
+      font-size: var(--type-tiny);
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .nav-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+    .nav-item {
+      position: relative;
+      width: 100%;
+      height: var(--control-default);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 0 var(--space-2);
+      color: #66716b;
+      background: transparent;
+      border-radius: var(--r-sm);
+      text-align: left;
+      font-size: var(--type-caption);
+      font-weight: 500;
+    }
+
+    .nav-item .icon { width: var(--icon-sm); height: var(--icon-sm); color: #849089; }
+    .nav-item::before {
+      content: "";
+      position: absolute;
+      left: -1px;
+      top: 50%;
+      width: var(--nav-indicator-width);
+      height: 0;
+      border-radius: var(--r-round);
+      background: var(--green);
+      transform: translateY(-50%);
+      transition: height var(--motion-duration) var(--motion-ease);
+    }
+
+    .nav-item:hover { color: var(--ink); background: var(--surface-hover); }
+    .nav-item.active { color: var(--green-strong); background: var(--green-soft); font-weight: 650; }
+    .nav-item.active::before { height: var(--nav-indicator-height); }
+    .nav-item.active .icon { color: var(--green); }
+    .nav-count { margin-left: auto; color: #9aa39e; font-size: var(--type-tiny); font-variant-numeric: tabular-nums; }
+
+    .sidebar-bottom { padding: var(--space-1); border-top: 1px solid var(--line); }
+    .account {
+      width: 100%;
+      height: var(--control-default);
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 0 var(--space-1);
+      color: var(--ink);
+      background: transparent;
+      border-radius: var(--r-sm);
+      text-align: left;
+    }
+    .account:hover { background: var(--surface-hover); }
+    .avatar {
+      width: var(--control-compact);
+      height: var(--control-compact);
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: var(--green-strong);
+      background: var(--green-soft);
+      border-radius: var(--r-round);
+      font-size: var(--type-tiny);
+      font-weight: 750;
+    }
+    .account-copy { min-width: 0; flex: 1; display: grid; gap: 0; }
+    .account-name { font-size: var(--type-caption); font-weight: 650; }
+    .account-role { color: var(--ink-3); font-size: var(--type-tiny); }
+
+    .main { min-width: 0; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 15;
+      height: var(--topbar);
+      display: grid;
+      grid-template-columns: var(--topbar-left) var(--topbar-search) var(--topbar-right);
+      align-items: center;
+      gap: var(--space-4);
+      padding: 0 var(--space-5);
+      background: rgba(255,255,255,.97);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .crumbs { display: flex; align-items: center; gap: var(--space-1); min-width: 0; overflow: hidden; color: var(--ink-3); font-size: var(--type-caption); white-space: nowrap; }
+    .crumbs strong { overflow: hidden; color: var(--ink-2); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .crumb-sep { color: #bbc2be; }
+
+    .command {
+      width: 100%;
+      height: var(--control-compact);
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 0 var(--space-2);
+      color: var(--ink-3);
+      background: #f7f8f8;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      text-align: left;
+      font-size: var(--type-caption);
+    }
+    .command:hover { color: var(--ink-2); background: #fff; border-color: var(--line-strong); }
+    .command span { flex: 1; }
+    .command .icon { width: var(--icon-sm); height: var(--icon-sm); }
+    .command kbd {
+      padding: 0 var(--space-1);
+      color: #8f9893;
+      background: #fff;
+      border: 1px solid #dfe4e1;
+      border-radius: var(--r-xs);
+      font-family: inherit;
+      font-size: var(--type-tiny);
+    }
+
+    .top-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: var(--space-1); }
+    .icon-btn {
+      position: relative;
+      width: var(--control-compact);
+      height: var(--control-compact);
+      display: grid;
+      place-items: center;
+      color: var(--ink-2);
+      background: transparent;
+      border-radius: var(--r-sm);
+    }
+    .icon-btn:hover { color: var(--ink); background: var(--surface-hover); }
+    .icon-btn .icon { width: var(--icon-sm); height: var(--icon-sm); }
+    .notice {
+      position: absolute;
+      top: var(--space-1);
+      right: var(--space-1);
+      width: var(--indicator-size);
+      height: var(--indicator-size);
+      background: var(--red);
+      border: 1.5px solid #fff;
+      border-radius: var(--r-round);
+    }
+    .ai-settings {
+      height: var(--control-compact);
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 0 var(--space-2);
+      color: var(--green-strong);
+      background: var(--green-soft);
+      border-radius: var(--r-sm);
+      font-size: var(--type-tiny);
+      font-weight: 700;
+    }
+    .ai-settings { white-space: nowrap; }
+    .ai-settings .icon { width: var(--icon-sm); height: var(--icon-sm); }
+    .top-user { display: flex; align-items: center; flex: 0 0 auto; gap: var(--space-1); padding-left: var(--space-1); color: var(--ink-2); font-size: var(--type-caption); white-space: nowrap; }
+    .top-user .avatar { width: var(--control-compact); height: var(--control-compact); color: #fff; background: var(--green); }
+    .top-user-chevron { width: var(--icon-xs); height: var(--icon-xs); }
+
+    /* Workspace */
+    .workspace { padding: var(--space-6) var(--space-6) var(--space-7); }
+    .workspace-inner { width: 100%; max-width: var(--workspace-max); margin: 0 auto; }
+
+    .workspace-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--space-5);
+      align-items: end;
+      margin-bottom: var(--space-6);
+    }
+    .eyebrow { display: flex; align-items: center; gap: var(--space-1); margin-bottom: var(--space-2); color: var(--ink-3); font-size: var(--type-tiny); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .project-symbol {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      color: var(--green-strong);
+      background: var(--green-soft);
+      border-radius: var(--r-sm);
+      font-size: var(--type-tiny);
+      letter-spacing: 0;
+    }
+    .workspace-header h1 { margin: 0; font-size: var(--type-display); line-height: 1.16; font-weight: 730; letter-spacing: -.035em; }
+    .workspace-subtitle { max-width: var(--workspace-description-max); margin: var(--space-2) 0 0; color: var(--ink-2); font-size: var(--type-body); line-height: 1.65; }
+    .workspace-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin-top: var(--space-3); color: var(--ink-3); font-size: var(--type-caption); }
+    .meta-item { display: inline-flex; align-items: center; gap: var(--space-1); }
+    .meta-item .icon { width: var(--icon-xs); height: var(--icon-xs); }
+    .env-badge { min-height: var(--icon-md); display: inline-flex; align-items: center; padding: 0 var(--space-1); color: var(--green-strong); background: var(--green-soft); border-radius: var(--r-sm); font-weight: 650; }
+    .sync-dot { width: var(--indicator-size); height: var(--indicator-size); background: var(--green); border-radius: var(--r-round); }
+    .header-actions { display: flex; align-items: center; gap: var(--space-1); padding-bottom: 0; }
+
+    .btn {
+      min-height: var(--control-default);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+      padding: 0 var(--space-3);
+      color: #fff;
+      background: var(--green);
+      border: 1px solid var(--green);
+      border-radius: var(--r-sm);
+      font-size: var(--type-caption);
+      font-weight: 680;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--green-strong); border-color: var(--green-strong); }
+    .btn.secondary { color: var(--ink); background: #fff; border-color: var(--line-strong); }
+    .btn.secondary:hover { background: var(--surface-soft); }
+    .btn.ghost { color: var(--ink-2); background: transparent; border-color: transparent; }
+    .btn.ghost:hover { color: var(--green-strong); background: var(--green-soft); }
+    .btn.compact { min-height: var(--control-compact); }
+    .btn .icon { width: var(--icon-sm); height: var(--icon-sm); }
+
+    .section-heading { display: flex; align-items: end; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-3); }
+    .section-heading h2 { margin: 0; font-size: var(--type-section); line-height: 1.3; font-weight: 700; letter-spacing: -.01em; }
+    .section-heading p { margin: var(--space-1) 0 0; color: var(--ink-3); font-size: var(--type-caption); line-height: 1.45; }
+    .section-link { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--green-strong); background: transparent; font-size: var(--type-caption); font-weight: 650; }
+    .section-link .icon { width: var(--icon-xs); height: var(--icon-xs); }
+
+    /* Insights */
+    .insights { margin-bottom: var(--space-6); }
+    .insight-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+    .insight {
+      position: relative;
+      min-width: 0;
+      height: var(--card-stat-height);
+      padding: var(--space-4);
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+    }
+    .insight-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); color: var(--ink-2); font-size: var(--type-caption); font-weight: 650; }
+    .trend { padding: var(--space-1); color: var(--green-strong); background: var(--green-soft); border-radius: var(--r-xs); font-size: var(--type-tiny); font-weight: 700; }
+    .trend.down { color: var(--red); background: var(--red-soft); }
+    .insight-value { margin-top: var(--space-2); font-size: var(--type-display); line-height: 1; font-weight: 730; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+    .insight-value span { margin-left: 0; font-size: var(--type-caption); font-weight: 650; }
+    .insight-note { margin-top: var(--space-1); overflow: hidden; color: var(--ink-3); font-size: var(--type-tiny); text-overflow: ellipsis; white-space: nowrap; }
+    .spark {
+      position: absolute;
+      right: var(--space-2);
+      bottom: var(--space-2);
+      width: var(--spark-width);
+      height: var(--control-compact);
+      color: #99b9aa;
+      opacity: .7;
+    }
+    .spark path { fill: none; stroke: currentColor; stroke-width: 1.5; }
+    .spark.failed { color: #d2a29e; }
+
+    /* Task-first actions */
+    .quick-section { margin-bottom: var(--space-6); }
+    .quick-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+    .quick-action {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) 24px;
+      align-items: center;
+      gap: var(--space-3);
+      min-height: var(--card-action-height);
+      padding: var(--space-3);
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      text-align: left;
+    }
+    .quick-action:hover { background: #fcfdfc; border-color: var(--line-strong); }
+    .quick-icon { width: var(--control-default); height: var(--control-default); display: grid; place-items: center; color: var(--green); background: var(--green-soft); border-radius: var(--r-sm); }
+    .quick-icon .icon { width: var(--icon-sm); height: var(--icon-sm); }
+    .quick-copy strong { display: block; font-size: var(--type-body); font-weight: 700; }
+    .quick-copy span { display: block; margin-top: var(--space-1); overflow: hidden; color: var(--ink-3); font-size: var(--type-caption); text-overflow: ellipsis; white-space: nowrap; }
+    .quick-action > .icon { width: var(--icon-sm); height: var(--icon-sm); color: #a2aaa6; }
+
+    /* API case resource list */
+    .library { background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); }
+    .library-head { padding: var(--space-4) var(--space-4) 0; }
+    .library-title-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+    .library-title h2 { margin: 0; font-size: var(--type-section); font-weight: 720; letter-spacing: -.012em; }
+    .library-title p { margin: var(--space-1) 0 0; color: var(--ink-3); font-size: var(--type-caption); }
+
+    .filter-row { display: flex; align-items: center; gap: var(--space-1); margin-top: var(--space-4); padding-bottom: var(--space-3); }
+    .list-search { position: relative; width: min(var(--search-max), var(--search-fluid)); }
+    .list-search .icon { position: absolute; left: var(--space-2); top: 50%; width: var(--icon-sm); height: var(--icon-sm); color: var(--ink-3); pointer-events: none; transform: translateY(-50%); }
+    .input {
+      width: 100%;
+      height: var(--control-compact);
+      padding: 0 var(--space-2) 0 var(--space-5);
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-sm);
+      outline: 0;
+      font-size: var(--type-caption);
+    }
+    .input:focus-visible { border-color: var(--green); box-shadow: var(--shadow-focus); }
+    .filter-chip {
+      height: var(--control-compact);
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 0 var(--space-2);
+      color: var(--ink-2);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      font-size: var(--type-tiny);
+      font-weight: 600;
+    }
+    .filter-chip:hover, .filter-chip.active { color: var(--green-strong); background: var(--green-soft); border-color: #d6e7df; }
+    .filter-chip .icon { width: var(--icon-xs); height: var(--icon-xs); }
+    .filter-spacer { flex: 1; }
+    .view-switch { display: flex; padding: 0; gap: var(--space-1); background: var(--surface-soft); border-radius: var(--r-sm); }
+    .view-switch button { width: var(--control-compact); height: var(--control-compact); display: grid; place-items: center; color: var(--ink-3); background: transparent; border-radius: var(--r-xs); }
+    .view-switch button.active { color: var(--ink); background: #fff; box-shadow: var(--shadow-selected); }
+    .view-switch .icon { width: var(--icon-sm); height: var(--icon-sm); }
+
+    .case-list { border-top: 1px solid var(--line); }
+    .list-header, .case-row {
+      display: grid;
+      grid-template-columns: var(--case-grid);
+      align-items: center;
+      column-gap: var(--space-3);
+      padding: 0 var(--space-4);
+    }
+    .list-header {
+      min-height: var(--table-head-height);
+      color: #8b948f;
+      background: #fafbfa;
+      border-bottom: 1px solid var(--line);
+      font-size: var(--type-tiny);
+      font-weight: 720;
+      letter-spacing: .055em;
+      text-transform: uppercase;
+    }
+    .case-row {
+      position: relative;
+      min-height: var(--table-row-height);
+      border-bottom: 1px solid #edf0ee;
+    }
+    .case-row:hover { background: #fafcfb; }
+    .case-row:last-child { border-bottom: 0; }
+    .check { width: var(--icon-sm); height: var(--icon-sm); margin: 0; accent-color: var(--green); }
+    .case-primary { min-width: 0; }
+    .case-title-line { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+    .case-title { overflow: hidden; font-size: var(--type-body); font-weight: 680; text-overflow: ellipsis; white-space: nowrap; }
+    .method { flex: 0 0 auto; min-width: var(--control-default); padding: var(--space-1); border-radius: var(--r-xs); text-align: center; font-size: var(--type-tiny); font-weight: 750; }
+    .get { color: #2d6a58; background: #e8f3ee; }
+    .post { color: #765d20; background: #faf1d9; }
+    .put { color: #805328; background: #f9ebdf; }
+    .delete { color: #98413c; background: #faeae8; }
+    .case-subtitle { display: flex; align-items: center; gap: var(--space-1); min-width: 0; margin-top: var(--space-1); color: var(--ink-3); font-size: var(--type-tiny); }
+    .case-path { overflow: hidden; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
+    .case-id { flex: 0 0 auto; color: #a1aaa5; }
+    .context-main { overflow: hidden; color: var(--ink-2); font-size: var(--type-caption); font-weight: 620; text-overflow: ellipsis; white-space: nowrap; }
+    .context-sub { margin-top: var(--space-1); color: var(--ink-3); font-size: var(--type-tiny); }
+    .health { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--ink-2); font-size: var(--type-caption); font-weight: 620; }
+    .health-dot { width: var(--indicator-size); height: var(--indicator-size); border-radius: var(--r-round); background: var(--green); }
+    .health.failed { color: var(--red); }
+    .health.failed .health-dot { background: var(--red); }
+    .health.draft { color: var(--ink-3); }
+    .health.draft .health-dot { background: #aab2ae; }
+    .updated { color: var(--ink-3); font-size: var(--type-caption); }
+    .row-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-1); }
+    .run-button { height: var(--control-compact); padding: 0 var(--space-2); color: var(--green-strong); background: var(--green-soft); border-radius: var(--r-sm); font-size: var(--type-tiny); font-weight: 700; }
+    .run-button:hover { color: #fff; background: var(--green); }
+    .more-wrap { position: relative; }
+    .more-button { width: var(--control-compact); height: var(--control-compact); display: grid; place-items: center; color: var(--ink-3); background: transparent; border-radius: var(--r-sm); }
+    .more-button:hover, .more-button[aria-expanded="true"] { color: var(--ink); background: var(--surface-soft); }
+    .more-button .icon { width: var(--icon-sm); height: var(--icon-sm); }
+    .menu {
+      position: absolute;
+      right: 0;
+      top: var(--menu-offset);
+      z-index: 30;
+      display: none;
+      width: var(--menu-width);
+      padding: var(--space-1);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      box-shadow: var(--shadow-menu);
+    }
+    .menu.open { display: grid; }
+    .menu.up { top: auto; bottom: var(--menu-offset); }
+    .menu button { height: var(--control-compact); display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); color: var(--ink-2); background: transparent; border-radius: var(--r-sm); text-align: left; font-size: var(--type-caption); }
+    .menu button:hover { color: var(--ink); background: var(--surface-soft); }
+    .menu button.danger { color: var(--red); }
+    .menu button.danger:hover { background: var(--red-soft); }
+    .menu .icon { width: var(--icon-sm); height: var(--icon-sm); }
+
+    .pagination {
+      min-height: var(--pagination-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-4);
+      border-top: 1px solid var(--line);
+    }
+    .page-summary { color: var(--ink-3); font-size: var(--type-caption); }
+    .pages { display: flex; align-items: center; gap: var(--space-1); }
+    .page {
+      min-width: var(--control-compact);
+      height: var(--control-compact);
+      display: grid;
+      place-items: center;
+      padding: 0 var(--space-1);
+      color: var(--ink-2);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      font-size: var(--type-tiny);
+    }
+    .page:hover:not(:disabled) { color: var(--green-strong); background: var(--green-soft); border-color: #d6e7df; }
+    .page.active { color: #fff; background: var(--green); border-color: var(--green); }
+    .page:disabled { color: var(--ink-disabled); background: var(--surface-disabled); cursor: not-allowed; }
+    .page .icon { width: var(--icon-xs); height: var(--icon-xs); }
+    .page-ellipsis { color: var(--ink-3); font-size: var(--type-tiny); }
+
+    .prototype-note { display: flex; align-items: center; gap: var(--space-1); margin-top: var(--space-3); color: var(--ink-3); font-size: var(--type-tiny); }
+    .prototype-note .icon { width: var(--icon-xs); height: var(--icon-xs); }
+
+    /* Responsive baseline: 1080 minimum, 1240 compact, 1440 standard, 1920 wide. */
+    @media (min-width: 1700px) {
+      .workspace { padding-right: var(--space-7); padding-left: var(--space-7); }
+    }
+    @media (max-width: 1240px) {
+      :root {
+        --sidebar: var(--sidebar-compact);
+        --topbar-left: minmax(200px, 1fr);
+        --topbar-search: minmax(260px, 420px);
+        --topbar-right: minmax(220px, 1fr);
+        --case-grid: 32px minmax(280px, 1.7fr) 128px 96px 112px 80px;
+      }
+      .topbar { gap: var(--space-3); padding: 0 var(--space-4); }
+      .workspace { padding-right: var(--space-5); padding-left: var(--space-5); }
+      .list-header, .case-row { column-gap: var(--space-2); padding-right: var(--space-3); padding-left: var(--space-3); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: var(--motion-reduced) !important; }
+    }
+  </style>
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true">
+    <symbol id="brand" viewBox="0 0 24 24"><path d="M6 5h12v14H6zM9 9h6M9 13h4M9 17h6"/><path d="m15 3 3 2-3 2"/></symbol>
+    <symbol id="home" viewBox="0 0 24 24"><path d="m4 10 8-6 8 6v9H4zM9 19v-6h6v6"/></symbol>
+    <symbol id="project" viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v11H4z"/></symbol>
+    <symbol id="api" viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/></symbol>
+    <symbol id="ui" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></symbol>
+    <symbol id="run" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></symbol>
+    <symbol id="ai" viewBox="0 0 24 24"><path d="m12 3 1.3 4.7L18 9l-4.7 1.3L12 15l-1.3-4.7L6 9l4.7-1.3zM18.5 15l.7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7z"/></symbol>
+    <symbol id="database" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"/><path d="M4.5 5.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6M4.5 11.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"/></symbol>
+    <symbol id="env" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></symbol>
+    <symbol id="bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 8.5h18C21 16 18 16 18 9ZM10 21h4"/></symbol>
+    <symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.5 2.5 0 1 1 3.4 2.3c-.8.4-1.1.9-1.1 1.7M12 17h.01"/></symbol>
+    <symbol id="settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 15 6.2L14.7 3h-5.4L9 6.2a8 8 0 0 0-1.5.9l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.5.9l.3 3.2h5.4l.3-3.2a8 8 0 0 0 1.5-.9l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z"/></symbol>
+    <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="sync" viewBox="0 0 24 24"><path d="M20 7h-6V1M4 17h6v6"/><path d="M19 7a8 8 0 0 0-13-2M5 17a8 8 0 0 0 13 2"/></symbol>
+    <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 15v5h16v-5"/></symbol>
+    <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></symbol>
+    <symbol id="filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+    <symbol id="chevron" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"/></symbol>
+    <symbol id="more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="edit" viewBox="0 0 24 24"><path d="m14 5 5 5M4 20l1.5-5.5L16.8 3.2a1.7 1.7 0 0 1 2.4 0l1.6 1.6a1.7 1.7 0 0 1 0 2.4L9.5 18.5z"/></symbol>
+    <symbol id="copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="trash" viewBox="0 0 24 24"><path d="M4 7h16M9 3h6l1 4H8zM6 7l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
+    <symbol id="grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></symbol>
+    <symbol id="list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+    <symbol id="left" viewBox="0 0 24 24"><path d="m14 7-5 5 5 5"/></symbol>
+    <symbol id="right" viewBox="0 0 24 24"><path d="m10 7 5 5-5 5"/></symbol>
+    <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></symbol>
+  </svg>
+
+  <div class="shell">
+    <aside class="sidebar" aria-label="AI Testing Workspace 导航">
+      <div class="product">
+        <div class="product-mark"><svg class="icon"><use href="#brand"/></svg></div>
+        <div class="product-copy">
+          <div class="product-name">Reasonix QA</div>
+          <div class="product-edition">AI Testing Workspace</div>
+        </div>
+      </div>
+
+      <nav class="nav-scroll">
+        <section class="nav-group">
+          <h2 class="nav-label">Workspace</h2>
+          <ul class="nav-list">
+            <li><button class="nav-item"><svg class="icon"><use href="#home"/></svg>Overview</button></li>
+            <li><button class="nav-item"><svg class="icon"><use href="#project"/></svg>Projects<span class="nav-count">8</span></button></li>
+          </ul>
+        </section>
+        <section class="nav-group">
+          <h2 class="nav-label">Test Assets</h2>
+          <ul class="nav-list">
+            <li><button class="nav-item active"><svg class="icon"><use href="#api"/></svg>API Cases<span class="nav-count">2.8k</span></button></li>
+            <li><button class="nav-item"><svg class="icon"><use href="#ui"/></svg>UI Cases<span class="nav-count">184</span></button></li>
+            <li><button class="nav-item"><svg class="icon"><use href="#database"/></svg>Test Data</button></li>
+          </ul>
+        </section>
+        <section class="nav-group">
+          <h2 class="nav-label">Automation</h2>
+          <ul class="nav-list">
+            <li><button class="nav-item"><svg class="icon"><use href="#run"/></svg>Executions</button></li>
+            <li><button class="nav-item"><svg class="icon"><use href="#ai"/></svg>AI Copilot</button></li>
+            <li><button class="nav-item"><svg class="icon"><use href="#sync"/></svg>API Discovery</button></li>
+          </ul>
+        </section>
+        <section class="nav-group">
+          <h2 class="nav-label">Configuration</h2>
+          <ul class="nav-list">
+            <li><button class="nav-item"><svg class="icon"><use href="#env"/></svg>Environments</button></li>
+            <li><button class="nav-item"><svg class="icon"><use href="#settings"/></svg>Workspace Settings</button></li>
+          </ul>
+        </section>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <button class="account">
+          <span class="avatar">LL</span>
+          <span class="account-copy"><span class="account-name">刘礼鹏</span><span class="account-role">Workspace Admin</span></span>
+          <svg class="icon"><use href="#more"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="crumbs">
+          <strong>Commerce Core</strong><span class="crumb-sep">/</span><span>Test Assets</span><span class="crumb-sep">/</span><span>API Cases</span>
+        </div>
+        <button class="command"><svg class="icon"><use href="#search"/></svg><span>Search workspace</span><kbd>⌘ K</kbd></button>
+        <div class="top-actions">
+          <button class="ai-settings"><svg class="icon"><use href="#ai"/></svg>AI Settings</button>
+          <button class="icon-btn" aria-label="帮助"><svg class="icon"><use href="#help"/></svg></button>
+          <button class="icon-btn" aria-label="通知"><svg class="icon"><use href="#bell"/></svg><span class="notice"></span></button>
+          <div class="top-user"><span class="avatar">LL</span><span>刘礼鹏</span><svg class="icon top-user-chevron"><use href="#chevron"/></svg></div>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <div class="workspace-inner">
+          <section class="workspace-header">
+            <div>
+              <div class="eyebrow"><span class="project-symbol">CC</span>Project · Commerce Core</div>
+              <h1>API Cases</h1>
+              <p class="workspace-subtitle">Design, generate, and run reliable API tests across the Commerce Core workspace.</p>
+              <div class="workspace-meta">
+                <span class="env-badge">Test Environment</span>
+                <span class="meta-item"><span class="sync-dot"></span>All systems operational</span>
+                <span class="meta-item"><svg class="icon"><use href="#sync"/></svg>Synced 4 minutes ago</span>
+                <span class="meta-item">2,786 cases</span>
+              </div>
+            </div>
+            <div class="header-actions">
+              <button class="btn secondary"><svg class="icon"><use href="#upload"/></svg>Import OpenAPI</button>
+              <button class="btn"><svg class="icon"><use href="#plus"/></svg>New API Case</button>
+            </div>
+          </section>
+
+          <section class="insights">
+            <div class="section-heading">
+              <div><h2>Workspace health</h2><p>Live quality signals from API testing and recent executions</p></div>
+              <button class="section-link">View execution report<svg class="icon"><use href="#arrow"/></svg></button>
+            </div>
+            <div class="insight-grid">
+              <article class="insight">
+                <div class="insight-top"><span>API coverage</span><span class="trend">+12%</span></div>
+                <div class="insight-value">2,786</div>
+                <div class="insight-note">302 cases added since yesterday</div>
+                <svg class="spark" viewBox="0 0 74 30"><path d="M1 25 12 22 22 23 32 16 43 18 54 9 65 11 73 4"/></svg>
+              </article>
+              <article class="insight">
+                <div class="insight-top"><span>Pass rate · 7 days</span><span class="trend">+2.4%</span></div>
+                <div class="insight-value">96.8<span>%</span></div>
+                <div class="insight-note">1,204 successful executions</div>
+                <svg class="spark" viewBox="0 0 74 30"><path d="M1 20 12 18 22 21 32 13 43 14 54 8 65 10 73 5"/></svg>
+              </article>
+              <article class="insight">
+                <div class="insight-top"><span>Runs today</span><span class="trend">38 auto</span></div>
+                <div class="insight-value">46</div>
+                <div class="insight-note">Median duration 1m 24s</div>
+                <svg class="spark" viewBox="0 0 74 30"><path d="M1 26 12 25 22 19 32 21 43 13 54 16 65 7 73 9"/></svg>
+              </article>
+              <article class="insight">
+                <div class="insight-top"><span>Needs attention</span><span class="trend down">4 failed</span></div>
+                <div class="insight-value">14</div>
+                <div class="insight-note">2 failures assigned to your team</div>
+                <svg class="spark failed" viewBox="0 0 74 30"><path d="M1 7 12 9 22 6 32 14 43 12 54 20 65 18 73 24"/></svg>
+              </article>
+            </div>
+          </section>
+
+          <section class="quick-section">
+            <div class="section-heading"><div><h2>Start a testing task</h2><p>Continue with the most common actions in this workspace</p></div></div>
+            <div class="quick-grid">
+              <button class="quick-action">
+                <span class="quick-icon"><svg class="icon"><use href="#run"/></svg></span>
+                <span class="quick-copy"><strong>Run smoke suite</strong><span>Execute 24 critical API cases in Test Environment</span></span>
+                <svg class="icon"><use href="#arrow"/></svg>
+              </button>
+              <button class="quick-action">
+                <span class="quick-icon"><svg class="icon"><use href="#ai"/></svg></span>
+                <span class="quick-copy"><strong>Generate cases with AI</strong><span>Build test scenarios from an API contract or requirement</span></span>
+                <svg class="icon"><use href="#arrow"/></svg>
+              </button>
+              <button class="quick-action">
+                <span class="quick-icon"><svg class="icon"><use href="#sync"/></svg></span>
+                <span class="quick-copy"><strong>Review discovered APIs</strong><span>12 endpoints were found during the latest traffic scan</span></span>
+                <svg class="icon"><use href="#arrow"/></svg>
+              </button>
+            </div>
+          </section>
+
+          <section class="library">
+            <div class="library-head">
+              <div class="library-title-row">
+                <div class="library-title"><h2>API case library</h2><p>2,786 test cases across 42 services</p></div>
+                <div class="view-switch"><button class="active" aria-label="列表视图"><svg class="icon"><use href="#list"/></svg></button><button aria-label="网格视图"><svg class="icon"><use href="#grid"/></svg></button></div>
+              </div>
+              <div class="filter-row">
+                <div class="list-search"><svg class="icon"><use href="#search"/></svg><input class="input" placeholder="Search by case, endpoint, or tag" /></div>
+                <button class="filter-chip active">All cases <span>2,786</span></button>
+                <button class="filter-chip">Needs attention <span>14</span></button>
+                <button class="filter-chip">Draft <span>22</span></button>
+                <button class="filter-chip"><svg class="icon"><use href="#filter"/></svg>More filters</button>
+                <span class="filter-spacer"></span>
+                <button class="btn ghost compact">Bulk actions</button>
+              </div>
+            </div>
+
+            <div class="case-list">
+              <div class="list-header"><span><input class="check" id="selectAll" type="checkbox" aria-label="全选" /></span><span>Case</span><span>Service / Env</span><span>Health</span><span>Updated</span><span></span></div>
+
+              <article class="case-row">
+                <input class="check row-check" type="checkbox" />
+                <div class="case-primary"><div class="case-title-line"><span class="method post">POST</span><span class="case-title">Administrator sign-in succeeds</span></div><div class="case-subtitle"><span class="case-path">/api/auth/login</span><span class="case-id">API-1048</span></div></div>
+                <div><div class="context-main">Identity Service</div><div class="context-sub">Test Environment</div></div>
+                <span class="health"><span class="health-dot"></span>Passing</span>
+                <span class="updated">4 min ago</span>
+                <div class="row-actions"><button class="run-button">Run</button><div class="more-wrap"><button class="more-button" aria-expanded="false"><svg class="icon"><use href="#more"/></svg></button><div class="menu"><button><svg class="icon"><use href="#edit"/></svg>Edit case</button><button><svg class="icon"><use href="#copy"/></svg>Duplicate</button><button class="danger"><svg class="icon"><use href="#trash"/></svg>Delete</button></div></div></div>
+              </article>
+
+              <article class="case-row">
+                <input class="check row-check" type="checkbox" />
+                <div class="case-primary"><div class="case-title-line"><span class="method get">GET</span><span class="case-title">Search catalog by keyword and availability</span></div><div class="case-subtitle"><span class="case-path">/api/products?keyword={keyword}</span><span class="case-id">API-1042</span></div></div>
+                <div><div class="context-main">Catalog Service</div><div class="context-sub">Test Environment</div></div>
+                <span class="health"><span class="health-dot"></span>Passing</span>
+                <span class="updated">18 min ago</span>
+                <div class="row-actions"><button class="run-button">Run</button><div class="more-wrap"><button class="more-button" aria-expanded="false"><svg class="icon"><use href="#more"/></svg></button><div class="menu"><button><svg class="icon"><use href="#edit"/></svg>Edit case</button><button><svg class="icon"><use href="#copy"/></svg>Duplicate</button><button class="danger"><svg class="icon"><use href="#trash"/></svg>Delete</button></div></div></div>
+              </article>
+
+              <article class="case-row">
+                <input class="check row-check" type="checkbox" />
+                <div class="case-primary"><div class="case-title-line"><span class="method post">POST</span><span class="case-title">Add available item to shopping cart</span></div><div class="case-subtitle"><span class="case-path">/api/cart/items</span><span class="case-id">API-1039</span></div></div>
+                <div><div class="context-main">Cart Service</div><div class="context-sub">Pre-production</div></div>
+                <span class="health failed"><span class="health-dot"></span>Failed</span>
+                <span class="updated">1 hr ago</span>
+                <div class="row-actions"><button class="run-button">Run</button><div class="more-wrap"><button class="more-button" aria-expanded="false"><svg class="icon"><use href="#more"/></svg></button><div class="menu"><button><svg class="icon"><use href="#edit"/></svg>Edit case</button><button><svg class="icon"><use href="#copy"/></svg>Duplicate</button><button class="danger"><svg class="icon"><use href="#trash"/></svg>Delete</button></div></div></div>
+              </article>
+
+              <article class="case-row">
+                <input class="check row-check" type="checkbox" />
+                <div class="case-primary"><div class="case-title-line"><span class="method post">POST</span><span class="case-title">Create order with standard fulfillment</span></div><div class="case-subtitle"><span class="case-path">/api/orders</span><span class="case-id">API-1034</span></div></div>
+                <div><div class="context-main">Order Service</div><div class="context-sub">Test Environment</div></div>
+                <span class="health"><span class="health-dot"></span>Passing</span>
+                <span class="updated">Yesterday</span>
+                <div class="row-actions"><button class="run-button">Run</button><div class="more-wrap"><button class="more-button" aria-expanded="false"><svg class="icon"><use href="#more"/></svg></button><div class="menu"><button><svg class="icon"><use href="#edit"/></svg>Edit case</button><button><svg class="icon"><use href="#copy"/></svg>Duplicate</button><button class="danger"><svg class="icon"><use href="#trash"/></svg>Delete</button></div></div></div>
+              </article>
+
+              <article class="case-row">
+                <input class="check row-check" type="checkbox" />
+                <div class="case-primary"><div class="case-title-line"><span class="method post">POST</span><span class="case-title">Pay order using account balance</span></div><div class="case-subtitle"><span class="case-path">/api/payments/balance</span><span class="case-id">API-1029</span></div></div>
+                <div><div class="context-main">Payment Service</div><div class="context-sub">Test Environment</div></div>
+                <span class="health"><span class="health-dot"></span>Passing</span>
+                <span class="updated">Yesterday</span>
+                <div class="row-actions"><button class="run-button">Run</button><div class="more-wrap"><button class="more-button" aria-expanded="false"><svg class="icon"><use href="#more"/></svg></button><div class="menu"><button><svg class="icon"><use href="#edit"/></svg>Edit case</button><button><svg class="icon"><use href="#copy"/></svg>Duplicate</button><button class="danger"><svg class="icon"><use href="#trash"/></svg>Delete</button></div></div></div>
+              </article>
+
+              <article class="case-row">
+                <input class="check row-check" type="checkbox" />
+                <div class="case-primary"><div class="case-title-line"><span class="method put">PUT</span><span class="case-title">Update member profile and preferences</span></div><div class="case-subtitle"><span class="case-path">/api/members/{memberId}/profile</span><span class="case-id">API-1025</span></div></div>
+                <div><div class="context-main">Member Service</div><div class="context-sub">Pre-production</div></div>
+                <span class="health"><span class="health-dot"></span>Passing</span>
+                <span class="updated">Jul 27</span>
+                <div class="row-actions"><button class="run-button">Run</button><div class="more-wrap"><button class="more-button" aria-expanded="false"><svg class="icon"><use href="#more"/></svg></button><div class="menu"><button><svg class="icon"><use href="#edit"/></svg>Edit case</button><button><svg class="icon"><use href="#copy"/></svg>Duplicate</button><button class="danger"><svg class="icon"><use href="#trash"/></svg>Delete</button></div></div></div>
+              </article>
+
+              <article class="case-row">
+                <input class="check row-check" type="checkbox" />
+                <div class="case-primary"><div class="case-title-line"><span class="method delete">DELETE</span><span class="case-title">Remove member delivery address</span></div><div class="case-subtitle"><span class="case-path">/api/members/{memberId}/addresses/{id}</span><span class="case-id">API-1012</span></div></div>
+                <div><div class="context-main">Member Service</div><div class="context-sub">Development</div></div>
+                <span class="health draft"><span class="health-dot"></span>Draft</span>
+                <span class="updated">Jul 25</span>
+                <div class="row-actions"><button class="run-button">Run</button><div class="more-wrap"><button class="more-button" aria-expanded="false"><svg class="icon"><use href="#more"/></svg></button><div class="menu"><button><svg class="icon"><use href="#edit"/></svg>Edit case</button><button><svg class="icon"><use href="#copy"/></svg>Duplicate</button><button class="danger"><svg class="icon"><use href="#trash"/></svg>Delete</button></div></div></div>
+              </article>
+
+              <article class="case-row">
+                <input class="check row-check" type="checkbox" />
+                <div class="case-primary"><div class="case-title-line"><span class="method get">GET</span><span class="case-title">Retrieve order details and shipment timeline</span></div><div class="case-subtitle"><span class="case-path">/api/orders/{orderNo}/detail</span><span class="case-id">API-1007</span></div></div>
+                <div><div class="context-main">Order Service</div><div class="context-sub">Test Environment</div></div>
+                <span class="health"><span class="health-dot"></span>Passing</span>
+                <span class="updated">Jul 25</span>
+                <div class="row-actions"><button class="run-button">Run</button><div class="more-wrap"><button class="more-button" aria-expanded="false"><svg class="icon"><use href="#more"/></svg></button><div class="menu"><button><svg class="icon"><use href="#edit"/></svg>Edit case</button><button><svg class="icon"><use href="#copy"/></svg>Duplicate</button><button class="danger"><svg class="icon"><use href="#trash"/></svg>Delete</button></div></div></div>
+              </article>
+            </div>
+
+            <footer class="pagination">
+              <span class="page-summary">Showing 1–8 of 2,786 API cases</span>
+              <div class="pages"><button class="page" disabled aria-label="上一页"><svg class="icon"><use href="#left"/></svg></button><button class="page active" aria-current="page">1</button><button class="page">2</button><button class="page">3</button><span class="page-ellipsis">…</span><button class="page">349</button><button class="page" aria-label="下一页"><svg class="icon"><use href="#right"/></svg></button></div>
+            </footer>
+          </section>
+
+          <div class="prototype-note"><svg class="icon"><use href="#info"/></svg>Standalone AI Testing Workspace prototype · Demo data only · No production connection</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      document.querySelectorAll("button").forEach((button) => { button.type = "button"; });
+      document.querySelectorAll("svg").forEach((icon) => icon.setAttribute("aria-hidden", "true"));
+      document.querySelector(".account").setAttribute("aria-label", "打开用户账户");
+      document.querySelector(".command").setAttribute("aria-label", "搜索 Workspace");
+      document.querySelector(".notice").setAttribute("aria-hidden", "true");
+
+      const enableArrowNavigation = (items, keys) => items.forEach((item, index) => {
+        item.addEventListener("keydown", (event) => {
+          if (!keys.includes(event.key)) return;
+          event.preventDefault();
+          const direction = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
+          items[(index + direction + items.length) % items.length].focus();
+        });
+      });
+
+      const nav = [...document.querySelectorAll(".nav-item")];
+      nav.forEach((item) => {
+        if (item.classList.contains("active")) item.setAttribute("aria-current", "page");
+        else item.removeAttribute("aria-current");
+      });
+      nav.forEach((item) => item.addEventListener("click", () => {
+        nav.forEach((node) => {
+          node.classList.remove("active");
+          node.removeAttribute("aria-current");
+        });
+        item.classList.add("active");
+        item.setAttribute("aria-current", "page");
+      }));
+      enableArrowNavigation(nav, ["ArrowUp", "ArrowDown"]);
+
+      const menuViewportGap = Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--space-2")
+      );
+      const closeMenus = (except, restoreFocus = false) => document.querySelectorAll(".menu.open").forEach((menu) => {
+        if (menu === except) return;
+        menu.classList.remove("open", "up");
+        const trigger = menu.previousElementSibling;
+        trigger.setAttribute("aria-expanded", "false");
+        if (restoreFocus) trigger.focus();
+      });
+
+      const openMenu = (button, focusPosition = null) => {
+        const menu = button.nextElementSibling;
+        closeMenus(menu);
+        menu.classList.add("open");
+        menu.classList.remove("up");
+        button.setAttribute("aria-expanded", "true");
+        requestAnimationFrame(() => {
+          if (menu.getBoundingClientRect().bottom > innerHeight - menuViewportGap) menu.classList.add("up");
+          if (focusPosition !== null) {
+            const items = [...menu.querySelectorAll('[role="menuitem"]')];
+            items[focusPosition === "last" ? items.length - 1 : 0]?.focus();
+          }
+        });
+      };
+
+      document.querySelectorAll(".more-button").forEach((button, index) => {
+        const menu = button.nextElementSibling;
+        const title = button.closest(".case-row").querySelector(".case-title").textContent.trim();
+        const menuId = `case-menu-${index + 1}`;
+        button.setAttribute("aria-label", `打开 ${title} 操作菜单`);
+        button.setAttribute("aria-haspopup", "menu");
+        button.setAttribute("aria-controls", menuId);
+        menu.id = menuId;
+        menu.setAttribute("role", "menu");
+
+        const items = [...menu.querySelectorAll("button")];
+        items.forEach((item) => {
+          item.setAttribute("role", "menuitem");
+          item.tabIndex = -1;
+        });
+
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (menu.classList.contains("open")) closeMenus(null);
+          else openMenu(button);
+        });
+        button.addEventListener("keydown", (event) => {
+          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+          event.preventDefault();
+          openMenu(button, event.key === "ArrowUp" ? "last" : "first");
+        });
+        menu.addEventListener("keydown", (event) => {
+          const current = items.indexOf(document.activeElement);
+          if (event.key === "Escape") {
+            event.preventDefault();
+            closeMenus(null, true);
+            return;
+          }
+          if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const next = event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? items.length - 1
+              : (current + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+          items[next].focus();
+        });
+      });
+      document.addEventListener("click", () => closeMenus());
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeMenus(null, true);
+      });
+      document.querySelectorAll(".menu").forEach((menu) => menu.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (event.target.closest('[role="menuitem"]')) closeMenus();
+      }));
+
+      const rows = [...document.querySelectorAll(".row-check")];
+      const all = document.querySelector("#selectAll");
+      rows.forEach((row) => {
+        const title = row.closest(".case-row").querySelector(".case-title").textContent.trim();
+        row.setAttribute("aria-label", `选择 ${title}`);
+        row.closest(".case-row").querySelector(".run-button").setAttribute("aria-label", `运行 ${title}`);
+      });
+      const syncSelection = () => {
+        const checked = rows.filter((row) => row.checked).length;
+        all.checked = checked === rows.length;
+        all.indeterminate = checked > 0 && checked < rows.length;
+      };
+      all.addEventListener("change", () => {
+        rows.forEach((row) => { row.checked = all.checked; });
+        syncSelection();
+      });
+      rows.forEach((row) => row.addEventListener("change", syncSelection));
+
+      const chips = [...document.querySelectorAll(".filter-chip")];
+      chips.forEach((chip) => chip.setAttribute("aria-pressed", String(chip.classList.contains("active"))));
+      chips.forEach((chip) => chip.addEventListener("click", () => {
+        chips.forEach((node) => {
+          node.classList.remove("active");
+          node.setAttribute("aria-pressed", "false");
+        });
+        chip.classList.add("active");
+        chip.setAttribute("aria-pressed", "true");
+      }));
+      enableArrowNavigation(chips, ["ArrowLeft", "ArrowRight"]);
+
+      const views = [...document.querySelectorAll(".view-switch button")];
+      views.forEach((button) => button.setAttribute("aria-pressed", String(button.classList.contains("active"))));
+      views.forEach((button) => button.addEventListener("click", () => {
+        views.forEach((node) => {
+          node.classList.remove("active");
+          node.setAttribute("aria-pressed", "false");
+        });
+        button.classList.add("active");
+        button.setAttribute("aria-pressed", "true");
+      }));
+      enableArrowNavigation(views, ["ArrowLeft", "ArrowRight"]);
+
+      const pages = [...document.querySelectorAll(".page:not(:disabled)")];
+      pages.forEach((button) => button.addEventListener("click", () => {
+        if (!button.textContent.trim() || !/^\d+$/.test(button.textContent.trim())) return;
+        document.querySelectorAll(".page.active").forEach((node) => {
+          node.classList.remove("active");
+          node.removeAttribute("aria-current");
+        });
+        button.classList.add("active");
+        button.setAttribute("aria-current", "page");
+      }));
+      enableArrowNavigation(pages, ["ArrowLeft", "ArrowRight"]);
+    })();
+  </script>
+</body>
+</html>
