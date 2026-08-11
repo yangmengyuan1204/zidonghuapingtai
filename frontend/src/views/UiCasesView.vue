@@ -1,5 +1,12 @@
 <template>
   <!-- 对齐旧应用 renderUiCases()：工具栏 + 表格（无分页/无搜索/无环境筛选） -->
+  <div class="v2-ui-cases">
+  <WorkbenchPageHeader
+    eyebrow="BROWSER AUTOMATION"
+    title="UI 自动化"
+    description="管理浏览器用例、录制真实操作，并在可视化执行中追踪步骤、截图和事件。"
+  />
+  <WorkbenchPanel title="UI 用例" subtitle="业务会话、轮询与卸载清理逻辑保持在页面编排层">
   <div class="toolbar">
     <div class="filters">
       <div class="field compact">
@@ -32,9 +39,10 @@
       </div>
     </template>
   </AppTable>
+  </WorkbenchPanel>
 
   <!-- 新增/编辑表单弹窗（对齐旧应用 uiCaseForm → openForm） -->
-  <AppFormDialog
+  <UiCaseForm
     :visible="formVisible"
     :title="formTitle"
     :fields="formFields"
@@ -62,40 +70,12 @@
         <button class="btn secondary" type="button" @click="cancelRecordSession">取消</button>
       </div>
       <div class="modal-body">
-        <section class="diagnosis-summary">
-          <strong><span class="badge warn">执行中</span> 请在弹出的浏览器中完成操作</strong>
-          <div>
-            <span>事件数：<b>{{ recordSession.count || 0 }}</b></span>
-            <span>当前URL：<b>{{ recordSession.current_url || recordSession.start_url || '-' }}</b></span>
-          </div>
-        </section>
-        <div class="panel-title"><h3>步骤预览</h3></div>
-        <div v-if="!recordPreviewRows.length" class="empty">等待操作事件...</div>
-        <div v-else class="panel table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th><th>步骤</th><th>动作</th><th>定位器</th><th>值</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(step, idx) in recordPreviewRows" :key="idx">
-                <td>{{ idx + 1 }}</td>
-                <td>{{ step.name || step.action || '-' }}</td>
-                <td><span class="badge">{{ step.action || '-' }}</span></td>
-                <td>{{ recordShort(step.locator) }}</td>
-                <td>{{ recordShort(step.value) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="modal-foot">
-        <span>第一版支持当前标签页内的点击、输入、选择、勾选和最终URL断言</span>
-        <div class="actions">
-          <button class="btn secondary" type="button" @click="cancelRecordSession">取消录制</button>
-          <button class="btn" type="button" @click="openRecordSaveDialog">停止并保存</button>
-        </div>
+        <UiRecordingPanel
+          :session="recordSession"
+          :rows="recordPreviewRows"
+          @cancel="cancelRecordSession"
+          @save="openRecordSaveDialog"
+        />
       </div>
     </div>
   </dialog>
@@ -233,88 +213,15 @@
         <button class="btn secondary" type="button" @click="closeVisualDialog">关闭</button>
       </div>
       <div class="modal-body">
-        <div class="progress-meta">
-          <strong>{{ visualStatusText(visualRun.status) }}</strong>
-          <span>{{ visualPercent }}%</span>
-        </div>
-        <div class="progress-track">
-          <div
-            class="progress-fill"
-            :class="{ failed: visualRun.status === 'failed' }"
-            :style="{ width: visualPercent + '%' }"
-          ></div>
-        </div>
-
-        <!-- 最终结果汇总（passed/failed 时显示） -->
-        <template v-if="visualRun.status === 'passed' || visualRun.status === 'failed'">
-          <div class="functional-execution-summary">
-            <div><span>执行结果</span><strong>{{ visualStatusText(visualRun.status) }}</strong></div>
-            <div><span>记录ID</span><strong>{{ visualRun.record_id || '-' }}</strong></div>
-            <div><span>当前步骤</span><strong>{{ visualRun.current_step_index || 0 }} / {{ visualRun.steps?.length || 0 }}</strong></div>
-            <div><span>可见浏览器</span><strong>{{ visualRun.headed ? '已开启' : '未开启' }}</strong></div>
-          </div>
-          <div v-if="visualRun.error" class="alert error">{{ visualRun.error }}</div>
-          <details class="functional-requirement" open>
-            <summary>最终数据</summary>
-            <pre class="mini-log">{{ visualExtractedText }}</pre>
-          </details>
-        </template>
-
-        <div class="functional-two-col">
-          <div>
-            <div class="panel-title"><h3>步骤执行</h3></div>
-            <div class="table-wrap panel">
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>步骤</th>
-                    <th>动作</th>
-                    <th>定位器</th>
-                    <th>状态</th>
-                    <th>耗时</th>
-                    <th>结果</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="step in visualSteps" :key="step.index">
-                    <td>{{ step.index }}</td>
-                    <td>{{ step.name || step.action || '-' }}</td>
-                    <td>
-                      <span class="badge" :class="badgeClass(step.action)">{{ badgeText(step.action) }}</span>
-                    </td>
-                    <td>{{ visualShort(step.used_locator || step.locator || '-') }}</td>
-                    <td>
-                      <span class="badge" :class="visualStepClass(step.status)">{{ visualStatusText(step.status) }}</span>
-                    </td>
-                    <td>{{ step.duration_ms ? step.duration_ms + ' ms' : '-' }}</td>
-                    <td>{{ visualStepResult(step) }}</td>
-                  </tr>
-                  <tr v-if="!visualSteps.length">
-                    <td colspan="7"><div class="empty">暂无步骤</div></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div>
-            <details class="functional-requirement" open>
-              <summary>最新截图</summary>
-              <img
-                v-if="visualRun.latest_screenshot_url"
-                :src="visualRun.latest_screenshot_url"
-                alt="执行截图"
-                style="width:100%;max-height:420px;object-fit:contain;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff"
-              />
-              <div v-else class="empty">等待截图生成...</div>
-            </details>
-          </div>
-        </div>
-
-        <details class="summary-detail">
-          <summary>查看执行事件</summary>
-          <pre class="log-view">{{ JSON.stringify(visualRun.events || [], null, 2) }}</pre>
-        </details>
+        <UiExecutionPanel
+          :run="visualRun"
+          :steps="visualSteps"
+          :percent="visualPercent"
+          :extracted-text="visualExtractedText"
+          :status-text="visualStatusText"
+          :step-result="visualStepResult"
+          :short-value="visualShort"
+        />
       </div>
       <div class="modal-foot">
         <span>{{ visualRun.updated_at ? '更新时间：' + visualRun.updated_at : '' }}</span>
@@ -325,6 +232,7 @@
       </div>
     </div>
   </dialog>
+  </div>
 </template>
 
 <script setup>
@@ -349,6 +257,10 @@ import { useAppStore } from '../stores/app.js'
 import { useToastStore } from '../stores/toast.js'
 import AppTable from '../components/AppTable.vue'
 import AppFormDialog from '../components/AppFormDialog.vue'
+import UiCaseForm from '../components/ui-cases/UiCaseForm.vue'
+import UiExecutionPanel from '../components/ui-cases/UiExecutionPanel.vue'
+import UiRecordingPanel from '../components/ui-cases/UiRecordingPanel.vue'
+import { WorkbenchPageHeader, WorkbenchPanel } from '../components/v2/workbench/index.js'
 import { badgeText, badgeClass } from '../utils/badge.js'
 import { accountLabel } from '../utils/account.js'
 import * as uiCasesApi from '../api/modules/uiCases.js'
@@ -929,9 +841,312 @@ async function submitRecordSave() {
 </script>
 
 <style scoped>
-/* 使用旧应用 .toolbar / .filters / .field / .actions / .badge / .modal / .progress-* 等样式（来自 legacy.css） */
+.v2-ui-cases {
+  display: grid;
+  gap: var(--v2-space-3);
+  max-width: var(--v2-layout-workspace-max);
+  margin: 0 auto;
+}
+
+.toolbar,
+.filters,
+.actions,
+.modal-head,
+.modal-foot,
+.progress-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--v2-space-2);
+}
+
+.toolbar,
+.modal-head,
+.modal-foot,
+.progress-meta {
+  justify-content: space-between;
+}
+
+.toolbar {
+  padding: var(--v2-space-3);
+  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+}
+
+.field,
+.form-grid,
+.functional-requirement,
+.summary-detail {
+  display: grid;
+  gap: var(--v2-space-1);
+}
+
+.form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--v2-space-3);
+}
+
+.field label,
+.modal-foot,
+.progress-meta span {
+  color: var(--v2-text-muted);
+  font-size: var(--v2-font-size-caption);
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+input,
+select,
+.btn {
+  min-height: var(--v2-control-height-compact);
+  border: var(--v2-border-width) solid var(--v2-border-default);
+  border-radius: var(--v2-radius-sm);
+  background: var(--v2-surface-default);
+  color: var(--v2-text-secondary);
+  font: inherit;
+  font-size: var(--v2-font-size-caption);
+}
+
+input,
+select {
+  width: 100%;
+  padding: 0 var(--v2-space-2);
+}
+
+.btn {
+  padding: 0 var(--v2-space-2);
+  cursor: pointer;
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+.btn:not(.secondary):not(.danger) {
+  border-color: var(--v2-action-primary);
+  background: var(--v2-action-primary);
+  color: var(--v2-text-inverse);
+}
+
+.btn.danger {
+  border-color: var(--v2-feedback-danger);
+  background: var(--v2-feedback-danger-soft);
+  color: var(--v2-feedback-danger);
+}
+
+.btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 0;
+  box-shadow: var(--v2-state-focus-ring);
+}
+
+.badge {
+  display: inline-flex;
+  min-height: var(--v2-icon-size-md);
+  align-items: center;
+  padding: 0 var(--v2-space-1);
+  border-radius: var(--v2-radius-round);
+  background: var(--v2-surface-soft);
+  color: var(--v2-text-secondary);
+  font-size: var(--v2-font-size-tiny);
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+.badge.ok {
+  background: var(--v2-feedback-success-soft);
+  color: var(--v2-feedback-success);
+}
+
+.badge.warn {
+  background: var(--v2-feedback-warning-soft);
+  color: var(--v2-feedback-warning);
+}
+
+.badge.fail,
+.badge.error {
+  background: var(--v2-feedback-danger-soft);
+  color: var(--v2-feedback-danger);
+}
+
+.modal {
+  width: min(calc(var(--v2-space-7) * 11), 94vw);
+  max-width: 94vw;
+  max-height: 90vh;
+  overflow: hidden;
+  padding: 0;
+  border: var(--v2-border-width) solid var(--v2-border-panel);
+  border-radius: var(--v2-radius-panel);
+  background: var(--v2-surface-default);
+  color: var(--v2-text-primary);
+  box-shadow: var(--v2-shadow-overlay);
+}
+
+.modal::backdrop {
+  background: var(--v2-surface-overlay);
+}
+
+.modal-head,
+.modal-foot {
+  padding: var(--v2-space-3);
+}
+
+.modal-head {
+  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+}
+
+.modal-head h3,
+.panel-title h3 {
+  margin: 0;
+  color: var(--v2-text-primary);
+  font-size: var(--v2-font-size-body);
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+.modal-body {
+  max-height: calc(90vh - var(--v2-space-7) * 2);
+  overflow: auto;
+  padding: var(--v2-space-3);
+}
+
+.modal-foot {
+  border-top: var(--v2-border-width) solid var(--v2-border-panel);
+}
+
+.diagnosis-summary,
+.functional-requirement,
+.summary-detail,
+.alert,
+.panel {
+  margin-top: var(--v2-space-3);
+  padding: var(--v2-space-3);
+  border: var(--v2-border-width) solid var(--v2-border-panel);
+  border-radius: var(--v2-radius-panel);
+  background: var(--v2-surface-workspace);
+}
+
+.diagnosis-summary div,
+.functional-execution-summary,
+.functional-two-col {
+  display: grid;
+  gap: var(--v2-space-2);
+}
+
+.diagnosis-summary div {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: var(--v2-space-2);
+}
+
+.functional-execution-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.functional-execution-summary div {
+  display: grid;
+  gap: var(--v2-space-micro);
+  padding: var(--v2-space-2);
+  border: var(--v2-border-width) solid var(--v2-border-panel);
+  border-radius: var(--v2-radius-sm);
+  background: var(--v2-surface-default);
+}
+
+.functional-execution-summary span {
+  color: var(--v2-text-muted);
+  font-size: var(--v2-font-size-tiny);
+}
+
+.functional-two-col {
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, .75fr);
+  margin-top: var(--v2-space-3);
+}
+
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-spacing: 0;
+  border-collapse: separate;
+  color: var(--v2-text-secondary);
+  font-size: var(--v2-font-size-caption);
+  text-align: left;
+}
+
+th,
+td {
+  padding: var(--v2-space-2);
+  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+}
+
+th {
+  color: var(--v2-text-muted);
+  font-size: var(--v2-font-size-tiny);
+  letter-spacing: var(--v2-letter-spacing-wide);
+}
+
+.progress-track {
+  overflow: hidden;
+  height: var(--v2-space-1);
+  margin-top: var(--v2-space-1);
+  border-radius: var(--v2-radius-round);
+  background: var(--v2-surface-pressed);
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--v2-action-primary);
+  transition: width var(--v2-motion-duration-dialog) var(--v2-motion-easing-standard);
+}
+
+.progress-fill.failed {
+  background: var(--v2-feedback-danger);
+}
+
+.mini-log,
+.log-view {
+  max-height: calc(var(--v2-space-7) * 5);
+  overflow: auto;
+  padding: var(--v2-space-3);
+  border: var(--v2-border-width) solid var(--v2-border-panel);
+  border-radius: var(--v2-radius-sm);
+  background: var(--v2-surface-workspace);
+  color: var(--v2-text-secondary);
+  font-family: var(--v2-font-family-mono);
+  font-size: var(--v2-font-size-tiny);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  padding: var(--v2-space-5);
+  color: var(--v2-text-muted);
+  text-align: center;
+}
+
+.v2-ui-cases__screenshot {
+  width: 100%;
+  max-height: calc(var(--v2-space-7) * 6.5);
+  object-fit: contain;
+  border: var(--v2-border-width) solid var(--v2-border-panel);
+  border-radius: var(--v2-radius-sm);
+  background: var(--v2-surface-default);
+}
+
 .visual-modal {
   max-width: 1100px;
   width: 96vw;
+}
+
+@media (max-width: 900px) {
+  .form-grid,
+  .functional-two-col,
+  .functional-execution-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill {
+    transition-duration: var(--v2-motion-reduced);
+  }
 }
 </style>

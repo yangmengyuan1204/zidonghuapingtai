@@ -1,0 +1,260 @@
+{
+  "branch": "codex/frontend-v3-workbench-redesign",
+  "head": "a4c5764a759720707b34d65caddce7661d54e13d",
+  "head_short": "a4c5764",
+  "generated_at": "2026-08-10T18:10:00+08:00",
+  "completed_phases": [
+    "phase-1-design-system",
+    "login-prototype-production-redesign",
+    "frontend-v2-prototype",
+    "phase-5-migration-audit",
+    "phase-5-1-foundation",
+    "phase-5-1-1-login-redirect-hotfix",
+    "phase-5-2a-primitive-components",
+    "phase-5-2b1-supporting-components",
+    "frontend-v3-redesign-task1-baseline-audit",
+    "frontend-v3-redesign-task2-visual-contract",
+    "frontend-v3-redesign-task3-token-and-base-component-alignment",
+    "frontend-v3-redesign-task4-workbench-components",
+    "frontend-v3-redesign-task5-app-shell-navigation",
+    "frontend-v3-redesign-task6-dashboard",
+    "frontend-v3-redesign-task7-core-pages",
+    "frontend-v3-redesign-task8-ui-cases",
+    "frontend-v3-redesign-task9-data-scripts",
+    "frontend-v3-redesign-task10-requirement-verification",
+    "frontend-v3-redesign-task11-api-harvester",
+    "frontend-v3-redesign-task12-system-regression",
+    "frontend-v3-redesign-task13-route-migration",
+    "frontend-v3-redesign-task14-final-verification"
+  ],
+  "current_phase": "frontend-v3-redesign-complete",
+  "next_phase": null,
+  "production_components": [
+    "BaseBadge",
+    "BaseButton",
+    "BaseCard",
+    "BaseCheckbox",
+    "BaseDropdown",
+    "BaseDropdownItem",
+    "BaseEmptyState",
+    "BasePagination",
+    "BaseSelect",
+    "BaseSkeleton",
+    "BaseTable",
+    "BaseTextarea",
+    "BaseModal",
+    "BaseErrorState"
+  ],
+  "dev_only_files": [
+    "frontend/dev/v2-base-components.html",
+    "frontend/src/dev/v2-base-components-main.js",
+    "frontend/src/dev/V2BaseComponentsLab.vue"
+  ],
+  "base_components": [
+    "BaseButton",
+    "BaseIconButton",
+    "BaseInput",
+    "BaseCheckbox",
+    "BaseBadge",
+    "BaseChip",
+    "BaseCard",
+    "BasePagination",
+    "BaseTooltip",
+    "BaseSkeleton",
+    "BaseEmptyState",
+    "BaseErrorState",
+    "BaseDropdown",
+    "BaseDropdownItem",
+    "BaseModal",
+    "BaseSelect",
+    "BaseTable",
+    "BaseTextarea"
+  ],
+  "export_entry": "frontend/src/components/v2/base/index.js",
+  "validation_scripts": [
+    "frontend/scripts/validate-v2-foundation.mjs",
+    "frontend/scripts/validate-login-redirect.mjs",
+    "frontend/scripts/validate-v2-base-components.mjs",
+    "frontend/scripts/validate-v2-support-components.mjs",
+    "frontend/scripts/validate-v2-dropdown.mjs",
+    "frontend/scripts/validate-v2-modal-foundation.mjs",
+    "frontend/scripts/validate-v2-resource-foundation.mjs",
+    "frontend/scripts/validate-v2-legacy-embed.mjs",
+    "frontend/scripts/validate-v2-api-cases-direct-mapping.mjs",
+    "frontend/scripts/validate-v2-api-cases-foundation-integration.mjs",
+    "frontend/scripts/validate-v2-favicon-static-asset.mjs",
+    "frontend/scripts/validate-v3-visual-contract.mjs",
+    "frontend/scripts/validate-v3-workbench-components.mjs",
+    "frontend/scripts/validate-v3-shell-contract.mjs",
+    "frontend/scripts/validate-v3-dashboard-contract.mjs",
+    "frontend/scripts/validate-v3-core-pages-parity.mjs",
+    "frontend/scripts/validate-v3-ui-cases-parity.mjs",
+    "frontend/scripts/validate-v3-data-scripts-parity.mjs",
+    "frontend/scripts/validate-v3-requirement-verification-parity.mjs",
+    "frontend/scripts/validate-v3-system-regression-parity.mjs",
+    "frontend/scripts/validate-v3-route-migration.mjs"
+  ],
+  "package_scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": null,
+    "test": null
+  },
+  "protected_paths": [
+    "frontend/src/router",
+    "frontend/src/services/navigation.js",
+    "frontend/src/stores",
+    "frontend/src/api",
+    "frontend/src/views",
+    "frontend/vite.config.js",
+    "frontend/package.json",
+    "static/migration-config.json",
+    "static/app.js",
+    "static/styles.css",
+    "docs/prototypes/frontend-v2-shell-prototype.html",
+    "app"
+  ],
+  "modified_files": [
+    {
+      "path": "AGENTS.md",
+      "ownership": "frontend-v2-handoff-append-only"
+    },
+    {
+      "path": "frontend/scripts/validate-v2-support-components.mjs",
+      "ownership": "frontend-v2-phase-5-2b1-followup"
+    },
+    {
+      "path": "frontend/src/components/v2/base/BaseTooltip.vue",
+      "ownership": "frontend-v2-phase-5-2b1-followup"
+    },
+    {
+      "path": "frontend/src/dev/V2BaseComponentsLab.vue",
+      "ownership": "frontend-v2-phase-5-2b1-followup"
+    },
+    {
+      "path": "app/data_scripts/__init__.py",
+      "ownership": "other-task-payment-amount-regression"
+    },
+    {
+      "path": "app/data_scripts/order_support.py",
+      "ownership": "other-task-or-shared-workspace-do-not-touch"
+    },
+    {
+      "path": "app/data_scripts/registry.py",
+      "ownership": "other-task-payment-amount-regression"
+    },
+    {
+      "path": "app/routers/data_scripts.py",
+      "ownership": "other-task-payment-amount-regression"
+    },
+    {
+      "path": "static/index.html",
+      "ownership": "other-task-payment-amount-regression"
+    },
+    {
+      "path": "tests/route_contract_expected.json",
+      "ownership": "other-task-or-shared-workspace-do-not-touch"
+    },
+    {
+      "path": "tests/test_data_factory_agent.py",
+      "ownership": "other-task-or-shared-workspace-do-not-touch"
+    },
+    {
+      "path": "tests/test_data_script_contract.py",
+      "ownership": "other-task-or-shared-workspace-do-not-touch"
+    }
+  ],
+  "staged_files": [],
+  "untracked_files": [
+    {
+      "path": "app/data_scripts/payment_amount_regression/",
+      "ownership": "other-task-payment-amount-regression"
+    },
+    {
+      "path": "docs/final-fix-round1-api-execution-trustworthiness.html",
+      "ownership": "other-task"
+    },
+    {
+      "path": "docs/frontend-v2-phase5-1-foundation-completion-report-2026-07-29.html",
+      "ownership": "frontend-v2-report"
+    },
+    {
+      "path": "docs/frontend-v2/",
+      "ownership": "frontend-v2-docs-and-handoff"
+    },
+    {
+      "path": "static/payment-amount-regression.js",
+      "ownership": "other-task-payment-amount-regression"
+    },
+    {
+      "path": "tests/test_payment_amount_frontend.py",
+      "ownership": "other-task-payment-amount-regression"
+    },
+    {
+      "path": "tests/test_payment_amount_reconciliation.py",
+      "ownership": "other-task-payment-amount-regression"
+    },
+    {
+      "path": "tests/test_payment_amount_regression.py",
+      "ownership": "other-task-payment-amount-regression"
+    },
+    {
+      "path": "tests/test_payment_amount_scenarios.py",
+      "ownership": "other-task-payment-amount-regression"
+    }
+  ],
+  "gitignored_but_present_reports": [
+    "docs/reports/frontend-v2-phase5-1-1-login-redirect-hotfix-report-2026-07-29.md",
+    "docs/reports/frontend-v2-phase5-2a-base-primitives-report-2026-07-29.md"
+  ],
+  "phase_reports_preferred_dir": "docs/frontend-v2/phase-reports",
+  "known_risks": [
+    "401-clears-localStorage-but-pinia-auth-may-desync",
+    "missing-vue-404",
+    "missing-permission-denied-ui",
+    "menu-truth-source-drift-legacy-views-menuViews-migration-config",
+    "frontend-dist-and-migration-config-publish-sync",
+    "ai-config-vue-placeholder-vs-legacy-real",
+    "ui-cases-timer-session-lifecycle",
+    "data-factory-web-storage-schema",
+    "requirement-verification-global-override-chain",
+    "modal-toast-portal-not-implemented",
+    "base-tooltip-no-collision-or-auto-flip",
+    "docs-reports-directory-gitignored"
+  ],
+  "source_of_truth_files": [
+    "docs/frontend-v2/handoff/CODEX-HANDOFF.md",
+    "docs/frontend-v2/handoff/CURRENT-TASK.md",
+    "docs/frontend-v2/handoff/STATE.json",
+    "docs/frontend-v2/README.md",
+    "docs/migration/frontend-v2-vue-migration-plan.md",
+    "docs/prototypes/frontend-v2-shell-prototype.html",
+    "docs/frontend-v2/phase-reports/frontend-v2-phase5-2b1-support-components-report-2026-07-29.md",
+    "frontend/src/components/v2/base/index.js",
+    "frontend/src/styles/v2/index.css",
+    "frontend/src/services/navigation.js",
+    "frontend/src/router/index.js",
+    "static/migration-config.json",
+    "frontend/package.json",
+    "frontend/vite.config.js"
+  ],
+  "stash": [],
+  "notes": [
+    "Frontend V3 Tasks 1-14 completed on 2026-08-10; all V2/V3 validators, production build, 117 route/permission tests, and browser viewport checks pass.",
+    "dataScripts, requirementVerification, and systemRegression use native Vue views; LegacyEmbedView remains only as a rollback asset.",
+    "The API harvester menu, Vue/legacy pages, public API routes, and dedicated crawler/analyzer services were retired; api_extractor.py remains for AI case generation.",
+    "Task 3 completed on 2026-08-10: visual contract, V2 token layers, build, four viewports, and zero-console-error checks pass.",
+    "Task 2 frozen the approved 1920x1080 hybrid baseline at SHA-256 369C441945CEE1AFA3E3295A01951EC2E281369825668BDBACF3B8E2E1472263.",
+    "Task 2 visual-contract validator is intentionally RED: 14 locked declarations are missing and legacy AppModal.vue contains a raw 32px shadow; production Vue/CSS was not changed.",
+    "Task 1 baseline on 2026-08-10: 8 of 11 validators pass; validate-v2-api-cases-direct-mapping, validate-v2-api-cases-foundation-integration, and validate-v2-favicon-static-asset fail because router/index.js has two LegacyEmbed routes beyond their protected digest.",
+    "Task 1 baseline on 2026-08-10: frontend npm run build passes.",
+    "The 2026-07-29 handoff status was stale: Dropdown, Modal, resource foundation, LegacyEmbed, Shell, Dashboard, and API Cases work already exists uncommitted.",
+    "Authoritative ownership and completion audit: docs/frontend-v2/phase-reports/frontend-v3-redesign-baseline-audit-2026-08-10.md.",
+    "HEAD 797a7e1 matches Phase 5.2B1 report Diff Audit statement.",
+    "Uncommitted Frontend V2 follow-ups after 797a7e1: BaseTooltip multi-root ARIA, support validator hardening, Lab multi-root case.",
+    "Do not reset or overwrite other-task payment amount regression files.",
+    "Do not write new reports under docs/reports/ because reports/ is gitignored.",
+    "No credentials are stored in this file."
+  ]
+}

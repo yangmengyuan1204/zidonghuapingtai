@@ -1,0 +1,6 @@
+export { default as WorkbenchAttentionList } from './WorkbenchAttentionList.vue'
+export { default as WorkbenchMetricRail } from './WorkbenchMetricRail.vue'
+export { default as WorkbenchPageHeader } from './WorkbenchPageHeader.vue'
+export { default as WorkbenchPanel } from './WorkbenchPanel.vue'
+export { default as WorkbenchStatus } from './WorkbenchStatus.vue'
+export { default as WorkbenchTrendChart } from './WorkbenchTrendChart.vue'

@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Frontend V2 Phase 5.1 Foundation 完成报告</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #171d1a;
+      --muted: #66716b;
+      --line: #dfe5e1;
+      --canvas: #f4f6f5;
+      --surface: #ffffff;
+      --soft: #f7f9f8;
+      --green: #277052;
+      --green-soft: #edf6f1;
+      --amber: #8b651f;
+      --amber-soft: #fbf3df;
+      --red: #a44741;
+      --red-soft: #fbeeed;
+      --code: #1d2924;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font: 14px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 40px));
+      margin: 24px auto 48px;
+      padding: 36px 42px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    h1, h2, h3 { line-height: 1.3; }
+    h1 { margin: 0; font-size: 30px; }
+    h2 { margin: 36px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); font-size: 21px; }
+    h3 { margin: 22px 0 8px; font-size: 16px; }
+    p { margin: 8px 0; }
+    ul, ol { margin: 8px 0; padding-left: 22px; }
+    li { margin: 4px 0; }
+    a { color: var(--green); }
+
+    code {
+      padding: 2px 5px;
+      color: var(--code);
+      background: #edf1ef;
+      border-radius: 4px;
+      font: 12.5px/1.5 Consolas, "Cascadia Mono", monospace;
+      overflow-wrap: anywhere;
+    }
+
+    .meta {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .verdict {
+      margin: 24px 0;
+      padding: 18px 20px;
+      background: var(--green-soft);
+      border: 1px solid #cfe3d9;
+      border-left: 5px solid var(--green);
+      border-radius: 8px;
+    }
+
+    .verdict strong { color: var(--green); }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .metric {
+      padding: 16px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .metric b { display: block; color: var(--green); font-size: 24px; line-height: 1.2; }
+    .metric span { color: var(--muted); font-size: 12px; }
+
+    .toc, .note, .warning {
+      padding: 15px 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .warning {
+      background: var(--amber-soft);
+      border-color: #ead9ae;
+    }
+
+    .warning strong { color: var(--amber); }
+
+    table {
+      width: 100%;
+      margin: 12px 0;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 9px 10px;
+      text-align: left;
+      vertical-align: top;
+      border: 1px solid var(--line);
+    }
+
+    th { background: #eef2f0; }
+    td:first-child { width: 25%; }
+
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .pass { color: #185b3c; background: #dcefe5; }
+    .recorded { color: #755315; background: #f8e9c8; }
+    .unchanged { color: #41504a; background: #e8edeb; }
+
+    pre {
+      margin: 10px 0;
+      padding: 14px;
+      overflow: auto;
+      color: #eaf0ed;
+      background: var(--code);
+      border-radius: 6px;
+      font: 12px/1.55 Consolas, "Cascadia Mono", monospace;
+      white-space: pre-wrap;
+    }
+
+    footer {
+      margin-top: 38px;
+      padding-top: 16px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 820px) {
+      main { width: 100%; margin: 0; padding: 24px 18px; border: 0; border-radius: 0; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      table { display: block; overflow-x: auto; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      main { width: 100%; margin: 0; padding: 10mm; border: 0; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Frontend V2 Phase 5.1 · Foundation 完成报告</h1>
+    <p class="meta">日期：2026-07-29｜项目：接口 + UI 自动化测试平台｜分支：codex/safe-refactor-preserve-features</p>
+  </header>
+
+  <div class="verdict">
+    <strong>最终结论：PHASE 5.1 PASS</strong>
+    <p>已在现有 Vue 项目中建立隔离的 Frontend V2 样式基础设施。V2 Token、Scoped Reset 和 Base CSS 已接入 Vue，legacy 页面未加载 V2 CSS；构建、自动校验和实际浏览器验证均已完成。</p>
+    <p>本阶段按批准范围不实施新视觉组件，因此网站外观没有明显变化是预期结果。</p>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><b>6</b><span>V2 CSS 基础文件</span></div>
+    <div class="metric"><b>189</b><span>校验脚本必需 Token</span></div>
+    <div class="metric"><b>211</b><span>浏览器实际读取 V2 Token</span></div>
+    <div class="metric"><b>4</b><span>验证视口宽度</span></div>
+  </div>
+
+  <nav class="toc">
+    <strong>报告目录</strong>
+    <ol>
+      <li><a href="#scope">目标与范围</a></li>
+      <li><a href="#files">文件清单</a></li>
+      <li><a href="#architecture">Token 架构</a></li>
+      <li><a href="#namespace">命名空间与 legacy 隔离证明</a></li>
+      <li><a href="#verification">自动验证与构建结果</a></li>
+      <li><a href="#browser">浏览器验证结果</a></li>
+      <li><a href="#audit">Diff 与禁止范围审计</a></li>
+      <li><a href="#risks">剩余记录项</a></li>
+    </ol>
+  </nav>
+
+  <section id="scope">
+    <h2>1. 目标与范围</h2>
+    <p>本轮唯一目标是在 Vue 项目中建立可供后续 Base Components 和 Shell 消费的 Frontend V2 Foundation，不迁移业务页面，也不改变现有业务逻辑。</p>
+    <table>
+      <thead><tr><th>范围</th><th>完成状态</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>Foundation Token</td><td><span class="status pass">完成</span></td><td>颜色、排版、间距、圆角、阴影、动效、图标、控件、布局和 z-index。</td></tr>
+        <tr><td>Semantic Token</td><td><span class="status pass">完成</span></td><td>文字、表面、边框、动作、反馈和状态语义。</td></tr>
+        <tr><td>Component Token</td><td><span class="status pass">完成</span></td><td>Button、Input、Shell、Table、Modal、Toast 等后续组件入口。</td></tr>
+        <tr><td>Scoped Reset / Base</td><td><span class="status pass">完成</span></td><td>全部限定于 V2 根命名空间。</td></tr>
+        <tr><td>Base Components / Shell 改版</td><td><span class="status unchanged">未开始</span></td><td>属于 Phase 5.2 / 5.3，因此本阶段没有明显视觉变化。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="files">
+    <h2>2. 文件清单</h2>
+    <h3>新增文件</h3>
+    <ul>
+      <li><code>frontend/src/styles/v2/tokens.foundation.css</code></li>
+      <li><code>frontend/src/styles/v2/tokens.semantic.css</code></li>
+      <li><code>frontend/src/styles/v2/tokens.component.css</code></li>
+      <li><code>frontend/src/styles/v2/reset.css</code></li>
+      <li><code>frontend/src/styles/v2/base.css</code></li>
+      <li><code>frontend/src/styles/v2/index.css</code></li>
+      <li><code>frontend/scripts/validate-v2-foundation.mjs</code></li>
+    </ul>
+
+    <h3>修改文件</h3>
+    <table>
+      <thead><tr><th>文件</th><th>本轮修改</th><th>原因</th></tr></thead>
+      <tbody>
+        <tr><td><code>frontend/src/main.js</code></td><td>在现有 <code>main.css</code> 后引入 <code>styles/v2/index.css</code></td><td>确保 V2 CSS 仅由 Vue 应用加载。</td></tr>
+        <tr><td><code>frontend/index.html</code></td><td>为 <code>#app</code> 增加 <code>frontend-v2</code> class</td><td>提供稳定根命名空间，不新增 DOM 层级。</td></tr>
+      </tbody>
+    </table>
+    <p class="note"><strong>工作区说明：</strong><code>frontend/index.html</code> 和多个 Router、Store、legacy 文件在本任务开始前已存在未提交改动。本轮未覆盖、回退、暂存或提交这些既有改动。</p>
+  </section>
+
+  <section id="architecture">
+    <h2>3. Token 架构</h2>
+    <pre>Foundation Token（原始值）
+        ↓
+Semantic Token（只引用 Foundation）
+        ↓
+Component Token（只引用 Foundation / Semantic）
+        ↓
+Phase 5.2+ Base Components / Shell / Business Views</pre>
+
+    <table>
+      <thead><tr><th>层级</th><th>职责</th><th>约束</th></tr></thead>
+      <tbody>
+        <tr><td>Foundation</td><td>保存 Prototype 对应的原始设计尺度和色值。</td><td>所有变量以 <code>--v2-*</code> 命名；不引用上层 Token。</td></tr>
+        <tr><td>Semantic</td><td>表达 primary、surface、danger、focus 等产品语义。</td><td>只能引用 Foundation。</td></tr>
+        <tr><td>Component</td><td>为后续 Button、Input、Sidebar、Table、Modal、Toast 提供稳定接口。</td><td>只能引用 Foundation 或 Semantic；本阶段不创建 Vue 组件。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="namespace">
+    <h2>4. 命名空间与 legacy 隔离证明</h2>
+    <ul>
+      <li>V2 CSS 不包含共享 <code>:root</code>。</li>
+      <li>V2 Token 全部挂载在 <code>.frontend-v2</code> 和 <code>.frontend-v2-portal</code>。</li>
+      <li>Reset/Base 的所有规则均从上述命名空间开始。</li>
+      <li>Vue 的 <code>#app</code> 直接获得 <code>.frontend-v2</code>，未新增无意义 DOM。</li>
+      <li><code>static/index.html</code> 未引入 V2 CSS，递归扫描 <code>static/</code> 未发现 V2 CSS 引用。</li>
+      <li>浏览器中 legacy 根节点读取到的 <code>--v2-*</code> 数量为 0。</li>
+      <li>legacy CSS 与 Prototype 在实施前后的 SHA256 一致。</li>
+    </ul>
+  </section>
+
+  <section id="verification">
+    <h2>5. 自动验证与构建结果</h2>
+    <table>
+      <thead><tr><th>命令</th><th>结果</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>node frontend/scripts/validate-v2-foundation.mjs</code></td><td><span class="status pass">通过</span></td><td>验证 6 个 CSS 文件和 189 个必需 Token。</td></tr>
+        <tr><td><code>npm run build</code></td><td><span class="status pass">通过</span></td><td>Vite 完成 123 个模块转换；存在既有外部静态资源解析警告，无构建错误。</td></tr>
+        <tr><td><code>git diff --check</code></td><td><span class="status pass">通过</span></td><td>无补丁空白错误，仅有 Windows CRLF 提示。</td></tr>
+        <tr><td><code>gitnexus impact app</code></td><td><span class="status pass">LOW</span></td><td>0 个直接调用者、0 个受影响流程。</td></tr>
+        <tr><td><code>gitnexus detect-changes</code></td><td><span class="status pass">LOW</span></td><td>共享工作树整体为低风险；报告中不把其他既有改动归入本轮。</td></tr>
+        <tr><td>Frontend Test / Lint</td><td><span class="status recorded">无命令</span></td><td><code>frontend/package.json</code> 仅提供 dev/build/preview。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="browser">
+    <h2>6. 浏览器验证结果</h2>
+    <table>
+      <thead><tr><th>验证项</th><th>结果</th><th>实际证据</th></tr></thead>
+      <tbody>
+        <tr><td>Vue Login</td><td><span class="status pass">通过</span></td><td>页面可进入；1080、1240、1440、1920 四档宽度无明显布局破坏。</td></tr>
+        <tr><td>Vue Dashboard</td><td><span class="status pass">通过</span></td><td>使用有效管理员账号登录后，<code>/v3/dashboard</code> 可进入。</td></tr>
+        <tr><td>Vue AppShell</td><td><span class="status pass">通过</span></td><td>Shell、Sidebar、Topbar 均存在；运行时错误数组为空。</td></tr>
+        <tr><td>Vue Token</td><td><span class="status pass">通过</span></td><td><code>#app.frontend-v2</code> 实际读取到 211 个 <code>--v2-*</code> Token。</td></tr>
+        <tr><td>Vue 最小宽度</td><td><span class="status pass">通过</span></td><td>1080 × 900 下无横向溢出。</td></tr>
+        <tr><td>Legacy Login / Shell</td><td><span class="status pass">通过</span></td><td>Login、Shell、Sidebar、Topbar 可正常渲染。</td></tr>
+        <tr><td>Legacy 隔离</td><td><span class="status pass">通过</span></td><td>根节点 V2 Token 数量为 0，body 的 V2 primary token 为空。</td></tr>
+        <tr><td>Legacy Modal / Toast</td><td><span class="status pass">通过</span></td><td>节点保留，默认 computed display 均为 none，样式未被 V2 污染。</td></tr>
+      </tbody>
+    </table>
+    <p>验证期间未将账号密码写入代码、报告或配置文件。</p>
+  </section>
+
+  <section id="audit">
+    <h2>7. Diff 与禁止范围审计</h2>
+    <table>
+      <thead><tr><th>保护范围</th><th>本轮状态</th><th>审计结论</th></tr></thead>
+      <tbody>
+        <tr><td>Router / Path / Name / Meta</td><td><span class="status unchanged">零修改</span></td><td>工作树中的 Router 修改为开始前已有。</td></tr>
+        <tr><td>Pinia Store / Storage Key</td><td><span class="status unchanged">零修改</span></td><td>工作树中的 Theme Store 修改为开始前已有。</td></tr>
+        <tr><td>Axios / API / 401 / Permission</td><td><span class="status unchanged">零修改</span></td><td>未编辑相关文件。</td></tr>
+        <tr><td>Login 流程</td><td><span class="status unchanged">零修改</span></td><td>仅执行浏览器登录验证。</td></tr>
+        <tr><td>AppShell / Sidebar / Topbar 结构</td><td><span class="status unchanged">零修改</span></td><td>未重构组件结构。</td></tr>
+        <tr><td>业务页面</td><td><span class="status unchanged">零修改</span></td><td>未开始 Base Components 或 API Cases。</td></tr>
+        <tr><td>Legacy / Prototype / FastAPI</td><td><span class="status unchanged">零修改</span></td><td>基线哈希一致。</td></tr>
+        <tr><td>Dependency / Lockfile</td><td><span class="status unchanged">零修改</span></td><td>未安装、升级或调整依赖。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="risks">
+    <h2>8. 剩余记录项</h2>
+    <div class="warning">
+      <strong>非 Foundation 问题：深链登录 redirect</strong>
+      <p>从受保护路由进入 <code>/v3/login?redirect=/dashboard</code> 后成功登录，会跳到根路径 <code>/dashboard</code> 并返回 404；直接访问 <code>/v3/dashboard</code> 可正常渲染 Dashboard 和 AppShell。</p>
+      <p>该问题属于 Login/Router 流程，不在 Phase 5.1 获准修改范围内，本轮只记录、不修复。</p>
+    </div>
+    <div class="note" style="margin-top:12px">
+      <strong>Portal 接入点</strong>
+      <p>当前 body 外部 Modal/Toast 不继承 <code>#app.frontend-v2</code>。本阶段未重构 Teleport；后续 V2 Modal/Toast 需要使用 <code>.frontend-v2-portal</code> 容器。</p>
+    </div>
+  </section>
+
+  <footer>
+    Frontend V2 Phase 5.1 Foundation Completion Report · 2026-07-29
+  </footer>
+</main>
+</body>
+</html>

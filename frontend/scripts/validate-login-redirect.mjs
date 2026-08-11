@@ -31,6 +31,7 @@ function extractAsyncFunction(source, name) {
 }
 
 const functionSource = extractAsyncFunction(navigationSource, 'navigateAfterLogin')
+const viewFunctionSource = extractAsyncFunction(navigationSource, 'navigateToView')
 
 function createHarness({ migrated = ['dashboard'] } = {}) {
   const pushes = []
@@ -74,6 +75,42 @@ function createHarness({ migrated = ['dashboard'] } = {}) {
   return { navigateAfterLogin, pushes, browserWindow }
 }
 
+function createViewHarness({ migrated = [], knownRouteNames = ['systemRegression'] } = {}) {
+  const pushes = []
+  const router = {
+    push(target) {
+      pushes.push(target)
+      return Promise.resolve()
+    },
+    hasRoute(name) {
+      return knownRouteNames.includes(name)
+    },
+  }
+  const browserWindow = { location: { href: 'about:blank' } }
+  const factory = new Function(
+    'router',
+    'window',
+    'isMigrated',
+    'isMigrationConfigLoaded',
+    'loadMigrationConfig',
+    `const LEGACY_HASH_BASE = '/#/';
+     const LEGACY_STATIC_VIEW_ALIASES = {
+       functionalTests: 'requirementVerification',
+       caseGeneration: 'requirementVerification',
+     };
+     ${viewFunctionSource};
+     return navigateToView;`,
+  )
+  const navigateToView = factory(
+    router,
+    browserWindow,
+    (key) => migrated.includes(key),
+    () => true,
+    async () => {},
+  )
+  return { navigateToView, pushes, browserWindow }
+}
+
 async function expectVueRedirect(redirect, expected) {
   const harness = createHarness()
   await harness.navigateAfterLogin(redirect)
@@ -82,6 +119,15 @@ async function expectVueRedirect(redirect, expected) {
 }
 
 const cases = [
+  {
+    name: '系统回归已有 Vue 路由时不受陈旧迁移配置影响',
+    run: async () => {
+      const harness = createViewHarness()
+      await harness.navigateToView('systemRegression')
+      assert.deepEqual(harness.pushes, [{ name: 'systemRegression' }])
+      assert.equal(harness.browserWindow.location.href, 'about:blank')
+    },
+  },
   {
     name: 'Router Guard 生成的 dashboard 内部路径交给 Vue Router',
     run: () => expectVueRedirect('/dashboard', '/dashboard'),

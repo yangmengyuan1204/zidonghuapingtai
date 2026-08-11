@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>日本站系统回归开发与测试最终验收报告</title>
+  <style>
+    :root {
+      --ink: #1f2a37;
+      --muted: #667085;
+      --line: #d9e0e7;
+      --paper: #ffffff;
+      --canvas: #f3f6f8;
+      --navy: #15324b;
+      --blue: #246b9e;
+      --green: #16794b;
+      --green-bg: #eaf7f0;
+      --amber: #9a5b08;
+      --amber-bg: #fff5df;
+      --red: #a53535;
+      --red-bg: #fff0f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      line-height: 1.65;
+    }
+    .page { max-width: 1240px; margin: 0 auto; padding: 34px 24px 70px; }
+    .hero {
+      padding: 42px;
+      color: white;
+      background: linear-gradient(135deg, #102c44 0%, #246b9e 70%, #3387b5 100%);
+      border-radius: 18px;
+      box-shadow: 0 14px 38px rgba(21, 50, 75, .18);
+    }
+    .eyebrow { font-size: 13px; letter-spacing: .12em; opacity: .8; }
+    h1 { margin: 8px 0 10px; font-size: 34px; line-height: 1.25; }
+    .hero p { margin: 0; max-width: 900px; opacity: .92; }
+    .verdict {
+      margin-top: 24px;
+      padding: 18px 20px;
+      background: rgba(255,255,255,.13);
+      border: 1px solid rgba(255,255,255,.24);
+      border-radius: 12px;
+      font-weight: 700;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .card, section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(31, 42, 55, .045);
+    }
+    .card { padding: 20px; }
+    .card b { display: block; font-size: 26px; color: var(--navy); }
+    .card span { color: var(--muted); font-size: 13px; }
+    section { margin-top: 18px; padding: 28px; }
+    h2 { margin: 0 0 18px; color: var(--navy); font-size: 22px; }
+    h3 { margin: 25px 0 10px; color: var(--blue); font-size: 17px; }
+    p { margin: 8px 0; }
+    ul, ol { margin: 8px 0 8px 22px; padding: 0; }
+    li { margin: 5px 0; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .ok { color: var(--green); background: var(--green-bg); }
+    .warn { color: var(--amber); background: var(--amber-bg); }
+    .bad { color: var(--red); background: var(--red-bg); }
+    .info { color: var(--blue); background: #eaf4fb; }
+    .callout {
+      padding: 16px 18px;
+      border-left: 4px solid var(--amber);
+      background: var(--amber-bg);
+      border-radius: 8px;
+    }
+    .callout.okay { border-color: var(--green); background: var(--green-bg); }
+    .table-wrap { overflow-x: auto; margin-top: 12px; }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; font-size: 13px; }
+    th, td { padding: 10px 11px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: #f5f8fa; color: var(--navy); position: sticky; top: 0; }
+    tr:last-child td { border-bottom: 0; }
+    code {
+      font-family: Consolas, monospace;
+      font-size: .92em;
+      color: #24445d;
+      background: #edf3f7;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+    pre {
+      overflow-x: auto;
+      padding: 16px;
+      color: #dceaf4;
+      background: #162a38;
+      border-radius: 10px;
+      line-height: 1.5;
+      font-size: 12px;
+    }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .mini { padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fafcfd; }
+    .footer { margin-top: 22px; color: var(--muted); font-size: 12px; text-align: center; }
+    @media (max-width: 900px) {
+      .cards, .two { grid-template-columns: 1fr 1fr; }
+      .hero { padding: 28px; }
+    }
+    @media (max-width: 620px) {
+      .page { padding: 16px 10px 40px; }
+      .cards, .two { grid-template-columns: 1fr; }
+      section { padding: 20px 16px; }
+      h1 { font-size: 27px; }
+    }
+    @media print {
+      body { background: white; }
+      .page { max-width: none; padding: 0; }
+      .hero, section, .card { box-shadow: none; break-inside: avoid; }
+      th { position: static; }
+    }
+  </style>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <div class="eyebrow">SYSTEM REGRESSION · JAPAN · FINAL REVIEW</div>
+    <h1>日本站系统回归开发与测试最终验收报告</h1>
+    <p>覆盖支付金额、费用分项、问题产品金额与 OPTION、完整处理流程、后端 guard、执行持久化、账号恢复和接口兼容。</p>
+    <div class="verdict">最终判定：代码开发和自动化专项验证已完成；真实日本站 77 条用例的全量业务验收尚未完成，因此当前状态是“可进入真实环境验收”，不是“所有开发测试全部结束”。</div>
+  </header>
+
+  <div class="cards">
+    <div class="card"><b>77</b><span>日本站系统回归用例总数</span></div>
+    <div class="card"><b>138</b><span>系统回归专项测试通过</span></div>
+    <div class="card"><b>67</b><span>最终关键验收测试通过</span></div>
+    <div class="card"><b>200</b><span>服务恢复后首页 HTTP 状态</span></div>
+  </div>
+
+  <section id="conclusion">
+    <h2>1. 最终结论</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>验收维度</th><th>结论</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>功能开发</td><td><span class="status ok">已完成</span></td><td>日本站独立模块、77 条目录、批量/单选、参数输入、真实接口编排、费用证据、恢复机制均已实现。</td></tr>
+          <tr><td>专项自动化测试</td><td><span class="status ok">已完成</span></td><td>系统回归专项 138 条通过；最终关键链路 67 条通过。</td></tr>
+          <tr><td>接口兼容验证</td><td><span class="status ok">已完成</span></td><td>批次创建、查询、重执行、停止、历史数据序列化、空字段和全部状态均已覆盖。</td></tr>
+          <tr><td>项目全量测试</td><td><span class="status warn">存在既有非本次失败</span></td><td>1270 条通过；1 条既有 favicon 路由基线失败；1 条并发 SQLite 错误单独重跑通过。</td></tr>
+          <tr><td>真实日本站全量造单</td><td><span class="status warn">尚未完成</span></td><td>本轮修订后的 77 条用例尚未在真实业务环境逐条执行并人工验收结果。</td></tr>
+          <tr><td>发布判定</td><td><span class="status info">可进入真实环境验收</span></td><td>不能直接标记为“所有开发测试完毕”，需完成本文第 12 节的真实业务验收条件。</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. 已完成的功能范围</h2>
+    <div class="two">
+      <div class="mini">
+        <h3>模块与菜单</h3>
+        <ul>
+          <li>新增独立菜单“系统回归”。</li>
+          <li>按项目分类，首期实现日本站。</li>
+          <li>支持分类查看、单条执行、当前分类选择、批量执行和全选/取消。</li>
+          <li>批量默认串行，未声明 <code>parallel_safe=true</code> 的用例不并发。</li>
+        </ul>
+      </div>
+      <div class="mini">
+        <h3>参数输入</h3>
+        <ul>
+          <li>全部使用普通输入框、数字框和下拉框，不要求填写 JSON。</li>
+          <li>支持单番数量、商品数量、报价单价、中国国内运费。</li>
+          <li>支持其他费用金额与其他费用名义。</li>
+          <li>支持按单番新增、删除 OPTION，并填写计价方式、价格/比例和数量。</li>
+          <li>问题类型显示文字，提交时保留后端数字值。</li>
+        </ul>
+      </div>
+      <div class="mini">
+        <h3>批次执行</h3>
+        <ul>
+          <li>每次执行生成独立 <code>execution_id</code> 和批次号。</li>
+          <li>执行瞬间冻结每条用例参数，页面后续修改只影响下一批次。</li>
+          <li>单条失败后继续执行后续用例。</li>
+          <li>每条用例保留独立订单、问题产品和采购记录证据。</li>
+        </ul>
+      </div>
+      <div class="mini">
+        <h3>结果证据</h3>
+        <ul>
+          <li>记录预期阶段、实际阶段、执行账号、响应证据和业务差异。</li>
+          <li>区分 required、forbidden、allowed、unclassified effects。</li>
+          <li>前端可查看结构化证据，不只显示成功或失败。</li>
+          <li>未分类业务变化不允许通过。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. 金额与费用对账规则</h2>
+    <ol>
+      <li>支付实际金额只取客户余额真实扣款，或已匹配且完成财务确认的银行流水。</li>
+      <li>问题产品退款实际金额只取客户余额真实入账；不设计银行退款证据。</li>
+      <li>禁止使用支付请求参数或本地计算结果冒充实际金额。</li>
+      <li>人民币按对应报价/支付证据汇率换算日元，日元最终总额使用四舍五入整数。</li>
+      <li>误差不超过 1 日元通过，达到 2 日元失败。</li>
+      <li>支付必须为出账，退款必须为入账；方向错误直接失败。</li>
+      <li>仅接受能与订单号、配送单号、问题产品 ID、采购记录或银行流水唯一匹配的记录。</li>
+      <li>缺失流水、历史误命中、重复歧义、缺少汇率、方向错误均失败。</li>
+    </ol>
+    <h3>百分比 OPTION 公式</h3>
+    <pre>OPTION 金额(CNY) = OPTION 比例 ÷ 100 × OPTION 数量 × 商品单价(CNY)
+CNY 精度         = 0.01，ROUND_HALF_UP
+JPY 换算         = 所有 CNY 分项求和后 × 对应汇率，再 ROUND_HALF_UP 到整数
+身份识别         = option_id；名称只用于展示
+允许误差         = 1 JPY</pre>
+    <h3>防止总额碰巧相等</h3>
+    <p>费用合同分别声明 <code>required_components</code>、<code>optional_components</code>、<code>forbidden_components</code> 和 <code>system_generated_components</code>。分项缺失、重复、类型错误、OPTION ID 错误或金额错误均失败，即使最终总额相同也不能通过。</p>
+  </section>
+
+  <section>
+    <h2>4. 执行状态、错误归类和恢复机制</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>项目</th><th>规则</th></tr></thead>
+        <tbody>
+          <tr><td>统一结构状态</td><td><code>passed</code>、<code>failed</code>、<code>blocked</code>、<code>waiting</code>。</td></tr>
+          <tr><td>旧接口兼容状态</td><td>旧顶层字段和 <code>waiting_account</code> 行为继续保留，新增标准状态放在结构化结果中。</td></tr>
+          <tr><td>环境前置不足</td><td><code>blocked / precondition_capability_missing</code>。</td></tr>
+          <tr><td>目标接口不可调用</td><td><code>blocked / target_action_unavailable</code>。</td></tr>
+          <tr><td>后端规则缺失</td><td>真实目标接口调用成功但未拦截：<code>failed / backend_guard_missing</code>。</td></tr>
+          <tr><td>阶段错误</td><td>相同错误发生在错误阶段：<code>failed / unexpected_guard_stage</code>。</td></tr>
+          <tr><td>写请求超时</td><td>区分 <code>confirmed_written</code>、<code>confirmed_not_written</code>、<code>indeterminate</code>。</td></tr>
+          <tr><td>未知写状态</td><td><code>blocked / unknown_write_state</code>，禁止自动重试。</td></tr>
+          <tr><td>服务重启</td><td>恢复 execution state；不重新造单，不重放可能已成功的写动作。</td></tr>
+          <tr><td>最终一致性</td><td>关键状态与客户账单使用轮询确认，不以单次即时查询作为最终证据。</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>错误匹配优先级</h3>
+    <p><code>业务错误码 → 结构化错误字段 → HTTP 状态 → 错误文案正则</code>。同时记录 <code>expected_stage</code> 和 <code>actual_stage</code>，前置构造阶段提前失败不能冒充目标规则通过。</p>
+  </section>
+
+  <section>
+    <h2>5. 大额退款复合场景</h2>
+    <ol>
+      <li>普通账号对真实问题产品执行采购处理。</li>
+      <li>必须命中退款达到或超过 500 元的部长权限拦截。</li>
+      <li>拦截后复核问题产品状态和客户余额，普通账号步骤不得产生退款或余额变化。</li>
+      <li>优先读取项目内“沈文妮”部长账号；自动登录失败时进入等待账号状态。</li>
+      <li>用户手工输入账号密码后，从同一订单、同一问题产品、同一采购阶段继续。</li>
+      <li>部长步骤成功后，必须查询唯一客户余额入账记录，且方向为 credit。</li>
+      <li>账号等待和恢复信息持久化；密码只在内存中使用，不写入数据库或响应。</li>
+    </ol>
+    <div class="callout">该场景已实现并完成自动化测试，但尚未在当前真实日本站环境进行完整人工验收。</div>
+  </section>
+
+  <section>
+    <h2>6. 77 条日本站用例完整目录</h2>
+    <p>目录共 8 类：支付 10、基础金额 12、手续费 6、OPTION 手动 15、OPTION 自动 6、混合调整 3、完整流程 10、后端 guard 15。</p>
+    <div class="table-wrap">
+      <table id="case-table">
+        <thead><tr><th>编号</th><th>分类</th><th>用例名称</th><th>实现状态</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>7. 15 条后端 guard 的真实能力说明</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>编号</th><th>规则</th><th>真实目标阶段</th><th>当前构造能力</th><th>不能构造时</th></tr></thead>
+        <tbody>
+          <tr><td>001</td><td>分批付款尾款未完成禁止决策</td><td>business_deal</td><td>已登记真实接口和判断规则；依赖未付尾款订单前置状态</td><td>blocked / precondition_capability_missing</td></tr>
+          <tr><td>002</td><td>转寄订单禁止提出问题产品</td><td>problem_create</td><td>已登记真实接口和判断规则；依赖转寄订单前置状态</td><td>blocked / precondition_capability_missing</td></tr>
+          <tr><td>003</td><td>待财务付款采购禁止提出</td><td>problem_create</td><td>已登记真实接口和判断规则；依赖待财务付款采购状态</td><td>blocked / precondition_capability_missing</td></tr>
+          <tr><td>004</td><td>处理中问题产品禁止重复提出</td><td>problem_create</td><td>可自动创建首条问题产品，再真实重复提交</td><td>目标接口未拦截则 failed</td></tr>
+          <tr><td>005</td><td>问题数量超过未上架数量</td><td>problem_create</td><td>自动按未上架数 N 构造 N+1 并真实提交</td><td>目标接口未拦截则 failed</td></tr>
+          <tr><td>006</td><td>修改后数量小于已上架数量</td><td>purchase_deal</td><td>采购记录存在已上架数时自动构造</td><td>无已上架数则 blocked</td></tr>
+          <tr><td>007</td><td>普通账号数量超过可入库数</td><td>purchase_deal</td><td>自动按 possible_num+1 构造并真实提交</td><td>目标接口未拦截则 failed</td></tr>
+          <tr><td>008</td><td>数量增加禁止 OPTION 自动计算</td><td>purchase_deal</td><td>自动构造数量增加和自动 OPTION 规则</td><td>目标接口未拦截则 failed</td></tr>
+          <tr><td>009</td><td>OPTION 数量超过商品数禁止自动计算</td><td>purchase_deal</td><td>订单存在真实 OPTION 时自动构造</td><td>缺少 OPTION 则 blocked</td></tr>
+          <tr><td>010</td><td>多个百分比 OPTION 禁止自动计算</td><td>purchase_deal</td><td>订单存在两个百分比 OPTION 时自动构造</td><td>数量不足则 blocked</td></tr>
+          <tr><td>011</td><td>已有 OPTION 禁止修改计价类型</td><td>option_update</td><td>存在 option_id 时翻转 price_type 并真实提交</td><td>后端允许修改则 backend_guard_missing</td></tr>
+          <tr><td>012</td><td>同番多采购禁止修改预处理数据</td><td>pre_data_update</td><td>同番多采购数据存在时自动构造</td><td>只有单采购则 blocked</td></tr>
+          <tr><td>013</td><td>大额退款切换部长账号</td><td>purchase_deal</td><td>普通账号拦截→同一问题产品部长账号继续→余额入账</td><td>账号不可用则 waiting</td></tr>
+          <tr><td>014</td><td>受限类型已有交易号禁止跳过采购</td><td>business_deal</td><td>采购记录有交易号时真实 jump_g 提交</td><td>无交易号则 blocked</td></tr>
+          <tr><td>015</td><td>非允许类型禁止配货直接完成</td><td>distribution_direct_complete</td><td>构造非法问题类型并调用真实直完接口</td><td>前置状态不足则 blocked</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">“已实现”不等于“在当前真实环境一定能自动造出全部特殊状态”。对无法构造的前置状态，系统必须诚实返回 blocked，而不是使用前端限制或本地模拟冒充后端通过。</div>
+  </section>
+
+  <section>
+    <h2>8. 统一结果结构</h2>
+    <p>每条用例的结构化结果至少支持以下字段：</p>
+    <pre>execution_id, batch_id, case_id, status, reason_code, guard_kind,
+expected_stage, actual_stage, actor, order_sn, problem_goods_id,
+purchase_record_ids, parameter_snapshot, precondition_evidence,
+attempted_actions, response_evidence, before_evidence, after_evidence,
+required_effects, forbidden_effects, allowed_effects,
+unclassified_effects, business_diffs, failure_reason</pre>
+    <p>旧调用方继续读取原字段；新增字段仅为向后兼容追加。</p>
+  </section>
+
+  <section>
+    <h2>9. <code>_serialize_run</code> 兼容修改</h2>
+    <ul>
+      <li>保留原有字段名、类型、默认值、语义和嵌套结构。</li>
+      <li>新增 <code>execution_id</code>、<code>reason_code</code> 和 <code>structured_evidence</code>。</li>
+      <li>历史批次缺少新增字段时返回空字符串或空对象。</li>
+      <li><code>None</code>、空证据、等待账号、阻塞、失败和已完成状态均可序列化。</li>
+      <li>批次创建、查询、重执行和停止接口既有行为保持不变。</li>
+    </ul>
+    <pre>+ execution_id: result.execution_id → snapshot._execution.execution_id → ""
++ reason_code:  result.reason_code  → run.error_code                  → ""
++ structured_evidence: 仅汇总存在的结构化证据字段</pre>
+  </section>
+
+  <section>
+    <h2>10. 测试范围与结果</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>测试层级</th><th>结果</th><th>覆盖内容</th></tr></thead>
+        <tbody>
+          <tr><td>最终关键验收</td><td><span class="status ok">67 passed</span></td><td>批次 API、批次服务、账号恢复、guard、复合大额退款、费用分项、前端参数冻结。</td></tr>
+          <tr><td>系统回归专项</td><td><span class="status ok">138 passed</span></td><td>77 条目录、参数模型、金额算法、证据、执行协议、持久化、接口、前端和编排。</td></tr>
+          <tr><td>金额与费用</td><td><span class="status ok">通过</span></td><td>人民币/日元、误差 0/1/2、方向、百分比 OPTION、重复 OPTION、分项相抵、国内运费 sorting。</td></tr>
+          <tr><td>写状态恢复</td><td><span class="status ok">通过</span></td><td>confirmed_written、confirmed_not_written、indeterminate、等待账号重启恢复、不重放写动作。</td></tr>
+          <tr><td>批次接口</td><td><span class="status ok">通过</span></td><td>创建、查询、重执行、停止、历史数据和旧字段兼容。</td></tr>
+          <tr><td>项目全量测试</td><td><span class="status warn">1270 passed / 1 failed / 1 error</span></td><td>失败为既有 favicon 路由基线；错误为并发 pytest 争用固定 SQLite 测试库，单独重跑通过。</td></tr>
+          <tr><td>语法检查</td><td><span class="status ok">通过</span></td><td><code>compileall</code> 覆盖系统回归模块、服务与路由。</td></tr>
+          <tr><td>服务健康</td><td><span class="status ok">HTTP 200</span></td><td>服务按原命令恢复，127.0.0.1:8000 正常监听。</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>已覆盖的关键缺陷模式</h3>
+    <ul>
+      <li>错误文案相同但发生阶段错误。</li>
+      <li>写请求超时但实际已写入。</li>
+      <li>服务重启后恢复 waiting_account。</li>
+      <li>总额相同但分项互相抵消。</li>
+      <li>重复 OPTION 和缺失 option_id。</li>
+      <li>最终一致性轮询。</li>
+      <li>两个批次参数和 execution_id 隔离。</li>
+      <li>防止误命中历史订单或历史问题产品。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>11. 核心文件清单</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>文件</th><th>职责</th></tr></thead>
+        <tbody>
+          <tr><td><code>app/system_regression/projects/japan/execution_contract.py</code></td><td>统一状态、结果字段和结构化业务差异分类。</td></tr>
+          <tr><td><code>app/system_regression/projects/japan/guard_scenarios.py</code></td><td>15 条 guard 的阶段、动作和匹配规则。</td></tr>
+          <tr><td><code>app/system_regression/projects/japan/guard_executor.py</code></td><td>真实前置构造、目标接口、超时处理、复合大额退款和恢复。</td></tr>
+          <tr><td><code>app/system_regression/projects/japan/fee_evidence.py</code></td><td>费用分项、OPTION 公式、身份和分项对账。</td></tr>
+          <tr><td><code>app/system_regression/projects/japan/payment_runner.py</code></td><td>支付场景、全费用订单和真实费用证据。</td></tr>
+          <tr><td><code>app/services/system_regression/batch_service.py</code></td><td>参数冻结、execution_id、checkpoint、恢复、串行批次。</td></tr>
+          <tr><td><code>app/routers/system_regression.py</code></td><td>系统回归 API、兼容序列化和真实 runner 装配。</td></tr>
+          <tr><td><code>static/system-regression.js</code></td><td>菜单、参数表单、单选/批量、全选、证据查看和账号继续。</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>12. 尚未完成和验收前置条件</h2>
+    <div class="callout">
+      <strong>当前不能称为“所有开发测试完毕”的原因：</strong>
+      <ol>
+        <li>修订后的 77 条用例尚未在真实日本站环境逐条全量执行。</li>
+        <li>转寄订单、待财务付款、未付尾款、已上架数量、同番多采购等特殊状态依赖真实环境前置能力。</li>
+        <li>大额退款复合流程已完成自动化验证，但尚需普通账号和真实部长账号完成一次端到端业务验收。</li>
+        <li>银行支付需要真实银行流水匹配和财务确认，必须在具备该流程的测试环境验证。</li>
+        <li>项目全量测试仍有一个与本次无关的 favicon 路由基线失败，需要对应 Frontend V2 任务处理。</li>
+      </ol>
+    </div>
+    <h3>达到“全部完成”的建议判定条件</h3>
+    <ol>
+      <li>在指定日本站测试环境串行运行 77 条用例。</li>
+      <li>对所有 failed/blocked 逐条确认：真实后端缺陷、环境前置不足或脚本问题。</li>
+      <li>至少完成一次大额退款普通账号拦截和部长账号同对象继续。</li>
+      <li>确认余额、银行流水、问题产品状态与费用分项证据均可追溯。</li>
+      <li>修复或重新确认 favicon 路由基线后，再运行一次项目全量测试。</li>
+      <li>真实业务负责人确认生成订单和账单结果后，状态方可更新为“全部开发测试完成”。</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>13. 版本与工作区说明</h2>
+    <ul>
+      <li>本轮未执行 git commit、git push 或自动暂存。</li>
+      <li>工作区存在大量其他任务的既有未提交改动，本轮未回退或覆盖。</li>
+      <li>GitNexus 使用仓库实际基线 <code>master</code> 检测整个工作区为 CRITICAL，原因是混合改动涉及 167 个文件、1358 个符号；该风险不能归因于本次系统回归增量。</li>
+      <li>报告结论基于 2026-07-30 的本地代码和自动化测试结果。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>14. 最终验收意见</h2>
+    <div class="callout okay"><strong>开发结论：</strong>系统回归日本站模块已经完成开发，自动化专项验证通过，可以交付真实环境验收。</div>
+    <div class="callout" style="margin-top:12px"><strong>测试结论：</strong>不能表述为“全部开发测试完毕”。准确表述应为：“开发完成，自动化专项测试完成，真实业务全量验收待执行。”</div>
+  </section>
+
+  <div class="footer">日本站系统回归开发与测试最终验收报告 · 生成日期 2026-07-30</div>
+</main>
+
+<script>
+  const groups = {
+    "支付": [
+      ["JP-PAY-001", "单番余额全额支付"], ["JP-PAY-002", "单番银行全额支付"],
+      ["JP-PAY-003", "余额分批付款"], ["JP-PAY-004", "银行分批付款"],
+      ["JP-PAY-005", "配送单余额支付"], ["JP-PAY-006", "配送单银行支付"],
+      ["JP-PAY-007", "多单番独立国内运费"], ["JP-PAY-008", "其他费用金额与名义"],
+      ["JP-PAY-009", "多 OPTION 混合"], ["JP-PAY-010", "全费用混合订单"]
+    ],
+    "问题产品-基础金额": [
+      ["JP-PG-AMT-001", "客户原因零金额对照"], ["JP-PG-AMT-002", "少货数量部分减少"],
+      ["JP-PG-AMT-003", "少货数量全部减少至零"], ["JP-PG-AMT-004", "单价下调退款"],
+      ["JP-PG-AMT-005", "单价上调补款"], ["JP-PG-AMT-006", "单条采购运费下调退款"],
+      ["JP-PG-AMT-007", "单条采购运费上调补款"], ["JP-PG-AMT-008", "不良且少货数量减少"],
+      ["JP-PG-AMT-009", "不良且少货数量和单价下调"], ["JP-PG-AMT-010", "不良数量减少且单价上调"],
+      ["JP-PG-AMT-011", "单价下调运费上调净退款"], ["JP-PG-AMT-012", "单价上调运费下调净补款"]
+    ],
+    "问题产品-手续费": [
+      ["JP-PG-SVC-001", "商品减少手续费多退少补"], ["JP-PG-SVC-002", "商品减少手续费已收不退"],
+      ["JP-PG-SVC-003", "商品增加补收手续费"], ["JP-PG-SVC-004", "手续费减免券下商品减少"],
+      ["JP-PG-SVC-005", "手续费减免券下商品增加"], ["JP-PG-SVC-006", "单番手续费率为零"]
+    ],
+    "问题产品-OPTION手动": [
+      ["JP-PG-OPT-M-001", "新增固定金额 OPTION"], ["JP-PG-OPT-M-002", "删除固定金额 OPTION"],
+      ["JP-PG-OPT-M-003", "固定 OPTION 数量增加"], ["JP-PG-OPT-M-004", "固定 OPTION 数量减少"],
+      ["JP-PG-OPT-M-005", "固定 OPTION 单价增加"], ["JP-PG-OPT-M-006", "固定 OPTION 单价减少"],
+      ["JP-PG-OPT-M-007", "新增百分比 OPTION"], ["JP-PG-OPT-M-008", "删除百分比 OPTION"],
+      ["JP-PG-OPT-M-009", "百分比 OPTION 数量增加"], ["JP-PG-OPT-M-010", "百分比 OPTION 数量减少"],
+      ["JP-PG-OPT-M-011", "OPTION 百分比提高"], ["JP-PG-OPT-M-012", "OPTION 百分比降低"],
+      ["JP-PG-OPT-M-013", "商品单价下调联动百分比 OPTION"], ["JP-PG-OPT-M-014", "全部取消 OPTION"],
+      ["JP-PG-OPT-M-015", "多个 OPTION 同时增减净退款"]
+    ],
+    "问题产品-OPTION自动": [
+      ["JP-PG-OPT-A-001", "数量减少固定 OPTION 自动计算"], ["JP-PG-OPT-A-002", "数量减少百分比 OPTION 自动计算"],
+      ["JP-PG-OPT-A-003", "商品单价下调百分比 OPTION 联动"], ["JP-PG-OPT-A-004", "检品 OPTION 已完成数量保护"],
+      ["JP-PG-OPT-A-005", "非自动 OPTION 保持不变"], ["JP-PG-OPT-A-006", "商品和 OPTION 均不变"]
+    ],
+    "问题产品-混合调整": [
+      ["JP-PG-MIX-001", "全费用综合净退款"], ["JP-PG-MIX-002", "全费用综合净补款"],
+      ["JP-PG-MIX-003", "全费用正负相抵为零"]
+    ],
+    "问题产品-完整流程": [
+      ["JP-PG-FLOW-001", "单价变动完整流程"], ["JP-PG-FLOW-002", "运费变动完整流程"],
+      ["JP-PG-FLOW-003", "少货补买完整流程"], ["JP-PG-FLOW-004", "不良换货完整流程"],
+      ["JP-PG-FLOW-005", "不良且少货退货退款流程"], ["JP-PG-FLOW-006", "OPTION 变动完整流程"],
+      ["JP-PG-FLOW-007", "数量多了补款流程"], ["JP-PG-FLOW-008", "其他问题自定义回复流程"],
+      ["JP-PG-FLOW-009", "客户原因已收不退流程"], ["JP-PG-FLOW-010", "不良直接上架标准流程"]
+    ],
+    "问题产品-后端拦截": [
+      ["JP-PG-GUARD-001", "分批付款尾款未完成禁止决策"], ["JP-PG-GUARD-002", "转寄订单禁止提出问题产品"],
+      ["JP-PG-GUARD-003", "待财务付款采购禁止提出"], ["JP-PG-GUARD-004", "处理中问题产品禁止重复提出"],
+      ["JP-PG-GUARD-005", "问题数量超过未上架数量"], ["JP-PG-GUARD-006", "修改后数量小于已上架数量"],
+      ["JP-PG-GUARD-007", "普通账号数量超过可入库数"], ["JP-PG-GUARD-008", "数量增加禁止 OPTION 自动计算"],
+      ["JP-PG-GUARD-009", "OPTION 数量超过商品数禁止自动计算"], ["JP-PG-GUARD-010", "多个百分比 OPTION 禁止自动计算"],
+      ["JP-PG-GUARD-011", "已有 OPTION 禁止修改计价类型"], ["JP-PG-GUARD-012", "同番多采购禁止修改预处理数据"],
+      ["JP-PG-GUARD-013", "大额退款切换部长账号"], ["JP-PG-GUARD-014", "受限类型已有交易号禁止跳过采购"],
+      ["JP-PG-GUARD-015", "非允许类型禁止配货直接完成"]
+    ]
+  };
+  const tbody = document.querySelector("#case-table tbody");
+  Object.entries(groups).forEach(([category, cases]) => {
+    cases.forEach(([key, name]) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td><code>${key}</code></td><td>${category}</td><td>${name}</td><td><span class="status ok">已实现</span> <span class="status warn">真实全量待验收</span></td>`;
+      tbody.appendChild(tr);
+    });
+  });
+</script>
+</body>
+</html>

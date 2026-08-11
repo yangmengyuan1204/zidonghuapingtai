@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 
 from ..core.utils import get_or_404, safe_file_response, serialize
 from ..database import get_db
-from ..models import ApiCase, TestRecord, UiCase, User
+from ..models import ApiCase, Project, TestRecord, UiCase, User
 from ..schemas import ReExecuteConfirmRequest
-from ..security import get_current_user
+from ..security import get_current_user, require_admin
+from ..services.test_record_recovery import recover_orphan_test_records
 from ..services.test_record_reporting import build_test_record_report_fields
 from ..services.test_record_reexecution import build_reexecute_context, reexecute_record
 
@@ -48,6 +49,17 @@ def list_records(
         item.update(build_test_record_report_fields(db, record))
         items.append(item)
     return {"total": total, "page": page, "page_size": page_size, "items": items}
+
+
+@router.post("/api/test-records/recover-orphan-reports")
+def recover_orphan_reports(
+    project_id: int | None = Query(default=None, ge=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, int]:
+    if project_id is not None:
+        get_or_404(db, Project, project_id)
+    return recover_orphan_test_records(db, project_id=project_id)
 
 
 @router.get("/api/test-records/{record_id}")

@@ -18,11 +18,11 @@ export const menuViews = [
   { key: 'dashboard', label: '工作台总览' },
   { key: 'projects', label: '项目空间' },
   { key: 'apiCases', label: '接口用例库' },
-  { key: 'apiHarvester', label: '接口抓取' },
   { key: 'dataScripts', label: '数据工厂' },
   { key: 'requirementVerification', label: '需求验证中心' },
   { key: 'uiCases', label: 'UI自动化' },
   { key: 'records', label: '执行报告' },
+  { key: 'systemRegression', label: '系统回归', adminOnly: true },
   { key: 'users', label: '权限中心', adminOnly: true },
 ]
 
@@ -76,6 +76,27 @@ const routes = [
     name: 'uiCases',
     component: () => import('../views/UiCasesView.vue'),
     meta: { viewKey: 'uiCases' },
+  },
+  {
+    path: '/dataScripts',
+    alias: '/data-scripts',
+    name: 'dataScripts',
+    component: () => import('../views/LegacyEmbedView.vue'),
+    meta: { viewKey: 'dataScripts' },
+  },
+  {
+    path: '/requirementVerification',
+    alias: '/requirement-verification',
+    name: 'requirementVerification',
+    component: () => import('../views/RequirementVerificationView.vue'),
+    meta: { viewKey: 'requirementVerification' },
+  },
+  {
+    path: '/systemRegression',
+    alias: '/system-regression',
+    name: 'systemRegression',
+    component: () => import('../views/LegacyEmbedView.vue'),
+    meta: { viewKey: 'systemRegression', adminOnly: true },
   },
 ]
 

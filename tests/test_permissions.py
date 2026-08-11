@@ -2616,6 +2616,63 @@ def test_detect_resume_order_flow_shelf_stored_from_order_status(monkeypatch):
     assert summary["order_detail_ids"] == ["DETAIL-STORED"]
 
 
+def test_detect_resume_order_flow_completed_from_order_status_80(monkeypatch):
+    monkeypatch.setattr(data_scripts, "_admin_session_from", lambda variables: SimpleNamespace(headers={}))
+    monkeypatch.setattr(data_scripts, "_admin_login", lambda session, base_url, variables, timeout: ({"success": True, "code": 0}, "TOKEN"))
+    monkeypatch.setattr(
+        data_scripts,
+        "_order_detail_data",
+        lambda session, base_url, variables, order_sn, timeout: (
+            {"success": True, "code": 0},
+            {"order_sn": order_sn, "status": 80, "order_detail": [{"id": "DETAIL-SHIPPED", "status": 80, "statusName": "\u53d1\u8d27\u5b8c\u4e86"}]},
+        ),
+    )
+    monkeypatch.setattr(data_scripts, "_post_admin_form", lambda *args, **kwargs: {"success": True, "code": 0, "data": []})
+
+    passed, summary = data_scripts._detect_resume_order_state(full_flow_env(), {}, "ORDER-SHIPPED", {})
+
+    assert passed is True
+    assert summary["detected_start_node"] == "porder_shipped"
+    assert summary["order_detail_id"] == "DETAIL-SHIPPED"
+
+
+def test_resume_order_flow_completed_order_does_not_repeat_mutations(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    monkeypatch.setattr(
+        data_scripts,
+        "_detect_resume_order_state",
+        lambda env, variables, order_sn, log: (
+            True,
+            {
+                "order_sn": order_sn,
+                "order_status": 80,
+                "detected_start_node": "porder_shipped",
+                "order_detail_id": "DETAIL-SHIPPED",
+                "order_detail_ids": ["DETAIL-SHIPPED"],
+            },
+        ),
+    )
+
+    def unexpected_mutation(*args, **kwargs):
+        raise AssertionError("completed order must not repeat mutations")
+
+    monkeypatch.setattr(data_scripts, "_run_backend_order_flow_resume", unexpected_mutation)
+    monkeypatch.setattr(data_scripts, "_payment_with_bank_fallback", unexpected_mutation)
+    monkeypatch.setattr(data_scripts, "run_purchase_to_shelf_script", unexpected_mutation)
+    monkeypatch.setattr(data_scripts, "run_warehouse_delivery_script", unexpected_mutation)
+    monkeypatch.setattr(data_scripts, "run_porder_shipment_script", unexpected_mutation)
+
+    passed, _, _, summary = data_scripts.run_resume_order_flow_script(
+        full_flow_env(),
+        {"order_sn": "ORDER-SHIPPED", "stop_after_node": "porder_shipped"},
+    )
+
+    assert passed is True
+    assert summary["current_node"] == "porder_shipped"
+    assert summary["detected_start_node"] == "porder_shipped"
+    assert summary["order_sn"] == "ORDER-SHIPPED"
+
+
 def test_shelf_type_set_is_normalized_to_array_for_wms_interface():
     from app.data_scripts.purchase import _normalize_shelf_type_set
 
@@ -2703,7 +2760,14 @@ def test_resume_order_flow_endpoint_returns_summary(monkeypatch):
         response = client.post(
             "/api/data-scripts/resume-order-flow",
             headers=headers,
-            json={"env_id": env["id"], "variables": {"order_sn": "ORDER-ENDPOINT"}},
+            json={
+                "env_id": env["id"],
+                "variables": {
+                    "order_sn": "ORDER-ENDPOINT",
+                    "backend_account": "order-reader",
+                    "backend_password": "test-secret",
+                },
+            },
         )
 
     assert response.status_code == 200
@@ -2897,7 +2961,14 @@ def test_full_flow_endpoint_returns_summary(monkeypatch):
         response = client.post(
             "/api/data-scripts/full-flow",
             headers=headers,
-            json={"env_id": env["id"], "variables": {"stop_after_node": "pending_purchase"}},
+            json={
+                "env_id": env["id"],
+                "variables": {
+                    "stop_after_node": "pending_purchase",
+                    "backend_account": "order-reader",
+                    "backend_password": "test-secret",
+                },
+            },
         )
 
     assert response.status_code == 200

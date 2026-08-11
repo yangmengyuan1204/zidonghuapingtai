@@ -143,6 +143,18 @@ def delete_project(
     api_ids = [row[0] for row in db.query(ApiCase.id).filter(ApiCase.project_id == project_id).all()]
     profile_ids = [row[0] for row in db.query(TestAccountProfile.id).filter(TestAccountProfile.project_id == project_id).all()]
 
+    record_filters = [TestRecord.project_id == project_id]
+    if api_ids:
+        record_filters.append((TestRecord.case_type == "api") & TestRecord.case_id.in_(api_ids))
+    if ui_ids:
+        record_filters.append((TestRecord.case_type == "ui") & TestRecord.case_id.in_(ui_ids))
+    record_count = db.query(TestRecord.id).filter(or_(*record_filters)).count()
+    if record_count:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"该项目存在 {record_count} 条执行记录，请先导出或迁移报告后再删除项目",
+        )
+
     if api_ids:
         db.query(TestRecord).filter(TestRecord.case_type == "api", TestRecord.case_id.in_(api_ids)).delete(synchronize_session=False)
     if ui_ids:

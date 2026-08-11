@@ -302,7 +302,7 @@ git rebase
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **zidonghuapingtai** (8031 symbols, 26037 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **zidonghuapingtai** (11492 symbols, 49233 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -343,3 +343,15 @@ This project is indexed by GitNexus as **zidonghuapingtai** (8031 symbols, 26037
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+## Frontend V2
+
+Frontend V2 迁移进行中：`/` legacy 与 `/v3/` Vue 双应用共存。新 Agent 接手时：
+
+1. 先读 `docs/frontend-v2/README.md`
+2. 再读 `docs/frontend-v2/handoff/CODEX-HANDOFF.md` 与 `docs/frontend-v2/handoff/CURRENT-TASK.md`
+3. 对照 `docs/migration/frontend-v2-vue-migration-plan.md` 与 `docs/prototypes/frontend-v2-shell-prototype.html`
+4. 先执行 `git status` / `git diff`，区分 Frontend V2 与其他任务未提交改动，禁止覆盖无关改动
+5. 每阶段实现前输出理解摘要，等待人工批准；阶段结束后停止，不自动进入下一阶段
+6. 报告写入 `docs/frontend-v2/phase-reports/`（不要写入被 ignore 的 `docs/reports/`）
+7. 机器可读状态：`docs/frontend-v2/handoff/STATE.json`

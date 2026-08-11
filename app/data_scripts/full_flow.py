@@ -424,6 +424,8 @@ def _impl_run_resume_order_flow_script(
         detected_start_node = str(detect_summary.get("detected_start_node") or "")
         order_status = detect_summary.get("order_status")
         skip_shelf = False
+        if detected_start_node == "porder_shipped":
+            return _resume_flow_finish(log, True, "porder_shipped")
         if detected_start_node == "pending_purchase":
             _resume_record_skipped(
                 log,
@@ -634,7 +636,12 @@ def _impl_run_resume_order_flow_script(
         return _resume_flow_finish(log, True, "porder_shipped")
     except Exception as exc:
         log["error"] = str(exc)
-        return _resume_flow_finish(log, False, str(log["steps"][-1]["node"] if log["steps"] else "order_created"), reason=str(exc))
+        failed_node = str(
+            log["steps"][-1]["node"]
+            if log["steps"]
+            else log.get("detected_start_node") or "order_created"
+        )
+        return _resume_flow_finish(log, False, failed_node, reason=str(exc))
 
 
 def _impl_run_resume_porder_flow_script(

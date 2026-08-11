@@ -1102,3 +1102,198 @@ thead::after {
   margin-bottom: 6px;
   color: var(--text);
 }
+
+/* A3 embedded-page visual parity: data factory and system regression only. */
+html.v3-embed {
+  --bg: #e8eef5;
+  --soft: #d5e3ef;
+  --surface: #ffffff;
+  --surface-solid: #ffffff;
+  --text: #172b3f;
+  --muted: #6c8092;
+  --line: #b9c8d6;
+  --accent: #245fa8;
+  --accent-light: #245fa8;
+  --accent-glow: rgba(36, 95, 168, 0.12);
+  --radius: 10px;
+  --radius-sm: 6px;
+  background: #e8eef5;
+}
+
+html.v3-embed body,
+html.v3-embed .main,
+html.v3-embed .content {
+  color: #172b3f;
+  background: #e8eef5;
+}
+
+html.v3-embed body,
+html.v3-embed button,
+html.v3-embed input,
+html.v3-embed select,
+html.v3-embed textarea {
+  font-family: "Microsoft YaHei UI", "PingFang SC", "Segoe UI", sans-serif;
+}
+
+html.v3-embed #content:not(:has(.system-regression-page))::before,
+html.v3-embed .system-regression-page::before {
+  display: none;
+  min-height: 91px;
+  align-items: center;
+  margin-bottom: 13px;
+  padding: 16px 18px 16px 22px;
+  border: 1px solid #b9c8d6;
+  border-left: 4px solid #245fa8;
+  border-radius: 10px;
+  background: #dde7f0;
+  color: #172b3f;
+  font-family: "Microsoft YaHei UI", "PingFang SC", "Segoe UI", sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: pre-line;
+}
+
+html.v3-embed #content:not(:has(.system-regression-page))::before {
+  content: "DATA AUTOMATION\A数据工厂";
+}
+
+html.v3-embed .system-regression-page::before {
+  content: "SYSTEM REGRESSION\A系统回归";
+}
+
+html.v3-embed .toolbar,
+html.v3-embed .system-regression-toolbar {
+  min-height: 58px;
+  margin-bottom: 14px;
+  padding: 10px 13px;
+  border: 1px solid #b9c8d6;
+  border-radius: 10px;
+  background: #e7eef4;
+}
+
+html.v3-embed .panel,
+html.v3-embed .system-regression-categories,
+html.v3-embed .system-regression-cases,
+html.v3-embed .system-regression-drawer {
+  border: 1px solid #b9c8d6;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+html.v3-embed .panel-title {
+  min-height: 53px;
+  padding: 11px 16px;
+  border-bottom: 1px solid #b9c8d6;
+  background: #dde7f0;
+}
+
+html.v3-embed .table-wrap {
+  border: 1px solid #b9c8d6;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+html.v3-embed th {
+  height: 38px;
+  padding: 0 14px;
+  background: #e7eef4;
+  color: #50677c;
+  border-bottom-color: #b9c8d6;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html.v3-embed td {
+  height: 46px;
+  padding: 8px 14px;
+  background: #ffffff;
+  border-bottom-color: #d1dce6;
+  font-size: 13px;
+}
+
+html.v3-embed tr:hover td,
+html.v3-embed .system-regression-case-table tr.active td {
+  background: #d5e3ef;
+}
+
+html.v3-embed .field label {
+  color: #50677c;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html.v3-embed .field input,
+html.v3-embed .field select,
+html.v3-embed .field textarea,
+html.v3-embed .system-regression-actions input {
+  min-height: 36px;
+  border-color: #b9c8d6;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+html.v3-embed .btn {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid #245fa8;
+  border-radius: 6px;
+  background: #245fa8;
+  box-shadow: none;
+  color: #ffffff;
+  transform: none;
+}
+
+html.v3-embed .btn::after {
+  content: none;
+}
+
+html.v3-embed .btn:hover,
+html.v3-embed .btn:active {
+  background: #1d518f;
+  box-shadow: none;
+  transform: none;
+}
+
+html.v3-embed .btn.secondary {
+  border-color: #b9c8d6;
+  background: #ffffff;
+  box-shadow: none;
+  color: #2d435b;
+}
+
+html.v3-embed .btn.secondary:hover {
+  border-color: #9fb4c7;
+  background: #f7f9fb;
+  box-shadow: none;
+}
+
+html.v3-embed .btn.danger {
+  border-color: #d6a19c;
+  background: #ffffff;
+  box-shadow: none;
+  color: #b43e36;
+}
+
+html.v3-embed .system-regression-layout {
+  gap: 12px;
+}
+
+html.v3-embed .system-regression-categories,
+html.v3-embed .system-regression-cases,
+html.v3-embed .system-regression-drawer {
+  padding: 12px;
+}
+
+html.v3-embed .system-regression-categories button {
+  border-radius: 0;
+}
+
+html.v3-embed .system-regression-categories button.active {
+  background: #d5e3ef;
+  color: #164f91;
+}

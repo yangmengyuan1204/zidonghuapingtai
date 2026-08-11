@@ -3,6 +3,7 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 
@@ -59,6 +60,12 @@ def configure_app(app: FastAPI) -> None:
         if "application/json" in content_type and "charset" not in content_type.lower():
             response.headers["content-type"] = content_type.replace("application/json", "application/json; charset=utf-8")
         return response
+
+    favicon_path = BASE_DIR / "frontend" / "public" / "favicon.ico"
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon() -> FileResponse:
+        return FileResponse(favicon_path, media_type="image/vnd.microsoft.icon")
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     report_dir = BASE_DIR / "reports"

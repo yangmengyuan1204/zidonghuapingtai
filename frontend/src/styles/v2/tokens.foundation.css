@@ -22,17 +22,38 @@
     --v2-color-amber-50: #fbf3df;
     --v2-color-amber-600: #8b651f;
     --v2-color-blue-50: #edf3f6;
+    --v2-color-blue-500: #5b8ff0;
     --v2-color-blue-600: #3e6678;
+    --v2-color-blue-700: #2457ad;
+    --v2-color-navy-800: #223b5b;
+    --v2-color-navy-950: #132238;
+    --v2-color-canvas-cool: #f5f8fc;
+    --v2-color-canvas-mist: #e8eef5;
+    --v2-color-sidebar-slate: #c9d9e7;
+    --v2-color-section-warm: #e4ebf2;
+    --v2-color-section-cool: #dde7f0;
+    --v2-color-context-blue: #d5e3ef;
+    --v2-color-utility-warm: #edf2f6;
+    --v2-color-utility-cool: #e7eef4;
+    --v2-color-border-cool: #d1dce6;
+    --v2-color-border-slate: #b9c8d6;
+    --v2-color-border-warm: #d4cec3;
+    --v2-color-ink-950: #172b3f;
+    --v2-color-ink-700: #50677c;
+    --v2-color-ink-500: #6c8092;
     --v2-color-overlay-transparent: rgba(23, 29, 26, 0);
     --v2-color-overlay-strong: rgba(23, 29, 26, 0.42);
 
     /* Typography */
-    --v2-font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-    --v2-font-family-mono: "JetBrains Mono", "Fira Code", Consolas, "Courier New", monospace;
+    --v2-font-family-display: "Microsoft YaHei UI", "PingFang SC", "Segoe UI", sans-serif;
+    --v2-font-family-sans: "Microsoft YaHei UI", "PingFang SC", "Segoe UI", sans-serif;
+    --v2-font-family-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
     --v2-font-size-display: 32px;
     --v2-font-size-heading: 24px;
     --v2-font-size-section: 18px;
+    --v2-font-size-panel: 15px;
     --v2-font-size-body: 14px;
+    --v2-font-size-interface: 13px;
     --v2-font-size-caption: 12px;
     --v2-font-size-tiny: 11px;
     --v2-line-height-tight: 1.2;
@@ -60,6 +81,7 @@
     /* Radius */
     --v2-radius-xs: 4px;
     --v2-radius-sm: 6px;
+    --v2-radius-panel: 8px;
     --v2-radius-md: 10px;
     --v2-radius-round: 999px;
 
@@ -68,6 +90,7 @@
     --v2-shadow-dropdown: 0 12px 34px rgba(24, 36, 30, 0.14);
     --v2-shadow-focus: 0 0 0 3px rgba(39, 112, 82, 0.18);
     --v2-shadow-selected: 0 1px 2px rgba(25, 38, 32, 0.08);
+    --v2-shadow-panel: 0 1px 2px rgba(25, 48, 78, 0.025);
     --v2-shadow-overlay: 0 20px 48px rgba(24, 36, 30, 0.2);
 
     /* Motion */
@@ -85,8 +108,8 @@
     --v2-icon-size-md: 24px;
     --v2-control-height-compact: 32px;
     --v2-control-height-default: 40px;
-    --v2-size-table-header: 48px;
-    --v2-size-table-row: 80px;
+    --v2-size-table-header: 38px;
+    --v2-size-table-row: 46px;
     --v2-size-pagination: 64px;
     --v2-size-dropdown-width: 132px;
     --v2-size-dropdown-offset: 40px;
@@ -94,9 +117,9 @@
     /* Layout */
     --v2-layout-viewport-min: 1080px;
     --v2-layout-sidebar-compact: 204px;
-    --v2-layout-sidebar: 208px;
-    --v2-layout-topbar: 64px;
-    --v2-layout-workspace-max: 1500px;
+    --v2-layout-sidebar: 220px;
+    --v2-layout-topbar: 56px;
+    --v2-layout-workspace-max: none;
     --v2-layout-description-max: 680px;
 
     /* Z-index */

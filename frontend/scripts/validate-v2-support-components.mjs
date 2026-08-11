@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -24,6 +24,86 @@ const supportNames = [
   'BaseErrorState',
 ]
 const allNames = [...primitiveNames, ...supportNames]
+const dropdownNames = ['BaseDropdown', 'BaseDropdownItem']
+const resourceNames = ['BaseSelect', 'BaseTextarea', 'BaseTable']
+const modalNames = ['BaseModal']
+const expectedExportNames = [...allNames, ...dropdownNames, ...resourceNames, ...modalNames]
+const productionUsageNames = [...supportNames, ...dropdownNames, ...resourceNames, ...modalNames]
+const approvedProductionUsage = new Map([
+  ['BaseBadge', new Set(['src/components/AppShell.vue'])],
+  ['BasePagination', new Set(['src/views/ApiCasesView.vue', 'src/components/AppPagination.vue'])],
+  ['BaseDropdown', new Set(['src/views/DashboardView.vue'])],
+  ['BaseDropdownItem', new Set(['src/views/DashboardView.vue'])],
+  ['BaseSkeleton', new Set(['src/views/DashboardView.vue'])],
+  ['BaseEmptyState', new Set([
+    'src/views/DashboardView.vue', 'src/views/ApiHarvesterView.vue', 'src/views/RequirementVerificationView.vue',
+    'src/views/SystemRegressionView.vue', 'src/components/data-scripts/DataAgentWorkspace.vue',
+    'src/components/data-scripts/DataScriptCatalog.vue',
+  ])],
+  ['BaseErrorState', new Set(['src/views/DashboardView.vue', 'src/views/DataScriptsView.vue', 'src/views/RequirementVerificationView.vue'])],
+  ['BaseSelect', new Set([
+    'src/components/AppFormDialog.vue', 'src/components/AppShell.vue', 'src/views/ApiCasesView.vue',
+    'src/views/ApiHarvesterView.vue', 'src/views/DataScriptsView.vue', 'src/views/RequirementVerificationView.vue',
+    'src/views/SystemRegressionView.vue',
+  ])],
+  ['BaseTable', new Set(['src/views/ApiCasesView.vue', 'src/views/SystemRegressionView.vue'])],
+  ['BaseTextarea', new Set([
+    'src/components/AppFormDialog.vue', 'src/components/data-scripts/DataAgentWorkspace.vue',
+    'src/components/data-scripts/DataScriptRunner.vue', 'src/views/RequirementVerificationView.vue',
+    'src/views/SystemRegressionView.vue',
+  ])],
+  ['BaseModal', new Set([
+    'src/components/AppFormDialog.vue', 'src/views/ApiHarvesterView.vue', 'src/views/DashboardView.vue',
+    'src/views/RecordsView.vue', 'src/views/RequirementVerificationView.vue', 'src/views/SystemRegressionView.vue',
+  ])],
+])
+const fullyMigratedProductionPages = new Set([
+  'src/views/DashboardView.vue',
+  'src/views/ApiHarvesterView.vue',
+  'src/views/DataScriptsView.vue',
+  'src/views/RequirementVerificationView.vue',
+  'src/views/SystemRegressionView.vue',
+])
+const partialMigrationRules = new Map([
+  ['src/views/ApiCasesView.vue', {
+    approvedComponents: new Set([
+      'BaseButton',
+      'BaseBadge',
+      'BaseCheckbox',
+      'BasePagination',
+      'BaseSelect',
+      'BaseTable',
+    ]),
+    forbiddenLegacyInMigratedRegions: new Set([
+      'btn',
+      'badge',
+      'pagination',
+      'field',
+      'compact',
+      'table-wrap',
+    ]),
+    allowedLegacyOutsideMigratedRegions: new Set([
+      'toolbar',
+      'filters',
+      'actions',
+    ]),
+  }],
+  ['src/views/RecordsView.vue', {
+    approvedComponents: new Set(['BaseModal']),
+    forbiddenLegacyInMigratedRegions: new Set(),
+    allowedLegacyOutsideMigratedRegions: new Set(['toolbar', 'filters', 'field', 'compact', 'badge', 'actions', 'btn', 'secondary', 'empty']),
+  }],
+])
+const sharedComponentMigrationRules = new Map([
+  ['src/components/AppFormDialog.vue', {
+    approvedComponents: new Set(['BaseButton', 'BaseInput', 'BaseModal', 'BaseSelect', 'BaseTextarea']),
+  }],
+  ['src/components/AppPagination.vue', { approvedComponents: new Set(['BasePagination']) }],
+  ['src/components/AppShell.vue', { approvedComponents: new Set(['BaseBadge', 'BaseButton', 'BaseSelect']) }],
+  ['src/components/data-scripts/DataAgentWorkspace.vue', { approvedComponents: new Set(['BaseButton', 'BaseEmptyState', 'BaseTextarea']) }],
+  ['src/components/data-scripts/DataScriptCatalog.vue', { approvedComponents: new Set(['BaseEmptyState']) }],
+  ['src/components/data-scripts/DataScriptRunner.vue', { approvedComponents: new Set(['BaseButton', 'BaseTextarea']) }],
+])
 const failures = []
 
 function fail(message) {
@@ -49,11 +129,43 @@ function staticClassTokens(source) {
     .filter(Boolean)
 }
 
+function walkFiles(directory) {
+  return readdirSync(directory).flatMap((entry) => {
+    const path = join(directory, entry)
+    return statSync(path).isDirectory() ? walkFiles(path) : [path]
+  })
+}
+
+export function isApprovedProductionUsage(componentName, normalizedPath) {
+  return approvedProductionUsage.get(componentName)?.has(normalizedPath) ?? false
+}
+
 const forbiddenDependency = /(?:from\s+['"][^'"]*(?:vue-router|pinia|axios|stores\/|api\/|services\/)|import\s+['"][^'"]*(?:vue-router|pinia|axios|stores\/|api\/|services\/)|require\s*\(\s*['"][^'"]*(?:vue-router|pinia|axios|stores\/|api\/|services\/)|localStorage|sessionStorage|\bfetch\s*\(|\bXMLHttpRequest\b|\baxios\s*(?:\.|\())/i
 const forbiddenLegacyClasses = new Set(['btn', 'field', 'panel', 'badge', 'modal', 'toast', 'pagination', 'page-btn', 'empty', 'alert'])
+const forbiddenApprovedUsageLegacyClasses = new Set([
+  'actions',
+  'badge',
+  'btn',
+  'compact',
+  'dropdown',
+  'dropdown-item',
+  'dropdown-menu',
+  'empty',
+  'empty-state',
+  'field',
+  'filters',
+  'panel',
+  'panel-title',
+  'secondary',
+  'skeleton',
+  'stat',
+  'stats',
+  'toolbar',
+])
 const forbiddenRawColor = /(?:#[0-9a-f]{3,8}\b|rgba?\(|hsla?\()/i
 const forbiddenGlobalSelector = /(^|[},]\s*)(?::root|html|body|table)(?=$|[\s,{.:#[>+~])/im
 const forbiddenLegacySelector = /\.(?:btn|field|panel|badge|modal|toast|pagination|page-btn|empty|alert)(?=$|[\s,{.:#[>+~])/im
+const forbiddenPortal = /(?:<(?:Teleport|teleport)\b|\bh\s*\(\s*(?:Teleport|Portal)\b|:is\s*=\s*["'][^"']*(?:Teleport|Portal)|\bcreatePortal\s*\(|from\s+['"][^'"]*portal)/i
 
 function validateGenericSource(name, source) {
   const issues = []
@@ -65,9 +177,12 @@ function validateGenericSource(name, source) {
   if (/:root\b/.test(source)) add('contains shared :root')
   const dynamicClassValues = [...source.matchAll(/:class\s*=\s*"([^"]*)"|:class\s*=\s*'([^']*)'/g)]
     .map((match) => match[1] ?? match[2] ?? '')
-  if (dynamicClassValues.some((value) =>
-    /['"](?:btn|field|panel|badge|modal|toast|pagination|page-btn|empty|alert)['"]/.test(value)
-  )) {
+  if (dynamicClassValues.some((value) => {
+    const quotedTokens = [...value.matchAll(/['"]([^'"]+)['"]/g)]
+      .flatMap(([, classNames]) => classNames.split(/\s+/))
+    const unquotedObjectKey = /(?:^|[,{]\s*)(?:btn|field|panel|badge|modal|toast|pagination|page-btn|empty|alert)\s*:/.test(value)
+    return quotedTokens.some((token) => forbiddenLegacyClasses.has(token)) || unquotedObjectKey
+  })) {
     add('contains a dynamically bound legacy class')
   }
 
@@ -91,6 +206,92 @@ function validateGenericSource(name, source) {
   return issues
 }
 
+export function validateApprovedProductionLegacyUsage(normalizedPath, source) {
+  const issues = []
+  const staticLegacyClasses = staticClassTokens(source)
+    .filter((className) => forbiddenApprovedUsageLegacyClasses.has(className))
+  if (staticLegacyClasses.length > 0) {
+    issues.push(`${normalizedPath} uses approved-production legacy classes ${[...new Set(staticLegacyClasses)].join(', ')}`)
+  }
+
+  const dynamicClassValues = [...source.matchAll(/:class\s*=\s*"([^"]*)"|:class\s*=\s*'([^']*)'/g)]
+    .map((match) => match[1] ?? match[2] ?? '')
+  for (const value of dynamicClassValues) {
+    const tokens = [...value.matchAll(/['"]([^'"]+)['"]/g)]
+      .flatMap(([, classNames]) => classNames.split(/\s+/))
+    if (tokens.some((token) => forbiddenApprovedUsageLegacyClasses.has(token))) {
+      issues.push(`${normalizedPath} dynamically binds an approved-production legacy class`)
+      break
+    }
+  }
+
+  const legacySelector = new RegExp(
+    `\\.(?:${[...forbiddenApprovedUsageLegacyClasses].join('|')})(?=$|[\\s,{.:#[>+~])`,
+    'im',
+  )
+  for (const { css } of styleBlocks(source)) {
+    if (legacySelector.test(css)) {
+      issues.push(`${normalizedPath} styles an approved-production legacy selector`)
+    }
+    if (/var\(\s*--(?!v2-)[a-z0-9-]+/i.test(css)) {
+      issues.push(`${normalizedPath} references a non-V2 custom property in approved production usage`)
+    }
+  }
+
+  return issues
+}
+
+export function validateProductionBoundaryConfiguration() {
+  const issues = []
+
+  for (const path of fullyMigratedProductionPages) {
+    if (partialMigrationRules.has(path)) {
+      issues.push(`${path} cannot be both fully and partially migrated`)
+    }
+  }
+
+  for (const [path, rule] of partialMigrationRules) {
+    if (!path.startsWith('src/views/') || !path.endsWith('.vue')) {
+      issues.push(`${path} is not a production view path`)
+    }
+    if (!(rule.approvedComponents instanceof Set) || rule.approvedComponents.size === 0) {
+      issues.push(`${path} must declare approved components`)
+    }
+    for (const name of rule.approvedComponents ?? []) {
+      if (!expectedExportNames.includes(name)) {
+        issues.push(`${path} approves unknown component ${name}`)
+      }
+      if (productionUsageNames.includes(name) && !isApprovedProductionUsage(name, path)) {
+        issues.push(`${path} must be allow-listed for ${name}`)
+      }
+    }
+    for (const className of rule.forbiddenLegacyInMigratedRegions ?? []) {
+      if (rule.allowedLegacyOutsideMigratedRegions?.has(className)) {
+        issues.push(`${path} cannot both allow and forbid legacy class ${className}`)
+      }
+    }
+  }
+
+  for (const [path, rule] of sharedComponentMigrationRules) {
+    if (!path.startsWith('src/components/') || !path.endsWith('.vue')) {
+      issues.push(`${path} is not a shared production component path`)
+    }
+    if (!(rule.approvedComponents instanceof Set) || rule.approvedComponents.size === 0) {
+      issues.push(`${path} must declare approved shared components`)
+    }
+    for (const name of rule.approvedComponents ?? []) {
+      if (!expectedExportNames.includes(name)) {
+        issues.push(`${path} approves unknown component ${name}`)
+      }
+      if (productionUsageNames.includes(name) && !isApprovedProductionUsage(name, path)) {
+        issues.push(`${path} must be allow-listed for ${name}`)
+      }
+    }
+  }
+
+  return issues
+}
+
 const selfCheckSample = `
 <template><div class="btn" v-html="unsafe"></div></template>
 <script setup>import axios from 'axios'; axios('/api/demo')</script>
@@ -102,6 +303,10 @@ for (const expected of ['Router, Pinia, API', 'v-html', 'legacy class', 'inline 
     fail(`validator self-check did not detect ${expected}`)
   }
 }
+if (!forbiddenPortal.test(`h(Teleport, null, 'forbidden')`)) {
+  fail('validator self-check did not detect render-function Portal usage')
+}
+failures.push(...validateProductionBoundaryConfiguration())
 
 const sources = new Map()
 for (const name of supportNames) {
@@ -136,10 +341,10 @@ if (!existsSync(indexPath)) {
   for (const name of namedExports) {
     if (imports.get(name) === name) exports.add(name)
   }
-  if (exports.size !== allNames.length) {
-    fail(`index.js must export exactly ${allNames.length} base components`)
+  if (exports.size !== expectedExportNames.length) {
+    fail(`index.js must export exactly ${expectedExportNames.length} completed base components`)
   }
-  for (const name of allNames) {
+  for (const name of expectedExportNames) {
     const direct = directExports.some(({ exported, file }) => exported === name && file === name)
     const importedAndExported = imports.get(name) === name && namedExports.has(name)
     if (!direct && !importedAndExported) {
@@ -239,14 +444,53 @@ if (sources.size === supportNames.length) {
 }
 
 const productionFiles = [
-  join(frontendDir, 'src', 'main.js'),
-  join(frontendDir, 'src', 'App.vue'),
-  join(frontendDir, 'src', 'router', 'index.js'),
+  ...walkFiles(join(frontendDir, 'src'))
+    .filter((path) => /\.(?:vue|js)$/i.test(path))
+    .filter((path) => {
+      const normalized = relative(frontendDir, path).replaceAll('\\', '/')
+      return !normalized.startsWith('src/dev/')
+        && !normalized.startsWith('src/components/v2/base/')
+    }),
   join(frontendDir, 'vite.config.js'),
 ]
 for (const path of productionFiles) {
-  if (existsSync(path) && /(?:BasePagination|BaseTooltip|BaseSkeleton|BaseEmptyState|BaseErrorState|V2BaseComponentsLab|v2-base-components)/.test(read(path))) {
-    fail(`${relative(repoDir, path)} references Phase 5.2B1 or the development-only Lab`)
+  if (!existsSync(path)) continue
+  const source = read(path)
+  const normalized = relative(frontendDir, path).replaceAll('\\', '/')
+
+  if (/(?:V2BaseComponentsLab|v2-base-components)/.test(source)) {
+    fail(`${relative(repoDir, path)} references the development-only Component Lab`)
+  }
+
+  for (const name of productionUsageNames) {
+    if (new RegExp(`\\b${name}\\b`).test(source) && !isApprovedProductionUsage(name, normalized)) {
+      fail(`${relative(repoDir, path)} references ${name} outside Approved Production Usage`)
+    }
+  }
+
+  const hasApprovedUsage = productionUsageNames.some((name) =>
+    isApprovedProductionUsage(name, normalized) && new RegExp(`\\b${name}\\b`).test(source)
+  )
+  if (hasApprovedUsage) {
+    if (fullyMigratedProductionPages.has(normalized)) {
+      failures.push(...validateApprovedProductionLegacyUsage(normalized, source))
+    } else if (partialMigrationRules.has(normalized)) {
+      const rule = partialMigrationRules.get(normalized)
+      for (const name of expectedExportNames) {
+        if (new RegExp(`\\b${name}\\b`).test(source) && !rule.approvedComponents.has(name)) {
+          fail(`${relative(repoDir, path)} references ${name} outside its partial migration boundary`)
+        }
+      }
+    } else if (sharedComponentMigrationRules.has(normalized)) {
+      const rule = sharedComponentMigrationRules.get(normalized)
+      for (const name of expectedExportNames) {
+        if (new RegExp(`\\b${name}\\b`).test(source) && !rule.approvedComponents.has(name)) {
+          fail(`${relative(repoDir, path)} references ${name} outside its shared component migration boundary`)
+        }
+      }
+    } else {
+      fail(`${relative(repoDir, path)} uses an approved production component without a page migration boundary`)
+    }
   }
 }
 
@@ -261,6 +505,9 @@ for (const [name, source] of sources) {
   if (name === 'BaseTooltip' && /<(?:Teleport|teleport)\b/.test(template)) {
     fail('BaseTooltip must not use a Portal or Teleport')
   }
+  if (name === 'BaseTooltip' && forbiddenPortal.test(source)) {
+    fail('BaseTooltip must not use any Portal or Teleport form')
+  }
 }
 
 if (failures.length > 0) {
@@ -269,4 +516,4 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log(`V2 support components validation passed (${supportNames.length} support components, ${allNames.length} total exports).`)
+console.log(`V2 support components validation passed (${supportNames.length} support components, ${expectedExportNames.length} total exports).`)

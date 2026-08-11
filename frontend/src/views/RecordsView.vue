@@ -1,5 +1,12 @@
 <template>
   <!-- 对齐旧应用 renderRecords()：工具栏 + 表格 + 分页 -->
+  <div class="v2-records">
+  <WorkbenchPageHeader
+    eyebrow="EXECUTION"
+    title="执行报告"
+    description="筛选并复查接口、UI 与数据任务的执行证据，保留再次执行、日志、报告和截图入口。"
+  />
+  <WorkbenchPanel title="执行记录" :subtitle="`共 ${total} 条记录`">
   <div class="toolbar">
     <div class="filters">
       <div class="field compact">
@@ -57,17 +64,12 @@
       <button class="btn secondary" :disabled="page >= totalPages" @click="goPage('next')">下一页</button>
     </div>
   </div>
+  </WorkbenchPanel>
 
-  <!-- 日志弹窗：使用原生 dialog，对齐旧应用 modalEl 行为（不修改 AppModal 公共组件） -->
-  <dialog ref="logDialog" class="modal">
-    <div v-if="logVisible">
-      <div class="modal-head">
-        <h3>{{ logTitle }}</h3>
-        <button class="btn secondary" type="button" @click="closeLog">关闭</button>
-      </div>
-      <div class="modal-body" v-html="logBodyHtml"></div>
-    </div>
-  </dialog>
+  <BaseModal :open="logVisible" :title="logTitle" @update:open="!$event && closeLog()">
+    <div class="v2-records__log" v-html="logBodyHtml"></div>
+  </BaseModal>
+  </div>
 </template>
 
 <script setup>
@@ -88,6 +90,8 @@ import { useAuthStore } from '../stores/auth.js'
 import { useAppStore } from '../stores/app.js'
 import { useToastStore } from '../stores/toast.js'
 import AppTable from '../components/AppTable.vue'
+import { BaseModal } from '../components/v2/base/index.js'
+import { WorkbenchPageHeader, WorkbenchPanel } from '../components/v2/workbench/index.js'
 import { badgeText, badgeClass } from '../utils/badge.js'
 import { buildLogContent } from '../utils/recordLog.js'
 import * as recordsApi from '../api/modules/records.js'
@@ -192,7 +196,6 @@ async function goPage(target) {
 }
 
 // ========== 日志弹窗 ==========
-const logDialog = ref(null)
 const logVisible = ref(false)
 const logTitle = ref('')
 const logBodyHtml = ref('')
@@ -201,9 +204,6 @@ async function onShowLog(item) {
   logTitle.value = '加载中...'
   logBodyHtml.value = '<div class="empty">正在解析日志...</div>'
   logVisible.value = true
-  if (logDialog.value && !logDialog.value.open) {
-    logDialog.value.showModal()
-  }
   try {
     const { title, bodyHtml } = await buildLogContent(item)
     logTitle.value = title
@@ -216,9 +216,6 @@ async function onShowLog(item) {
 
 function closeLog() {
   logVisible.value = false
-  if (logDialog.value && logDialog.value.open) {
-    logDialog.value.close()
-  }
 }
 
 // ========== 下载文件（对齐旧应用 openProtectedFile） ==========
@@ -277,5 +274,127 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 使用旧应用 .toolbar / .filters / .field / .actions / .badge / .pagination / .modal 样式（来自 styles.css） */
+.v2-records {
+  display: grid;
+  gap: var(--v2-space-3);
+  max-width: var(--v2-layout-workspace-max);
+  margin: 0 auto;
+}
+
+.toolbar,
+.filters,
+.actions,
+.pagination,
+.page-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--v2-space-2);
+}
+
+.toolbar,
+.pagination {
+  justify-content: space-between;
+  padding: var(--v2-space-3);
+}
+
+.toolbar {
+  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+}
+
+.pagination {
+  border-top: var(--v2-border-width) solid var(--v2-border-panel);
+}
+
+.field {
+  display: grid;
+  gap: var(--v2-space-micro);
+}
+
+.field label,
+.page-info {
+  color: var(--v2-text-muted);
+  font-size: var(--v2-font-size-caption);
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+select,
+.btn {
+  min-height: var(--v2-control-height-compact);
+  border: var(--v2-border-width) solid var(--v2-border-default);
+  border-radius: var(--v2-radius-sm);
+  background: var(--v2-surface-default);
+  color: var(--v2-text-secondary);
+  font: inherit;
+  font-size: var(--v2-font-size-caption);
+}
+
+select {
+  min-width: calc(var(--v2-space-7) * 2.5);
+  padding: 0 var(--v2-space-2);
+}
+
+.btn {
+  padding: 0 var(--v2-space-2);
+  cursor: pointer;
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+.btn:not(.secondary) {
+  border-color: var(--v2-action-primary);
+  background: var(--v2-action-primary);
+  color: var(--v2-text-inverse);
+}
+
+.btn.active {
+  border-color: var(--v2-action-primary);
+  background: var(--v2-action-primary-soft);
+  color: var(--v2-action-primary);
+}
+
+.btn:focus-visible,
+select:focus-visible {
+  outline: 0;
+  box-shadow: var(--v2-state-focus-ring);
+}
+
+.badge {
+  display: inline-flex;
+  min-height: var(--v2-icon-size-md);
+  align-items: center;
+  padding: 0 var(--v2-space-1);
+  border-radius: var(--v2-radius-round);
+  background: var(--v2-surface-soft);
+  color: var(--v2-text-secondary);
+  font-size: var(--v2-font-size-tiny);
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+.badge.ok {
+  background: var(--v2-feedback-success-soft);
+  color: var(--v2-feedback-success);
+}
+
+.badge.fail {
+  background: var(--v2-feedback-danger-soft);
+  color: var(--v2-feedback-danger);
+}
+
+.v2-records__log {
+  max-height: calc(var(--v2-space-7) * 7);
+  overflow: auto;
+  color: var(--v2-text-secondary);
+  font-size: var(--v2-font-size-caption);
+}
+
+.v2-records__log :deep(pre) {
+  margin: 0;
+  padding: var(--v2-space-3);
+  border: var(--v2-border-width) solid var(--v2-border-panel);
+  border-radius: var(--v2-radius-sm);
+  background: var(--v2-surface-workspace);
+  font-family: var(--v2-font-family-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 </style>

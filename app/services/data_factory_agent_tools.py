@@ -634,6 +634,44 @@ def _tool_variables(context: AgentToolContext, overrides: Dict[str, Any] | None 
     return variables
 
 
+def _backend_runtime_variables(
+    context: AgentToolContext,
+    overrides: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    variables = _tool_variables(context, overrides)
+    profile_id = context.state.get("backend_account_profile_id") or variables.get("backend_account_profile_id")
+    if profile_id:
+        account_values, _ = account_profile_variables(context.db, int(profile_id), context.project_id)
+        backend_account = account_values.get("backend_account") or account_values.get("username") or account_values.get("account")
+        backend_password = account_values.get("backend_password") or account_values.get("password")
+        if not backend_account or not backend_password:
+            raise ValueError("所选后台账号档案缺少账号或密码")
+        context.permission_redaction_values.update({str(backend_account), str(backend_password)})
+        variables.update(account_values)
+        variables.update(
+            {
+                "backend_account": str(backend_account),
+                "backend_password": str(backend_password),
+                "backend_code": str(account_values.get("backend_code") or account_values.get("code") or ""),
+                "backend_system": str(account_values.get("backend_system") or "1"),
+                "backend_account_profile_id": int(profile_id),
+            }
+        )
+    if context.permission_credentials_provider:
+        permission_credentials = context.permission_credentials_provider()
+        backend_account = str(permission_credentials.get("backend_account") or "")
+        backend_password = str(permission_credentials.get("backend_password") or "")
+        if backend_account and backend_password:
+            context.permission_redaction_values.update({backend_account, backend_password})
+            variables.update({"backend_account": backend_account, "backend_password": backend_password})
+    return variables
+
+
+def _has_backend_runtime_account(variables: Dict[str, Any]) -> bool:
+    account = variables.get("backend_account") or variables.get("backend_username")
+    return bool(account and variables.get("backend_password"))
+
+
 def _prepare_order_options(context: AgentToolContext) -> Dict[str, int]:
     operation = context.goal.get("options") if isinstance(context.goal.get("options"), dict) else {}
     if not operation.get("enabled"):
@@ -743,11 +781,29 @@ def _resume_order(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict[
     order_sn = _state_identifier(context, "order_sn", arguments)
     if not order_sn:
         raise ValueError("续跑订单缺少订单号")
+    variables = _backend_runtime_variables(
+        context,
+        {"order_sn": order_sn, "stop_after_node": context.goal["target_node"]},
+    )
+    if not _has_backend_runtime_account(variables):
+        return {
+            "tool": "resume_order_flow",
+            "passed": False,
+            "record_id": None,
+            "report_path": "",
+            "summary": {
+                "paused": True,
+                "permission_required": True,
+                "awaiting_permission": True,
+                "required_account_role": "",
+                "reason": "订单续跑需要可查看该订单的后台账号，请选择账号档案或临时输入账号",
+            },
+        }
     result = _save_script_result(
         context,
         "resume_order_flow",
         data_scripts.run_resume_order_flow_script,
-        _tool_variables(context, {"order_sn": order_sn, "stop_after_node": context.goal["target_node"]}),
+        variables,
     )
     # 检测续跑是否越过 stop_after_node
     _check_resume_overshoot(result, context.goal.get("target_node", ""), "order")
@@ -762,7 +818,7 @@ def _resume_porder(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict
         context,
         "resume_porder_flow",
         data_scripts.run_resume_porder_flow_script,
-        _tool_variables(context, {"porder_sn": porder_sn, "stop_after_node": context.goal["target_node"]}),
+        _backend_runtime_variables(context, {"porder_sn": porder_sn, "stop_after_node": context.goal["target_node"]}),
     )
     _check_resume_overshoot(result, context.goal.get("target_node", ""), "porder")
     return result
@@ -964,7 +1020,8 @@ def _inspect_order(context: AgentToolContext, arguments: Dict[str, Any]) -> Dict
     if not order_sn:
         raise ValueError("查询订单状态缺少订单号")
     detect_log: Dict[str, Any] = {}
-    passed, summary = data_scripts._detect_resume_order_state(context.env, context.variables, order_sn, detect_log)
+    variables = _backend_runtime_variables(context, {"order_sn": order_sn})
+    passed, summary = data_scripts._detect_resume_order_state(context.env, variables, order_sn, detect_log)
     _update_state(context, summary)
     return {
         "tool": "inspect_order_state",
@@ -981,7 +1038,8 @@ def _inspect_porder(context: AgentToolContext, arguments: Dict[str, Any]) -> Dic
     if not porder_sn:
         raise ValueError("查询配送单状态缺少配送单号")
     detect_log: Dict[str, Any] = {}
-    passed, summary = data_scripts._detect_resume_porder_state(context.env, context.variables, porder_sn, detect_log)
+    variables = _backend_runtime_variables(context, {"porder_sn": porder_sn})
+    passed, summary = data_scripts._detect_resume_porder_state(context.env, variables, porder_sn, detect_log)
     _update_state(context, summary)
     compact = sanitize_observation(summary)
     return {

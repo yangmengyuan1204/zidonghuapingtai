@@ -1,10 +1,17 @@
 <template>
   <!-- 对齐旧应用 renderProjects()：项目列表 + 环境配置 + 测试账号档案 三段式布局 -->
-  <div class="toolbar">
-    <p>{{ auth.isAdmin ? '项目配置' : '当前账号只读' }}</p>
-    <button v-if="auth.isAdmin" class="btn" @click="openProjectForm(null)">新增项目</button>
-  </div>
+  <div class="v2-projects">
+  <WorkbenchPageHeader
+    eyebrow="WORKSPACE"
+    title="项目空间"
+    description="集中维护项目、执行环境与测试账号绑定；普通成员保持只读访问。"
+  >
+    <template #actions>
+      <button v-if="auth.isAdmin" class="btn" @click="openProjectForm(null)">新增项目</button>
+    </template>
+  </WorkbenchPageHeader>
 
+  <WorkbenchPanel title="项目" :subtitle="auth.isAdmin ? '可配置项目与默认测试账号' : '当前账号只读'">
   <AppTable :columns="projectColumns" :rows="rows.projects">
     <template #account_profile_name="{ row }">
       {{ row.account_profile_name || '-' }}
@@ -18,9 +25,10 @@
       <span v-else>-</span>
     </template>
   </AppTable>
+  </WorkbenchPanel>
 
   <!-- 项目环境配置 -->
-  <section class="project-env-section">
+  <WorkbenchPanel title="环境配置" subtitle="按项目维护 Base URL、超时与公共变量">
     <div class="toolbar">
       <div class="filters">
         <div class="field compact">
@@ -52,10 +60,10 @@
         <span v-else>-</span>
       </template>
     </AppTable>
-  </section>
+  </WorkbenchPanel>
 
   <!-- 测试账号档案 -->
-  <section class="project-env-section">
+  <WorkbenchPanel title="测试账号档案" subtitle="敏感信息保持掩码显示">
     <div class="toolbar">
       <div class="filters"><strong>测试账号档案</strong></div>
       <button v-if="auth.isAdmin" class="btn" @click="openTestAccountForm(null)">新增测试账号</button>
@@ -79,7 +87,7 @@
         <span v-else>-</span>
       </template>
     </AppTable>
-  </section>
+  </WorkbenchPanel>
 
   <!-- 项目表单弹窗 -->
   <AppFormDialog
@@ -121,6 +129,7 @@
     @close="closeBindingForm"
     @submit="submitBindingForm"
   />
+  </div>
 </template>
 
 <script setup>
@@ -141,6 +150,7 @@ import { useAppStore } from '../stores/app.js'
 import { useToastStore } from '../stores/toast.js'
 import AppTable from '../components/AppTable.vue'
 import AppFormDialog from '../components/AppFormDialog.vue'
+import { WorkbenchPageHeader, WorkbenchPanel } from '../components/v2/workbench/index.js'
 import { badgeText, badgeClass } from '../utils/badge.js'
 import { accountMaskedText, accountLabel } from '../utils/account.js'
 import * as projectsApi from '../api/modules/projects.js'
@@ -510,5 +520,122 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 使用旧应用 .toolbar / .actions / .badge / .project-env-section / .mini-log 样式（来自 legacy.css） */
+.v2-projects {
+  display: grid;
+  gap: var(--v2-space-3);
+  max-width: var(--v2-layout-workspace-max);
+  margin: 0 auto;
+}
+
+.toolbar,
+.filters,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--v2-space-2);
+}
+
+.toolbar {
+  justify-content: space-between;
+  padding: var(--v2-space-2) var(--v2-space-3);
+  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+}
+
+.btn {
+  min-height: var(--v2-control-height-compact);
+  padding: 0 var(--v2-space-2);
+  border: var(--v2-border-width) solid var(--v2-action-primary);
+  border-radius: var(--v2-radius-sm);
+  background: var(--v2-action-primary);
+  color: var(--v2-text-inverse);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--v2-font-size-caption);
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+.btn.secondary {
+  border-color: var(--v2-border-default);
+  background: var(--v2-surface-default);
+  color: var(--v2-text-secondary);
+}
+
+.btn.danger {
+  border-color: var(--v2-feedback-danger);
+  background: var(--v2-feedback-danger-soft);
+  color: var(--v2-feedback-danger);
+}
+
+.btn:hover {
+  background: var(--v2-action-primary-hover);
+}
+
+.btn.secondary:hover {
+  background: var(--v2-surface-hover);
+}
+
+.btn.danger:hover {
+  background: var(--v2-feedback-danger-soft);
+}
+
+.btn:focus-visible,
+select:focus-visible {
+  outline: 0;
+  box-shadow: var(--v2-state-focus-ring);
+}
+
+.field {
+  display: grid;
+  gap: var(--v2-space-micro);
+}
+
+.field label {
+  color: var(--v2-text-muted);
+  font-size: var(--v2-font-size-caption);
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+select {
+  min-height: var(--v2-control-height-compact);
+  padding: 0 var(--v2-space-2);
+  border: var(--v2-border-width) solid var(--v2-border-default);
+  border-radius: var(--v2-radius-sm);
+  background: var(--v2-surface-default);
+  color: var(--v2-text-primary);
+  font: inherit;
+}
+
+.badge {
+  display: inline-flex;
+  min-height: var(--v2-icon-size-md);
+  align-items: center;
+  padding: 0 var(--v2-space-1);
+  border-radius: var(--v2-radius-round);
+  background: var(--v2-surface-soft);
+  color: var(--v2-text-secondary);
+  font-size: var(--v2-font-size-tiny);
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+.badge.ok {
+  background: var(--v2-feedback-success-soft);
+  color: var(--v2-feedback-success);
+}
+
+.badge.fail {
+  background: var(--v2-feedback-danger-soft);
+  color: var(--v2-feedback-danger);
+}
+
+.mini-log {
+  max-width: calc(var(--v2-space-7) * 5);
+  margin: 0;
+  overflow: hidden;
+  color: var(--v2-text-muted);
+  font-family: var(--v2-font-family-mono);
+  font-size: var(--v2-font-size-tiny);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>

@@ -752,10 +752,6 @@ if (!window.__fullFlowDataScriptLoaded) {
       account: loginBody.account || "12345678990",
       password: loginBody.password || "123456",
       client_tool: "1",
-      backend_account: "Y001",
-      backend_password: "raku@123456``",
-      backend_system: "1",
-      backend_code: "wnm666",
     };
     const migratedExistingVariables = { ...existingVariables };
     if (
@@ -1004,10 +1000,6 @@ if (!window.__fullFlowDataScriptLoaded) {
       account: loginBody.account || "12345678990",
       password: loginBody.password || "123456",
       client_tool: "1",
-      backend_account: "Y001",
-      backend_password: "raku@123456``",
-      backend_system: "1",
-      backend_code: "wnm666",
     };
     const mergedVariables = sanitizeScriptVariables("resume_order_flow", { ...defaultVariables, ...existingVariables }, existingFlow);
     const caseIds = [login].filter(Boolean).map((item) => item.id);

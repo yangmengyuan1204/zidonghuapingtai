@@ -237,9 +237,11 @@ from .functional_testing import scan_page_dom
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_app()
+    from .services.system_regression.batch_service import recover_interrupted_runs_on_startup
     from .services.verification_runtime_v2 import recover_unfinished_runs
 
     recover_unfinished_runs()
+    recover_interrupted_runs_on_startup()
     yield
 
 

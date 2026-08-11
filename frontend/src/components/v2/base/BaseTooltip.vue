@@ -31,7 +31,6 @@ import {
   cloneVNode,
   computed,
   defineComponent,
-  h,
   onBeforeUnmount,
   ref,
   useId,
@@ -71,15 +70,13 @@ const TooltipTrigger = defineComponent({
   setup(triggerProps, { slots }) {
     return () => {
       const nodes = flattenTriggerNodes(slots.default?.() ?? [])
-      const first = nodes[0]
-      if (!first) return null
+      if (nodes.length === 0) return null
 
-      const existing = first.props?.['aria-describedby']
-      const merged = [existing, triggerProps.describedBy].filter(Boolean).join(' ') || undefined
-      if (nodes.length === 1) {
-        return cloneVNode(first, { 'aria-describedby': merged }, true)
-      }
-      return h('span', { 'aria-describedby': merged }, nodes)
+      return nodes.map((node) => {
+        const existing = node.props?.['aria-describedby']
+        const merged = [existing, triggerProps.describedBy].filter(Boolean).join(' ') || undefined
+        return cloneVNode(node, { 'aria-describedby': merged }, true)
+      })
     }
   },
 })

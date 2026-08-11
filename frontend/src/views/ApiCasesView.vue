@@ -1,73 +1,105 @@
 <template>
   <!-- 对齐旧应用 renderApiCases()：工具栏 + 表格 + 分页 -->
-  <div class="toolbar">
-    <div class="filters">
-      <div class="field compact">
-        <label>项目</label>
-        <select :value="filterProjectId" @change="onProjectChange">
-          <option value="">全部</option>
-          <option v-for="p in projects" :key="p.id" :value="String(p.id)">{{ p.name }}</option>
-        </select>
+  <div class="v2-api-cases">
+  <WorkbenchPageHeader
+    eyebrow="TEST ASSETS"
+    title="接口用例库"
+    description="按项目与环境管理接口测试资产，支持选择、批量执行和单条调试。"
+  />
+  <WorkbenchPanel title="接口用例" subtitle="筛选条件与选择状态在执行前保持不变">
+  <div class="v2-api-cases-toolbar">
+    <div class="v2-api-cases-filters">
+      <div class="v2-api-cases-filter">
+        <BaseSelect
+          label="项目"
+          placeholder="全部"
+          :model-value="filterProjectId"
+          :options="projects"
+          option-value="id"
+          option-label="name"
+          @change="onProjectChange"
+        />
       </div>
-      <div class="field compact">
-        <label>环境</label>
-        <select :value="filterEnvId" @change="onEnvChange">
-          <option value="">全部</option>
-          <option v-for="e in envs" :key="e.id" :value="String(e.id)">{{ e.env_name }}</option>
-        </select>
+      <div class="v2-api-cases-filter">
+        <BaseSelect
+          label="环境"
+          placeholder="全部"
+          :model-value="filterEnvId"
+          :options="envs"
+          option-value="id"
+          option-label="env_name"
+          @change="onEnvChange"
+        />
       </div>
     </div>
-    <div class="actions">
-      <button class="btn secondary" :disabled="selectedIds.size === 0" @click="openBatchRun">批量执行 {{ selectedIds.size || '' }}</button>
-      <button v-if="auth.isAdmin" class="btn" @click="openForm(null)">新增接口用例</button>
+    <div class="v2-api-cases-actions">
+      <BaseButton
+        type="button"
+        variant="secondary"
+        :disabled="selectedIds.size === 0"
+        @click="openBatchRun"
+      >批量执行 {{ selectedIds.size || '' }}</BaseButton>
+      <BaseButton
+        v-if="auth.isAdmin"
+        type="button"
+        variant="primary"
+        @click="openForm(null)"
+      >新增接口用例</BaseButton>
     </div>
   </div>
 
-  <AppTable :columns="columns" :rows="rows">
+  <BaseTable
+    :columns="columns"
+    :rows="rows"
+    row-key="id"
+    aria-label="接口用例列表"
+    :loading="loading"
+    :min-content-width="986"
+  >
     <!-- 选择框列（对齐旧应用 select 列） -->
     <template #select="{ row }">
-      <input
-        type="checkbox"
-        :checked="selectedIds.has(row.id)"
+      <BaseCheckbox
+        :model-value="selectedIds.has(row.id)"
+        :aria-label="`选择接口用例 ${row.case_name || row.id}`"
         @change="toggleSelect(row.id, $event)"
       />
     </template>
+    <template #id="{ row }">{{ shortText(row.id) }}</template>
     <template #project_id="{ row }">{{ projectName(row.project_id) }}</template>
     <template #env_id="{ row }">{{ envName(row.env_id) }}</template>
+    <template #case_name="{ row }">{{ shortText(row.case_name) }}</template>
     <template #method="{ row }">
-      <span class="badge" :class="badgeClass(row.method)">{{ badgeText(row.method) }}</span>
+      <BaseBadge tone="neutral" size="compact">{{ badgeText(row.method) }}</BaseBadge>
     </template>
+    <template #url="{ row }">{{ shortText(row.url) }}</template>
     <template #status="{ row }">
-      <span class="badge" :class="apiCaseStatusClass(row.status)">{{ apiCaseStatusText(row.status) }}</span>
+      <BaseBadge :tone="apiCaseStatusTone(row.status)" size="compact">{{ apiCaseStatusText(row.status) }}</BaseBadge>
     </template>
     <template #actions="{ row }">
-      <div class="actions">
-        <button class="btn" @click="onRun(row)">执行</button>
+      <div class="v2-api-cases-actions">
+        <BaseButton type="button" variant="primary" size="compact" @click="onRun(row)">执行</BaseButton>
         <template v-if="auth.isAdmin">
-          <button class="btn secondary" @click="onCopy(row)">复制</button>
-          <button class="btn secondary" @click="openForm(row)">编辑</button>
-          <button class="btn danger" @click="onDelete(row)">删除</button>
+          <BaseButton type="button" variant="secondary" size="compact" @click="onCopy(row)">复制</BaseButton>
+          <BaseButton type="button" variant="secondary" size="compact" @click="openForm(row)">编辑</BaseButton>
+          <BaseButton type="button" variant="danger" size="compact" @click="onDelete(row)">删除</BaseButton>
         </template>
       </div>
     </template>
-  </AppTable>
+  </BaseTable>
 
   <!-- 分页：对齐旧应用 renderApiCases 分页结构 -->
-  <div class="pagination">
-    <span class="page-info">共 {{ total }} 条，第 {{ page }}/{{ totalPages }} 页</span>
-    <div class="page-buttons">
-      <button class="btn secondary" :disabled="page <= 1" @click="goPage('prev')">上一页</button>
-      <template v-for="(btn, idx) in pageButtons" :key="idx">
-        <span v-if="btn === '...'" class="page-ellipsis">...</span>
-        <button
-          v-else
-          :class="['btn', Number(btn) === page ? 'active' : 'secondary']"
-          @click="goPage(Number(btn))"
-        >{{ btn }}</button>
-      </template>
-      <button class="btn secondary" :disabled="page >= totalPages" @click="goPage('next')">下一页</button>
-    </div>
+  <div class="v2-api-cases-pagination">
+    <span class="v2-api-cases-page-info">共 {{ total }} 条，第 {{ page }}/{{ totalPages }} 页</span>
+    <BasePagination
+      :page="page"
+      :total="total"
+      :page-size="pageSize"
+      :sibling-count="2"
+      aria-label="接口用例分页"
+      @change="goPage"
+    />
   </div>
+  </WorkbenchPanel>
 
   <!-- 新增/编辑/复制表单弹窗 -->
   <AppFormDialog
@@ -89,6 +121,7 @@
     @close="closeBatch"
     @submit="submitBatch"
   />
+  </div>
 </template>
 
 <script setup>
@@ -111,8 +144,16 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useAppStore } from '../stores/app.js'
 import { useToastStore } from '../stores/toast.js'
-import AppTable from '../components/AppTable.vue'
 import AppFormDialog from '../components/AppFormDialog.vue'
+import { WorkbenchPageHeader, WorkbenchPanel } from '../components/v2/workbench/index.js'
+import {
+  BaseBadge,
+  BaseButton,
+  BaseCheckbox,
+  BasePagination,
+  BaseSelect,
+  BaseTable,
+} from '../components/v2/base/index.js'
 import { badgeText, badgeClass } from '../utils/badge.js'
 import * as apiCasesApi from '../api/modules/apiCases.js'
 import { listEnvs } from '../api/modules/envs.js'
@@ -196,6 +237,19 @@ function apiCaseStatusClass(value) {
   if (value === 'active') return 'ok'
   if (value === 'inactive' || value === 'disabled') return 'warn'
   return badgeClass(value)
+}
+
+function apiCaseStatusTone(value) {
+  return {
+    ok: 'success',
+    fail: 'danger',
+    warn: 'warning',
+  }[apiCaseStatusClass(value)] || 'neutral'
+}
+
+function shortText(value, length = 140) {
+  const s = String(value ?? '')
+  return s.length > length ? s.slice(0, length) + '...' : s
 }
 
 // ========== 数据加载 ==========
@@ -447,5 +501,44 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 使用旧应用 .toolbar / .filters / .field / .actions / .badge / .pagination 样式（来自 styles.css） */
+.v2-api-cases {
+  display: grid;
+  gap: var(--v2-space-3);
+  max-width: var(--v2-layout-workspace-max);
+  margin: 0 auto;
+}
+
+.v2-api-cases-toolbar,
+.v2-api-cases-filters,
+.v2-api-cases-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--v2-space-2);
+}
+
+.v2-api-cases-toolbar {
+  justify-content: space-between;
+  padding: var(--v2-space-3);
+  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+}
+
+.v2-api-cases-filter {
+  min-width: 200px;
+}
+
+.v2-api-cases-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-2);
+  padding: var(--v2-space-2) 0;
+}
+
+.v2-api-cases-page-info {
+  color: var(--v2-table-text-muted);
+  font-size: var(--v2-font-size-caption);
+  white-space: nowrap;
+}
 </style>

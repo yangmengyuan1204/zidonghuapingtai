@@ -366,16 +366,29 @@ def public_problem_row(row: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def order_purchase_candidates(order_data: Dict[str, Any]) -> list[Dict[str, Any]]:
+    nested_data = order_data.get("data")
+    if isinstance(nested_data, dict):
+        order_data = nested_data
+
     pairs: list[tuple[Dict[str, Any], Dict[str, Any]]] = []
     for order in _nested_list(order_data):
         if not isinstance(order, dict):
             continue
-        purchases = order.get("order_purchase") or order.get("order_purchases") or []
+        purchases = (
+            order.get("order_purchase")
+            or order.get("order_purchases")
+            or order.get("list")
+            or order.get("items")
+            or []
+        )
         if isinstance(purchases, dict):
             purchases = [purchases]
-        for purchase in purchases if isinstance(purchases, list) else []:
-            if not isinstance(purchase, dict):
+        for raw_purchase in purchases if isinstance(purchases, list) else []:
+            if not isinstance(raw_purchase, dict):
                 continue
+            purchase = dict(raw_purchase)
+            purchase.setdefault("purchase_no", order.get("purchase_no"))
+            purchase.setdefault("order_sn", order.get("order_sn"))
             detail = purchase.get("order_detail") if isinstance(purchase.get("order_detail"), dict) else {}
             pairs.append((detail, purchase))
 
@@ -386,31 +399,50 @@ def order_purchase_candidates(order_data: Dict[str, Any]) -> list[Dict[str, Any]
         purchases = detail.get("order_purchase") or detail.get("order_purchases") or []
         if isinstance(purchases, dict):
             purchases = [purchases]
-        for purchase in purchases if isinstance(purchases, list) else []:
-            if isinstance(purchase, dict):
-                pairs.append((detail, purchase))
+        for raw_purchase in purchases if isinstance(purchases, list) else []:
+            if not isinstance(raw_purchase, dict):
+                continue
+            purchase = dict(raw_purchase)
+            purchase.setdefault("order_detail_id", detail.get("id"))
+            pairs.append((detail, purchase))
 
     candidates: list[Dict[str, Any]] = []
     seen: set[int] = set()
     for detail, purchase in pairs:
-        purchase_id = int(purchase.get("id") or purchase.get("order_purchase_id") or 0)
-        detail_id = int(detail.get("id") or purchase.get("order_detail_id") or 0)
-        if not purchase_id or not detail_id or purchase_id in seen:
+        try:
+            purchase_value = purchase.get("id")
+            if purchase_value in (None, ""):
+                purchase_value = purchase.get("order_purchase_id")
+            detail_value = detail.get("id")
+            if detail_value in (None, ""):
+                detail_value = purchase.get("order_detail_id")
+            possible_value = purchase.get("possible_num")
+            storage_value = purchase.get("storage_num")
+            purchase_id = _integer(purchase_value if purchase_value not in (None, "") else 0, "采购记录ID", positive=True)
+            detail_id = _integer(detail_value if detail_value not in (None, "") else 0, "订单详情ID", positive=True)
+            possible_num = _integer(possible_value if possible_value not in (None, "") else 0, "可提交数量")
+            storage_num = _integer(storage_value if storage_value not in (None, "") else 0, "已入库数量")
+        except ProblemGoodsError:
+            continue
+        if purchase_id in seen:
             continue
         seen.add(purchase_id)
-        possible_num = int(purchase.get("possible_num") or 0)
-        storage_num = int(purchase.get("storage_num") or 0)
         max_submit_num = max(0, possible_num - storage_num)
         price = purchase.get("price") if purchase.get("price") not in (None, "") else detail.get("confirm_price")
         freight = purchase.get("freight") if purchase.get("freight") not in (None, "") else detail.get("confirm_freight")
+        confirm_num = detail.get("confirm_num") if detail.get("confirm_num") not in (None, "") else purchase.get("confirm_num")
+        confirm_price = detail.get("confirm_price") if detail.get("confirm_price") not in (None, "") else purchase.get("confirm_price")
+        confirm_freight = detail.get("confirm_freight") if detail.get("confirm_freight") not in (None, "") else purchase.get("confirm_freight")
+        price = price if price not in (None, "") else confirm_price
+        freight = freight if freight not in (None, "") else confirm_freight
         candidates.append(
             {
                 "order_purchase_id": purchase_id,
                 "order_detail_id": detail_id,
-                "sorting": detail.get("sorting"),
+                "sorting": detail.get("sorting") if detail.get("sorting") not in (None, "") else purchase.get("sorting"),
                 "purchase_no": purchase.get("purchase_no"),
-                "goods_name": detail.get("goods_name") or detail.get("goods_title") or detail.get("title"),
-                "sku_id": detail.get("sku_id"),
+                "goods_name": detail.get("goods_name") or detail.get("goods_title") or detail.get("title") or purchase.get("goods_name"),
+                "sku_id": detail.get("sku_id") or purchase.get("sku_id"),
                 "purchase_status": purchase.get("status"),
                 "possible_num": possible_num,
                 "storage_num": storage_num,
@@ -418,16 +450,34 @@ def order_purchase_candidates(order_data: Dict[str, Any]) -> list[Dict[str, Any]
                 "can_submit": max_submit_num > 0,
                 "price": price,
                 "freight": freight,
-                "confirm_num": detail.get("confirm_num"),
-                "confirm_price": detail.get("confirm_price"),
-                "confirm_freight": detail.get("confirm_freight"),
-                "pre_num": detail.get("confirm_num") if detail.get("confirm_num") not in (None, "") else possible_num,
-                "pre_price": detail.get("confirm_price") if detail.get("confirm_price") not in (None, "") else price,
-                "pre_freight": detail.get("confirm_freight") if detail.get("confirm_freight") not in (None, "") else freight,
-                "option": detail.get("option") or [],
+                "confirm_num": confirm_num,
+                "confirm_price": confirm_price,
+                "confirm_freight": confirm_freight,
+                "pre_num": confirm_num if confirm_num not in (None, "") else possible_num,
+                "pre_price": confirm_price if confirm_price not in (None, "") else price,
+                "pre_freight": confirm_freight if confirm_freight not in (None, "") else freight,
+                "option": detail.get("option") or purchase.get("option") or [],
             }
         )
     return candidates
+
+
+def merge_purchase_candidates(*groups: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+    merged: Dict[int, Dict[str, Any]] = {}
+    for group in groups:
+        for candidate in group:
+            try:
+                purchase_id = _integer(candidate.get("order_purchase_id"), "采购记录ID", positive=True)
+            except ProblemGoodsError:
+                continue
+            current = merged.get(purchase_id)
+            if current is None:
+                merged[purchase_id] = dict(candidate)
+                continue
+            for key, value in candidate.items():
+                if current.get(key) in (None, "", []) and value not in (None, "", []):
+                    current[key] = value
+    return list(merged.values())
 
 
 def available_option_catalog(payload: Dict[str, Any]) -> list[Dict[str, Any]]:
@@ -555,26 +605,77 @@ class ProblemGoodsGateway:
         return flatten_problem_rows(payload)
 
     def list_purchase_candidates(self, order_sn: str) -> list[Dict[str, Any]]:
-        payload = self._admin_request(
-            self._path("purchase_list", "/purchase.purchaseList"),
+        source_log: Dict[str, Dict[str, Any]] = {}
+        successful_sources = 0
+
+        def query(source: str, path_key: str, default_path: str, fields: Dict[str, Any]) -> list[Dict[str, Any]]:
+            nonlocal successful_sources
+            try:
+                payload = self._admin_request(
+                    self._path(path_key, default_path),
+                    fields,
+                    f"查询问题产品候选（{source}）",
+                    mutation=False,
+                )
+                if not _api_success(payload):
+                    raise ProblemGoodsApiError(f"查询问题产品候选（{source}）", payload)
+                successful_sources += 1
+                rows = order_purchase_candidates(payload)
+                source_log[source] = {"success": True, "count": len(rows)}
+                return rows
+            except ProblemGoodsError as exc:
+                source_log[source] = {"success": False, "error": str(exc)}
+                return []
+
+        order_detail_rows = query(
+            "order_detail",
+            "admin_order_detail",
+            "/order.detail",
+            {"order_sn": order_sn},
+        )
+        if order_detail_rows:
+            self.log["candidate_sources"] = source_log
+            return order_detail_rows
+
+        purchase_rows = query(
+            "purchase_list",
+            "admin_purchase_list",
+            "/purchase.purchaseList",
             {
                 "page": 1,
                 "pageSize": 100,
                 "status": "全部",
                 "dateStart": "",
                 "dateEnd": "",
-                "user_id": self.variables.get("customer_id") or "",
+                "user_id": "",
                 "order_sn": order_sn,
                 "g_id": "",
                 "is_urgent": "",
                 "overdue": "",
             },
-            "查询订单采购记录",
-            mutation=False,
         )
-        if not _api_success(payload):
-            raise ProblemGoodsApiError("查询订单采购记录", payload)
-        return order_purchase_candidates(payload)
+        follow_rows = query(
+            "follow_list",
+            "admin_follow_list",
+            "/follow.followList",
+            {
+                "page": 1,
+                "pageSize": 100,
+                "status": "0",
+                "dateStart": "",
+                "dateEnd": "",
+                "user_id": "",
+                "order_sn": order_sn,
+                "express_no": "",
+                "purchase_no": "",
+                "order_part": "",
+                "realname": "",
+            },
+        )
+        self.log["candidate_sources"] = source_log
+        if not successful_sources:
+            raise ProblemGoodsError("候选采购记录查询失败")
+        return merge_purchase_candidates(purchase_rows, follow_rows)
 
     def list_available_options(self) -> list[Dict[str, Any]]:
         payload = self._client_request(
@@ -1000,8 +1101,8 @@ class ProblemGoodsFlow:
             preview_bills = parse_preview_bills(preview_payload)
             refund_cny = refund_cny_from_preview(preview_bills)
             self._record_step("bill_previewed", refund_cny=str(refund_cny), bill_count=len(preview_bills))
-            if refund_cny >= Decimal("500") and not _bool_value(self.variables.get("allow_large_refund"), False):
-                return self._permission_summary(row, preview_bills, "预计退款达到500元，请切换部长后台账号后继续")
+            if refund_cny > Decimal("500") and not _bool_value(self.variables.get("allow_large_refund"), False):
+                return self._permission_summary(row, preview_bills, "预计退款超过500元，请切换部长后台账号后继续")
 
             try:
                 self.gateway.business_deal(_business_fields(problem_goods_id, self.variables, preview=False), preview=False)
@@ -1119,6 +1220,8 @@ def fetch_problem_goods_options(env: Any, variables: Dict[str, Any] | None = Non
 def run_problem_goods_script(
     env: Any,
     variables: Dict[str, Any] | None = None,
+    *,
+    gateway_factory: Any = None,
 ) -> Tuple[bool, str, str, Dict[str, Any]]:
     values = dict(variables or {})
     log: Dict[str, Any] = {
@@ -1128,7 +1231,7 @@ def run_problem_goods_script(
         "steps": [],
     }
     try:
-        gateway = ProblemGoodsGateway(env, values, log)
+        gateway = (gateway_factory or ProblemGoodsGateway)(env, values, log)
         summary = ProblemGoodsFlow(gateway, values, log).run()
         passed = bool(summary.get("completed") or summary.get("already_completed") or summary.get("paused"))
         return _finish_named(PROBLEM_GOODS_SCRIPT_NAME, log, passed, summary)

@@ -235,6 +235,289 @@ def test_purchase_list_candidates_use_unstored_quantity_and_confirmed_values():
     assert rows[0]["pre_price"] == "58.00"
 
 
+def test_order_detail_candidates_include_nested_purchases_across_nodes():
+    payload = {
+        "success": True,
+        "data": {
+            "order_sn": "2026071816165891-300001",
+            "order_detail": [
+                {
+                    "id": 14052981,
+                    "sorting": 1,
+                    "confirm_num": 1,
+                    "confirm_price": "10.00",
+                    "confirm_freight": "2.00",
+                    "order_purchase": [
+                        {
+                            "id": 15328208,
+                            "order_detail_id": 14052981,
+                            "purchase_no": "20260718161716",
+                            "possible_num": 1,
+                            "storage_num": 0,
+                            "status": 40,
+                            "statusName": "核查中",
+                        }
+                    ],
+                }
+            ],
+        },
+    }
+
+    rows = order_purchase_candidates(payload)
+
+    assert rows == [
+        {
+            "order_purchase_id": 15328208,
+            "order_detail_id": 14052981,
+            "sorting": 1,
+            "purchase_no": "20260718161716",
+            "goods_name": None,
+            "sku_id": None,
+            "purchase_status": 40,
+            "possible_num": 1,
+            "storage_num": 0,
+            "max_submit_num": 1,
+            "can_submit": True,
+            "price": "10.00",
+            "freight": "2.00",
+            "confirm_num": 1,
+            "confirm_price": "10.00",
+            "confirm_freight": "2.00",
+            "pre_num": 1,
+            "pre_price": "10.00",
+            "pre_freight": "2.00",
+            "option": [],
+        }
+    ]
+
+
+def test_follow_list_candidates_accept_flat_child_fields():
+    payload = {
+        "success": True,
+        "data": {
+            "data": [
+                {
+                    "order_sn": "2026071816165891-300001",
+                    "purchase_no": "20260718161716",
+                    "list": [
+                        {
+                            "order_purchase_id": 15328209,
+                            "order_detail_id": 14052982,
+                            "sorting": 2,
+                            "possible_num": 1,
+                            "storage_num": 0,
+                            "confirm_num": 1,
+                            "confirm_price": "11.00",
+                            "confirm_freight": "3.00",
+                        }
+                    ],
+                }
+            ]
+        },
+    }
+
+    rows = order_purchase_candidates(payload)
+
+    assert len(rows) == 1
+    assert rows[0]["order_purchase_id"] == 15328209
+    assert rows[0]["order_detail_id"] == 14052982
+    assert rows[0]["sorting"] == 2
+    assert rows[0]["purchase_no"] == "20260718161716"
+    assert rows[0]["max_submit_num"] == 1
+
+
+def test_candidates_mark_fully_stored_purchase_unavailable():
+    payload = {
+        "data": {
+            "order_detail": [
+                {
+                    "id": 14052983,
+                    "sorting": 3,
+                    "order_purchase": [
+                        {
+                            "id": 15328210,
+                            "order_detail_id": 14052983,
+                            "possible_num": 1,
+                            "storage_num": 1,
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+    rows = order_purchase_candidates(payload)
+
+    assert rows[0]["max_submit_num"] == 0
+    assert rows[0]["can_submit"] is False
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("id", -1),
+        ("id", True),
+        ("id", "1.5"),
+        ("id", "Infinity"),
+        ("possible_num", -1),
+        ("possible_num", True),
+        ("possible_num", "1.5"),
+        ("possible_num", "Infinity"),
+        ("storage_num", -1),
+        ("storage_num", True),
+        ("storage_num", "1.5"),
+        ("storage_num", "Infinity"),
+    ],
+)
+def test_candidates_skip_malformed_id_and_quantity_values(field, value):
+    purchase = {
+        "id": 15328211,
+        "order_detail_id": 14052984,
+        "possible_num": 2,
+        "storage_num": 0,
+    }
+    purchase[field] = value
+
+    rows = order_purchase_candidates({"order_detail": [{"id": 14052984, "order_purchase": [purchase]}]})
+
+    assert rows == []
+
+
+def test_merge_purchase_candidates_skips_malformed_id_and_fills_empty_fields():
+    rows = problem_goods.merge_purchase_candidates(
+        [
+            {"order_purchase_id": "bad-id"},
+            {"order_purchase_id": -1},
+            {"order_purchase_id": True},
+            {"order_purchase_id": 1.5},
+            {"order_purchase_id": float("inf")},
+            {"order_purchase_id": 15328213, "purchase_no": "", "sorting": None},
+        ],
+        [{"order_purchase_id": "15328213.0", "purchase_no": "P-13", "sorting": 3}],
+    )
+
+    assert rows == [{"order_purchase_id": 15328213, "purchase_no": "P-13", "sorting": 3}]
+
+
+def _candidate_gateway(monkeypatch, responses):
+    gateway = object.__new__(ProblemGoodsGateway)
+    gateway.variables = {"customer_id": "300001"}
+    gateway.log = {}
+    gateway._path = lambda key, default: default
+    calls = []
+
+    def request(path, fields, action, mutation):
+        calls.append(path)
+        response = responses[path]
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    monkeypatch.setattr(gateway, "_admin_request", request)
+    gateway.candidate_request_paths = calls
+    return gateway
+
+
+def _order_detail_payload(purchase_id=15328208, sorting=1):
+    return {
+        "success": True,
+        "data": {
+            "order_detail": [
+                {
+                    "id": 14052980 + sorting,
+                    "sorting": sorting,
+                    "confirm_num": 1,
+                    "order_purchase": [
+                        {
+                            "id": purchase_id,
+                            "order_detail_id": 14052980 + sorting,
+                            "possible_num": 1,
+                            "storage_num": 0,
+                        }
+                    ],
+                }
+            ]
+        },
+    }
+
+
+def test_gateway_prefers_order_detail_candidates(monkeypatch):
+    gateway = _candidate_gateway(monkeypatch, {"/order.detail": _order_detail_payload()})
+
+    rows = gateway.list_purchase_candidates("2026071816165891-300001")
+
+    assert [row["order_purchase_id"] for row in rows] == [15328208]
+    assert gateway.log["candidate_sources"]["order_detail"]["count"] == 1
+    assert gateway.candidate_request_paths == ["/order.detail"]
+
+
+def test_gateway_uses_successful_fallback_when_primary_candidates_are_malformed(monkeypatch):
+    malformed_primary = {
+        "success": True,
+        "data": {"order_detail": [{"id": 14052981, "order_purchase": [{"id": 15328216, "possible_num": 1.5, "storage_num": 0}]}]},
+    }
+    gateway = _candidate_gateway(
+        monkeypatch,
+        {
+            "/order.detail": malformed_primary,
+            "/purchase.purchaseList": _order_detail_payload(15328214),
+            "/follow.followList": ProblemGoodsError("temporary failure"),
+        },
+    )
+
+    rows = gateway.list_purchase_candidates("2026071816165891-300001")
+
+    assert [row["order_purchase_id"] for row in rows] == [15328214]
+    assert gateway.candidate_request_paths == ["/order.detail", "/purchase.purchaseList", "/follow.followList"]
+
+
+def test_gateway_merges_and_deduplicates_fallback_sources(monkeypatch):
+    duplicate = _order_detail_payload()["data"]["order_detail"][0]["order_purchase"][0]
+    gateway = _candidate_gateway(
+        monkeypatch,
+        {
+            "/order.detail": {"success": True, "data": {"order_detail": []}},
+            "/purchase.purchaseList": {"success": True, "data": {"data": [{"order_purchase": [duplicate]}]}},
+            "/follow.followList": {
+                "success": True,
+                "data": {"data": [{"order_sn": "2026071816165891-300001", "list": [
+                    {**duplicate, "order_purchase_id": duplicate["id"]},
+                    {"order_purchase_id": 15328209, "order_detail_id": 14052982, "sorting": 2, "possible_num": 1, "storage_num": 0},
+                ]}]},
+            },
+        },
+    )
+
+    rows = gateway.list_purchase_candidates("2026071816165891-300001")
+
+    assert [row["order_purchase_id"] for row in rows] == [15328208, 15328209]
+
+
+def test_gateway_returns_empty_when_one_source_succeeds_empty(monkeypatch):
+    error = ProblemGoodsError("temporary failure")
+    gateway = _candidate_gateway(
+        monkeypatch,
+        {
+            "/order.detail": {"success": True, "data": {"order_detail": []}},
+            "/purchase.purchaseList": error,
+            "/follow.followList": error,
+        },
+    )
+
+    assert gateway.list_purchase_candidates("2026071816165891-300001") == []
+
+
+def test_gateway_raises_when_all_candidate_sources_fail(monkeypatch):
+    error = ProblemGoodsError("temporary failure")
+    gateway = _candidate_gateway(
+        monkeypatch,
+        {"/order.detail": error, "/purchase.purchaseList": error, "/follow.followList": error},
+    )
+
+    with pytest.raises(ProblemGoodsError, match="候选采购记录查询失败"):
+        gateway.list_purchase_candidates("2026071816165891-300001")
+
+
 def test_available_option_catalog_keeps_unique_option_templates():
     rows = available_option_catalog(
         {
@@ -342,8 +625,17 @@ def test_unchanged_pre_data_does_not_call_update_endpoint():
     assert "update_pre" not in _call_names(gateway)
 
 
-def test_preview_at_500_pauses_before_business_commit():
+def test_preview_at_500_uses_normal_account_and_completes():
     gateway = FakeGateway(status=3, preview_amount=10000)
+
+    summary = ProblemGoodsFlow(gateway, _variables(), {"steps": []}).run()
+
+    assert summary["completed"] is True
+    assert "business_deal" in _call_names(gateway)
+
+
+def test_preview_above_500_pauses_before_business_commit():
+    gateway = FakeGateway(status=3, preview_amount=10001)
 
     summary = ProblemGoodsFlow(gateway, _variables(), {"steps": []}).run()
 

@@ -1,45 +1,104 @@
 <template>
-  <div>
-    <!-- 项目筛选 -->
-    <div class="toolbar">
-      <div class="filters">
-        <div class="field compact">
-          <label>项目</label>
-          <select :value="app.filters.projectId" @change="onProjectChange">
-            <option value="">全部</option>
-            <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
-          </select>
-        </div>
+  <div class="v2-dashboard">
+    <WorkbenchPageHeader
+      eyebrow="TEST OPERATIONS"
+      title="质量运行概览"
+      description="基于当前项目的真实用例与执行记录，集中查看质量状态、趋势和待处理事项。"
+    >
+      <template #actions>
+        <BaseDropdown
+          v-model:open="projectDropdownOpen"
+          aria-label="选择项目"
+          menu-label="项目列表"
+          match-trigger-width
+          @select="onProjectChange"
+        >
+          <template #trigger>
+            <BaseButton class="v2-dashboard__project-trigger" variant="secondary">
+              <span>{{ selectedProjectLabel }}</span>
+              <span aria-hidden="true">⌄</span>
+            </BaseButton>
+          </template>
+          <BaseDropdownItem value="">全部项目</BaseDropdownItem>
+          <BaseDropdownItem v-for="project in projects" :key="project.id" :value="String(project.id)">
+            {{ project.name }}
+          </BaseDropdownItem>
+        </BaseDropdown>
+        <BaseButton @click="navigateToView('records')">查看执行报告</BaseButton>
+      </template>
+    </WorkbenchPageHeader>
+
+    <div v-if="loading" class="v2-dashboard__loading" aria-label="正在加载质量概览">
+      <BaseSkeleton variant="rectangle" />
+      <BaseSkeleton variant="rectangle" />
+      <BaseSkeleton :lines="5" />
+    </div>
+
+    <BaseErrorState
+      v-else-if="errorMessage"
+      title="质量概览加载失败"
+      :message="errorMessage"
+      action-label="重新加载"
+      @action="loadDashboard"
+    />
+
+    <template v-else>
+      <WorkbenchMetricRail
+        :status-label="statusSummary.label"
+        :status-title="statusSummary.title"
+        :status-detail="statusSummary.detail"
+        :items="metricItems"
+      />
+
+      <div class="v2-dashboard__overview-grid">
+        <WorkbenchPanel title="执行趋势" :subtitle="trendSubtitle">
+          <template #actions>
+            <WorkbenchStatus :tone="statusSummary.tone" :label="statusSummary.rateLabel" compact />
+          </template>
+          <WorkbenchTrendChart
+            :labels="trendData.labels"
+            :passed="trendData.passed"
+            :failed="trendData.failed"
+          />
+        </WorkbenchPanel>
+
+        <WorkbenchPanel title="需要关注" subtitle="仅显示可由当前数据证明的事项">
+          <WorkbenchAttentionList :items="attentionItems" @action="handleAttentionAction" />
+        </WorkbenchPanel>
       </div>
-    </div>
 
-    <!-- 统计卡片 -->
-    <div class="stats">
-      <div class="stat"><span>项目</span><strong>{{ data.project_count }}</strong></div>
-      <div class="stat"><span>环境</span><strong>{{ data.env_count }}</strong></div>
-      <div class="stat"><span>接口用例</span><strong>{{ data.api_case_count }}</strong></div>
-      <div class="stat"><span>UI用例</span><strong>{{ data.ui_case_count }}</strong></div>
-      <div class="stat"><span>执行记录</span><strong>{{ data.record_count }}</strong></div>
-    </div>
+      <WorkbenchPanel title="最近执行" subtitle="保留日志、报告和截图入口">
+        <template #actions>
+          <BaseButton variant="ghost" size="compact" @click="navigateToView('records')">全部记录</BaseButton>
+        </template>
+        <BaseEmptyState
+          v-if="!(data.latest_records || []).length"
+          title="暂无执行记录"
+          description="执行接口或 UI 用例后，最新结果会显示在这里。"
+          compact
+          icon-hidden
+        />
+        <AppTable v-else :columns="columns" :rows="data.latest_records">
+          <template #case_type="{ row }">
+            <BaseBadge :tone="badgeTone(row.case_type)">{{ badgeText(row.case_type) }}</BaseBadge>
+          </template>
+          <template #result="{ row }">
+            <BaseBadge :tone="badgeTone(row.result)">{{ badgeText(row.result) }}</BaseBadge>
+          </template>
+          <template #actions="{ row }">
+            <div class="v2-dashboard__actions">
+              <BaseButton variant="secondary" size="compact" @click="showLog(row)">日志</BaseButton>
+              <BaseButton v-if="row.report_path" variant="secondary" size="compact" @click="openProtectedFile(`/api/test-records/${row.id}/report`)">报告</BaseButton>
+              <BaseButton v-if="row.screenshot" variant="secondary" size="compact" @click="openProtectedFile(`/api/test-records/${row.id}/screenshot`)">截图</BaseButton>
+            </div>
+          </template>
+        </AppTable>
+      </WorkbenchPanel>
+    </template>
 
-    <!-- 最近执行 -->
-    <div class="panel-title"><h3>最近执行</h3></div>
-    <div v-if="loading" class="panel"><div class="empty">加载中...</div></div>
-    <AppTable v-else :columns="columns" :rows="data.latest_records || []">
-      <template #case_type="{ row }">
-        <span class="badge" :class="badgeClass(row.case_type)">{{ badgeText(row.case_type) }}</span>
-      </template>
-      <template #result="{ row }">
-        <span class="badge" :class="badgeClass(row.result)">{{ badgeText(row.result) }}</span>
-      </template>
-      <template #actions="{ row }">
-        <div class="actions">
-          <button class="btn secondary" @click="showLog(row)">日志</button>
-          <button v-if="row.report_path" class="btn secondary" @click="openProtectedFile(`/api/test-records/${row.id}/report`)">报告</button>
-          <button v-if="row.screenshot" class="btn secondary" @click="openProtectedFile(`/api/test-records/${row.id}/screenshot`)">截图</button>
-        </div>
-      </template>
-    </AppTable>
+    <BaseModal v-model:open="logModalOpen" title="执行日志">
+      <pre class="v2-dashboard__log">{{ activeLog }}</pre>
+    </BaseModal>
   </div>
 </template>
 
@@ -64,20 +123,42 @@
  * actions 按钮行为与旧应用一致：
  * - 日志/报告/截图：跳回旧应用 records 页面（Records 未迁移，Phase 2B 处理）
  */
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useAppStore } from '../stores/app.js'
-import { useToastStore } from '../stores/toast.js'
 import { navigateToView } from '../services/navigation.js'
 import { getDashboard } from '../api/modules/dashboard.js'
+import { listRecords } from '../api/modules/records.js'
 import { badgeText, badgeClass } from '../utils/badge.js'
 import { api } from '../api/client.js'
 import AppTable from '../components/AppTable.vue'
+import {
+  BaseBadge,
+  BaseButton,
+  BaseDropdown,
+  BaseDropdownItem,
+  BaseEmptyState,
+  BaseErrorState,
+  BaseModal,
+  BaseSkeleton,
+} from '../components/v2/base/index.js'
+import {
+  WorkbenchAttentionList,
+  WorkbenchMetricRail,
+  WorkbenchPageHeader,
+  WorkbenchPanel,
+  WorkbenchStatus,
+  WorkbenchTrendChart,
+} from '../components/v2/workbench/index.js'
 
 const app = useAppStore()
-const toast = useToastStore()
 
 const projects = ref([])
 const loading = ref(false)
+const errorMessage = ref('')
+const projectDropdownOpen = ref(false)
+const records = ref([])
+const logModalOpen = ref(false)
+const activeLog = ref('')
 const data = ref({
   project_count: 0,
   env_count: 0,
@@ -85,6 +166,70 @@ const data = ref({
   ui_case_count: 0,
   record_count: 0,
   latest_records: [],
+})
+const selectedProjectLabel = computed(() => {
+  const selectedId = String(app.filters.projectId || '')
+  if (!selectedId) return '全部'
+  return projects.value.find((project) => String(project.id) === selectedId)?.name || '全部'
+})
+const failedRecords = computed(() => records.value.filter((record) => isFailedResult(record.result)))
+const metricItems = computed(() => [
+  { key: 'projects', label: '项目', value: data.value.project_count, trend: selectedProjectLabel.value },
+  { key: 'envs', label: '环境', value: data.value.env_count, trend: data.value.env_count ? '可用于执行' : '尚未配置', tone: data.value.env_count ? 'success' : 'warning' },
+  { key: 'apiCases', label: '接口用例', value: data.value.api_case_count, trend: '测试资产' },
+  { key: 'uiCases', label: 'UI 用例', value: data.value.ui_case_count, trend: data.value.ui_case_count ? '浏览器资产' : '尚未创建', tone: data.value.ui_case_count ? 'info' : 'warning' },
+  { key: 'records', label: '执行记录', value: data.value.record_count, trend: `${failedRecords.value.length} 条失败待查`, tone: failedRecords.value.length ? 'danger' : 'success' },
+])
+
+const trendData = computed(() => {
+  const days = new Map()
+  for (const record of records.value) {
+    const dateKey = String(record.execute_time || '').slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) continue
+    const bucket = days.get(dateKey) || { passed: 0, failed: 0 }
+    if (isPassedResult(record.result)) bucket.passed += 1
+    else if (isFailedResult(record.result)) bucket.failed += 1
+    days.set(dateKey, bucket)
+  }
+  const dateKeys = [...days.keys()].sort().slice(-7)
+  return {
+    labels: dateKeys.map((date) => date.slice(5)),
+    passed: dateKeys.map((date) => days.get(date).passed),
+    failed: dateKeys.map((date) => days.get(date).failed),
+  }
+})
+
+const trendSubtitle = computed(() => trendData.value.labels.length
+  ? `真实记录覆盖 ${trendData.value.labels.length} 个执行日`
+  : '当前筛选范围内暂无可聚合记录')
+const statusSummary = computed(() => {
+  const passed = trendData.value.passed.reduce((sum, value) => sum + value, 0)
+  const failed = trendData.value.failed.reduce((sum, value) => sum + value, 0)
+  const total = passed + failed
+  const rate = total ? Math.round((passed / total) * 100) : 0
+  if (failed) {
+    return { label: 'QUALITY STATUS', title: '存在失败待处理', detail: `${failed} 条失败记录进入关注队列`, tone: 'warning', rateLabel: `通过率 ${rate}%` }
+  }
+  if (total) {
+    return { label: 'QUALITY STATUS', title: '运行稳定', detail: `已聚合 ${total} 条真实执行结果`, tone: 'success', rateLabel: `通过率 ${rate}%` }
+  }
+  return { label: 'QUALITY STATUS', title: '等待首次执行', detail: '当前范围内暂无执行结果', tone: 'neutral', rateLabel: '暂无样本' }
+})
+const attentionItems = computed(() => {
+  const items = failedRecords.value.slice(0, 3).map((record) => ({
+    id: `record:${record.id}`,
+    tone: 'danger',
+    title: `执行记录 #${record.id} 失败`,
+    detail: `${badgeText(record.case_type)} · ${record.execute_time || '时间未知'}`,
+    actionLabel: '查看日志',
+  }))
+  if (Number(data.value.env_count) === 0) {
+    items.push({ id: 'route:projects', tone: 'warning', title: '当前范围尚未配置环境', detail: '测试执行需要至少一个可用环境', actionLabel: '配置环境' })
+  }
+  if (Number(data.value.ui_case_count) === 0) {
+    items.push({ id: 'route:uiCases', tone: 'info', title: '当前范围尚无 UI 用例', detail: '创建用例后可进行浏览器自动化执行', actionLabel: '创建用例' })
+  }
+  return items.slice(0, 5)
 })
 
 // 表格列定义（对齐旧应用 recordColumns()，showRerun=false）
@@ -99,19 +244,42 @@ const columns = [
 
 async function loadDashboard() {
   loading.value = true
+  errorMessage.value = ''
   try {
-    projects.value = await app.fetchProjects()
-    data.value = await getDashboard(app.filters.projectId)
+    const [projectList, dashboardData, recordResponse] = await Promise.all([
+      app.fetchProjects(),
+      getDashboard(app.filters.projectId),
+      listRecords({ projectId: app.filters.projectId, page: 1, pageSize: 200 }),
+    ])
+    projects.value = projectList
+    data.value = dashboardData
+    records.value = Array.isArray(recordResponse) ? recordResponse : (recordResponse.items || [])
   } catch (error) {
-    toast.show(error.message)
+    errorMessage.value = error?.message || '请稍后重试'
   } finally {
     loading.value = false
   }
 }
 
-async function onProjectChange(event) {
-  app.setProjectId(event.target.value)
+async function onProjectChange(projectId) {
+  app.setProjectId(String(projectId || ''))
   await loadDashboard()
+}
+
+function badgeTone(value) {
+  return {
+    ok: 'success',
+    fail: 'danger',
+    warn: 'warning',
+  }[badgeClass(value)] || 'neutral'
+}
+
+function isPassedResult(value) {
+  return ['passed', 'pass', 'success', 'ok'].includes(String(value || '').toLowerCase())
+}
+
+function isFailedResult(value) {
+  return ['failed', 'fail', 'error'].includes(String(value || '').toLowerCase())
 }
 
 /**
@@ -125,7 +293,25 @@ async function onProjectChange(event) {
  *       （含智能体记录 summary/variables 解析与展示）
  */
 function showLog(row) {
-  navigateToView('records')
+  const raw = row?.log || '该记录没有可显示的日志。'
+  try {
+    activeLog.value = JSON.stringify(JSON.parse(raw), null, 2)
+  } catch {
+    activeLog.value = String(raw)
+  }
+  logModalOpen.value = true
+}
+
+function handleAttentionAction(id) {
+  const [kind, value] = String(id).split(':')
+  if (kind === 'route') {
+    navigateToView(value)
+    return
+  }
+  if (kind === 'record') {
+    const record = records.value.find((item) => String(item.id) === value)
+    if (record) showLog(record)
+  }
 }
 
 /**
@@ -151,5 +337,248 @@ onMounted(loadDashboard)
 </script>
 
 <style scoped>
-/* 使用旧应用 .toolbar / .stats / .stat / .panel-title / .actions / .badge 样式（来自 legacy.css） */
+.v2-dashboard {
+  display: grid;
+  gap: calc(var(--v2-space-3) + var(--v2-border-width) * 2);
+  max-width: var(--v2-layout-workspace-max);
+  margin: 0 auto;
+  padding-bottom: var(--v2-space-4);
+}
+
+.v2-dashboard :deep(.v2-workbench-page-header) {
+  min-height: calc(var(--v2-control-height-default) + var(--v2-space-2));
+  align-items: center;
+}
+
+.v2-dashboard :deep(.v2-workbench-page-header__copy) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: end;
+  column-gap: var(--v2-space-2);
+}
+
+.v2-dashboard :deep(.v2-workbench-page-header__eyebrow) {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0 0 var(--v2-space-micro);
+  letter-spacing: calc(var(--v2-letter-spacing-wide) * 1.15);
+}
+
+.v2-dashboard :deep(.v2-workbench-page-header__title) {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: calc(var(--v2-font-size-heading) + var(--v2-border-width) * 2);
+  font-weight: var(--v2-font-weight-bold);
+  line-height: 1.16;
+}
+
+.v2-dashboard :deep(.v2-workbench-page-header__description) {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin-top: var(--v2-space-1);
+  color: var(--v2-text-secondary);
+}
+
+.v2-dashboard :deep(.v2-workbench-page-header__actions) {
+  gap: var(--v2-space-2);
+}
+
+.v2-dashboard :deep(.v2-workbench-metric-rail) {
+  box-shadow: none;
+}
+
+.v2-dashboard :deep(.v2-workbench-metric-rail__intro),
+.v2-dashboard :deep(.v2-workbench-metric-rail__item) {
+  min-height: calc(var(--v2-control-height-default) * 2 + var(--v2-space-3));
+  box-sizing: border-box;
+  padding: var(--v2-space-2) var(--v2-space-4);
+}
+
+.v2-dashboard :deep(.v2-workbench-metric-rail__status) {
+  font-size: calc(var(--v2-font-size-section) + var(--v2-border-width) * 2);
+  line-height: var(--v2-line-height-tight);
+}
+
+.v2-dashboard :deep(.v2-workbench-metric-rail__value) {
+  font-size: calc(var(--v2-font-size-heading) + var(--v2-space-micro));
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-dashboard :deep(.v2-workbench-panel) {
+  box-shadow: none;
+}
+
+.v2-dashboard :deep(.v2-workbench-panel__header) {
+  min-height: calc(var(--v2-control-height-default) + var(--v2-space-1));
+  box-sizing: border-box;
+  padding: var(--v2-space-1) var(--v2-space-4);
+}
+
+.v2-dashboard :deep(.v2-workbench-panel__title) {
+  font-weight: var(--v2-font-weight-bold);
+}
+
+.v2-dashboard :deep(.v2-workbench-panel__subtitle) {
+  margin-top: var(--v2-space-micro);
+  line-height: var(--v2-line-height-caption);
+}
+
+.v2-dashboard :deep(.v2-workbench-trend-chart) {
+  padding: var(--v2-space-2) var(--v2-space-4) var(--v2-space-3);
+}
+
+.v2-dashboard :deep(.v2-workbench-trend-chart__svg) {
+  height: calc(var(--v2-space-7) * 2 + var(--v2-space-6));
+  min-height: calc(var(--v2-space-7) * 2 + var(--v2-space-6));
+}
+
+.v2-dashboard :deep(.v2-workbench-trend-chart__legend) {
+  margin-top: 0;
+}
+
+.v2-dashboard :deep(.v2-app-table__header) {
+  height: var(--v2-size-table-header);
+  box-sizing: border-box;
+  padding: 0 var(--v2-space-4);
+}
+
+.v2-dashboard :deep(.v2-app-table__cell) {
+  height: var(--v2-size-table-row);
+  box-sizing: border-box;
+  padding: var(--v2-space-1) var(--v2-space-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-dashboard__loading {
+  display: grid;
+  gap: var(--v2-space-3);
+}
+
+.v2-dashboard__overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 28%);
+  gap: calc(var(--v2-space-3) + var(--v2-border-width) * 2);
+  align-items: stretch;
+}
+
+.v2-dashboard__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-2);
+  margin-bottom: var(--v2-space-4);
+}
+
+.v2-dashboard__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--v2-space-2);
+}
+
+.v2-dashboard__project-field {
+  min-width: 200px;
+  display: grid;
+  gap: var(--v2-space-micro);
+}
+
+.v2-dashboard__project-field > label {
+  color: var(--v2-text-secondary);
+  font-size: var(--v2-font-size-caption);
+  font-weight: var(--v2-font-weight-semibold);
+  letter-spacing: var(--v2-letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.v2-dashboard__project-trigger {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.v2-dashboard__project-trigger :deep(.v2-base-button__content) {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.v2-dashboard__stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: var(--v2-space-3);
+  margin-bottom: var(--v2-space-4);
+}
+
+.v2-dashboard__stat-label {
+  display: block;
+  color: var(--v2-text-muted);
+  font-size: var(--v2-font-size-caption);
+  font-weight: var(--v2-font-weight-medium);
+  letter-spacing: var(--v2-letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.v2-dashboard__stat-value {
+  display: block;
+  margin-top: var(--v2-space-1);
+  color: var(--v2-action-primary);
+  font-size: calc(var(--v2-font-size-heading) + var(--v2-space-micro));
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+.v2-dashboard__section-header {
+  min-height: calc(var(--v2-space-6) + var(--v2-space-1));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 calc((var(--v2-space-3) + var(--v2-space-4)) / 2);
+  background: var(--v2-surface-soft);
+  border-bottom: var(--v2-border-width) solid var(--v2-border-default);
+}
+
+.v2-dashboard__section-header h3 {
+  margin: 0;
+  color: var(--v2-text-primary);
+  font-size: var(--v2-font-size-section);
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+.v2-dashboard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--v2-space-1);
+}
+
+.v2-dashboard__log {
+  max-height: calc(var(--v2-space-7) * 7);
+  overflow: auto;
+  margin: 0;
+  padding: var(--v2-space-3);
+  border: var(--v2-border-width) solid var(--v2-border-panel);
+  border-radius: var(--v2-radius-sm);
+  background: var(--v2-surface-workspace);
+  color: var(--v2-text-secondary);
+  font-family: var(--v2-font-family-mono);
+  font-size: var(--v2-font-size-caption);
+  line-height: var(--v2-line-height-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1080px) {
+  .v2-dashboard__overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .v2-dashboard__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .v2-dashboard__stats {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

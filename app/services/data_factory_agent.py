@@ -14,6 +14,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Dict
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..core.account_utils import account_profile_variables, default_account_profile_for_target
@@ -700,7 +701,43 @@ def _auto_large_refund_profile_id(
 ) -> int | None:
     safe_strategy = _normalized_permission_account_strategy(strategy)
     safe_required_role = str(required_role or "").strip()
-    if not safe_strategy or not safe_required_role or safe_strategy["role"] != safe_required_role:
+    if not safe_required_role:
+        return None
+    if not safe_strategy:
+        if safe_required_role != "department_leader":
+            return None
+        profiles = (
+            db.query(TestAccountProfile)
+            .filter(
+                TestAccountProfile.status == "active",
+                or_(
+                    TestAccountProfile.project_id == int(project_id),
+                    TestAccountProfile.project_id.is_(None),
+                ),
+            )
+            .order_by(TestAccountProfile.id.asc())
+            .all()
+        )
+        matches: list[int] = []
+        for profile in profiles:
+            try:
+                account_values, _ = account_profile_variables(
+                    db,
+                    int(profile.id),
+                    int(project_id),
+                )
+            except HTTPException:
+                continue
+            backend_account = (
+                account_values.get("backend_account")
+                or account_values.get("username")
+                or account_values.get("account")
+            )
+            backend_password = account_values.get("backend_password") or account_values.get("password")
+            if str(backend_account or "").strip() == "Y002" and backend_password:
+                matches.append(int(profile.id))
+        return matches[0] if len(matches) == 1 else None
+    if safe_strategy["role"] != safe_required_role:
         return None
     profiles = (
         db.query(TestAccountProfile)
@@ -1503,14 +1540,15 @@ def _explicit_customer_ids(source_text: str) -> tuple[list[str], str]:
     if not text:
         return [], ""
     matches = re.findall(
-        r"(?:客户|用户)(?:id)?(?:改成|改为|调整为|是|为|=|:)?(\d{4,})|"
-        r"执行id(?:改成|改为|调整为|是|为|=|:)?(\d{6,})",
+        r"(?:客户|用户)(?:id)?(?:改成|改为|调整为|是|为|=|:)?(\d+)|"
+        r"执行id(?:改成|改为|调整为|是|为|=|:)?(\d{6,})|"
+        r"(?:^|[，,。；;：:]|给|为)id(?:改成|改为|调整为|是|为|=|:)?(\d+)(?:的)?(?:账号|客户|用户)",
         text,
         re.IGNORECASE,
     )
     values: list[str] = []
-    for left, right in matches:
-        value = left or right
+    for customer_id, execution_id, contextual_id in matches:
+        value = customer_id or execution_id or contextual_id
         if value and value not in values:
             values.append(value)
     evidence = "、".join(f"ID{value}" for value in values)
@@ -3652,6 +3690,31 @@ def _run_agent_session(session_id: str) -> None:
                 and operation.get("type") in {"advance_order", "advance_porder"}
                 and operation_key not in preflight_checked_operations
             ):
+                backend_account = merged_variables.get("backend_account") or merged_variables.get("backend_username")
+                has_explicit_account = bool(backend_account and merged_variables.get("backend_password"))
+                has_profile = bool(context.state.get("backend_account_profile_id"))
+                has_temporary_account = bool(
+                    permission_credentials.get("backend_account")
+                    and permission_credentials.get("backend_password")
+                )
+                if not (has_explicit_account or has_profile or has_temporary_account):
+                    context.state.update(
+                        {
+                            "awaiting_permission": True,
+                            "required_account_role": "",
+                        }
+                    )
+                    _sync_runtime_state(session_id, context.state)
+                    _pause_agent_session(
+                        session_id,
+                        "awaiting_permission",
+                        "订单续跑需要可查看该订单的后台账号，请选择账号档案或临时输入账号后继续。",
+                        {
+                            "reason": "缺少订单后台账号",
+                            "state": context.state,
+                        },
+                    )
+                    return
                 preflight_checked_operations.add(operation_key)
                 inspect_tool = "inspect_porder_state" if operation.get("type") == "advance_porder" else "inspect_order_state"
                 preflight = execute_agent_tool(inspect_tool, context, {})
@@ -3880,6 +3943,21 @@ def _run_agent_session(session_id: str) -> None:
                     session_id,
                     "awaiting_permission",
                     str(tool_summary.get("reason") or "问题产品退款需要部长后台账号，请选择账号后继续。"),
+                    {"reason": tool_summary.get("reason"), "summary": tool_summary, "state": context.state},
+                )
+                return
+            if tool_summary.get("awaiting_permission"):
+                context.state.update(
+                    {
+                        "awaiting_permission": True,
+                        "required_account_role": str(tool_summary.get("required_account_role") or ""),
+                    }
+                )
+                _sync_runtime_state(session_id, context.state)
+                _pause_agent_session(
+                    session_id,
+                    "awaiting_permission",
+                    str(tool_summary.get("reason") or "当前操作需要后台账号，请选择账号后继续。"),
                     {"reason": tool_summary.get("reason"), "summary": tool_summary, "state": context.state},
                 )
                 return
@@ -4498,20 +4576,26 @@ def resume_agent_permission(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="临时后台账号和密码必须同时填写",
         )
+    required_role = str(session.runtime_state.get("required_account_role") or "").strip()
+    operation_id = str(session.runtime_state.get("current_operation_id") or "")
+    is_problem_permission = bool(
+        required_role
+        or session.runtime_state.get("current_operation_type") == "problem_goods"
+        or operation_id.startswith("operation_problem_goods")
+    )
+    if is_problem_permission and not required_role:
+        required_role = "department_leader"
     if has_profile:
         account_values, profile_metadata = account_profile_variables(
             db,
             int(backend_account_profile_id),
             session.project_id,
         )
-        required_role = str(
-            session.runtime_state.get("required_account_role") or "department_leader"
-        ).strip()
         profile_role = str(
             account_values.get("account_role") or account_values.get("role") or ""
         ).strip()
         profile_name = str(profile_metadata.get("profile_name") or "").strip()
-        if not profile_name or profile_role != required_role:
+        if not profile_name or (required_role and profile_role != required_role):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="所选后台账号档案角色与当前权限要求不匹配",
@@ -4532,11 +4616,12 @@ def resume_agent_permission(
             session.runtime_state["backend_account_profile_id"] = int(backend_account_profile_id)
         else:
             session.runtime_state.pop("backend_account_profile_id", None)
-        session.runtime_state["allow_large_refund"] = True
-        session.runtime_state["permission_retry_count"] = max(
-            1,
-            _problem_quantity(session.runtime_state.get("permission_retry_count", 0)),
-        )
+        if required_role:
+            session.runtime_state["allow_large_refund"] = True
+            session.runtime_state["permission_retry_count"] = max(
+                1,
+                _problem_quantity(session.runtime_state.get("permission_retry_count", 0)),
+            )
         session.runtime_state["awaiting_permission"] = False
         session.status = "running"
         session.question = ""
@@ -4553,7 +4638,11 @@ def resume_agent_permission(
             )
         event_data = {"saved_profile": True} if has_profile else {"temporary_credentials": True}
         session.events.append(
-            _event("permission_resumed", "已提供后台权限，继续问题产品处理", **event_data)
+            _event(
+                "permission_resumed",
+                "已提供后台账号，继续执行当前任务" if not required_role else "已提供后台权限，继续问题产品处理",
+                **event_data,
+            )
         )
         if has_profile:
             _clear_temp_permission_secret(session.id)

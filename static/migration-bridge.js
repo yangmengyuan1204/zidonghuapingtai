@@ -16,12 +16,21 @@
   var CONFIG_URL = '/static/migration-config.json';
   var V3_BASE = '/v3/';
 
+  // V2 壳层 iframe 嵌入态：不重定向到 /v3，避免嵌套死循环
+  function isV3Embed() {
+    try {
+      return new URLSearchParams(window.location.search || '').get('v3_embed') === '1';
+    } catch (err) {
+      return false;
+    }
+  }
+
   function activateInitialHash(retriesLeft) {
     var match = String(window.location.hash || '').match(/^#\/([A-Za-z][A-Za-z0-9_-]*)$/);
     if (!match || !migratedSet) return;
 
     var view = match[1];
-    if (migratedSet.has(view)) {
+    if (migratedSet.has(view) && !isV3Embed()) {
       window.location.href = V3_BASE + view;
       return;
     }
@@ -55,6 +64,8 @@
   document.addEventListener('click', function (e) {
     // 配置未加载或空集合时不拦截
     if (!migratedSet || migratedSet.size === 0) return;
+    // iframe 嵌入态交给旧应用自己切 view
+    if (isV3Embed()) return;
 
     // 查找最近的 [data-view] 祖先
     var target = e.target.closest ? e.target.closest('[data-view]') : null;

@@ -13,7 +13,7 @@
     --v2-button-padding: var(--v2-space-3);
     --v2-button-padding-compact: var(--v2-space-2);
     --v2-button-gap: var(--v2-space-1);
-    --v2-button-font-size: var(--v2-font-size-caption);
+    --v2-button-font-size: var(--v2-font-size-interface);
     --v2-button-font-weight: var(--v2-font-weight-semibold);
     --v2-button-secondary-bg: var(--v2-surface-default);
     --v2-button-secondary-bg-hover: var(--v2-surface-hover);
@@ -75,6 +75,51 @@
     --v2-input-focus-ring: var(--v2-state-focus-ring);
     --v2-input-disabled-opacity: var(--v2-state-disabled-opacity);
 
+    /* Select */
+    --v2-select-height: var(--v2-control-height-default);
+    --v2-select-radius: var(--v2-radius-sm);
+    --v2-select-surface: var(--v2-surface-default);
+    --v2-select-text: var(--v2-text-primary);
+    --v2-select-border: var(--v2-border-default);
+    --v2-select-border-focus: var(--v2-border-focus);
+    --v2-select-border-hover: var(--v2-border-strong);
+    --v2-select-border-error: var(--v2-border-danger);
+    --v2-select-surface-disabled: var(--v2-surface-disabled);
+    --v2-select-label-text: var(--v2-text-secondary);
+    --v2-select-help-text: var(--v2-text-muted);
+    --v2-select-error-text: var(--v2-text-danger);
+    --v2-select-disabled-text: var(--v2-text-disabled);
+    --v2-select-padding: var(--v2-space-2);
+    --v2-select-label-gap: var(--v2-space-micro);
+    --v2-select-font-size: var(--v2-font-size-body);
+    --v2-select-meta-font-size: var(--v2-font-size-caption);
+    --v2-select-focus-ring: var(--v2-state-focus-ring);
+    --v2-select-disabled-opacity: var(--v2-state-disabled-opacity);
+
+    /* Textarea */
+    --v2-textarea-min-height: calc(var(--v2-control-height-default) * 2.5 - 6px);
+    --v2-textarea-radius: var(--v2-radius-sm);
+    --v2-textarea-surface: var(--v2-surface-default);
+    --v2-textarea-text: var(--v2-text-primary);
+    --v2-textarea-placeholder: var(--v2-text-muted);
+    --v2-textarea-border: var(--v2-border-default);
+    --v2-textarea-border-focus: var(--v2-border-focus);
+    --v2-textarea-border-hover: var(--v2-border-strong);
+    --v2-textarea-border-error: var(--v2-border-danger);
+    --v2-textarea-surface-disabled: var(--v2-surface-disabled);
+    --v2-textarea-surface-readonly: var(--v2-surface-soft);
+    --v2-textarea-label-text: var(--v2-text-secondary);
+    --v2-textarea-help-text: var(--v2-text-muted);
+    --v2-textarea-error-text: var(--v2-text-danger);
+    --v2-textarea-disabled-text: var(--v2-text-disabled);
+    --v2-textarea-padding: var(--v2-space-2);
+    --v2-textarea-label-gap: var(--v2-space-micro);
+    --v2-textarea-meta-gap: var(--v2-space-2);
+    --v2-textarea-font-size: var(--v2-font-size-body);
+    --v2-textarea-meta-font-size: var(--v2-font-size-caption);
+    --v2-textarea-focus-ring: var(--v2-state-focus-ring);
+    --v2-textarea-disabled-opacity: var(--v2-state-disabled-opacity);
+
     /* Checkbox */
     --v2-checkbox-size: var(--v2-icon-size-sm);
     --v2-checkbox-radius: var(--v2-radius-xs);
@@ -99,6 +144,25 @@
     --v2-sidebar-text-active: var(--v2-text-primary);
     --v2-sidebar-item-hover: var(--v2-surface-hover);
 
+    /* App shell migration */
+    --v2-shell-sidebar-width: var(--v2-layout-sidebar);
+    --v2-shell-sidebar-surface: var(--v2-surface-sidebar-a3);
+    --v2-shell-workspace-surface: var(--v2-surface-workspace-a3);
+    --v2-shell-sidebar-border: var(--v2-border-layer);
+    --v2-shell-sidebar-text: var(--v2-text-primary);
+    --v2-shell-sidebar-text-muted: var(--v2-text-secondary);
+    --v2-shell-sidebar-divider: var(--v2-border-layer);
+    --v2-shell-sidebar-item-hover: color-mix(in srgb, var(--v2-surface-context) 68%, var(--v2-surface-sidebar));
+    --v2-shell-sidebar-item-active: color-mix(in srgb, var(--v2-surface-context) 82%, var(--v2-surface-sidebar));
+    --v2-shell-sidebar-item-indicator: var(--v2-action-primary);
+    --v2-shell-role-surface: color-mix(in srgb, var(--v2-surface-default) 48%, var(--v2-surface-sidebar));
+    --v2-shell-role-border: var(--v2-border-layer);
+    --v2-shell-topbar-height: var(--v2-layout-topbar);
+    --v2-shell-topbar-surface: var(--v2-surface-section);
+    --v2-shell-topbar-border: var(--v2-border-section);
+    --v2-shell-link-text: var(--v2-text-secondary);
+    --v2-shell-link-text-hover: var(--v2-action-primary);
+
     /* Topbar */
     --v2-topbar-height: var(--v2-layout-topbar);
     --v2-topbar-surface: var(--v2-surface-default);
@@ -120,14 +184,46 @@
     --v2-card-section-gap: var(--v2-space-3);
     --v2-card-focus-ring: var(--v2-state-focus-ring);
 
+    /* Workbench panel */
+    --v2-panel-radius: var(--v2-radius-panel);
+    --v2-panel-shadow: var(--v2-shadow-panel);
+    --v2-panel-surface: var(--v2-surface-default);
+    --v2-panel-border: var(--v2-border-panel);
+    --v2-panel-header-surface: var(--v2-surface-utility);
+    --v2-panel-header-border: var(--v2-border-section);
+    --v2-panel-footer-surface: var(--v2-surface-context);
+    --v2-panel-title-font-size: var(--v2-font-size-panel);
+
+    /* Workbench page header */
+    --v2-page-header-surface: var(--v2-surface-section);
+    --v2-page-header-border: var(--v2-border-section);
+    --v2-page-header-accent: var(--v2-action-primary);
+
+    /* Workbench metric rail */
+    --v2-metric-rail-surface: var(--v2-surface-context);
+    --v2-metric-rail-border: var(--v2-border-layer);
+    --v2-metric-rail-intro-surface: var(--v2-color-navy-950);
+    --v2-metric-rail-intro-text: var(--v2-text-inverse);
+    --v2-metric-rail-intro-text-muted: color-mix(in srgb, var(--v2-text-inverse) 68%, transparent);
+
     /* Table */
     --v2-table-header-height: var(--v2-size-table-header);
     --v2-table-row-height: var(--v2-size-table-row);
-    --v2-table-header-surface: var(--v2-surface-soft);
+    --v2-table-header-surface: var(--v2-surface-utility);
     --v2-table-row-hover: var(--v2-surface-hover);
     --v2-table-border: var(--v2-border-default);
     --v2-table-text: var(--v2-text-primary);
     --v2-table-text-muted: var(--v2-text-muted);
+    --v2-table-surface: var(--v2-surface-default);
+    --v2-table-header-text: var(--v2-text-muted);
+    --v2-table-cell-padding-x: var(--v2-space-3);
+    --v2-table-cell-padding-y: calc(var(--v2-space-2) - 2px);
+    --v2-table-state-padding: var(--v2-space-5);
+    --v2-table-radius: var(--v2-radius-md);
+    --v2-table-font-size: var(--v2-font-size-interface);
+    --v2-table-header-font-size: var(--v2-font-size-caption);
+    --v2-table-header-font-weight: var(--v2-font-weight-semibold);
+    --v2-table-focus-ring: var(--v2-state-focus-ring);
 
     /* Dropdown */
     --v2-dropdown-width: var(--v2-size-dropdown-width);
@@ -137,6 +233,30 @@
     --v2-dropdown-radius: var(--v2-radius-sm);
     --v2-dropdown-shadow: var(--v2-shadow-dropdown);
     --v2-dropdown-z-index: var(--v2-z-dropdown);
+    --v2-dropdown-text: var(--v2-text-primary);
+    --v2-dropdown-padding: var(--v2-space-1);
+    --v2-dropdown-gap: var(--v2-space-micro);
+    --v2-dropdown-position-offset: var(--v2-space-1);
+    --v2-dropdown-viewport-gap: var(--v2-space-2);
+    --v2-dropdown-max-height: calc(var(--v2-space-7) * 5);
+    --v2-dropdown-item-height: var(--v2-control-height-compact);
+    --v2-dropdown-item-padding: var(--v2-space-1);
+    --v2-dropdown-item-gap: var(--v2-space-1);
+    --v2-dropdown-item-radius: var(--v2-radius-sm);
+    --v2-dropdown-item-surface: var(--v2-color-overlay-transparent);
+    --v2-dropdown-item-surface-hover: var(--v2-surface-soft);
+    --v2-dropdown-item-text: var(--v2-text-secondary);
+    --v2-dropdown-item-text-hover: var(--v2-text-primary);
+    --v2-dropdown-item-text-disabled: var(--v2-text-disabled);
+    --v2-dropdown-item-danger-text: var(--v2-feedback-danger);
+    --v2-dropdown-item-danger-surface-hover: var(--v2-feedback-danger-soft);
+    --v2-dropdown-item-danger-cue-font-weight: var(--v2-font-weight-bold);
+    --v2-dropdown-item-font-size: var(--v2-font-size-caption);
+    --v2-dropdown-item-icon-size: var(--v2-icon-size-sm);
+    --v2-dropdown-item-suffix-size: var(--v2-font-size-tiny);
+    --v2-dropdown-item-suffix-text: var(--v2-text-muted);
+    --v2-dropdown-item-focus-ring: var(--v2-state-focus-ring);
+    --v2-dropdown-item-disabled-opacity: var(--v2-state-disabled-opacity);
 
     /* Pagination */
     --v2-pagination-height: var(--v2-size-pagination);

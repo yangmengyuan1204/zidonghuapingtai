@@ -1,0 +1,118 @@
+.system-regression-page {
+  display: grid;
+  gap: 16px;
+}
+
+.system-regression-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.system-regression-layout {
+  display: grid;
+  grid-template-columns: 190px minmax(520px, 1fr) minmax(340px, 0.72fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.system-regression-categories,
+.system-regression-cases,
+.system-regression-drawer {
+  border: 1px solid var(--line, #d8d5cc);
+  border-radius: 14px;
+  background: var(--panel, #fff);
+  padding: 14px;
+}
+
+.system-regression-categories button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  border: 0;
+  border-radius: 9px;
+  padding: 9px 10px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.system-regression-categories button.active {
+  background: color-mix(in srgb, var(--accent, #2f4f46) 12%, transparent);
+  color: var(--accent, #2f4f46);
+  font-weight: 700;
+}
+
+.system-regression-case-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.system-regression-case-table th,
+.system-regression-case-table td {
+  border-bottom: 1px solid var(--line, #e5e1d8);
+  padding: 9px 7px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.system-regression-case-table tr.active {
+  background: color-mix(in srgb, var(--accent, #2f4f46) 7%, transparent);
+}
+
+.system-regression-drawer {
+  position: sticky;
+  top: 14px;
+  max-height: calc(100vh - 130px);
+  overflow: auto;
+}
+
+.system-regression-section {
+  border-top: 1px solid var(--line, #e5e1d8);
+  margin-top: 14px;
+  padding-top: 12px;
+}
+
+.system-regression-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.system-regression-grid .field.wide {
+  grid-column: 1 / -1;
+}
+
+.system-regression-repeat {
+  border: 1px solid var(--line, #e5e1d8);
+  border-radius: 10px;
+  margin-top: 10px;
+  padding: 10px;
+}
+
+.system-regression-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.system-regression-status {
+  border-left: 4px solid var(--accent, #2f4f46);
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--accent, #2f4f46) 6%, transparent);
+}
+
+@media (max-width: 1180px) {
+  .system-regression-layout {
+    grid-template-columns: 170px 1fr;
+  }
+
+  .system-regression-drawer {
+    grid-column: 1 / -1;
+    position: static;
+    max-height: none;
+  }
+}

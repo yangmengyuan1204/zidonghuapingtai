@@ -1,23 +1,25 @@
 <template>
-  <div v-if="!rows.length" :class="framed ? 'panel' : ''">
-    <div class="empty">暂无数据</div>
-  </div>
-  <div v-else :class="['table-wrap', framed ? 'panel' : '']">
-    <table>
-      <thead>
+  <div class="v2-app-table" :class="{ 'v2-app-table--framed': framed }" role="region" aria-label="数据表格可滚动区域" tabindex="0">
+    <table class="v2-app-table__table">
+      <thead class="v2-app-table__head">
         <tr>
-          <th v-for="col in columns" :key="col.key">{{ col.label }}</th>
+          <th v-for="col in columns" :key="col.key" class="v2-app-table__header" scope="col">{{ col.label }}</th>
         </tr>
       </thead>
-      <tbody>
-        <tr v-for="(row, index) in rows" :key="row.id || index" v-bind="rowAttrs ? rowAttrs(row) : {}">
-          <td v-for="col in columns" :key="col.key">
-            <slot v-if="col.slot" :name="col.slot" :row="row" :index="index" />
-            <template v-else-if="col.render && col.html === true" v-html="col.render(row)"></template>
-            <template v-else-if="col.render">{{ col.render(row) }}</template>
-            <template v-else>{{ short(row[col.key]) }}</template>
-          </td>
+      <tbody class="v2-app-table__body">
+        <tr v-if="!rows.length" class="v2-app-table__state-row">
+          <td class="v2-app-table__state-cell" :colspan="Math.max(1, columns.length)">暂无数据</td>
         </tr>
+        <template v-else>
+          <tr v-for="(row, index) in rows" :key="row.id || index" class="v2-app-table__row" v-bind="rowAttrs ? rowAttrs(row) : {}">
+            <td v-for="col in columns" :key="col.key" class="v2-app-table__cell">
+              <slot v-if="col.slot" :name="col.slot" :row="row" :index="index" />
+              <template v-else-if="col.render && col.html === true" v-html="col.render(row)"></template>
+              <template v-else-if="col.render">{{ col.render(row) }}</template>
+              <template v-else>{{ short(row[col.key]) }}</template>
+            </td>
+          </tr>
+        </template>
       </tbody>
     </table>
   </div>
@@ -66,5 +68,75 @@ function short(value, length = 140) {
 </script>
 
 <style scoped>
-/* 使用旧应用 .table-wrap / .panel / .empty 样式（来自 legacy.css） */
+.v2-app-table {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--v2-radius-panel);
+  background: var(--v2-surface-default);
+}
+
+.v2-app-table--framed {
+  border: var(--v2-border-width) solid var(--v2-border-panel);
+  box-shadow: var(--v2-shadow-panel);
+}
+
+.v2-app-table:focus-visible {
+  outline: 0;
+  box-shadow: var(--v2-state-focus-ring);
+}
+
+.v2-app-table__table {
+  width: 100%;
+  min-width: 760px;
+  border-spacing: 0;
+  border-collapse: separate;
+  color: var(--v2-text-secondary);
+  font-size: var(--v2-table-font-size);
+  text-align: left;
+}
+
+.v2-app-table__head {
+  background: var(--v2-surface-soft);
+}
+
+.v2-app-table__header,
+.v2-app-table__cell {
+  padding: var(--v2-table-cell-padding-y) var(--v2-table-cell-padding-x);
+  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+  vertical-align: middle;
+}
+
+.v2-app-table__header {
+  height: var(--v2-table-header-height);
+  color: var(--v2-table-header-text);
+  background: var(--v2-table-header-surface);
+  font-size: var(--v2-table-header-font-size);
+  font-weight: var(--v2-table-header-font-weight);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.v2-app-table__row {
+  min-height: var(--v2-table-row-height);
+  transition: background-color var(--v2-motion-duration) var(--v2-motion-easing);
+}
+
+.v2-app-table__cell {
+  height: var(--v2-table-row-height);
+}
+
+.v2-app-table__row:hover {
+  background: var(--v2-surface-hover);
+}
+
+.v2-app-table__body .v2-app-table__row:last-child .v2-app-table__cell {
+  border-bottom: 0;
+}
+
+.v2-app-table__state-cell {
+  padding: var(--v2-space-6) var(--v2-space-3);
+  color: var(--v2-text-muted);
+  text-align: center;
+}
 </style>

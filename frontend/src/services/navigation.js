@@ -41,7 +41,7 @@ export async function navigateToView(viewKey) {
     await loadMigrationConfig()
   }
   const resolvedKey = LEGACY_STATIC_VIEW_ALIASES[viewKey] || viewKey
-  if (isMigrated(resolvedKey)) {
+  if (router.hasRoute(resolvedKey) || isMigrated(resolvedKey)) {
     router.push({ name: resolvedKey })
   } else {
     window.location.href = LEGACY_HASH_BASE + resolvedKey

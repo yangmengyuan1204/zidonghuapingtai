@@ -194,12 +194,15 @@
   function permissionHtml(session, escapeHtml) {
     if (session.status !== "awaiting_permission") return "";
     const accounts = permissionAccounts || [];
+    const permissionTitle = session.current_state?.required_account_role
+      ? "需要指定角色后台账号"
+      : "需要后台账号";
     const accountOptions = accounts
       .filter((item) => item.status === "active")
       .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.profile_name || `账号#${item.id}`)}</option>`)
       .join("");
     return `<form id="dataAgentPermissionForm" class="panel">
-      <div class="panel-title"><h3>需要部长后台账号</h3></div>
+      <div class="panel-title"><h3>${escapeHtml(permissionTitle)}</h3></div>
       <div class="panel-body"><p>${escapeHtml(session.question || session.result?.reason || "退款达到权限阈值，请选择账号后继续")}</p>
         <div class="field"><label><input type="radio" name="permission_source" value="profile" checked /> 使用系统账号</label> <label><input type="radio" name="permission_source" value="temporary" /> 临时输入账号</label></div>
         <div data-permission-source="profile" class="field"><label>后台账号档案</label><select name="backend_account_profile_id">${accountOptions || '<option value="">正在加载账号...</option>'}</select></div>

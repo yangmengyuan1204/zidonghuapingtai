@@ -1,10 +1,15 @@
 <template>
   <!-- 对齐旧应用 renderUsers()：仅 admin 可管理账号 -->
-  <div class="toolbar">
-    <p>仅 admin 可管理账号</p>
-    <button class="btn" @click="openCreate">新增用户</button>
-  </div>
+  <div class="v2-users">
+  <WorkbenchPageHeader
+    eyebrow="SYSTEM"
+    title="权限中心"
+    description="管理员可创建、编辑和删除平台账号；路由与视图继续执行双重权限校验。"
+  >
+    <template #actions><button class="btn" @click="openCreate">新增用户</button></template>
+  </WorkbenchPageHeader>
 
+  <WorkbenchPanel title="平台账号" subtitle="仅管理员可管理">
   <AppTable :columns="columns" :rows="rows">
     <template #role="{ row }">
       <span class="badge" :class="badgeClass(row.role)">{{ badgeText(row.role) }}</span>
@@ -16,6 +21,7 @@
       </div>
     </template>
   </AppTable>
+  </WorkbenchPanel>
 
   <AppFormDialog
     :visible="formVisible"
@@ -26,6 +32,7 @@
     @close="closeForm"
     @submit="submitForm"
   />
+  </div>
 </template>
 
 <script setup>
@@ -47,6 +54,7 @@ import { useAuthStore } from '../stores/auth.js'
 import { useToastStore } from '../stores/toast.js'
 import AppTable from '../components/AppTable.vue'
 import AppFormDialog from '../components/AppFormDialog.vue'
+import { WorkbenchPageHeader, WorkbenchPanel } from '../components/v2/workbench/index.js'
 import { badgeText, badgeClass } from '../utils/badge.js'
 import * as usersApi from '../api/modules/users.js'
 
@@ -169,5 +177,64 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 使用旧应用 .toolbar / .actions / .badge 样式（来自 legacy.css） */
+.v2-users {
+  display: grid;
+  gap: var(--v2-space-3);
+  max-width: var(--v2-layout-workspace-max);
+  margin: 0 auto;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--v2-space-2);
+}
+
+.btn {
+  min-height: var(--v2-control-height-compact);
+  padding: 0 var(--v2-space-2);
+  border: var(--v2-border-width) solid var(--v2-action-primary);
+  border-radius: var(--v2-radius-sm);
+  background: var(--v2-action-primary);
+  color: var(--v2-text-inverse);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--v2-font-size-caption);
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+.btn.secondary {
+  border-color: var(--v2-border-default);
+  background: var(--v2-surface-default);
+  color: var(--v2-text-secondary);
+}
+
+.btn.danger {
+  border-color: var(--v2-feedback-danger);
+  background: var(--v2-feedback-danger-soft);
+  color: var(--v2-feedback-danger);
+}
+
+.btn:focus-visible {
+  outline: 0;
+  box-shadow: var(--v2-state-focus-ring);
+}
+
+.badge {
+  display: inline-flex;
+  min-height: var(--v2-icon-size-md);
+  align-items: center;
+  padding: 0 var(--v2-space-1);
+  border-radius: var(--v2-radius-round);
+  background: var(--v2-surface-soft);
+  color: var(--v2-text-secondary);
+  font-size: var(--v2-font-size-tiny);
+  font-weight: var(--v2-font-weight-semibold);
+}
+
+.badge.ok {
+  background: var(--v2-feedback-success-soft);
+  color: var(--v2-feedback-success);
+}
 </style>
