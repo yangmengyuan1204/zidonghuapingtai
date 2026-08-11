@@ -253,6 +253,147 @@ def _impl__post_admin_form(
     raise RuntimeError(f"admin request {path} failed after retries: {last_error}")
 
 
+def _impl__submit_order_translate_with_reconciliation(
+    session: requests.Session,
+    base_url: str,
+    variables: Dict[str, Any],
+    order_sn: str,
+    fields: Dict[str, Any],
+    timeout: int,
+    before_state: Any = 20,
+) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+    path = _api_path(variables, "admin_order_translate", "/order.submitTranslate")
+    url = urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
+    files = {str(key): (None, _order_text(value)) for key, value in fields.items()}
+    base_evidence: Dict[str, Any] = {
+        "attempted_action": "order.submitTranslate",
+        "attempted_actions": [{"action": "order.submitTranslate", "attempt_count": 1}],
+        "request_attempt_count": 1,
+        "before_state": before_state,
+        "before_evidence": {"order_sn": order_sn, "backend_status": before_state},
+    }
+    try:
+        response = session.post(url, files=files, timeout=timeout)
+        payload = response.json()
+        payload = payload if isinstance(payload, dict) else {}
+        written = _api_success(payload)
+        return (
+            payload,
+            {},
+            {
+                **base_evidence,
+                "write_state": "confirmed_written" if written else "confirmed_not_written",
+                "reason_code": "confirmed_written" if written else "confirmed_not_written",
+                "reconciled_after_timeout": False,
+                "detail_checks": 0,
+                "after_state": None,
+                "query_evidence": {"statuses": [], "errors": [], "conflicts": []},
+                "after_evidence": {"response": _payload_brief(payload)},
+                "business_diffs": {},
+            },
+        )
+    except (requests.ConnectionError, requests.Timeout, ValueError) as exc:
+        attempts = max(1, min(30, _as_int(variables.get("translate_reconcile_attempts"), 12)))
+        try:
+            delay = max(0.0, float(variables.get("translate_reconcile_delay", 10)))
+        except (TypeError, ValueError):
+            delay = 10.0
+        last_status: int | None = None
+        last_order_data: Dict[str, Any] = {}
+        statuses: list[int] = []
+        detail_errors: list[str] = []
+        conflicts: list[Dict[str, Any]] = []
+        for attempt in range(attempts):
+            try:
+                _detail_payload, order_data = _impl__order_detail_data(
+                    session,
+                    base_url,
+                    variables,
+                    order_sn,
+                    timeout,
+                    retries=0,
+                )
+                last_status = _order_status_code(order_data)
+                returned_order_sn = str(order_data.get("order_sn") or "").strip()
+                if returned_order_sn and returned_order_sn != order_sn:
+                    conflicts.append(
+                        {
+                            "check": attempt + 1,
+                            "kind": "order_sn_mismatch",
+                            "expected_order_sn": order_sn,
+                            "actual_order_sn": returned_order_sn,
+                        }
+                    )
+                elif last_status is not None:
+                    statuses.append(last_status)
+                    last_order_data = order_data
+                if last_status is not None and last_status > 20:
+                    if conflicts:
+                        continue
+                    query_evidence = {
+                        "statuses": statuses,
+                        "errors": detail_errors,
+                        "conflicts": conflicts,
+                    }
+                    return (
+                        {"success": True, "code": 0, "msg": "翻译请求超时后已通过订单状态确认成功"},
+                        order_data,
+                        {
+                            **base_evidence,
+                            "write_state": "confirmed_written",
+                            "reason_code": "confirmed_written",
+                            "reconciled_after_timeout": True,
+                            "detail_checks": attempt + 1,
+                            "backend_status": last_status,
+                            "request_error": str(exc),
+                            "after_state": last_status,
+                            "query_evidence": query_evidence,
+                            "after_evidence": query_evidence,
+                            "business_diffs": {
+                                "backend_status": {"before": before_state, "after": last_status}
+                            },
+                        },
+                    )
+            except (requests.RequestException, RuntimeError, ValueError) as detail_exc:
+                detail_errors.append(str(detail_exc))
+            if attempt < attempts - 1 and delay:
+                time.sleep(delay)
+        query_evidence = {
+            "statuses": statuses,
+            "errors": detail_errors,
+            "conflicts": conflicts,
+        }
+        confirmed_not_written = bool(statuses) and all(status == 20 for status in statuses) and not detail_errors and not conflicts
+        write_state = "confirmed_not_written" if confirmed_not_written else "indeterminate"
+        reason_code = "confirmed_not_written" if confirmed_not_written else "unknown_write_state"
+        message = (
+            "订单翻译提交响应超时，回查确认仍处于写入前状态，未重复提交"
+            if confirmed_not_written
+            else "订单翻译提交响应超时，回查后仍无法确认写入状态，未重复提交"
+        )
+        return (
+            {"success": False, "code": reason_code, "msg": message},
+            last_order_data,
+            {
+                **base_evidence,
+                "write_state": write_state,
+                "reason_code": reason_code,
+                "reconciled_after_timeout": True,
+                "detail_checks": attempts,
+                "backend_status": last_status,
+                "request_error": str(exc),
+                "after_state": last_status,
+                "query_evidence": query_evidence,
+                "after_evidence": query_evidence,
+                "business_diffs": (
+                    {"backend_status": {"before": before_state, "after": last_status}}
+                    if last_status is not None
+                    else {}
+                ),
+            },
+        )
+
+
 def _impl__flatten_urlencoded_fields(value: Any, prefix: str) -> list[tuple[str, str]]:
     if isinstance(value, dict):
         pairs: list[tuple[str, str]] = []
@@ -396,7 +537,7 @@ def _impl__prepare_translate_data(order_data: Dict[str, Any], variables: Dict[st
 
 def _impl__build_confirm_data(order_data: Dict[str, Any], variables: Dict[str, Any], item_quantity: int) -> Dict[str, Any]:
     quote_price = _decimal_text(variables.get("confirm_price") or variables.get("quote_unit_price") or "10")
-    freight = _impl__optional_decimal_text(variables.get("confirm_freight"), variables.get("freight"))
+    freight = _impl__optional_decimal_text(variables.get("confirm_freight"), variables.get("freight")) or "0"
     volume = str(variables.get("confirm_volume") or "1x2x3")
     weight = _as_int(variables.get("confirm_weight") or variables.get("weight"), 200)
     remark = str(variables.get("confirm_remark") or "自动化采购调查")
@@ -415,9 +556,8 @@ def _impl__build_confirm_data(order_data: Dict[str, Any], variables: Dict[str, A
             "volume": volume,
             "weight": weight,
         }
-        if freight is not None:
-            confirm_detail["confirm_freight"] = freight
-            confirm_detail["confirm_dicker_freight"] = freight
+        confirm_detail["confirm_freight"] = freight
+        confirm_detail["confirm_dicker_freight"] = freight
         confirm_details.append(confirm_detail)
     return {"order_sn": order_data.get("order_sn"), "order_detail": confirm_details}
 
@@ -602,21 +742,69 @@ def _impl__run_backend_order_flow(
         return False, {"backend_passed": False, "reason": "未获取到后台订单详情"}
 
     translate_data = _prepare_translate_data(order_data, variables)
-    translate_payload = _post_admin_form(
-        session,
-        base_url,
-        _api_path(variables, "admin_order_translate", "/order.submitTranslate"),
-        {"data": bulk_cart.json_text(translate_data), "is_temp": str(variables.get("translate_is_temp") or "0")},
-        timeout,
-    )
+    before_translate_status = _order_status_code(order_data)
+    if before_translate_status is not None and before_translate_status > 20:
+        translate_payload = {"success": True, "code": 0, "msg": "订单状态已确认翻译写入，无需重复提交"}
+        reconciled_data = order_data
+        translate_reconciliation = {
+            "write_state": "confirmed_written",
+            "reason_code": "confirmed_written",
+            "attempted_action": "order.submitTranslate",
+            "attempted_actions": [],
+            "request_attempt_count": 0,
+            "before_state": before_translate_status,
+            "after_state": before_translate_status,
+            "before_evidence": {"order_sn": order_sn, "backend_status": before_translate_status},
+            "after_evidence": {"statuses": [before_translate_status], "errors": [], "conflicts": []},
+            "query_evidence": {"statuses": [before_translate_status], "errors": [], "conflicts": []},
+            "business_diffs": {},
+            "reconciled_after_timeout": False,
+            "detail_checks": 0,
+        }
+    else:
+        translate_payload, reconciled_data, translate_reconciliation = _submit_order_translate_with_reconciliation(
+            session,
+            base_url,
+            variables,
+            order_sn,
+            {"data": bulk_cart.json_text(translate_data), "is_temp": str(variables.get("translate_is_temp") or "0")},
+            timeout,
+            before_state=before_translate_status,
+        )
     backend_log["translate"] = _payload_brief(translate_payload)
+    backend_log["translate_reconciliation"] = translate_reconciliation
+    translate_result_evidence = {
+        "write_state": translate_reconciliation.get("write_state"),
+        "write_reason_code": translate_reconciliation.get("reason_code"),
+        "attempted_actions": translate_reconciliation.get("attempted_actions") or [],
+        "before_evidence": translate_reconciliation.get("before_evidence") or {},
+        "after_evidence": translate_reconciliation.get("after_evidence") or {},
+        "business_diffs": translate_reconciliation.get("business_diffs") or {},
+        "request_attempt_count": translate_reconciliation.get("request_attempt_count", 1),
+        "reconciliation": translate_reconciliation,
+    }
     if not _api_success(translate_payload):
-        return False, {"backend_passed": False, "reason": "订单翻译提交失败", "translate": _payload_brief(translate_payload)}
+        return False, {
+            "order_sn": order_sn,
+            "backend_passed": False,
+            "reason": str(translate_payload.get("msg") or "订单翻译提交失败"),
+            "reason_code": str(translate_reconciliation.get("reason_code") or "reconciliation_failed"),
+            "write_state": str(translate_reconciliation.get("write_state") or "indeterminate"),
+            "translate": _payload_brief(translate_payload),
+            "attempted_actions": translate_reconciliation.get("attempted_actions") or [],
+            "before_evidence": translate_reconciliation.get("before_evidence") or {},
+            "after_evidence": translate_reconciliation.get("after_evidence") or {},
+            "business_diffs": translate_reconciliation.get("business_diffs") or {},
+            "request_attempt_count": translate_reconciliation.get("request_attempt_count", 1),
+            "reconciliation": translate_reconciliation,
+        }
 
     # detail_after_translate：仅 order_translated 暂停点需要准确 status，非暂停路径跳过冗余查询
     #（translate 不修改 order_detail 结构，confirm_source 直接用 translate_data 即可）
     if _checkpoint_requested(variables, "order_translated"):
-        _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
+        after_translate = reconciled_data
+        if not after_translate:
+            _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
         backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
         return True, _paused_summary(
             "order_translated",
@@ -625,6 +813,7 @@ def _impl__run_backend_order_flow(
                 "backend_passed": True,
                 "backend_steps": ["login", "detail", "translate"],
                 "backend_status": after_translate.get("status") if after_translate else None,
+                **translate_result_evidence,
             },
         )
     backend_log["detail_after_translate"] = {**_admin_detail_brief(order_data), "cached_from": "detail_before"}
@@ -658,6 +847,7 @@ def _impl__run_backend_order_flow(
                 "backend_passed": True,
                 "backend_steps": ["login", "detail", "translate", "confirm"],
                 "backend_status": after_confirm.get("status") if after_confirm else None,
+                **translate_result_evidence,
             },
         )
 
@@ -699,6 +889,7 @@ def _impl__run_backend_order_flow(
                 "backend_steps": ["login", "detail", "translate", "confirm", "part_pay_plan", "offer"],
                 "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
                 "backend_status": after_confirm.get("status") if after_confirm else None,
+                **translate_result_evidence,
             },
         )
     _, after_offer = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=1)
@@ -708,6 +899,7 @@ def _impl__run_backend_order_flow(
         "backend_steps": ["login", "detail", "translate", "confirm", "part_pay_plan", "offer"],
         "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
         "backend_status": after_offer.get("status") if after_offer else None,
+        **translate_result_evidence,
     }
 
 
@@ -732,6 +924,8 @@ def _impl__resume_node_for_order_status(status: int | None) -> str:
         return "order_offered"
     if status == 30:
         return "order_offered"
+    if status == 80:
+        return "porder_shipped"
     return ""
 
 
@@ -900,20 +1094,49 @@ def _impl__run_backend_order_flow_resume(
         return False, {"backend_passed": False, "backend_status": status, "reason": f"\u8ba2\u5355\u72b6\u6001 {status} \u4e0d\u652f\u6301\u4ece\u8ba2\u5355\u9636\u6bb5\u6062\u590d"}
 
     backend_steps = ["login", "detail"]
+    translate_result_evidence: Dict[str, Any] = {}
     if status <= 20:
         translate_data = _prepare_translate_data(current_data, variables)
-        translate_payload = _post_admin_form(
+        translate_payload, reconciled_data, translate_reconciliation = _submit_order_translate_with_reconciliation(
             session,
             base_url,
-            _api_path(variables, "admin_order_translate", "/order.submitTranslate"),
+            variables,
+            order_sn,
             {"data": bulk_cart.json_text(translate_data), "is_temp": str(variables.get("translate_is_temp") or "0")},
             timeout,
+            before_state=status,
         )
         backend_log["translate"] = _payload_brief(translate_payload)
+        backend_log["translate_reconciliation"] = translate_reconciliation
+        translate_result_evidence = {
+            "write_state": translate_reconciliation.get("write_state"),
+            "write_reason_code": translate_reconciliation.get("reason_code"),
+            "attempted_actions": translate_reconciliation.get("attempted_actions") or [],
+            "before_evidence": translate_reconciliation.get("before_evidence") or {},
+            "after_evidence": translate_reconciliation.get("after_evidence") or {},
+            "business_diffs": translate_reconciliation.get("business_diffs") or {},
+            "request_attempt_count": translate_reconciliation.get("request_attempt_count", 1),
+            "reconciliation": translate_reconciliation,
+        }
         if not _api_success(translate_payload):
-            return False, {"backend_passed": False, "reason": "\u8ba2\u5355\u7ffb\u8bd1\u63d0\u4ea4\u5931\u8d25", "translate": _payload_brief(translate_payload)}
+            return False, {
+                "order_sn": order_sn,
+                "backend_passed": False,
+                "reason": str(translate_payload.get("msg") or "\u8ba2\u5355\u7ffb\u8bd1\u63d0\u4ea4\u5931\u8d25"),
+                "reason_code": str(translate_reconciliation.get("reason_code") or "reconciliation_failed"),
+                "write_state": str(translate_reconciliation.get("write_state") or "indeterminate"),
+                "translate": _payload_brief(translate_payload),
+                "attempted_actions": translate_reconciliation.get("attempted_actions") or [],
+                "before_evidence": translate_reconciliation.get("before_evidence") or {},
+                "after_evidence": translate_reconciliation.get("after_evidence") or {},
+                "business_diffs": translate_reconciliation.get("business_diffs") or {},
+                "request_attempt_count": translate_reconciliation.get("request_attempt_count", 1),
+                "reconciliation": translate_reconciliation,
+            }
         backend_steps.append("translate")
-        _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
+        after_translate = reconciled_data
+        if not after_translate:
+            _, after_translate = _order_detail_data(session, base_url, variables, order_sn, timeout, retries=2)
         backend_log["detail_after_translate"] = _admin_detail_brief(after_translate)
         current_data = after_translate or translate_data
         if _checkpoint_requested(variables, "order_translated"):
@@ -924,6 +1147,7 @@ def _impl__run_backend_order_flow_resume(
                     "backend_passed": True,
                     "backend_steps": backend_steps,
                     "backend_status": current_data.get("status") if current_data else None,
+                    **translate_result_evidence,
                 },
             )
 
@@ -958,6 +1182,7 @@ def _impl__run_backend_order_flow_resume(
                     "backend_passed": True,
                     "backend_steps": backend_steps,
                     "backend_status": current_data.get("status") if current_data else None,
+                    **translate_result_evidence,
                 },
             )
 
@@ -994,6 +1219,7 @@ def _impl__run_backend_order_flow_resume(
                     "backend_steps": backend_steps,
                     "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
                     "backend_status": current_data.get("status") if current_data else None,
+                    **translate_result_evidence,
                 },
             )
 
@@ -1003,6 +1229,7 @@ def _impl__run_backend_order_flow_resume(
         "backend_steps": backend_steps,
         "quote_unit_price": _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10"),
         "backend_status": current_data.get("status") if current_data else None,
+        **translate_result_evidence,
     }
 
 
@@ -1052,6 +1279,7 @@ _money_total = _compat_wrapper(_impl__money_total)
 _admin_headers = _compat_wrapper(_impl__admin_headers)
 _call_with_retry = _compat_wrapper(_impl__call_with_retry)
 _post_admin_form = _compat_wrapper(_impl__post_admin_form)
+_submit_order_translate_with_reconciliation = _compat_wrapper(_impl__submit_order_translate_with_reconciliation)
 _flatten_urlencoded_fields = _compat_wrapper(_impl__flatten_urlencoded_fields)
 _post_admin_urlencoded = _compat_wrapper(_impl__post_admin_urlencoded)
 _admin_login_without_runtime = _compat_wrapper(_impl__admin_login_without_runtime)

@@ -94,7 +94,7 @@ def test_migration_bridge_consumes_initial_legacy_hash():
     assert behavior["invalid"] == {"clicked": 0, "href": "UNCHANGED", "queryCalls": 0}
 
 
-def test_vue_legacy_agent_integration_assets_are_pinned():
+def test_vue_legacy_agent_integration_assets_are_pinned_and_harvester_is_retired():
     root = Path(__file__).resolve().parents[1]
     index_source = (root / "static" / "index.html").read_text(encoding="utf-8")
     ordered_assets = [
@@ -104,8 +104,25 @@ def test_vue_legacy_agent_integration_assets_are_pinned():
     ]
     positions = [index_source.index(asset) for asset in ordered_assets]
     assert positions == sorted(positions)
-    assert "/static/api-harvester.js" in index_source
+    assert "/static/api-harvester.js" not in index_source
     assert "/static/migration-bridge.js" in index_source
+
+    retired_files = [
+        root / "static" / "api-harvester.js",
+        root / "frontend" / "src" / "views" / "ApiHarvesterView.vue",
+        root / "frontend" / "src" / "api" / "modules" / "apiHarvester.js",
+        root / "app" / "routers" / "api_harvester.py",
+        root / "app" / "services" / "api_analyzer.py",
+        root / "app" / "services" / "site_crawler.py",
+    ]
+    assert not [path for path in retired_files if path.exists()]
+
+    api_harvester_paths = {
+        route.path
+        for route in app.routes
+        if getattr(route, "path", "").startswith("/api/api-harvester")
+    }
+    assert api_harvester_paths == set()
 
     record_log_source = (root / "frontend" / "src" / "utils" / "recordLog.js").read_text(encoding="utf-8")
     assert "agent.renderRecordSummary(parsed, escapeHtml)" in record_log_source

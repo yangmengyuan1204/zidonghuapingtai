@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Final Fix Round 1 - API 执行结果可信度修复</title>
+  <style>
+    :root{--ink:#172033;--muted:#5d6878;--line:#d7dee8;--panel:#f6f8fb;--ok:#176b42;--bad:#a61b1b;--warn:#9a5a00}
+    *{box-sizing:border-box}body{margin:0;background:#edf1f6;color:var(--ink);font:15px/1.65 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+    main{max-width:1180px;margin:24px auto;padding:34px 42px;background:#fff;box-shadow:0 2px 18px #1a294018}
+    h1{margin:0;font-size:29px}h2{margin:32px 0 12px;padding-bottom:7px;border-bottom:2px solid #2a405f;font-size:21px}h3{font-size:17px;margin:22px 0 8px}
+    p{margin:8px 0}ul,ol{margin:8px 0 8px 24px}code{padding:1px 4px;border-radius:3px;background:#edf1f5;overflow-wrap:anywhere}
+    table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}th,td{border:1px solid var(--line);padding:8px 9px;text-align:left;vertical-align:top}th{background:#e9eff6}
+    .verdict,.note{padding:13px 15px;border:1px solid var(--line);border-left:5px solid var(--ok);border-radius:5px;background:var(--panel)}
+    .bad{color:var(--bad);font-weight:700}.ok{color:var(--ok);font-weight:700}.warn{color:var(--warn);font-weight:700}.small{color:var(--muted);font-size:13px}
+    pre{max-height:620px;overflow:auto;padding:14px;border:1px solid #cdd6e2;border-radius:5px;background:#101722;color:#e7edf6;font:12px/1.5 Consolas,"Cascadia Mono",monospace;white-space:pre}
+    @media print{body{background:#fff}main{max-width:none;margin:0;box-shadow:none;padding:10mm}pre{max-height:none;white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Final Fix Round 1：API 执行结果可信度修复</h1>
+  <p class="small">日期：2026-07-28｜范围：仅 API 执行器假成功｜分支：codex/safe-refactor-preserve-features｜基线：1187c457b803b7f6d3d059bf83153f1a8eb88ca6</p>
+  <div class="verdict"><strong>结论：</strong>审计 P1 真实存在。本轮已在不修改 Router、Vue、Store、迁移、数据库、Reports、文件下载、SQLite 重试、幂等和依赖的前提下，消除已确认的 API 执行器假成功路径。配置错误在发送 HTTP 请求前返回失败，错误进入返回日志并由现有 Records 链保存为 <code>failed</code>。</div>
+
+  <h2>1. 范围与约束执行</h2>
+  <p>本任务实际只修改或新增以下三个获准文件：</p>
+  <ul>
+    <li><code>app/executors/api.py</code>：执行前严格校验、明确断言状态、兼容失败结果。</li>
+    <li><code>tests/test_api_execution_trustworthiness.py</code>：负向、合法路径及单条/批量/重跑回归测试。</li>
+    <li><code>docs/final-fix-round1-api-execution-trustworthiness.html</code>：本报告。</li>
+  </ul>
+  <p>未执行 Git commit、push、merge、cherry-pick；未删除文件；未修改正式数据库。正式库仅使用 immutable 只读 SELECT 核对断言形态。</p><p>审查期间出现了另一并发任务的前端、静态样式和设计文档工作树改动；这些文件不属于本任务，本任务未修改、未回退、未暂存。最终范围判断以以上三个文件为准，不声称整个共享工作树只有三项改动。</p>
+
+  <h2>2. 修复前问题复现</h2>
+  <p>复现采用模拟 HTTP 客户端、禁用 Allure 文件写入、内存 SQLite Records；因此没有向外部站点发送请求，也没有写正式数据库或 Reports。</p>
+  <table>
+    <thead><tr><th>场景</th><th>输入</th><th>修复前执行输出</th><th>修复前 Records</th><th>请求调用</th></tr></thead>
+    <tbody>
+      <tr><td>非法断言 JSON</td><td><code>{"status_code":500</code></td><td><code>passed=True</code>、<code>assertions=[]</code>、无 error</td><td><code>result="passed"</code></td><td class="bad">1 次</td></tr>
+      <tr><td>缺失变量</td><td>URL/Path/Query/Headers/Body 分别放置缺失的 <code>{{...}}</code></td><td>已支持形态被替换为空；非标准双花括号原样残留；HTTP 200 后通过</td><td><code>result="passed"</code></td><td class="bad">1 次</td></tr>
+      <tr><td>空断言</td><td><code>{}</code></td><td><code>passed=True</code>、<code>assertions=[]</code></td><td><code>result="passed"</code></td><td class="bad">1 次</td></tr>
+      <tr><td>contains 缺失变量</td><td><code>{"contains":"{{expected_text}}"}</code></td><td>渲染为空字符串；空字符串包含于任意响应，结果通过</td><td>可保存为 passed</td><td class="bad">1 次</td></tr>
+      <tr><td>非整数状态码</td><td><code>{"status_code":200.5}</code>、Unicode <code>²</code>、超长数字</td><td>浮点数可被截断为 200；Unicode/超长值在 HTTP 后才抛错</td><td>浮点场景可保存为 passed</td><td class="bad">1 次</td></tr>
+      <tr><td>非标准 JSON 常量</td><td><code>{"contains":NaN}</code> / Infinity</td><td>Python 默认接受；响应含 nan 时可 passed=True</td><td>可保存为 passed</td><td class="bad">1 次</td></tr>
+    </tbody>
+  </table>
+  <h3>最小复现步骤</h3>
+  <ol>
+    <li>构造 ApiCase 和 Env，不持久化到正式数据库。</li>
+    <li>把 <code>requests.request</code> 替换为带调用计数的 FakeResponse(200)。</li>
+    <li>把报告目录创建和 Allure 写入替换为内存返回值。</li>
+    <li>调用原始 <code>execute_api_case</code>，再用现有 <code>save_record</code> 写入内存 TestRecord。</li>
+    <li>读取返回元组、日志 JSON、调用计数和 Record.result；得到上表结果。</li>
+  </ol>
+
+  <h2>3. 根因</h2>
+  <ul>
+    <li><code>parse_json_value(case.assert_rule, {})</code> 将断言 JSON 解析失败静默降级为 <code>{}</code>。</li>
+    <li>通用模板渲染器把已识别但缺失的变量替换为空字符串，执行器没有渲染前或渲染后预检。</li>
+    <li>没有断言检查项时使用 <code>200 &lt;= status_code &lt; 400</code> 兜底，混淆“无断言”和“断言通过”。</li>
+    <li><code>contains</code> 缺失变量可变为空字符串；<code>int()</code> 可截断浮点状态码。这两个边界同样能造成结果不可信。</li>
+    <li>Python <code>json.loads</code> 默认接受 JSON 标准禁止的 NaN/Infinity；Unicode <code>isdigit()</code> 与 <code>int()</code> 的接受集合不一致，均可绕过请求前预检。</li>
+  </ul>
+
+  <h2>4. 空断言产品语义核对</h2>
+  <p>Vue3 新建 ApiCase 默认显式配置 <code>status_code: 200</code>；bootstrap 生成的内置用例也显式配置状态码。没有找到“空断言等价于仅检查 HTTP 状态”的产品说明或历史测试。</p>
+  <p>正式数据库只读统计：ApiCase 共 1,881 条；未配置断言 0 条；空对象断言 0 条；显式 <code>status_code</code> 1,881 条；显式 <code>contains</code> 3 条。因此本轮把空/缺失断言视为配置错误，不会阻断现有正式 ApiCase。</p>
+
+  <h2>5. 修复设计与返回兼容</h2>
+  <table>
+    <thead><tr><th>输入状态</th><th>处理</th><th>HTTP</th><th>返回与日志</th></tr></thead>
+    <tbody>
+      <tr><td>断言 JSON 非法或不是对象</td><td>预检返回 <code>invalid_assertion_json</code></td><td class="ok">不发送</td><td><code>False, log_text, report_path, {}</code></td></tr>
+      <tr><td>断言完全未配置</td><td><code>assertion_not_configured</code></td><td class="ok">不发送</td><td>写入一条 failed configuration assertion，状态为 configuration_error</td></tr>
+      <tr><td>配置存在但无 status_code/非空 contains</td><td><code>no_valid_assertions</code></td><td class="ok">不发送</td><td>明确区别于断言通过/失败</td></tr>
+      <tr><td>任意双花括号缺失或形态不受支持</td><td>渲染前检查 URL、Path、Query、Headers、Body、contains</td><td class="ok">不发送</td><td><code>unresolved_variables</code>，记录 fields/placeholders</td></tr>
+      <tr><td>变量值引入新的双花括号</td><td>最终渲染后再次递归检查</td><td class="ok">不发送</td><td><code>unresolved_variables</code></td></tr>
+      <tr><td>状态码不是 ASCII 整数/整数字符串，或整数超长</td><td><code>invalid_assertion_value</code>；请求前完成规范化 int</td><td class="ok">不发送</td><td>明确可读错误</td></tr>
+      <tr><td>NaN/Infinity/-Infinity</td><td>严格 JSON parse_constant 拒绝</td><td class="ok">不发送</td><td><code>invalid_assertion_json</code></td></tr>
+      <tr><td>合法断言</td><td>保持原请求、提取和返回元组</td><td>正常发送</td><td><code>assertion_status=passed/failed</code></td></tr>
+    </tbody>
+  </table>
+  <p>原有四元组返回结构没有改变。新增日志字段为兼容扩展：<code>assertion_status</code>、<code>configuration_error</code>；原有 <code>assertions</code> 继续保持列表，<code>error</code> 继续提供可读文本。Router、批量执行和重跑无需修改即可沿用。</p>
+
+  <h2>6. 测试先行证据（RED）</h2>
+  <ul>
+    <li>首次只新增测试后运行：收集 10 项，<span class="bad">10 项失败</span>。非法 JSON、缺失变量、空断言均暴露请求已发送及假成功。</li>
+    <li>补充 contains/非法状态码边界后单独运行：<span class="bad">2 项失败</span>，证明请求在校验前已发送。</li>
+    <li>完成前边界自查新增非整数状态码：首批 3 个参数中 <span class="bad">2 项失败、1 项通过</span>；其中浮点数 200.5 实际产生 passed=True。</li>
+    <li>独立审查补充 NaN/Infinity 与 Unicode/超长整数边界：修复前 4 项失败并确认均发生 HTTP 调用；修复后 8 个参数全部通过。</li>
+    <li>所有生产代码修改均发生在上述失败证据之后。</li>
+  </ul>
+
+  <h2>7. 修复后新增测试</h2>
+  <p>最终新增测试文件包含 21 个 pytest case（参数化展开后），覆盖：</p>
+  <ul>
+    <li>非法断言 JSON（含 NaN/Infinity/-Infinity）、非对象/缺失/空断言、extract-only、空 contains。</li>
+    <li>URL、Path、Query、Headers、Body 的缺失变量和所有闭合双花括号形态。</li>
+    <li>变量值导致最终渲染后再次出现占位符。</li>
+    <li>contains 缺失变量、非法/浮点/布尔/Unicode/超长 status_code。</li>
+    <li>合法变量完整替换、合法 JSON 状态码断言通过、合法断言失败。</li>
+    <li>单条执行、批量执行、Records 重跑三条真实调用路径继续返回兼容结果。</li>
+    <li>配置错误写入内存 Records 后为 <code>failed</code>，错误码、可读原因、assertions 状态均存在。</li>
+  </ul>
+
+  <h2>8. 请求未发送验证</h2>
+  <p>所有配置错误测试均通过同一个 request spy 断言 <code>calls == []</code>。覆盖非法 JSON（含非标准常量）、断言缺失/为空、无有效断言、非法/Unicode/超长状态码、URL/Path/Query/Headers/Body 未解析变量、contains 未解析变量及最终渲染残留。最终结果：<span class="ok">全部通过，调用次数均为 0</span>。</p>
+  <h3>代表性失败日志</h3>
+  <pre>{
+  "assertions": [{
+    "type": "configuration",
+    "code": "unresolved_variables",
+    "message": "配置错误：存在未解析的双花括号变量，请补充变量值或修正占位符。",
+    "passed": false
+  }],
+  "assertion_status": "configuration_error",
+  "configuration_error": {
+    "code": "unresolved_variables",
+    "message": "配置错误：存在未解析的双花括号变量，请补充变量值或修正占位符。",
+    "fields": ["url", "path", "query", "headers", "body"],
+    "placeholders": {"url": ["{{url_host}}"], "path": ["{{path_id}}"], "...": ["..."]}
+  },
+  "error": "配置错误：存在未解析的双花括号变量，请补充变量值或修正占位符。"
+}</pre>
+
+  <h2>9. Records 结果验证</h2>
+  <p>测试使用现有 <code>save_record</code> 将配置失败结果写入内存 TestRecord，验证：</p>
+  <ul>
+    <li><code>passed is False</code>；</li>
+    <li><code>record.result == "failed"</code>；</li>
+    <li><code>configuration_error.code/message</code> 可从 Record.log 读取；</li>
+    <li><code>assertions</code> 包含一条明确失败的 configuration assertion，且 <code>assertion_status == "configuration_error"</code>；</li>
+    <li>执行器返回结构仍为四元组，提取变量为 <code>{}</code>。</li>
+  </ul>
+
+  <h2>10. 最终回归结果</h2>
+  <table>
+    <thead><tr><th>命令范围</th><th>结果</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>test_api_execution_trustworthiness.py</td><td class="ok">通过</td><td>负向、合法路径、单条/批量/重跑</td></tr>
+      <tr><td>test_record_reexecution.py</td><td class="ok">通过</td><td>Records 重跑与上下文兼容</td></tr>
+      <tr><td>test_route_contracts.py</td><td class="ok">通过</td><td>Router 契约未被修改或破坏</td></tr>
+      <tr><td>test_permissions.py</td><td class="ok">通过</td><td>权限及实际批量变量提取执行</td></tr>
+      <tr><th>最终合并串行结果</th><th class="ok">144 passed</th><th>127.80 秒，0 failed</th></tr>
+      <tr><td>py_compile + git diff --check</td><td class="ok">通过</td><td>语法与补丁空白检查</td></tr>
+    </tbody>
+  </table>
+
+  <p>曾有一次与独立审查代理并发的测试运行因共享 <code>tests/test_platform_suite.db</code> 产生 admin UNIQUE、401，结果为 136 passed / 2 failed / 1 error；该运行已判定为并发基础设施冲突并废弃。代理停止测试后，以上 144 项由主线程无并发完整重跑通过。</p>
+
+  <h2>11. 独立代码审查闭环</h2>
+  <p>独立只读审查最初给出 Not Ready，指出 NaN/Infinity 非标准 JSON 常量和 Unicode <code>²</code>/<code>isdigit()</code> 接受集合不一致。两项均先新增失败测试，再修复为请求前 configuration_error；同时补充超长数字字符串。当前审查提出的 Critical/Important 代码缺口均已关闭。审查误并发运行 pytest 的影响已在上一节如实记录。</p>
+
+  <h2>12. 实际修改 Diff</h2>
+  <p>以下为生成报告前的真实工作树 diff。报告自身为最终生成物，不递归嵌入自身 diff。</p>
+  <h3>app/executors/api.py</h3>
+  <pre>warning: LF will be replaced by CRLF in app/executors/api.py.
+The file will have its original line endings in your working directory
+diff --git a/app/executors/api.py b/app/executors/api.py
+index 8bfeefc..0c242af 100644
+--- a/app/executors/api.py
++++ b/app/executors/api.py
+@@ -1,3 +1,5 @@
++import json
++import re
+ from datetime import datetime
+ from typing import Any, Dict, Tuple
+ from urllib.parse import urljoin
+@@ -6,6 +8,7 @@ import requests
+ 
+ from ..models import ApiCase, Env
+ from .common import (
++    VAR_PATTERN,
+     ensure_report_dirs,
+     json_dump_log,
+     merge_variables,
+@@ -15,6 +18,86 @@ from .common import (
+ )
+ 
+ 
++UNRESOLVED_PLACEHOLDER_PATTERN = re.compile(r"\{\{.*?\}\}", re.DOTALL)
++
++
++def _reject_nonstandard_json_constant(value: str) -&gt; None:
++    raise ValueError(f"non-standard JSON constant: {value}")
++
++
++def _placeholder_tokens(value: Any) -&gt; list[str]:
++    tokens: list[str] = []
++    if isinstance(value, str):
++        tokens.extend(match.group(0) for match in UNRESOLVED_PLACEHOLDER_PATTERN.finditer(value))
++    elif isinstance(value, list):
++        for item in value:
++            tokens.extend(_placeholder_tokens(item))
++    elif isinstance(value, dict):
++        for key, item in value.items():
++            tokens.extend(_placeholder_tokens(key))
++            tokens.extend(_placeholder_tokens(item))
++    return list(dict.fromkeys(tokens))
++
++
++def _missing_placeholder_tokens(value: Any, variables: Dict[str, Any]) -&gt; list[str]:
++    missing: list[str] = []
++    for token in _placeholder_tokens(value):
++        supported = VAR_PATTERN.fullmatch(token)
++        if supported is None:
++            missing.append(token)
++            continue
++        key = supported.group(1)
++        if key not in variables or variables[key] is None:
++            missing.append(token)
++    return missing
++
++
++def _parse_assertion_rule(value: Any) -&gt; tuple[Dict[str, Any] | None, tuple[str, str] | None]:
++    if value is None or (isinstance(value, str) and not value.strip()):
++        return None, ("assertion_not_configured", "配置错误：未配置断言，请明确配置 status_code 或 contains。")
++    if isinstance(value, dict):
++        return value, None
++    if not isinstance(value, str):
++        return None, ("invalid_assertion_json", "配置错误：断言配置必须是 JSON 对象。")
++    try:
++        parsed = json.loads(value, parse_constant=_reject_nonstandard_json_constant)
++    except (TypeError, ValueError, json.JSONDecodeError):
++        return None, ("invalid_assertion_json", "配置错误：断言 JSON 解析失败，请检查 assert_rule。")
++    if not isinstance(parsed, dict):
++        return None, ("invalid_assertion_json", "配置错误：断言配置必须是 JSON 对象。")
++    return parsed, None
++
++
++def _configuration_failure(
++    case: ApiCase,
++    log_parts: Dict[str, Any],
++    code: str,
++    message: str,
++    **details: Any,
++) -&gt; Tuple[bool, str, str, Dict[str, Any]]:
++    configuration_error = {"code": code, "message": message}
++    configuration_error.update({key: value for key, value in details.items() if value})
++    log_parts.update(
++        {
++            "assertions": [
++                {
++                    "type": "configuration",
++                    "code": code,
++                    "message": message,
++                    "passed": False,
++                }
++            ],
++            "assertion_status": "configuration_error",
++            "configuration_error": configuration_error,
++            "error": message,
++            "finished_at": datetime.now(),
++        }
++    )
++    log_text = json_dump_log(log_parts)
++    report_path = write_allure_result(case.case_name, "api", False, log_text)
++    return False, log_text, report_path, {}
++
++
+ def _pick_path(payload: Any, path: str) -&gt; Any:
+     current = payload
+     for part in path.split("."):
+@@ -85,47 +168,141 @@ def execute_api_case(case: ApiCase, env: Env, runtime_vars: Dict[str, Any] | Non
+     ensure_report_dirs()
+     timeout = max(1, env.timeout or 30)
+     variables = merge_variables(env, runtime_vars)
+-    headers = render_template(parse_json_value(env.global_headers, {}), variables)
+-    headers.update(render_template(parse_json_value(case.headers, {}), variables))
+-    params = render_template(parse_json_value(case.params, {}), variables)
+-    body = render_template(parse_json_value(case.body, case.body or None), variables)
+-    assert_rule = parse_json_value(case.assert_rule, {})
+     method = case.method.upper()
+-    target_url = render_template(urljoin(env.base_url.rstrip("/") + "/", case.url.lstrip("/")), variables)
++    raw_headers = parse_json_value(env.global_headers, {})
++    raw_case_headers = parse_json_value(case.headers, {})
++    raw_params = parse_json_value(case.params, {})
++    raw_body = parse_json_value(case.body, case.body or None)
++    raw_target_url = urljoin(env.base_url.rstrip("/") + "/", case.url.lstrip("/"))
+ 
+     started = datetime.now()
+     log_parts: Dict[str, Any] = {
+         "request": {
+             "method": method,
+-            "url": target_url,
+-            "headers": headers,
+-            "params": params,
+-            "body": body,
++            "url": raw_target_url,
++            "path": case.url,
++            "headers": {**raw_headers, **raw_case_headers},
++            "params": raw_params,
++            "body": raw_body,
+             "timeout": timeout,
+         },
+         "variables": variables,
+         "started_at": started,
+     }
+ 
++    assert_rule, assertion_error = _parse_assertion_rule(case.assert_rule)
++    if assertion_error:
++        return _configuration_failure(case, log_parts, *assertion_error)
++
++    request_fields = {
++        "url": env.base_url,
++        "path": case.url,
++        "query": raw_params,
++        "headers": {**raw_headers, **raw_case_headers},
++        "body": raw_body,
++    }
++    assertion_template = assert_rule.get("contains") if assert_rule else None
++    missing_by_field = {
++        field: _missing_placeholder_tokens(value, variables)
++        for field, value in {**request_fields, "assertions": assertion_template}.items()
++    }
++    missing_by_field = {field: tokens for field, tokens in missing_by_field.items() if tokens}
++    if missing_by_field:
++        return _configuration_failure(
++            case,
++            log_parts,
++            "unresolved_variables",
++            "配置错误：存在未解析的双花括号变量，请补充变量值或修正占位符。",
++            fields=list(missing_by_field),
++            placeholders=missing_by_field,
++        )
++
++    headers = render_template(raw_headers, variables)
++    headers.update(render_template(raw_case_headers, variables))
++    params = render_template(raw_params, variables)
++    body = render_template(raw_body, variables)
++    target_url = render_template(raw_target_url, variables)
++    rendered_path = render_template(case.url, variables)
++    rendered_assertion = render_template(assertion_template, variables) if assertion_template is not None else None
++    rendered_fields = {
++        "url": target_url,
++        "path": rendered_path,
++        "query": params,
++        "headers": headers,
++        "body": body,
++        "assertions": rendered_assertion,
++    }
++    unresolved_by_field = {
++        field: _placeholder_tokens(value)
++        for field, value in rendered_fields.items()
++        if _placeholder_tokens(value)
++    }
++    if unresolved_by_field:
++        return _configuration_failure(
++            case,
++            log_parts,
++            "unresolved_variables",
++            "配置错误：最终渲染结果仍包含未解析的双花括号占位符。",
++            fields=list(unresolved_by_field),
++            placeholders=unresolved_by_field,
++        )
++
++    expected_status = assert_rule.get("status_code") if assert_rule else None
++    expected_status_code = None
++    if expected_status is not None:
++        is_integer_status = isinstance(expected_status, int) and not isinstance(expected_status, bool)
++        is_numeric_string = isinstance(expected_status, str) and re.fullmatch(r"[0-9]+", expected_status.strip()) is not None
++        if not is_integer_status and not is_numeric_string:
++            return _configuration_failure(
++                case,
++                log_parts,
++                "invalid_assertion_value",
++                "配置错误：status_code 断言必须是有效整数。",
++            )
++        try:
++            expected_status_code = int(expected_status)
++        except ValueError:
++            return _configuration_failure(
++                case,
++                log_parts,
++                "invalid_assertion_value",
++                "配置错误：status_code 断言必须是有效整数。",
++            )
++    has_contains_assertion = bool(rendered_assertion)
++    if expected_status is None and not has_contains_assertion:
++        return _configuration_failure(
++            case,
++            log_parts,
++            "no_valid_assertions",
++            "配置错误：没有有效断言，请配置 status_code 或非空 contains。",
++        )
++
++    log_parts["request"].update(
++        {
++            "url": target_url,
++            "path": rendered_path,
++            "headers": headers,
++            "params": params,
++            "body": body,
++        }
++    )
++
+     try:
+         request_kwargs = build_request_kwargs(headers, params, body, timeout, method)
+         response = requests.request(method, target_url, **request_kwargs)
+         response_text = response.text[:50000]
+         checks = []
+ 
+-        expected_status = assert_rule.get("status_code") if isinstance(assert_rule, dict) else None
+         if expected_status is not None:
+-            ok = response.status_code == int(expected_status)
++            ok = response.status_code == expected_status_code
+             checks.append({"type": "status_code", "expected": expected_status, "actual": response.status_code, "passed": ok})
+ 
+-        contains = assert_rule.get("contains") if isinstance(assert_rule, dict) else None
+-        if contains:
+-            contains = render_template(str(contains), variables)
+-            ok = str(contains) in response_text
+-            checks.append({"type": "contains", "expected": contains, "passed": ok})
++        if has_contains_assertion:
++            ok = str(rendered_assertion) in response_text
++            checks.append({"type": "contains", "expected": rendered_assertion, "passed": ok})
+ 
+-        passed = all(item["passed"] for item in checks) if checks else 200 &lt;= response.status_code &lt; 400
+-        extracted_vars = extract_response_vars(response, assert_rule.get("extract") if isinstance(assert_rule, dict) else {})
++        passed = all(item["passed"] for item in checks)
++        extracted_vars = extract_response_vars(response, assert_rule.get("extract", {}))
+         log_parts.update(
+             {
+                 "response": {
+@@ -134,6 +311,7 @@ def execute_api_case(case: ApiCase, env: Env, runtime_vars: Dict[str, Any] | Non
+                     "body": response_text[:50000],
+                 },
+                 "assertions": checks,
++                "assertion_status": "passed" if passed else "failed",
+                 "extracted_vars": extracted_vars,
+                 "finished_at": datetime.now(),
+             }
+@@ -142,7 +320,7 @@ def execute_api_case(case: ApiCase, env: Env, runtime_vars: Dict[str, Any] | Non
+         report_path = write_allure_result(case.case_name, "api", passed, log_text)
+         return passed, log_text, report_path, extracted_vars
+     except Exception as exc:
+-        log_parts.update({"error": str(exc), "finished_at": datetime.now()})
++        log_parts.update({"assertion_status": "execution_error", "error": str(exc), "finished_at": datetime.now()})
+         log_text = json_dump_log(log_parts)
+         report_path = write_allure_result(case.case_name, "api", False, log_text)
+         return False, log_text, report_path, {}
+</pre>
+  <h3>tests/test_api_execution_trustworthiness.py（新增文件完整 diff）</h3>
+  <pre>warning: LF will be replaced by CRLF in tests/test_api_execution_trustworthiness.py.
+The file will have its original line endings in your working directory
+diff --git a/tests/test_api_execution_trustworthiness.py b/tests/test_api_execution_trustworthiness.py
+new file mode 100644
+index 0000000..2872578
+--- /dev/null
++++ b/tests/test_api_execution_trustworthiness.py
+@@ -0,0 +1,347 @@
++import json
++from datetime import datetime
++
++import pytest
++from sqlalchemy import create_engine
++from sqlalchemy.orm import sessionmaker
++
++from app.core import utils
++from app.executors import api as api_executor
++from app.models import ApiCase, Env, TestRecord as RecordModel
++from app.routers import api_cases as api_case_routes
++from app.schemas import ApiBatchExecuteRequest, ApiExecuteRequest
++from app.services import test_record_reexecution as record_reexecution
++
++
++class FakeResponse:
++    def __init__(self, status_code: int = 200, payload=None):
++        self.status_code = status_code
++        self._payload = payload if payload is not None else {"ok": True}
++        self.text = json.dumps(self._payload, ensure_ascii=False)
++        self.headers = {"Content-Type": "application/json"}
++
++    def json(self):
++        return self._payload
++
++
++@pytest.fixture
++def request_spy(monkeypatch):
++    calls = []
++    response = {"value": FakeResponse()}
++
++    def fake_request(method, url, **kwargs):
++        calls.append({"method": method, "url": url, "kwargs": kwargs})
++        return response["value"]
++
++    monkeypatch.setattr(api_executor, "ensure_report_dirs", lambda: None)
++    monkeypatch.setattr(api_executor, "write_allure_result", lambda *args, **kwargs: "memory://report")
++    monkeypatch.setattr(api_executor.requests, "request", fake_request)
++    return calls, response
++
++
++@pytest.fixture
++def record_db():
++    engine = create_engine("sqlite:///:memory:")
++    RecordModel.__table__.create(engine)
++    session = sessionmaker(bind=engine)()
++    try:
++        yield session
++    finally:
++        session.close()
++        engine.dispose()
++
++
++def make_env(**overrides) -&gt; Env:
++    values = {
++        "id": 1,
++        "project_id": 1,
++        "env_name": "trustworthiness-test",
++        "base_url": "https://example.invalid",
++        "global_headers": "{}",
++        "global_vars": "{}",
++        "timeout": 5,
++    }
++    values.update(overrides)
++    return Env(**values)
++
++
++def make_case(**overrides) -&gt; ApiCase:
++    values = {
++        "id": 101,
++        "project_id": 1,
++        "env_id": 1,
++        "case_name": "trustworthiness-test",
++        "method": "GET",
++        "url": "/health",
++        "headers": "{}",
++        "params": "{}",
++        "body": None,
++        "assert_rule": '{"status_code": 200}',
++        "status": "active",
++        "create_time": datetime.now(),
++    }
++    values.update(overrides)
++    return ApiCase(**values)
++
++
++def assert_configuration_failure(result, calls, expected_code: str):
++    passed, log_text, report_path, extracted_vars = result
++    log = json.loads(log_text)
++
++    assert passed is False
++    assert report_path == "memory://report"
++    assert extracted_vars == {}
++    assert calls == []
++    assert log["assertions"] == [
++        {
++            "type": "configuration",
++            "code": expected_code,
++            "message": log["configuration_error"]["message"],
++            "passed": False,
++        }
++    ]
++    assert log["assertion_status"] == "configuration_error"
++    assert log["configuration_error"]["code"] == expected_code
++    assert log["configuration_error"]["message"]
++    assert log["error"] == log["configuration_error"]["message"]
++    return log
++
++
++def save_failed_record(record_db, case: ApiCase, result):
++    passed, log_text, report_path, _ = result
++    record = utils.save_record(
++        record_db,
++        "api",
++        case.id,
++        passed,
++        log_text,
++        report_path,
++        project_id=case.project_id,
++    )
++    return record, json.loads(record.log)
++
++
++def test_invalid_assertion_json_is_configuration_error_without_request(request_spy, record_db):
++    calls, _ = request_spy
++    case = make_case(assert_rule='{"status_code": 500')
++
++    result = api_executor.execute_api_case(case, make_env())
++
++    log = assert_configuration_failure(result, calls, "invalid_assertion_json")
++    record, record_log = save_failed_record(record_db, case, result)
++    assert "断言" in log["configuration_error"]["message"]
++    assert record.result == "failed"
++    assert record_log["configuration_error"] == log["configuration_error"]
++
++
++@pytest.mark.parametrize(
++    "assert_rule",
++    ['{"contains": NaN}', '{"contains": Infinity}', '{"contains": -Infinity}'],
++)
++def test_nonstandard_json_constants_are_rejected_without_request(request_spy, assert_rule):
++    calls, _ = request_spy
++
++    result = api_executor.execute_api_case(make_case(assert_rule=assert_rule), make_env())
++
++    assert_configuration_failure(result, calls, "invalid_assertion_json")
++
++
++def test_missing_variables_in_url_path_query_headers_and_body_do_not_send_request(request_spy, record_db):
++    calls, _ = request_spy
++    env = make_env(base_url="https://example.invalid/{{url_host}}")
++    case = make_case(
++        method="POST",
++        url="/users/{{path_id}}",
++        headers='{"X-Test": "{{ header value }}"}',
++        params='{"query": "{{query_id}}"}',
++        body='{"value": "{{body_id}}"}',
++    )
++
++    result = api_executor.execute_api_case(case, env)
++
++    log = assert_configuration_failure(result, calls, "unresolved_variables")
++    assert set(log["configuration_error"]["fields"]) == {"url", "path", "query", "headers", "body"}
++    record, _ = save_failed_record(record_db, case, result)
++    assert record.result == "failed"
++
++
++def test_placeholders_introduced_by_variable_values_are_rejected_after_render(request_spy):
++    calls, _ = request_spy
++    env = make_env(base_url="https://{{base_host}}")
++    case = make_case(
++        method="POST",
++        url="/{{path_value}}",
++        headers='{"X-Test": "{{header_value}}"}',
++        params='{"query": "{{query_value}}"}',
++        body='{"value": "{{body_value}}"}',
++    )
++    runtime_vars = {
++        "base_host": "{{late_url}}",
++        "path_value": "{{late_path}}",
++        "header_value": "{{ late header }}",
++        "query_value": "{{late_query}}",
++        "body_value": "{{late_body}}",
++    }
++
++    result = api_executor.execute_api_case(case, env, runtime_vars)
++
++    log = assert_configuration_failure(result, calls, "unresolved_variables")
++    assert set(log["configuration_error"]["fields"]) == {"url", "path", "query", "headers", "body"}
++
++
++def test_missing_variable_in_contains_assertion_is_rejected_without_request(request_spy):
++    calls, _ = request_spy
++    case = make_case(assert_rule='{"contains": "{{expected_text}}"}')
++
++    result = api_executor.execute_api_case(case, make_env())
++
++    log = assert_configuration_failure(result, calls, "unresolved_variables")
++    assert log["configuration_error"]["fields"] == ["assertions"]
++
++
++def test_invalid_status_assertion_is_configuration_error_without_request(request_spy):
++    calls, _ = request_spy
++    case = make_case(assert_rule='{"status_code": "not-a-status"}')
++
++    result = api_executor.execute_api_case(case, make_env())
++
++    assert_configuration_failure(result, calls, "invalid_assertion_value")
++
++
++@pytest.mark.parametrize("status_code", [True, 200.5, "200.5", "²", "9" * 5000])
++def test_non_integer_status_assertion_is_rejected_without_request(request_spy, status_code):
++    calls, _ = request_spy
++    case = make_case(assert_rule=json.dumps({"status_code": status_code}))
++
++    result = api_executor.execute_api_case(case, make_env())
++
++    assert_configuration_failure(result, calls, "invalid_assertion_value")
++
++
++@pytest.mark.parametrize(
++    ("assert_rule", "expected_code"),
++    [
++        (None, "assertion_not_configured"),
++        ("", "assertion_not_configured"),
++        ("{}", "no_valid_assertions"),
++        ('{"extract": {"id": "json.id"}}', "no_valid_assertions"),
++        ('{"contains": ""}', "no_valid_assertions"),
++    ],
++)
++def test_missing_or_empty_assertions_are_distinguished_and_do_not_send_request(
++    request_spy,
++    assert_rule,
++    expected_code,
++):
++    calls, _ = request_spy
++
++    result = api_executor.execute_api_case(make_case(assert_rule=assert_rule), make_env())
++
++    assert_configuration_failure(result, calls, expected_code)
++
++
++def test_valid_variables_and_status_assertion_still_pass(request_spy):
++    calls, response = request_spy
++    response["value"] = FakeResponse(201, {"id": "U1"})
++    env = make_env(
++        global_headers='{"X-Env": "{{env_token}}"}',
++        global_vars='{"base_host": "example.invalid", "env_token": "token-1", "prefix": "qa"}',
++        base_url="https://{{base_host}}",
++    )
++    case = make_case(
++        method="POST",
++        url="/users/{{user_id}}",
++        headers='{"X-Case": "{{case_token}}"}',
++        params='{"query": "{{prefix}}_{{keyword}}"}',
++        body='{"name": "{{prefix}}_{{name}}"}',
++        assert_rule='{"status_code": 201}',
++    )
++
++    passed, log_text, _, extracted_vars = api_executor.execute_api_case(
++        case,
++        env,
++        {"user_id": "U1", "case_token": "token-2", "keyword": "alice", "name": "Alice"},
++    )
++
++    log = json.loads(log_text)
++    assert passed is True
++    assert extracted_vars == {}
++    assert log["assertion_status"] == "passed"
++    assert log["assertions"] == [{"type": "status_code", "expected": 201, "actual": 201, "passed": True}]
++    assert len(calls) == 1
++    assert calls[0]["url"] == "https://example.invalid/users/U1"
++    assert calls[0]["kwargs"]["headers"] == {"X-Env": "token-1", "X-Case": "token-2"}
++    assert calls[0]["kwargs"]["params"] == {"query": "qa_alice"}
++    assert calls[0]["kwargs"]["json"] == {"name": "qa_Alice"}
++
++
++def test_valid_assertion_failure_still_fails_after_request(request_spy):
++    calls, response = request_spy
++    response["value"] = FakeResponse(500, {"error": "failed"})
++
++    passed, log_text, _, _ = api_executor.execute_api_case(
++        make_case(assert_rule='{"status_code": 200}'),
++        make_env(),
++    )
++
++    log = json.loads(log_text)
++    assert passed is False
++    assert len(calls) == 1
++    assert log["assertion_status"] == "failed"
++    assert log["assertions"][0]["passed"] is False
++
++
++def test_single_batch_and_record_reexecution_keep_executor_contract(request_spy):
++    calls, _ = request_spy
++    engine = create_engine("sqlite:///:memory:")
++    Env.__table__.create(engine)
++    ApiCase.__table__.create(engine)
++    RecordModel.__table__.create(engine)
++    db = sessionmaker(bind=engine)()
++    try:
++        env = make_env(id=None)
++        db.add(env)
++        db.flush()
++        case = make_case(id=None, env_id=env.id)
++        db.add(case)
++        db.commit()
++
++        single = api_case_routes.run_api_case(
++            case.id,
++            ApiExecuteRequest(env_id=env.id, variables={}),
++            db,
++            current_user=None,
++        )
++        batch = api_case_routes.batch_run_api_cases(
++            ApiBatchExecuteRequest(case_ids=[case.id], env_id=env.id, variables={}),
++            db,
++            current_user=None,
++        )
++        original = RecordModel(
++            id=999,
++            case_type="api",
++            case_id=case.id,
++            project_id=case.project_id,
++            result="passed",
++            log=utils.enrich_log_with_exec_params(
++                "{}",
++                kind="api_case",
++                script_key="api_case",
++                target_id=case.id,
++                project_id=case.project_id,
++                env_id=env.id,
++                variables={},
++            ),
++            report_path="memory://old-report",
++            execute_time=datetime.now(),
++        )
++        rerun = record_reexecution.reexecute_record(db, original, True)
++
++        assert single["result"] == "passed"
++        assert batch["passed"] is True
++        assert batch["records"][0]["result"] == "passed"
++        assert rerun["result"] == "passed"
++        assert len(calls) == 3
++    finally:
++        db.close()
++        engine.dispose()
+</pre>
+
+  <h2>13. 是否彻底消除假成功</h2>
+  <p><strong>在本轮审查范围和当前执行器支持的断言类型（status_code、contains）内：是。</strong></p>
+  <ul>
+    <li>断言配置损坏（包括 NaN/Infinity）、缺失、为空或没有有效检查项时，不能再凭 2xx/3xx 通过。</li>
+    <li>请求和 contains 中所有闭合的双花括号占位符会在渲染前检查；变量值引入的残留会在渲染后再次检查。</li>
+    <li>所有配置错误均在 HTTP 请求前失败，并进入 Records/日志/返回结果。</li>
+    <li>合法断言通过仍为 passed，合法断言失败仍为 failed，合法变量替换、批量提取和重跑保持正常。</li>
+  </ul>
+  <p>未发现当前受支持路径中仍可稳定产生假成功的已知入口。该结论不扩展到未来新增但尚未实现的断言类型，也不把“用户明确只配置 contains、且 contains 实际匹配”误判为假成功。</p>
+
+  <h2>14. 人工审核清单</h2>
+  <ul>
+    <li>确认配置错误字段命名：<code>assertion_status</code>、<code>configuration_error.code/message</code>。</li>
+    <li>确认空断言按配置错误处理；正式库 1,881 条现有用例均不受此规则影响。</li>
+    <li>确认实际 diff 仅涉及获准的执行器、测试和本报告。</li>
+    <li>人工审核后再决定是否提交；本轮未执行任何 Git 提交操作。</li>
+  </ul>
+
+  <div class="note"><strong>停止点：</strong>Final Fix Round 1 已完成。本报告没有处理任何 P2/P3，后续等待人工审核。</div>
+</main>
+</body>
+</html>

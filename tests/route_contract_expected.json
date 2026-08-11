@@ -6,6 +6,11 @@
   },
   {
     "method": "GET",
+    "path": "/favicon.ico",
+    "name": "favicon"
+  },
+  {
+    "method": "GET",
     "path": "/api/action-templates",
     "name": "list_action_templates"
   },
@@ -28,26 +33,6 @@
     "method": "GET",
     "path": "/api/action-templates/{template_id}/test-run",
     "name": "test_run_template"
-  },
-  {
-    "method": "POST",
-    "path": "/api/api-harvester/analyze",
-    "name": "analyze_api_harvester"
-  },
-  {
-    "method": "POST",
-    "path": "/api/api-harvester/crawl",
-    "name": "crawl_api_harvester"
-  },
-  {
-    "method": "GET",
-    "path": "/api/api-harvester/extract",
-    "name": "extract_api_harvester"
-  },
-  {
-    "method": "GET",
-    "path": "/api/api-harvester/task/{task_id}",
-    "name": "get_api_harvester_task"
   },
   {
     "method": "GET",
@@ -393,6 +378,11 @@
     "method": "POST",
     "path": "/api/data-scripts/full-flow",
     "name": "run_full_flow_data_script"
+  },
+  {
+    "method": "POST",
+    "path": "/api/data-scripts/payment-amount-regression",
+    "name": "run_payment_amount_regression_data_script"
   },
   {
     "method": "GET",
@@ -890,6 +880,11 @@
     "name": "list_records"
   },
   {
+    "method": "POST",
+    "path": "/api/test-records/recover-orphan-reports",
+    "name": "recover_orphan_reports"
+  },
+  {
     "method": "GET",
     "path": "/api/test-records/{record_id}",
     "name": "get_record"
@@ -1298,5 +1293,50 @@
     "method": "GET",
     "path": "/v3/{path:path}",
     "name": "_v3_assets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/system-regression/suites/{suite_key}/cases",
+    "name": "get_regression_cases"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/system-regression/cases/{case_id}",
+    "name": "patch_regression_case"
+  },
+  {
+    "method": "POST",
+    "path": "/api/system-regression/cases/{case_id}/copy",
+    "name": "copy_regression_case"
+  },
+  {
+    "method": "POST",
+    "path": "/api/system-regression/cases/{case_id}/reset",
+    "name": "reset_regression_case"
+  },
+  {
+    "method": "POST",
+    "path": "/api/system-regression/batches",
+    "name": "create_regression_batch"
+  },
+  {
+    "method": "GET",
+    "path": "/api/system-regression/batches/{batch_id}",
+    "name": "get_regression_batch"
+  },
+  {
+    "method": "POST",
+    "path": "/api/system-regression/batches/{batch_id}/stop",
+    "name": "stop_regression_batch"
+  },
+  {
+    "method": "POST",
+    "path": "/api/system-regression/runs/{run_id}/rerun",
+    "name": "rerun_regression_case"
+  },
+  {
+    "method": "POST",
+    "path": "/api/system-regression/runs/{run_id}/resume-account",
+    "name": "resume_regression_account"
   }
 ]

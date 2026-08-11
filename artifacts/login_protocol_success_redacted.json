@@ -1,0 +1,55 @@
+{
+  "evidence_type": "browser_success_request",
+  "captured_at": "2026-07-31T15:17:50+08:00",
+  "environment": "https://jpapi.rakumart.cn",
+  "source_page": "https://jpmanage.rakumart.cn/#/login",
+  "request": {
+    "url": "https://jpapi.rakumart.cn/admin.login",
+    "method": "POST",
+    "http_status": 200,
+    "content_type": "application/x-www-form-urlencoded",
+    "body_encoding": "application/x-www-form-urlencoded",
+    "field_names": ["username", "password", "system", "compute_token", "code"],
+    "field_types": {
+      "username": "string",
+      "password": "string",
+      "system": "string",
+      "compute_token": "string",
+      "code": "string"
+    },
+    "field_presence": {
+      "username": true,
+      "password": true,
+      "system": true,
+      "compute_token": true,
+      "code": true
+    },
+    "cookie_names": [],
+    "origin_present": false,
+    "referer_present": false,
+    "csrf_field_present": false,
+    "user_agent_family": "Chrome",
+    "accept": "application/json, text/plain, */*"
+  },
+  "preflight_requests": {
+    "api_requests_before_login": [],
+    "static_assets_before_login": true
+  },
+  "response": {
+    "content_type": "text/html; charset=UTF-8",
+    "json_field_paths": [
+      "success",
+      "code",
+      "msg",
+      "data.access_token",
+      "data.token_type",
+      "data.expires_in",
+      "data.userInfo",
+      "data.compute_token"
+    ],
+    "success": true,
+    "code": 0,
+    "token_present": true,
+    "token_field_path": "data.access_token"
+  }
+}

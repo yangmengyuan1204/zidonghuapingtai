@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict
 
 
 SCRIPT_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "payment_amount_regression": {"name": "支付金额自动回归", "func": None, "chain": True},
     "shopping_cart": {"name": "商品购物车", "func": None},
     "order_quote": {"name": "订单报价", "func": None},
     "balance_payment": {"name": "余额支付", "func": None},

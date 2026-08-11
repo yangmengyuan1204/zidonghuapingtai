@@ -766,6 +766,131 @@ def test_agent_removes_unevidenced_domestic_freight_from_new_contract():
     assert "offer_freight" not in goal["variables"]
 
 
+def test_resume_order_tool_pauses_before_business_call_without_backend_account(monkeypatch):
+    context = _tool_context()
+    context.goal["target_node"] = "shelf_stored"
+    calls = []
+    monkeypatch.setattr(
+        agent_tools,
+        "_save_script_result",
+        lambda *args, **kwargs: calls.append((args, kwargs)) or {"passed": True, "summary": {}},
+    )
+
+    result = agent_tools._resume_order(context, {})
+
+    assert calls == []
+    assert result["passed"] is False
+    assert result["summary"]["awaiting_permission"] is True
+    assert result["summary"]["permission_required"] is True
+
+
+def test_resume_order_tool_injects_selected_backend_profile(monkeypatch):
+    context = _tool_context()
+    context.db = object()
+    context.goal["target_node"] = "shelf_stored"
+    context.state["backend_account_profile_id"] = 7
+    captured = {}
+    monkeypatch.setattr(
+        agent_tools,
+        "account_profile_variables",
+        lambda db, profile_id, project_id: (
+            {"username": "VISIBLE-ACCOUNT", "password": "visible-password"},
+            {"profile_name": "订单后台"},
+        ),
+    )
+
+    def fake_save(context, tool_name, runner, variables):
+        captured.update(variables)
+        return {"passed": True, "summary": {"current_node": "shelf_stored"}}
+
+    monkeypatch.setattr(agent_tools, "_save_script_result", fake_save)
+
+    result = agent_tools._resume_order(context, {})
+
+    assert result["passed"] is True
+    assert captured["backend_account"] == "VISIBLE-ACCOUNT"
+    assert captured["backend_password"] == "visible-password"
+    assert "visible-password" in context.permission_redaction_values
+
+
+def test_resume_agent_preflight_waits_for_generic_backend_account(monkeypatch):
+    project, env = _agent_context()
+    session = agent_service.AgentSessionState(
+        id=str(uuid.uuid4()),
+        user_id=1,
+        project_id=project.id,
+        env_id=env.id,
+        status="running",
+        goal={
+            "mode": "resume_order",
+            "order_sn": "ORDER-ACCOUNT-REQUIRED",
+            "target_node": "shelf_stored",
+            "variables": {},
+            "operations": [
+                {
+                    "id": "operation_advance_order_1",
+                    "type": "advance_order",
+                    "target_node": "shelf_stored",
+                }
+            ],
+        },
+    )
+    agent_service._SESSIONS[session.id] = session
+    monkeypatch.setattr(
+        agent_service,
+        "execute_agent_tool",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("preflight must wait for an account")),
+    )
+
+    agent_service._run_agent_session(session.id)
+
+    assert session.status == "awaiting_permission"
+    assert session.runtime_state["awaiting_permission"] is True
+    assert session.runtime_state["required_account_role"] == ""
+
+
+def test_resume_agent_permission_accepts_generic_backend_profile(monkeypatch):
+    project, env = _agent_context()
+    db = SessionLocal()
+    profile = _add_backend_profile(db, project.id, role="operator")
+    deferred = DeferredExecutor()
+    session = agent_service.AgentSessionState(
+        id=str(uuid.uuid4()),
+        user_id=1,
+        project_id=project.id,
+        env_id=env.id,
+        status="awaiting_permission",
+        goal={"mode": "resume_order", "target_node": "shelf_stored", "variables": {}},
+        runtime_state={
+            "awaiting_permission": True,
+            "required_account_role": "",
+            "current_operation_id": "operation_advance_order_1",
+            "current_operation_type": "advance_order",
+        },
+    )
+    agent_service._SESSIONS[session.id] = session
+    monkeypatch.setattr(agent_service, "_EXECUTOR", deferred)
+
+    try:
+        result = agent_service.resume_agent_permission(
+            db,
+            session.id,
+            session.user_id,
+            session.plan_version,
+            profile.id,
+        )
+    finally:
+        db.delete(profile)
+        db.commit()
+        db.close()
+
+    assert result["status"] == "running"
+    assert session.runtime_state["backend_account_profile_id"] == profile.id
+    assert "allow_large_refund" not in session.runtime_state
+    assert "permission_retry_count" not in session.runtime_state
+    assert len(deferred.calls) == 1
+
+
 def test_agent_preserves_explicit_zero_and_positive_domestic_freight():
     instruction = "帮我创建订单，采购调查国内运费0，业务报价国内运费7.5，到待付款"
     payload = {
@@ -833,13 +958,13 @@ def test_agent_binds_domestic_freight_evidence_to_stage_and_ignores_nearby_price
     assert "offer_freight" not in negative_goal["variables"]
 
 
-def test_order_payloads_omit_missing_domestic_freight_but_preserve_explicit_values():
+def test_order_payloads_fill_required_confirm_freight_but_preserve_explicit_values():
     order_data = {"order_sn": "ORDER-1", "order_detail": [{"id": 11, "num": 2}]}
 
     confirm_without = data_scripts._build_confirm_data(order_data, {"confirm_price": "10"}, 2)
     confirm_detail = confirm_without["order_detail"][0]
-    assert "confirm_freight" not in confirm_detail
-    assert "confirm_dicker_freight" not in confirm_detail
+    assert confirm_detail["confirm_freight"] == "0"
+    assert confirm_detail["confirm_dicker_freight"] == "0"
 
     offer_without = data_scripts._prepare_offer_data(order_data, {"offer_price": "10"}, 2)
     offer_detail = offer_without["order_detail"][0]
@@ -2102,6 +2227,20 @@ def test_resume_order_preflight_does_not_mutate_when_target_already_reached(monk
             json={"plan_version": created["plan_version"]},
         )
 
+        assert response.status_code == 200
+        assert response.json()["status"] == "awaiting_permission"
+        assert tool_calls == []
+
+        response = client.post(
+            f"/api/data-scripts/agent/sessions/{created['id']}/permission",
+            headers=headers,
+            json={
+                "plan_version": created["plan_version"],
+                "backend_account": "order-reader",
+                "backend_password": "temporary-secret",
+            },
+        )
+
     assert response.status_code == 200
     result = response.json()
     assert result["status"] == "succeeded"
@@ -2997,6 +3136,39 @@ def test_auto_large_refund_profile_requires_unique_active_project_name_and_role(
         db.close()
 
 
+def test_auto_large_refund_uses_global_y002_profile_without_learned_strategy():
+    project, _env = _agent_context()
+    db = SessionLocal()
+    profile = AccountProfile(
+        project_id=None,
+        profile_name="沈文妮账号",
+        variables=json.dumps({"username": "Y002"}, ensure_ascii=False),
+        sensitive_variables=encrypt_account_payload({"password": "y002-secret"}),
+        status="active",
+        create_time=datetime.now(),
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    try:
+        assert agent_service._auto_large_refund_profile_id(
+            db,
+            project.id,
+            None,
+            "department_leader",
+        ) == profile.id
+        assert agent_service._auto_large_refund_profile_id(
+            db,
+            project.id,
+            None,
+            "operator",
+        ) is None
+    finally:
+        db.delete(profile)
+        db.commit()
+        db.close()
+
+
 def test_permission_resume_endpoint_accepts_temporary_credentials_without_serializing_them(monkeypatch):
     project, env = _agent_context()
     deferred = DeferredExecutor()
@@ -3478,6 +3650,8 @@ def test_temporary_permission_secrets_clear_on_every_terminal_status(monkeypatch
 def test_permission_frontend_supports_exclusive_profile_or_temporary_credentials():
     source = Path("static/data-factory-agent.js").read_text(encoding="utf-8")
 
+    assert "需要部长后台账号" not in source
+    assert 'session.current_state?.required_account_role' in source
     assert 'name="permission_source"' in source
     assert 'name="backend_account"' in source
     assert 'name="backend_password"' in source
@@ -4303,6 +4477,32 @@ def test_natural_language_correction_is_previewed_before_apply(agent_client):
     ).json()
     assert applied["goal"]["customer_ids"] == ["300003"]
     assert applied["plan_version"] == created["plan_version"] + 1
+
+
+def test_natural_language_correction_accepts_short_contextual_customer_id(agent_client):
+    created = create_ready_session(
+        agent_client, "造两店各一件，报价1元和2元，银行入金，到待支付"
+    )
+
+    response = agent_client.post(
+        f"/api/data-scripts/agent/sessions/{created['id']}/contract-preview",
+        json={
+            "plan_version": created["plan_version"],
+            "message": "帮我给id 71的账号造一条订单到待支付",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["diff"] == [{
+        "field": "customer_ids",
+        "before": created["goal"]["customer_ids"],
+        "after": ["71"],
+        "source": "natural_language_correction",
+    }]
+
+
+def test_customer_id_evidence_does_not_treat_product_id_as_customer_id():
+    assert agent_service._explicit_customer_ids("商品id 71，单价10元") == ([], "")
 
 
 def test_contract_preview_rejects_stale_version_without_mutating_goal(agent_client):

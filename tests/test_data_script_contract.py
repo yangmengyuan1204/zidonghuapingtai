@@ -1,6 +1,7 @@
 import inspect
 
 import app.data_scripts as data_scripts
+from app.routers import data_scripts as data_script_routes
 
 
 EXPECTED_RUN_SCRIPT_ENTRIES = {
@@ -20,6 +21,7 @@ EXPECTED_RUN_SCRIPT_ENTRIES = {
     "run_oem_sample_full_flow_script",
     "run_oem_sample_order_script",
     "run_order_quote_script",
+    "run_payment_amount_regression_script",
     "run_porder_balance_payment_script",
     "run_porder_bank_payment_script",
     "run_problem_goods_script",
@@ -43,6 +45,7 @@ EXPECTED_REGISTRY_KEYS = {
     "porder_balance_payment",
     "porder_bank_payment",
     "problem_goods",
+    "payment_amount_regression",
     "full_flow",
     "direct_box_to_shelf",
     "resume_order_flow",
@@ -87,3 +90,7 @@ def test_data_script_registry_contract():
         if script_key == "oem_sample_balance_pay":
             script_key = "oem_balance_pay"
         assert registry[script_key]["func"] is getattr(data_scripts, key)
+
+
+def test_oem_full_quote_route_resolves_fetcher():
+    assert callable(data_script_routes.fetch_oem_full_quote)

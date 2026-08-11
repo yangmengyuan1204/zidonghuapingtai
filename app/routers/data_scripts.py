@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..core.utils import (
@@ -39,7 +40,9 @@ from ..data_scripts import (
     run_oem_bulk_order_script,
     run_oem_sample_full_flow_script,
     run_oem_sample_order_script,
+    fetch_oem_full_quote,
     run_order_quote_script,
+    run_payment_amount_regression_script,
     run_problem_goods_script,
     run_porder_balance_payment_script,
     run_porder_bank_payment_script,
@@ -54,7 +57,7 @@ from ..data_scripts import (
 )
 from ..data_scripts.problem_goods import ProblemGoodsError, fetch_problem_goods_options, inspect_problem_goods
 from ..database import get_db
-from ..models import ApiCase, Env, TestRecord, User
+from ..models import ApiCase, Env, TestAccountProfile, TestRecord, User
 from ..schemas import DataScriptExecuteRequest
 from ..security import get_current_user, require_admin
 
@@ -67,6 +70,92 @@ def _runtime_func(name: str, fallback: Any) -> Any:
         return fallback
     main_module = sys.modules.get("app.main")
     return getattr(main_module, name, fallback) if main_module else fallback
+
+
+def _oem_data_script_variables(
+    db: Session,
+    env: Env,
+    variables: Dict[str, Any] | None,
+    project_id: int,
+) -> Dict[str, Any]:
+    env_variables: Dict[str, Any] = {}
+    if env.global_vars:
+        try:
+            configured = json.loads(env.global_vars)
+            if isinstance(configured, dict):
+                env_variables.update(configured)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return data_script_variables(db, {**env_variables, **dict(variables or {})}, project_id)
+
+
+def _backend_profile_id_for_account(
+    db: Session,
+    project_id: int,
+    account: str,
+) -> int | None:
+    matches: list[int] = []
+    profiles = (
+        db.query(TestAccountProfile)
+        .filter(
+            TestAccountProfile.status == "active",
+            or_(
+                TestAccountProfile.project_id == project_id,
+                TestAccountProfile.project_id.is_(None),
+            ),
+        )
+        .order_by(TestAccountProfile.id.asc())
+        .all()
+    )
+    for profile in profiles:
+        account_vars, _ = account_profile_variables(db, int(profile.id), project_id)
+        profile_account = (
+            account_vars.get("backend_account")
+            or account_vars.get("username")
+            or account_vars.get("account")
+        )
+        if str(profile_account or "").strip() == account:
+            matches.append(int(profile.id))
+    return matches[0] if len(matches) == 1 else None
+
+
+def _resolve_backend_account_variables(
+    db: Session,
+    variables: Dict[str, Any],
+    project_id: int,
+) -> Dict[str, Any]:
+    resolved = dict(variables)
+    profile_id = resolved.get("backend_account_profile_id") or resolved.get("admin_account_profile_id")
+    if not profile_id:
+        profile_id = _backend_profile_id_for_account(db, project_id, "Y001")
+    if profile_id:
+        account_vars, meta = account_profile_variables(db, int(profile_id), project_id)
+        backend_account = account_vars.get("backend_account") or account_vars.get("username") or account_vars.get("account")
+        backend_password = account_vars.get("backend_password") or account_vars.get("password")
+        if not backend_account or not backend_password:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="所选后台账号档案缺少账号或密码")
+        resolved.update(account_vars)
+        resolved.update(
+            {
+                "backend_account": str(backend_account),
+                "backend_password": str(backend_password),
+                "backend_code": str(account_vars.get("backend_code") or account_vars.get("code") or ""),
+                "backend_account_profile_id": int(profile_id),
+                "backend_account_profile_name": meta.get("profile_name") or "",
+            }
+        )
+        return resolved
+    backend_account = resolved.get("backend_account") or resolved.get("backend_username")
+    backend_password = resolved.get("backend_password")
+    is_legacy_builtin = str(backend_account or "").strip() == "Y001" and str(
+        backend_password or ""
+    ) in {"raku@123456``", "xiaolin666@@"}
+    if backend_account and backend_password and not is_legacy_builtin:
+        return resolved
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="未配置后台账号档案，请先为当前项目绑定可查看该订单的后台账号",
+    )
 
 
 def _problem_goods_variables(
@@ -282,9 +371,47 @@ def run_full_flow_data_script(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
-    variables = data_script_variables(db, payload.variables, project_id)
+    variables = _resolve_backend_account_variables(
+        db,
+        data_script_variables(db, payload.variables, project_id),
+        project_id,
+    )
     passed, log_text, report_path, summary = _runtime_func("run_full_flow_script", run_full_flow_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="full_flow", env_id=env.id, variables=payload.variables)
+    data = serialize(record)
+    data["summary"] = summary
+    return data
+
+
+@router.post("/data-scripts/payment-amount-regression")
+def run_payment_amount_regression_data_script(
+    payload: DataScriptExecuteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    env, project_id = resolve_data_script_context(db, payload)
+    variables = _resolve_backend_account_variables(
+        db,
+        data_script_variables(db, payload.variables, project_id),
+        project_id,
+    )
+    passed, log_text, report_path, summary = _runtime_func(
+        "run_payment_amount_regression_script",
+        run_payment_amount_regression_script,
+    )(env, variables)
+    record = save_record(
+        db,
+        "api",
+        0,
+        passed,
+        log_text,
+        report_path,
+        project_id=project_id,
+        kind="data_script",
+        script_key="payment_amount_regression",
+        env_id=env.id,
+        variables=payload.variables,
+    )
     data = serialize(record)
     data["summary"] = summary
     return data
@@ -297,7 +424,11 @@ def run_resume_order_flow_data_script(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
-    variables = data_script_variables(db, payload.variables, project_id)
+    variables = _resolve_backend_account_variables(
+        db,
+        data_script_variables(db, payload.variables, project_id),
+        project_id,
+    )
     passed, log_text, report_path, summary = _runtime_func("run_resume_order_flow_script", run_resume_order_flow_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="resume_order_flow", env_id=env.id, variables=payload.variables)
     data = serialize(record)
@@ -312,7 +443,11 @@ def run_porder_shipment_data_script(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
-    variables = data_script_variables(db, payload.variables, project_id)
+    variables = _resolve_backend_account_variables(
+        db,
+        data_script_variables(db, payload.variables, project_id),
+        project_id,
+    )
     passed, log_text, report_path, summary = _runtime_func("run_porder_shipment_script", run_porder_shipment_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="porder_shipment", env_id=env.id, variables=payload.variables)
     data = serialize(record)
@@ -508,7 +643,7 @@ def run_oem_new_inquiry_data_script(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
-    variables = data_script_variables(db, payload.variables, project_id)
+    variables = _oem_data_script_variables(db, env, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_new_inquiry_script", run_oem_new_inquiry_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_new_inquiry", env_id=env.id, variables=payload.variables)
     data = serialize(record)
@@ -523,7 +658,7 @@ def run_oem_sample_order_data_script(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
-    variables = data_script_variables(db, payload.variables, project_id)
+    variables = _oem_data_script_variables(db, env, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_sample_order_script", run_oem_sample_order_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_sample_order", env_id=env.id, variables=payload.variables)
     data = serialize(record)
@@ -538,7 +673,7 @@ def run_oem_sample_admin_flow_data_script(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
-    variables = data_script_variables(db, payload.variables, project_id)
+    variables = _oem_data_script_variables(db, env, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_sample_admin_flow_script", run_oem_sample_admin_flow_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_sample_admin_flow", env_id=env.id, variables=payload.variables)
     data = serialize(record)
@@ -553,7 +688,7 @@ def run_oem_full_inquiry_flow_data_script(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
-    variables = data_script_variables(db, payload.variables, project_id)
+    variables = _oem_data_script_variables(db, env, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_full_inquiry_flow_script", run_oem_full_inquiry_flow_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_full_inquiry_flow", env_id=env.id, variables=payload.variables)
     data = serialize(record)
@@ -568,7 +703,7 @@ def run_oem_sample_full_flow_data_script(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
-    variables = data_script_variables(db, payload.variables, project_id)
+    variables = _oem_data_script_variables(db, env, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_sample_full_flow_script", run_oem_sample_full_flow_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_sample_full_flow", env_id=env.id, variables=payload.variables)
     data = serialize(record)
@@ -583,7 +718,7 @@ def run_oem_bulk_order_data_script(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
-    variables = data_script_variables(db, payload.variables, project_id)
+    variables = _oem_data_script_variables(db, env, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_bulk_order_script", run_oem_bulk_order_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_bulk_order", env_id=env.id, variables=payload.variables)
     data = serialize(record)
@@ -598,7 +733,7 @@ def run_oem_sample_balance_pay_data_script(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     env, project_id = resolve_data_script_context(db, payload)
-    variables = data_script_variables(db, payload.variables, project_id)
+    variables = _oem_data_script_variables(db, env, payload.variables, project_id)
     passed, log_text, report_path, summary = _runtime_func("run_oem_sample_balance_pay_script", run_oem_sample_balance_pay_script)(env, variables)
     record = save_record(db, "api", 0, passed, log_text, report_path, project_id=project_id, kind="data_script", script_key="oem_balance_pay", env_id=env.id, variables=payload.variables)
     data = serialize(record)
@@ -651,8 +786,15 @@ def get_oem_goods_class_list(
                 variables.update(global_vars)
         except (json.JSONDecodeError, TypeError):
             pass
-    data = fetch_oem_goods_class_list(variables)
-    return {"success": True, "data": data}
+    try:
+        data = fetch_oem_goods_class_list(variables)
+        return {"success": True, "data": data}
+    except Exception as exc:
+        return {
+            "success": False,
+            "data": [],
+            "message": f"获取商品分类列表失败: {exc}",
+        }
 
 
 @router.get("/oem/option-list")

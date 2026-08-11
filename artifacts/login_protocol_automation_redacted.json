@@ -1,0 +1,46 @@
+{
+  "evidence_type": "automation_failure_request_snapshot",
+  "captured_at": "static_snapshot_no_request_sent",
+  "environment": "https://jpapi.rakumart.cn",
+  "request": {
+    "url": "https://jpapi.rakumart.cn/client/userLogin",
+    "method": "POST",
+    "content_type": "multipart/form-data",
+    "body_encoding": "multipart/form-data",
+    "multipart_boundary": "generated_by_requests_at_send_time",
+    "field_names": ["account", "password", "client_tool"],
+    "field_types": {
+      "account": "string",
+      "password": "string",
+      "client_tool": "string"
+    },
+    "field_presence": {
+      "account": true,
+      "password": true,
+      "client_tool": true
+    },
+    "client_tool_value": "1",
+    "cookie_names": [],
+    "origin_present": false,
+    "referer_present": false,
+    "csrf_field_present": false,
+    "user_agent": "RakumartBulkCart/1.0",
+    "accept": "application/json, text/plain, */*",
+    "requests_call": {
+      "data": false,
+      "json": false,
+      "files": true
+    },
+    "session_initialized": true,
+    "preflight_requests": [],
+    "allow_redirects": true,
+    "timeout_seconds": 30,
+    "tls_verify": false,
+    "trust_env": false
+  },
+  "known_failure_response": {
+    "success": false,
+    "code": 10000,
+    "token_present": false
+  }
+}
