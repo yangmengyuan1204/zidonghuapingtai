@@ -136,18 +136,19 @@ function handleOpenUpdate(open) {
 .v2-app-form-dialog :deep(.v2-base-input),
 .v2-app-form-dialog :deep(.v2-base-select),
 .v2-app-form-dialog :deep(.v2-base-textarea) {
-  --v2-input-border: var(--v2-shell-pilot-field-border);
-  --v2-input-border-hover: var(--v2-shell-pilot-field-border);
-  --v2-input-border-focus: var(--v2-shell-pilot-field-focus);
-  --v2-input-focus-ring: 0 0 0 3px rgba(93, 135, 255, 0.12);
-  --v2-select-border: var(--v2-shell-pilot-field-border);
-  --v2-select-border-hover: var(--v2-shell-pilot-field-border);
-  --v2-select-border-focus: var(--v2-shell-pilot-field-focus);
-  --v2-select-focus-ring: 0 0 0 3px rgba(93, 135, 255, 0.12);
-  --v2-textarea-border: var(--v2-shell-pilot-field-border);
-  --v2-textarea-border-hover: var(--v2-shell-pilot-field-border);
-  --v2-textarea-border-focus: var(--v2-shell-pilot-field-focus);
-  --v2-textarea-focus-ring: 0 0 0 3px rgba(93, 135, 255, 0.12);
+  /* White modal surface: use light field chrome, never sidebar white/alpha borders */
+  --v2-input-border: var(--v2-color-field-border);
+  --v2-input-border-hover: var(--v2-color-border-slate);
+  --v2-input-border-focus: var(--v2-border-focus);
+  --v2-input-focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.14);
+  --v2-select-border: var(--v2-color-field-border);
+  --v2-select-border-hover: var(--v2-color-border-slate);
+  --v2-select-border-focus: var(--v2-border-focus);
+  --v2-select-focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.14);
+  --v2-textarea-border: var(--v2-color-field-border);
+  --v2-textarea-border-hover: var(--v2-color-border-slate);
+  --v2-textarea-border-focus: var(--v2-border-focus);
+  --v2-textarea-focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .v2-app-form-dialog :deep(.v2-base-input__control),

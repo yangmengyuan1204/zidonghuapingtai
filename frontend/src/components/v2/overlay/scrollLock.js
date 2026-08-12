@@ -31,3 +31,16 @@ export function unlockBodyScroll(ownerId) {
 export function getBodyScrollLockCount() {
   return owners.size
 }
+
+/** Clear orphaned body scroll locks (e.g. modal unmounted mid-lifecycle). */
+export function forceUnlockAllBodyScroll() {
+  if (typeof document === 'undefined') return
+  owners.clear()
+  if (originalOverflow) {
+    document.body.style.setProperty('overflow', originalOverflow, originalOverflowPriority)
+  } else {
+    document.body.style.removeProperty('overflow')
+  }
+  originalOverflow = null
+  originalOverflowPriority = ''
+}

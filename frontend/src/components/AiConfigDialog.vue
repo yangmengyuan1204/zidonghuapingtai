@@ -144,6 +144,12 @@ watch(() => props.open, (open) => {
   --v2-select-height: 36px;
   --v2-input-radius: 7px;
   --v2-select-radius: 7px;
+  --v2-input-border: var(--v2-color-field-border);
+  --v2-input-border-hover: var(--v2-color-border-slate);
+  --v2-input-border-focus: var(--v2-border-focus);
+  --v2-select-border: var(--v2-color-field-border);
+  --v2-select-border-hover: var(--v2-color-border-slate);
+  --v2-select-border-focus: var(--v2-border-focus);
 }
 
 .ai-config-dialog__form :deep(.v2-base-input__label),

@@ -102,7 +102,7 @@
         </div>
       </header>
       <section id="content" class="v2-shell__content">
-        <router-view />
+        <router-view :key="route.name || route.path" />
       </section>
     </main>
     <AiConfigDialog v-if="auth.isAdmin" v-model:open="aiConfigOpen" />
@@ -115,7 +115,7 @@
  * 对齐旧应用 app.js renderShell 的结构：
  * div.shell > aside.sidebar + main.main > header.topbar + section.content
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { BaseBadge, BaseButton, BaseSelect } from './v2/base/index.js'
 import AiConfigDialog from './AiConfigDialog.vue'
@@ -173,14 +173,26 @@ function isActive(key) {
 }
 
 function navigate(item) {
-  // 统一交由导航服务决策（已迁移→Vue Router，未迁移→旧应用）
-  navigateToView(item.key)
   closeDrawer()
+  // Prefer direct named push for shell menus (all keys are registered routes).
+  if (router.hasRoute(item.key)) {
+    router.push({ name: item.key }).catch(() => {})
+    return
+  }
+  navigateToView(item.key)
 }
 
 function closeDrawer() {
   drawerOpen.value = false
 }
+
+watch(
+  () => route.fullPath,
+  () => {
+    closeDrawer()
+    aiConfigOpen.value = false
+  },
+)
 
 function handleProjectChange(projectId) {
   const nextProjectId = String(projectId || '')
@@ -325,7 +337,7 @@ onMounted(async () => {
   align-items: center;
   min-height: 36px;
   padding: 0 6px 0 10px;
-  border: var(--v2-border-width) solid var(--v2-shell-pilot-field-border);
+  border: var(--v2-border-width) solid var(--v2-color-sidebar-field-border);
   border-radius: 7px;
   background: var(--v2-color-sidebar-surface);
   color: #e5e7eb;
@@ -334,7 +346,7 @@ onMounted(async () => {
 }
 
 .v2-shell__project-card:focus-within {
-  border-color: var(--v2-shell-pilot-field-focus);
+  border-color: var(--v2-color-sidebar-accent);
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18);
 }
 

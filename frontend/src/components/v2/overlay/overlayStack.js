@@ -124,3 +124,13 @@ export function getTopOverlay() {
 export function getOverlayCount(group = '') {
   return group ? overlayStack.filter((entry) => entry.group === group).length : overlayStack.length
 }
+
+/**
+ * Drop all overlay entries and restore body inert state.
+ * Used when DOM modals are gone but stack/inert leaked (blocks sidebar clicks).
+ */
+export function hardResetOverlayStack() {
+  overlayStack.length = 0
+  syncKeydownListener()
+  notifyStackChange()
+}

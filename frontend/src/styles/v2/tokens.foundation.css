@@ -61,7 +61,8 @@
     --v2-color-ink-700: #50677c;
     --v2-color-ink-500: #6c8092;
     --v2-color-panel-border: #eaecf0;
-    --v2-color-field-border: #dbdfe1;
+    /* Light-surface field chrome: visible on white modal/card backgrounds */
+    --v2-color-field-border: #c5ced8;
     --v2-color-border-strong-neutral: #e2e8ee;
     --v2-color-row-border: #f0f2f5;
     --v2-color-surface-hover-neutral: #f8fafc;

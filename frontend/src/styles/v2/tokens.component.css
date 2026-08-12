@@ -185,8 +185,9 @@
     --v2-shell-pilot-primary-hover: var(--v2-color-brand-blue-hover);
     --v2-shell-pilot-primary-active: var(--v2-color-brand-blue-active);
     --v2-shell-pilot-primary-soft: var(--v2-color-brand-blue-soft);
-    --v2-shell-pilot-field-border: var(--v2-color-sidebar-field-border);
-    --v2-shell-pilot-field-focus: var(--v2-color-sidebar-accent);
+    /* Light workbench / modal fields — NOT sidebar chrome */
+    --v2-shell-pilot-field-border: var(--v2-color-field-border);
+    --v2-shell-pilot-field-focus: var(--v2-color-brand-blue);
     --v2-shell-pilot-row-hover: var(--v2-color-surface-hover-neutral);
     --v2-shell-pilot-row-selected: var(--v2-color-surface-selected-neutral);
     --v2-shell-pilot-text-heading: var(--v2-color-text-heading);

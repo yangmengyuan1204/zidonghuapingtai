@@ -57,3 +57,14 @@ export function getV2PortalCount() {
 export function getV2PortalOwnerCount() {
   return owners.size
 }
+
+/** Drop portal owners and remove managed portal host if present. */
+export function forceReleaseAllV2Portals() {
+  owners.clear()
+  if (!managedPortal) return
+  if (managedPortal.dataset.v2PortalManaged === 'true') {
+    managedPortal.replaceChildren()
+    managedPortal.remove()
+  }
+  managedPortal = null
+}

@@ -37,15 +37,21 @@ const LEGACY_STATIC_VIEW_ALIASES = {
  * @param {string} viewKey - 视图 key（如 dashboard / projects / records）
  */
 export async function navigateToView(viewKey) {
+  const resolvedKey = LEGACY_STATIC_VIEW_ALIASES[viewKey] || viewKey
+
+  // Registered Vue routes must navigate immediately — never wait on migration-config fetch
+  // (a hung/slow fetch previously blocked all sidebar clicks).
+  if (router.hasRoute(resolvedKey)) {
+    return router.push({ name: resolvedKey }).catch(() => {})
+  }
+
   if (!isMigrationConfigLoaded()) {
     await loadMigrationConfig()
   }
-  const resolvedKey = LEGACY_STATIC_VIEW_ALIASES[viewKey] || viewKey
-  if (router.hasRoute(resolvedKey) || isMigrated(resolvedKey)) {
-    router.push({ name: resolvedKey })
-  } else {
-    window.location.href = LEGACY_HASH_BASE + resolvedKey
+  if (isMigrated(resolvedKey)) {
+    return router.push({ name: resolvedKey }).catch(() => {})
   }
+  window.location.href = LEGACY_HASH_BASE + resolvedKey
 }
 
 /**

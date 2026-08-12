@@ -651,6 +651,16 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   stopPolling()
   stopRecordPolling()
+  ;[executeDialogEl, visualDialogEl, recordDialogEl, recordSaveDialogEl].forEach((dialogRef) => {
+    try {
+      if (dialogRef.value?.open) dialogRef.value.close()
+    } catch {
+      // ignore
+    }
+  })
+  executeVisible.value = false
+  recordVisible.value = false
+  recordSaveVisible.value = false
 })
 
 // ========== 录制UI用例（对齐旧应用 openUiRecordStartDialog + startUiRecordPolling + openUiRecordSaveDialog） ==========

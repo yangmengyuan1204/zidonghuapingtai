@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process'
+﻿import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -121,7 +121,7 @@ const entryGuardAllowlist = new Set([
   'frontend/src/App.vue',
 ])
 
-const CACHE_VERSION = '20260812-v3-enterprise-2'
+const CACHE_VERSION = '20260812-v3-enterprise-3'
 
 function normalizeVisualAssetVersions(source) {
   let normalized = source

@@ -192,7 +192,12 @@ async function startOpenLifecycle() {
   scrollOwned = true
 
   await nextTick()
-  if (token !== lifecycleToken || !props.open || !modalRoot.value) return
+  if (token !== lifecycleToken) return
+  if (!props.open || !modalRoot.value) {
+    // open flipped off or Teleport failed — release portal/scroll without leaving orphans
+    stopOpenLifecycle({ restore: false, immediatePortalRelease: true })
+    return
+  }
 
   lifecycleActive = true
   activateOverlay({
@@ -356,6 +361,21 @@ onBeforeUnmount(() => {
     padding: 18px 20px;
     overflow-y: auto;
     overscroll-behavior: contain;
+  }
+
+  /* Guarantee visible field chrome on white modal surfaces (all dialogs) */
+  .v2-base-modal__body :deep(.v2-base-input),
+  .v2-base-modal__body :deep(.v2-base-select),
+  .v2-base-modal__body :deep(.v2-base-textarea) {
+    --v2-input-border: var(--v2-color-field-border);
+    --v2-input-border-hover: var(--v2-color-border-slate);
+    --v2-input-border-focus: var(--v2-border-focus);
+    --v2-select-border: var(--v2-color-field-border);
+    --v2-select-border-hover: var(--v2-color-border-slate);
+    --v2-select-border-focus: var(--v2-border-focus);
+    --v2-textarea-border: var(--v2-color-field-border);
+    --v2-textarea-border-hover: var(--v2-color-border-slate);
+    --v2-textarea-border-focus: var(--v2-border-focus);
   }
 
   .v2-base-modal__footer {

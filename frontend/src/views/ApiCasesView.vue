@@ -670,11 +670,11 @@ onMounted(async () => {
 .v2-api-cases-filter :deep(.v2-base-select) {
   --v2-select-height: 36px;
   --v2-select-radius: 7px;
-  --v2-select-border: var(--v2-shell-pilot-field-border);
-  --v2-select-border-hover: var(--v2-shell-pilot-field-border);
-  --v2-select-border-focus: var(--v2-shell-pilot-field-focus);
+  --v2-select-border: var(--v2-color-field-border);
+  --v2-select-border-hover: var(--v2-color-border-slate);
+  --v2-select-border-focus: var(--v2-border-focus);
   --v2-select-font-size: 13px;
-  --v2-select-focus-ring: 0 0 0 3px rgba(93, 135, 255, 0.12);
+  --v2-select-focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .v2-api-cases-toolbar :deep(.v2-base-button--secondary) {
@@ -684,7 +684,7 @@ onMounted(async () => {
   --v2-button-font-size: 13px;
   --v2-button-font-weight: 500;
   --v2-button-secondary-bg: #ffffff;
-  --v2-button-secondary-border: var(--v2-shell-pilot-field-border);
+  --v2-button-secondary-border: var(--v2-color-field-border);
   --v2-button-secondary-text: var(--v2-shell-pilot-text-body);
   --v2-button-secondary-bg-hover: #ffffff;
   --v2-button-secondary-bg-pressed: #ffffff;

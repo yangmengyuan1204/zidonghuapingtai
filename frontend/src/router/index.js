@@ -10,7 +10,11 @@
  *     Router 不再维护 migratedSet。
  */
 import { createRouter, createWebHistory } from 'vue-router'
+import { nextTick } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
+import { hardResetOverlayStack, getOverlayCount } from '../components/v2/overlay/overlayStack.js'
+import { forceUnlockAllBodyScroll, getBodyScrollLockCount } from '../components/v2/overlay/scrollLock.js'
+import { forceReleaseAllV2Portals, getV2PortalOwnerCount } from '../components/v2/overlay/portal.js'
 
 // 菜单配置（与 Static 运行时菜单对齐：需求验证中心已合并 AI用例生成 + 功能验证中心）
 // adminOnly 的页面（users）非 admin 不可见
@@ -147,6 +151,43 @@ router.beforeEach(async (to, from, next) => {
   }
 
   next()
+})
+
+/**
+ * Safety net: if a modal unmounted mid-lifecycle, #app can remain inert and
+ * sidebar clicks stop working. Clear orphan overlay/scroll/portal chrome after
+ * every completed navigation when no live modal DOM remains.
+ */
+function repairOrphanOverlayChrome() {
+  if (typeof document === 'undefined') return
+  const liveModals = document.querySelectorAll('.v2-base-modal').length
+  const stackModals = getOverlayCount('modal')
+  const app = document.getElementById('app')
+  const inertStuck = Boolean(app?.inert) && liveModals === 0
+  const stackOrphan = stackModals > 0 && liveModals === 0
+  const scrollOrphan = getBodyScrollLockCount() > 0 && liveModals === 0
+  const portalOrphan = getV2PortalOwnerCount() > 0 && liveModals === 0
+
+  if (!inertStuck && !stackOrphan && !scrollOrphan && !portalOrphan) return
+
+  hardResetOverlayStack()
+  forceUnlockAllBodyScroll()
+  forceReleaseAllV2Portals()
+
+  // hardReset only restores inert tracked by overlayStack; clear any leftover flags
+  for (const child of document.body.children) {
+    if (child.classList?.contains?.('frontend-v2-portal')) continue
+    if (child.inert || child.hasAttribute('inert')) {
+      child.inert = false
+      child.removeAttribute('inert')
+    }
+  }
+}
+
+router.afterEach(() => {
+  nextTick(() => {
+    repairOrphanOverlayChrome()
+  })
 })
 
 export default router
