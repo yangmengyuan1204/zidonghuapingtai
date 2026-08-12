@@ -266,7 +266,7 @@
   </style>
 </head>
 <body>
-  <a href="/" class="back-link">← 返回平台</a>
+  <a href="/v3/dashboard" class="back-link">← 返回平台</a>
   <div class="page-head">
     <h1>操作模板库</h1>
     <div>
@@ -327,7 +327,7 @@
         opts.body = JSON.stringify(opts.body);
       }
       return fetch("/api" + path, { ...opts, headers }).then(r => {
-        if (r.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; throw new Error("登录失效"); }
+        if (r.status === 401) { localStorage.removeItem("token"); window.location.href = "/v3/login"; throw new Error("登录失效"); }
         if (!r.ok) return r.json().then(e => { throw new Error(e.detail || r.statusText); });
         if (r.status === 204) return null;
         return r.json();
