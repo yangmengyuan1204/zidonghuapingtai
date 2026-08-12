@@ -64,8 +64,8 @@
           <BaseBadge class="v2-shell__role" tone="neutral">{{ auth.isAdmin ? '管理员' : '成员' }}</BaseBadge>
         </div>
         <div v-if="auth.isAdmin" class="v2-shell__admin-links">
-          <a class="v2-shell__admin-link" href="/static/admin/templates.html" target="_blank">模板管理</a>
-          <a class="v2-shell__admin-link" href="/static/admin/heal-logs.html" target="_blank">自愈记录</a>
+          <a class="v2-shell__admin-link" :href="adminPageHref('templates.html')">模板管理</a>
+          <a class="v2-shell__admin-link" :href="adminPageHref('heal-logs.html')">自愈记录</a>
         </div>
       </div>
     </aside>
@@ -170,6 +170,15 @@ const currentGroupLabel = computed(() => navigationGroups.find((group) => group.
 
 function isActive(key) {
   return route.meta.viewKey === key
+}
+
+function adminPageHref(page) {
+  const returnPath = `/v3${route.path || '/dashboard'}`
+  const params = new URLSearchParams({
+    ui: '20260812-v3-admin-1',
+    return: returnPath,
+  })
+  return `/static/admin/${page}?${params.toString()}`
 }
 
 function navigate(item) {

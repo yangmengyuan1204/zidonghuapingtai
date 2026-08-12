@@ -266,7 +266,7 @@
   </style>
 </head>
 <body>
-  <a href="/v3/dashboard" class="back-link">← 返回平台</a>
+  <a id="backToPlatform" href="/v3/dashboard" class="back-link">← 返回平台</a>
   <div class="page-head">
     <h1>操作模板库</h1>
     <div>
@@ -318,6 +318,24 @@
   </dialog>
 
   <script>
+    (function resolveBackLink() {
+      var link = document.getElementById("backToPlatform");
+      if (!link) return;
+      var ret = "";
+      try {
+        ret = new URLSearchParams(window.location.search || "").get("return") || "";
+      } catch (e) { /* ignore */ }
+      if (!ret && document.referrer) {
+        try {
+          var ref = new URL(document.referrer);
+          if (ref.origin === window.location.origin && ref.pathname.indexOf("/v3") === 0) {
+            ret = ref.pathname + ref.search;
+          }
+        } catch (e) { /* ignore */ }
+      }
+      if (ret && ret.indexOf("/v3") === 0) link.setAttribute("href", ret);
+    })();
+
     const API = (path, opts = {}) => {
       const token = localStorage.getItem("token") || "";
       const headers = { ...(opts.headers || {}) };

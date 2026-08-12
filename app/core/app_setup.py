@@ -51,7 +51,12 @@ def configure_app(app: FastAPI) -> None:
         response = await call_next(request)
         path = request.url.path
         if path.startswith("/static/"):
-            if "Cache-Control" not in response.headers:
+            # HTML/JSON must not be immutable-cached — admin pages (返回平台) are edited in place
+            if path.endswith((".html", ".htm", ".json")):
+                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                response.headers["Pragma"] = "no-cache"
+                response.headers["Expires"] = "0"
+            elif "Cache-Control" not in response.headers:
                 response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         elif path == "/":
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
