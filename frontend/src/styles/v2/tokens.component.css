@@ -14,7 +14,7 @@
     --v2-button-padding-compact: var(--v2-space-2);
     --v2-button-gap: var(--v2-space-1);
     --v2-button-font-size: var(--v2-font-size-interface);
-    --v2-button-font-weight: var(--v2-font-weight-semibold);
+    --v2-button-font-weight: var(--v2-font-weight-medium);
     --v2-button-secondary-bg: var(--v2-surface-default);
     --v2-button-secondary-bg-hover: var(--v2-surface-hover);
     --v2-button-secondary-bg-pressed: var(--v2-surface-pressed);
@@ -57,9 +57,9 @@
     --v2-input-surface: var(--v2-surface-default);
     --v2-input-text: var(--v2-text-primary);
     --v2-input-placeholder: var(--v2-text-muted);
-    --v2-input-border: var(--v2-border-default);
+    --v2-input-border: var(--v2-color-field-border);
     --v2-input-border-focus: var(--v2-border-focus);
-    --v2-input-border-hover: var(--v2-border-strong);
+    --v2-input-border-hover: var(--v2-color-field-border);
     --v2-input-border-error: var(--v2-border-danger);
     --v2-input-surface-disabled: var(--v2-surface-disabled);
     --v2-input-surface-readonly: var(--v2-surface-soft);
@@ -80,9 +80,9 @@
     --v2-select-radius: var(--v2-radius-sm);
     --v2-select-surface: var(--v2-surface-default);
     --v2-select-text: var(--v2-text-primary);
-    --v2-select-border: var(--v2-border-default);
+    --v2-select-border: var(--v2-color-field-border);
     --v2-select-border-focus: var(--v2-border-focus);
-    --v2-select-border-hover: var(--v2-border-strong);
+    --v2-select-border-hover: var(--v2-color-field-border);
     --v2-select-border-error: var(--v2-border-danger);
     --v2-select-surface-disabled: var(--v2-surface-disabled);
     --v2-select-label-text: var(--v2-text-secondary);
@@ -102,9 +102,9 @@
     --v2-textarea-surface: var(--v2-surface-default);
     --v2-textarea-text: var(--v2-text-primary);
     --v2-textarea-placeholder: var(--v2-text-muted);
-    --v2-textarea-border: var(--v2-border-default);
+    --v2-textarea-border: var(--v2-color-field-border);
     --v2-textarea-border-focus: var(--v2-border-focus);
-    --v2-textarea-border-hover: var(--v2-border-strong);
+    --v2-textarea-border-hover: var(--v2-color-field-border);
     --v2-textarea-border-error: var(--v2-border-danger);
     --v2-textarea-surface-disabled: var(--v2-surface-disabled);
     --v2-textarea-surface-readonly: var(--v2-surface-soft);
@@ -158,10 +158,42 @@
     --v2-shell-role-surface: color-mix(in srgb, var(--v2-surface-default) 48%, var(--v2-surface-sidebar));
     --v2-shell-role-border: var(--v2-border-layer);
     --v2-shell-topbar-height: var(--v2-layout-topbar);
-    --v2-shell-topbar-surface: var(--v2-surface-section);
+    --v2-shell-topbar-surface: var(--v2-surface-default);
     --v2-shell-topbar-border: var(--v2-border-section);
     --v2-shell-link-text: var(--v2-text-secondary);
     --v2-shell-link-text-hover: var(--v2-action-primary);
+
+    /* Enterprise AI workbench shell */
+    --v2-shell-pilot-sidebar-surface: var(--v2-color-sidebar-dark);
+    --v2-shell-pilot-sidebar-width: var(--v2-layout-sidebar-final);
+    --v2-shell-pilot-sidebar-text: var(--v2-color-sidebar-text);
+    --v2-shell-pilot-sidebar-muted: var(--v2-color-sidebar-muted);
+    --v2-shell-pilot-sidebar-border: var(--v2-color-sidebar-border);
+    --v2-shell-pilot-sidebar-item-hover: var(--v2-color-sidebar-hover);
+    --v2-shell-pilot-sidebar-item-active: var(--v2-color-sidebar-active);
+    --v2-shell-pilot-sidebar-indicator: var(--v2-color-sidebar-accent);
+    --v2-shell-pilot-topbar-surface: var(--v2-surface-default);
+    --v2-shell-pilot-topbar-height: var(--v2-layout-topbar-final);
+    --v2-shell-pilot-workspace-surface: var(--v2-color-canvas-workspace);
+    --v2-shell-pilot-content-max: var(--v2-layout-content-max-final);
+    --v2-shell-pilot-card-border: var(--v2-color-card-border-subtle);
+    --v2-shell-pilot-card-radius: var(--v2-radius-card-final);
+    --v2-shell-pilot-menu-item-height: var(--v2-layout-menu-item-height);
+    --v2-shell-pilot-menu-item-radius: var(--v2-radius-menu-item);
+    --v2-shell-pilot-menu-font-size: var(--v2-font-size-body);
+    --v2-shell-pilot-primary: var(--v2-color-brand-blue);
+    --v2-shell-pilot-primary-hover: var(--v2-color-brand-blue-hover);
+    --v2-shell-pilot-primary-active: var(--v2-color-brand-blue-active);
+    --v2-shell-pilot-primary-soft: var(--v2-color-brand-blue-soft);
+    --v2-shell-pilot-field-border: var(--v2-color-sidebar-field-border);
+    --v2-shell-pilot-field-focus: var(--v2-color-sidebar-accent);
+    --v2-shell-pilot-row-hover: var(--v2-color-surface-hover-neutral);
+    --v2-shell-pilot-row-selected: var(--v2-color-surface-selected-neutral);
+    --v2-shell-pilot-text-heading: var(--v2-color-text-heading);
+    --v2-shell-pilot-text-body: var(--v2-color-text-body);
+    --v2-shell-pilot-text-secondary: var(--v2-color-text-secondary-neutral);
+    --v2-shell-pilot-text-muted: var(--v2-color-text-muted-neutral);
+    --v2-shell-pilot-text-faint: var(--v2-color-text-faint);
 
     /* Topbar */
     --v2-topbar-height: var(--v2-layout-topbar);
@@ -172,7 +204,7 @@
     /* Card */
     --v2-card-surface: var(--v2-surface-default);
     --v2-card-border: var(--v2-border-default);
-    --v2-card-radius: var(--v2-radius-md);
+    --v2-card-radius: var(--v2-radius-panel);
     --v2-card-selected-shadow: var(--v2-state-selected-shadow);
     --v2-card-surface-soft: var(--v2-surface-soft);
     --v2-card-surface-hover: var(--v2-surface-hover);
@@ -200,29 +232,29 @@
     --v2-page-header-accent: var(--v2-action-primary);
 
     /* Workbench metric rail */
-    --v2-metric-rail-surface: var(--v2-surface-context);
+    --v2-metric-rail-surface: var(--v2-surface-default);
     --v2-metric-rail-border: var(--v2-border-layer);
-    --v2-metric-rail-intro-surface: var(--v2-color-navy-950);
-    --v2-metric-rail-intro-text: var(--v2-text-inverse);
-    --v2-metric-rail-intro-text-muted: color-mix(in srgb, var(--v2-text-inverse) 68%, transparent);
+    --v2-metric-rail-intro-surface: var(--v2-surface-default);
+    --v2-metric-rail-intro-text: var(--v2-text-primary);
+    --v2-metric-rail-intro-text-muted: var(--v2-text-muted);
 
-    /* Table */
+    /* Table — horizontal rules only, muted header, dense SaaS rows */
     --v2-table-header-height: var(--v2-size-table-header);
     --v2-table-row-height: var(--v2-size-table-row);
-    --v2-table-header-surface: var(--v2-surface-utility);
-    --v2-table-row-hover: var(--v2-surface-hover);
-    --v2-table-border: var(--v2-border-default);
+    --v2-table-header-surface: var(--v2-color-surface-soft-neutral);
+    --v2-table-row-hover: var(--v2-color-surface-hover-neutral);
+    --v2-table-border: var(--v2-color-row-border);
     --v2-table-text: var(--v2-text-primary);
     --v2-table-text-muted: var(--v2-text-muted);
     --v2-table-surface: var(--v2-surface-default);
-    --v2-table-header-text: var(--v2-text-muted);
+    --v2-table-header-text: var(--v2-color-text-muted-neutral);
     --v2-table-cell-padding-x: var(--v2-space-3);
-    --v2-table-cell-padding-y: calc(var(--v2-space-2) - 2px);
+    --v2-table-cell-padding-y: var(--v2-size-table-cell-padding-y);
     --v2-table-state-padding: var(--v2-space-5);
-    --v2-table-radius: var(--v2-radius-md);
+    --v2-table-radius: var(--v2-radius-sm);
     --v2-table-font-size: var(--v2-font-size-interface);
     --v2-table-header-font-size: var(--v2-font-size-caption);
-    --v2-table-header-font-weight: var(--v2-font-weight-semibold);
+    --v2-table-header-font-weight: var(--v2-font-weight-medium);
     --v2-table-focus-ring: var(--v2-state-focus-ring);
 
     /* Dropdown */
@@ -258,23 +290,23 @@
     --v2-dropdown-item-focus-ring: var(--v2-state-focus-ring);
     --v2-dropdown-item-disabled-opacity: var(--v2-state-disabled-opacity);
 
-    /* Pagination */
+    /* Pagination — outlined pages, active primary filled */
     --v2-pagination-height: var(--v2-size-pagination);
     --v2-pagination-control-size: var(--v2-control-height-compact);
     --v2-pagination-radius: var(--v2-radius-sm);
     --v2-pagination-surface: var(--v2-surface-default);
-    --v2-pagination-surface-hover: var(--v2-action-primary-soft);
-    --v2-pagination-surface-pressed: var(--v2-surface-pressed);
+    --v2-pagination-surface-hover: var(--v2-surface-default);
+    --v2-pagination-surface-pressed: var(--v2-action-primary-soft);
     --v2-pagination-surface-active: var(--v2-action-primary);
-    --v2-pagination-surface-disabled: var(--v2-surface-disabled);
+    --v2-pagination-surface-disabled: var(--v2-surface-default);
     --v2-pagination-text: var(--v2-text-secondary);
     --v2-pagination-text-hover: var(--v2-action-primary);
     --v2-pagination-text-active: var(--v2-text-inverse);
     --v2-pagination-text-disabled: var(--v2-text-disabled);
-    --v2-pagination-border: var(--v2-border-default);
+    --v2-pagination-border: var(--v2-color-panel-border);
     --v2-pagination-border-hover: var(--v2-action-primary);
-    --v2-pagination-gap: var(--v2-space-1);
-    --v2-pagination-font-size: var(--v2-font-size-tiny);
+    --v2-pagination-gap: var(--v2-space-micro);
+    --v2-pagination-font-size: var(--v2-font-size-caption);
     --v2-pagination-font-weight: var(--v2-font-weight-medium);
     --v2-pagination-focus-ring: var(--v2-state-focus-ring);
     --v2-pagination-disabled-opacity: var(--v2-state-disabled-opacity);
@@ -334,9 +366,9 @@
     --v2-error-state-details-size: var(--v2-font-size-caption);
     --v2-error-state-content-max-width: var(--v2-layout-description-max);
 
-    /* Badge */
-    --v2-badge-radius: var(--v2-radius-round);
-    --v2-badge-font-size: var(--v2-font-size-caption);
+    /* Badge — tighter status tags */
+    --v2-badge-radius: var(--v2-radius-sm);
+    --v2-badge-font-size: var(--v2-font-size-tiny);
     --v2-badge-surface: var(--v2-surface-soft);
     --v2-badge-text: var(--v2-text-secondary);
     --v2-badge-height: var(--v2-icon-size-md);
@@ -345,7 +377,7 @@
     --v2-badge-padding-compact: var(--v2-space-micro);
     --v2-badge-gap: var(--v2-space-micro);
     --v2-badge-font-size-compact: var(--v2-font-size-tiny);
-    --v2-badge-font-weight: var(--v2-font-weight-semibold);
+    --v2-badge-font-weight: var(--v2-font-weight-medium);
     --v2-badge-success-surface: var(--v2-feedback-success-soft);
     --v2-badge-success-text: var(--v2-feedback-success);
     --v2-badge-warning-surface: var(--v2-feedback-warning-soft);
@@ -382,8 +414,8 @@
     /* Modal */
     --v2-modal-surface: var(--v2-surface-default);
     --v2-modal-overlay: var(--v2-surface-overlay);
-    --v2-modal-border: var(--v2-border-default);
-    --v2-modal-radius: var(--v2-radius-md);
+    --v2-modal-border: var(--v2-color-panel-border);
+    --v2-modal-radius: var(--v2-radius-modal-final);
     --v2-modal-shadow: var(--v2-shadow-overlay);
     --v2-modal-z-index: var(--v2-z-modal);
     --v2-modal-overlay-z-index: var(--v2-z-overlay);

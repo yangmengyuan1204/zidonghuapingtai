@@ -64,14 +64,14 @@ function onSubmit() {
   padding: 0;
   max-width: 90vw;
   width: 520px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--v2-modal-shadow, var(--shadow-sm));
 }
 .modal-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--line, #e2e5ed);
+  border-bottom: 1px solid var(--v2-modal-border, var(--line));
 }
 .modal-head h3 {
   margin: 0;
@@ -87,6 +87,6 @@ function onSubmit() {
   justify-content: space-between;
   align-items: center;
   padding: 12px 20px;
-  border-top: 1px solid var(--line, #e2e5ed);
+  border-top: 1px solid var(--v2-modal-border, var(--line));
 }
 </style>

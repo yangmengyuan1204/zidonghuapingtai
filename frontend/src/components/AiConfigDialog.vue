@@ -133,7 +133,25 @@ watch(() => props.open, (open) => {
 .ai-config-dialog__form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--v2-space-4);
+  gap: 14px 16px;
+  padding: 4px 0;
+}
+
+.ai-config-dialog__form :deep(.v2-base-input),
+.ai-config-dialog__form :deep(.v2-base-select) {
+  min-width: 0;
+  --v2-input-height: 36px;
+  --v2-select-height: 36px;
+  --v2-input-radius: 7px;
+  --v2-select-radius: 7px;
+}
+
+.ai-config-dialog__form :deep(.v2-base-input__label),
+.ai-config-dialog__form :deep(.v2-base-select__label) {
+  margin-bottom: 5px;
+  color: var(--v2-text-muted);
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .ai-config-dialog__hint,
@@ -141,7 +159,14 @@ watch(() => props.open, (open) => {
   grid-column: 1 / -1;
   margin: 0;
   color: var(--v2-text-muted);
-  font-size: var(--v2-font-size-caption);
+  font-size: 12px;
+}
+
+.ai-config-dialog__hint {
+  padding: 10px 12px;
+  border: 1px solid var(--v2-border-panel);
+  border-radius: 8px;
+  background: var(--v2-surface-workspace);
 }
 
 .ai-config-dialog__status {

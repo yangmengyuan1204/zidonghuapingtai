@@ -64,6 +64,7 @@ function handleClick(event) {
 @layer v2-components {
   .v2-base-button {
     position: relative;
+    height: var(--v2-button-height);
     min-height: var(--v2-button-height);
     display: inline-flex;
     align-items: center;
@@ -78,6 +79,7 @@ function handleClick(event) {
     line-height: var(--v2-line-height-tight);
     white-space: nowrap;
     cursor: pointer;
+    box-shadow: none;
     transition:
       color var(--v2-motion-duration) var(--v2-motion-easing),
       background-color var(--v2-motion-duration) var(--v2-motion-easing),
@@ -106,8 +108,10 @@ function handleClick(event) {
   }
 
   .v2-base-button--compact {
+    height: var(--v2-button-height-compact);
     min-height: var(--v2-button-height-compact);
     padding: 0 var(--v2-button-padding-compact);
+    font-size: var(--v2-font-size-caption);
   }
 
   .v2-base-button--block {
@@ -121,8 +125,9 @@ function handleClick(event) {
   }
 
   .v2-base-button--secondary:hover:not(:disabled) {
+    color: var(--v2-action-primary);
     background: var(--v2-button-secondary-bg-hover);
-    border-color: var(--v2-button-secondary-border);
+    border-color: var(--v2-action-primary);
   }
 
   .v2-base-button--secondary:active:not(:disabled) {

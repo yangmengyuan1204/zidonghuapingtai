@@ -276,9 +276,70 @@ onMounted(async () => {
 <style scoped>
 .v2-records {
   display: grid;
-  gap: var(--v2-space-3);
-  max-width: var(--v2-layout-workspace-max);
-  margin: 0 auto;
+  gap: 12px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.v2-records :deep(.v2-workbench-page-header__eyebrow) {
+  color: #64748b;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.v2-records :deep(.v2-workbench-page-header__title) {
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.v2-records :deep(.v2-workbench-panel) {
+  min-width: 0;
+  gap: 10px;
+}
+
+.v2-records :deep(.v2-workbench-panel__header) {
+  min-height: 0;
+  padding: 0 2px;
+}
+
+.v2-records :deep(.v2-workbench-panel__body) {
+  display: flex;
+  min-height: calc(100vh - 200px);
+  flex-direction: column;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.v2-records :deep(.v2-base-empty-state) {
+  min-height: 180px;
+  justify-content: center;
+}
+
+.v2-records :deep(.v2-base-empty-state__icon) {
+  width: 56px;
+  height: 56px;
+  color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.v2-records :deep(.v2-app-table) {
+  flex: 1 1 auto;
+}
+
+.v2-records :deep(.v2-app-table__header) {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 11px;
+}
+
+.v2-records :deep(.v2-app-table__cell) {
+  height: 44px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .toolbar,
@@ -289,55 +350,57 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--v2-space-2);
+  gap: 12px;
 }
 
 .toolbar,
 .pagination {
   justify-content: space-between;
-  padding: var(--v2-space-3);
+  padding: 12px 16px;
 }
 
 .toolbar {
-  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+  border-bottom: 1px solid var(--v2-border-panel);
+  background: #ffffff;
 }
 
 .pagination {
-  border-top: var(--v2-border-width) solid var(--v2-border-panel);
+  border-top: 1px solid var(--v2-border-panel);
+  background: #ffffff;
 }
 
 .field {
   display: grid;
-  gap: var(--v2-space-micro);
+  gap: 4px;
 }
 
 .field label,
 .page-info {
   color: var(--v2-text-muted);
-  font-size: var(--v2-font-size-caption);
-  font-weight: var(--v2-font-weight-semibold);
+  font-size: 11px;
+  font-weight: 500;
 }
 
 select,
 .btn {
-  min-height: var(--v2-control-height-compact);
-  border: var(--v2-border-width) solid var(--v2-border-default);
-  border-radius: var(--v2-radius-sm);
-  background: var(--v2-surface-default);
+  min-height: 32px;
+  border: 1px solid var(--v2-border-default);
+  border-radius: 6px;
+  background: #ffffff;
   color: var(--v2-text-secondary);
   font: inherit;
-  font-size: var(--v2-font-size-caption);
+  font-size: 12px;
 }
 
 select {
-  min-width: calc(var(--v2-space-7) * 2.5);
-  padding: 0 var(--v2-space-2);
+  min-width: 140px;
+  padding: 0 10px;
 }
 
 .btn {
-  padding: 0 var(--v2-space-2);
+  padding: 0 12px;
   cursor: pointer;
-  font-weight: var(--v2-font-weight-semibold);
+  font-weight: 500;
 }
 
 .btn:not(.secondary) {
@@ -360,14 +423,14 @@ select:focus-visible {
 
 .badge {
   display: inline-flex;
-  min-height: var(--v2-icon-size-md);
+  min-height: 22px;
   align-items: center;
-  padding: 0 var(--v2-space-1);
-  border-radius: var(--v2-radius-round);
+  padding: 0 7px;
+  border-radius: 999px;
   background: var(--v2-surface-soft);
   color: var(--v2-text-secondary);
-  font-size: var(--v2-font-size-tiny);
-  font-weight: var(--v2-font-weight-semibold);
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .badge.ok {
@@ -384,14 +447,14 @@ select:focus-visible {
   max-height: calc(var(--v2-space-7) * 7);
   overflow: auto;
   color: var(--v2-text-secondary);
-  font-size: var(--v2-font-size-caption);
+  font-size: 12px;
 }
 
 .v2-records__log :deep(pre) {
   margin: 0;
-  padding: var(--v2-space-3);
-  border: var(--v2-border-width) solid var(--v2-border-panel);
-  border-radius: var(--v2-radius-sm);
+  padding: 12px 14px;
+  border: 1px solid var(--v2-border-panel);
+  border-radius: 8px;
   background: var(--v2-surface-workspace);
   font-family: var(--v2-font-family-mono);
   white-space: pre-wrap;

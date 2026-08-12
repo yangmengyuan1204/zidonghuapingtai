@@ -7,9 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/styles.css?v=20260629-frontend-redesign" />
-  <link rel="stylesheet" href="/static/design-tokens.css?v=20260728-phase1" />
-  <link rel="stylesheet" href="/static/design-system-base.css?v=20260728-phase1" />
+  <link rel="stylesheet" href="/static/styles.css?v=20260812-v3-grok-1" />
+  <link rel="stylesheet" href="/static/design-tokens.css?v=20260812-v3-grok-1" />
+  <link rel="stylesheet" href="/static/design-system-base.css?v=20260812-v3-grok-1" />
   <script src="/static/v2-theme-lock.js?v=20260728-phase1"></script>
   <style>
     body { padding: 32px 24px; max-width: 1180px; margin: 0 auto; position: relative; }
@@ -188,6 +188,88 @@
     .toast:not([hidden]) { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     :focus-visible { outline: 2px solid var(--accent-light); outline-offset: 2px; border-radius: 4px; }
+
+    /* v3-enterprise-admin-utilities */
+    /* Frontend V3 Enterprise AI Workbench: visual-only overrides. */
+    body {
+      max-width: none; min-height: 100vh; margin: 0; padding: 24px;
+      background: #f4f6f8; color: var(--text, #29343d);
+      font-family: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    body::before { background: none; }
+    .back-link, .page-head, #healList, .pagination {
+      width: min(100%, 1440px); margin-left: auto; margin-right: auto;
+    }
+    .back-link {
+      padding: 7px 10px; border-radius: 7px; color: #7987a1;
+    }
+    .back-link:hover { color: #5d87ff; background: #edf2ff; }
+    .page-head {
+      align-items: center; margin-top: 12px; margin-bottom: 10px; padding: 12px 16px;
+      background: #ffffff; border: 1px solid rgba(15, 23, 42, 0.06); border-radius: 8px;
+      box-shadow: none;
+    }
+    .page-head::after { left: 0; top: 12px; bottom: 12px; width: 3px; height: auto; background: #5d87ff; border-radius: 2px; }
+    .page-head h1, .empty-state h3 {
+      font-family: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .page-head h1 { font-size: 18px; font-weight: 600; letter-spacing: 0; color: #323251; }
+    .page-head .filter-bar { gap: 8px; }
+    .page-head input {
+      min-height: 36px; height: 36px; padding: 0 12px;
+      border: 1px solid #dbdfe1; border-radius: 7px; background: #ffffff; font-size: 13px;
+    }
+    .page-head input:focus {
+      outline: none; border-color: #5d87ff; box-shadow: 0 0 0 3px rgba(93, 135, 255, 0.18);
+    }
+    .btn {
+      min-height: 36px; height: 36px; padding: 0 14px; border-radius: 7px;
+      font-size: 13px; font-weight: 600; box-shadow: none;
+    }
+    .btn.secondary { border: 1px solid #dbdfe1; background: #ffffff; color: #4d5875; }
+    .btn.secondary:hover { background: #f2f4f5; border-color: #cfd6dc; }
+    .heal-card {
+      padding: 12px 14px 10px; margin-bottom: 10px;
+      background: #ffffff; border: 1px solid rgba(15, 23, 42, 0.06); border-radius: 8px;
+      -webkit-backdrop-filter: none; backdrop-filter: none;
+      box-shadow: none; animation: none;
+    }
+    .heal-card::before { background: #5d87ff; opacity: 1; width: 3px; }
+    .heal-card:hover { transform: none; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06); border-color: rgba(15, 23, 42, 0.08); }
+    .heal-card > div { line-height: 1.55; font-size: 13px; }
+    .heal-card .detail {
+      background: #f4f6f8; border: 1px solid rgba(15, 23, 42, 0.06); border-radius: 7px;
+    }
+    .heal-card .screenshot {
+      border: 1px solid rgba(15, 23, 42, 0.06); border-radius: 7px;
+    }
+    .heal-card .screenshot:hover { transform: none; box-shadow: none; border-color: #5d87ff; }
+    .badge {
+      min-height: 22px; border-radius: 6px; font-size: 11px; letter-spacing: 0;
+    }
+    .badge.ai { background: #5d87ff; box-shadow: none; }
+    .toggle-detail { color: #5d87ff; font-size: 12px; }
+    .empty-state {
+      min-height: 240px; padding: 56px 24px;
+      background: #ffffff; border: 1px solid rgba(15, 23, 42, 0.06); border-radius: 8px;
+    }
+    .empty-state .empty-mark { background: #edf2ff; opacity: 1; }
+    .pagination {
+      margin-top: 10px; padding: 10px 0; gap: 8px;
+    }
+    .pagination button {
+      min-height: 36px; padding: 0 14px; border: 1px solid #dbdfe1; border-radius: 7px;
+      background: #ffffff; color: #4d5875; font-size: 13px; box-shadow: none;
+    }
+    .pagination button:hover {
+      border-color: #5d87ff; color: #5d87ff; background: #edf2ff; box-shadow: none;
+    }
+    .toast {
+      top: auto; bottom: 24px; left: auto; right: 24px;
+      transform: translateY(8px);
+      border-radius: 8px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    }
+    .toast:not([hidden]) { transform: translateY(0); }
   </style>
 </head>
 <body>

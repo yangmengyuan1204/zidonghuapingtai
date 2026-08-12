@@ -522,9 +522,71 @@ onMounted(async () => {
 <style scoped>
 .v2-projects {
   display: grid;
-  gap: var(--v2-space-3);
-  max-width: var(--v2-layout-workspace-max);
-  margin: 0 auto;
+  gap: 12px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.v2-projects :deep(.v2-workbench-page-header) {
+  margin-bottom: 0;
+}
+
+.v2-projects :deep(.v2-workbench-page-header__eyebrow) {
+  color: #64748b;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.v2-projects :deep(.v2-workbench-page-header__title) {
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.v2-projects :deep(.v2-workbench-panel) {
+  gap: 10px;
+}
+
+.v2-projects :deep(.v2-workbench-panel__header) {
+  min-height: 0;
+  padding: 0 2px;
+}
+
+.v2-projects :deep(.v2-workbench-panel__body) {
+  min-height: calc(var(--v2-size-table-row) * 2 + var(--v2-size-table-header));
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.v2-projects :deep(.v2-base-empty-state) {
+  min-height: 160px;
+  justify-content: center;
+}
+
+.v2-projects :deep(.v2-base-empty-state__icon) {
+  width: 56px;
+  height: 56px;
+  color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.v2-projects :deep(.v2-app-table__table) {
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-projects :deep(.v2-app-table__header) {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 11px;
+}
+
+.v2-projects :deep(.v2-app-table__cell) {
+  height: 44px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .toolbar,
@@ -533,37 +595,39 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--v2-space-2);
+  gap: 12px;
 }
 
 .toolbar {
   justify-content: space-between;
-  padding: var(--v2-space-2) var(--v2-space-3);
-  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--v2-border-panel);
+  background: #ffffff;
 }
 
 .btn {
-  min-height: var(--v2-control-height-compact);
-  padding: 0 var(--v2-space-2);
-  border: var(--v2-border-width) solid var(--v2-action-primary);
-  border-radius: var(--v2-radius-sm);
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--v2-action-primary);
+  border-radius: 6px;
   background: var(--v2-action-primary);
   color: var(--v2-text-inverse);
   cursor: pointer;
   font: inherit;
-  font-size: var(--v2-font-size-caption);
-  font-weight: var(--v2-font-weight-semibold);
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color var(--v2-motion-duration) var(--v2-motion-easing), border-color var(--v2-motion-duration) var(--v2-motion-easing);
 }
 
 .btn.secondary {
   border-color: var(--v2-border-default);
-  background: var(--v2-surface-default);
+  background: #ffffff;
   color: var(--v2-text-secondary);
 }
 
 .btn.danger {
-  border-color: var(--v2-feedback-danger);
-  background: var(--v2-feedback-danger-soft);
+  border-color: transparent;
+  background: transparent;
   color: var(--v2-feedback-danger);
 }
 
@@ -587,35 +651,36 @@ select:focus-visible {
 
 .field {
   display: grid;
-  gap: var(--v2-space-micro);
+  gap: 4px;
 }
 
 .field label {
   color: var(--v2-text-muted);
-  font-size: var(--v2-font-size-caption);
-  font-weight: var(--v2-font-weight-semibold);
+  font-size: 11px;
+  font-weight: 500;
 }
 
 select {
-  min-height: var(--v2-control-height-compact);
-  padding: 0 var(--v2-space-2);
-  border: var(--v2-border-width) solid var(--v2-border-default);
-  border-radius: var(--v2-radius-sm);
-  background: var(--v2-surface-default);
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--v2-border-default);
+  border-radius: 7px;
+  background: #ffffff;
   color: var(--v2-text-primary);
   font: inherit;
+  font-size: 13px;
 }
 
 .badge {
   display: inline-flex;
-  min-height: var(--v2-icon-size-md);
+  min-height: 22px;
   align-items: center;
-  padding: 0 var(--v2-space-1);
-  border-radius: var(--v2-radius-round);
+  padding: 0 7px;
+  border-radius: 999px;
   background: var(--v2-surface-soft);
   color: var(--v2-text-secondary);
-  font-size: var(--v2-font-size-tiny);
-  font-weight: var(--v2-font-weight-semibold);
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .badge.ok {
@@ -637,5 +702,11 @@ select {
   font-size: var(--v2-font-size-tiny);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 1240px) {
+  .v2-projects :deep(.v2-app-table__table) {
+    min-width: 980px;
+  }
 }
 </style>

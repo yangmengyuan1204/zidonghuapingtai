@@ -48,11 +48,12 @@ const clampProgress = (value) => Math.min(100, Math.max(0, Number(value) || 0))
 .v2-workbench-metric-rail {
   display: grid;
   grid-template-columns: minmax(184px, 1.15fr) minmax(0, 4fr);
-  overflow: hidden;
-  border: var(--v2-border-width) solid var(--v2-metric-rail-border);
-  border-radius: var(--v2-radius-panel);
-  background: var(--v2-metric-rail-surface);
-  box-shadow: var(--v2-shadow-panel);
+  gap: 12px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .v2-workbench-metric-rail__intro {
@@ -61,8 +62,10 @@ const clampProgress = (value) => Math.min(100, Math.max(0, Number(value) || 0))
   gap: var(--v2-space-micro);
   min-height: 104px;
   padding: var(--v2-space-3);
-  border-right: var(--v2-border-width) solid var(--v2-metric-rail-border);
+  border: 1px solid var(--v2-color-card-border-subtle);
+  border-radius: var(--v2-radius-panel);
   background: var(--v2-metric-rail-intro-surface);
+  box-shadow: var(--v2-shadow-card-enterprise);
 }
 
 .v2-workbench-metric-rail__kicker {
@@ -87,6 +90,7 @@ const clampProgress = (value) => Math.min(100, Math.max(0, Number(value) || 0))
 .v2-workbench-metric-rail__items {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 12px;
   margin: 0;
 }
 
@@ -97,10 +101,10 @@ const clampProgress = (value) => Math.min(100, Math.max(0, Number(value) || 0))
   gap: var(--v2-space-micro);
   min-height: 104px;
   padding: var(--v2-space-3);
-}
-
-.v2-workbench-metric-rail__item + .v2-workbench-metric-rail__item {
-  border-left: var(--v2-border-width) solid var(--v2-metric-rail-border);
+  border: 1px solid var(--v2-color-card-border-subtle);
+  border-radius: var(--v2-radius-panel);
+  background: var(--v2-metric-rail-surface);
+  box-shadow: var(--v2-shadow-card-enterprise);
 }
 
 .v2-workbench-metric-rail__label {
@@ -162,8 +166,6 @@ const clampProgress = (value) => Math.min(100, Math.max(0, Number(value) || 0))
 
   .v2-workbench-metric-rail__intro {
     min-height: auto;
-    border-right: 0;
-    border-bottom: var(--v2-border-width) solid var(--v2-metric-rail-border);
   }
 }
 

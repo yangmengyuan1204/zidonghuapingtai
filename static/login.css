@@ -1,13 +1,14 @@
+/* v3-enterprise-login */
 /**
- * Frontend V2 Phase 2.6 — Login polish (Forest Light)
+ * Frontend V3 — Art Design Pro login presentation
  *
- * Consumes Phase 1 Design Tokens. Does not redefine tokens.
+ * Consumes Design Tokens. Does not redefine required brand tokens.
  * Scope: .login-wrap / .login-panel (+ .login-v2* helpers)
- * Does not style Shell / Dashboard / other pages.
+ * Fields: username / password / remember / submit only.
  */
 
 /* =============================================================================
-   Canvas — quiet Forest Light depth (no glow / cyber / illustration)
+   Canvas
    ============================================================================= */
 
 .login-wrap.login-v2,
@@ -16,24 +17,10 @@
   min-height: 100vh;
   place-items: center;
   padding: var(--space-6);
-  background-color: var(--color-bg-canvas);
+  background-color: #f4f6f8;
   background-image:
-    linear-gradient(
-      180deg,
-      var(--color-bg-subtle) 0%,
-      var(--color-bg-canvas) 42%,
-      var(--color-bg-canvas) 100%
-    ),
-    radial-gradient(
-      ellipse 70% 55% at 18% 12%,
-      var(--color-brand-muted) 0%,
-      transparent 62%
-    ),
-    radial-gradient(
-      ellipse 55% 45% at 88% 88%,
-      var(--color-brand-muted) 0%,
-      transparent 58%
-    );
+    radial-gradient(ellipse at 14% 10%, rgba(93, 135, 255, 0.07), transparent 44%),
+    radial-gradient(ellipse at 86% 90%, rgba(139, 92, 246, 0.04), transparent 42%);
   background-repeat: no-repeat;
   position: relative;
   overflow: hidden;
@@ -45,17 +32,19 @@
 }
 
 /* =============================================================================
-   Panel — 460~480px, content-driven height
+   Panel
    ============================================================================= */
 
 .login-panel.login-v2-panel,
 .login-wrap .login-panel {
-  width: min(472px, 100%);
-  padding: var(--space-9) var(--space-8) var(--space-8);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg-surface);
-  box-shadow: var(--shadow-sm);
+  width: min(440px, 100%);
+  padding: 40px 36px 32px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 16px 40px rgba(15, 23, 42, 0.1);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   position: relative;
@@ -69,46 +58,51 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--color-brand-primary);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  box-shadow: var(--shadow-none);
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(90deg, #5d87ff 0%, #7c6cf0 55%, #8b5cf6 100%);
 }
 
 /* =============================================================================
-   Brand — logo + title as one quiet block (no checkbox / glow)
+   Brand
    ============================================================================= */
 
 .login-v2-brand {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
-  margin-bottom: var(--space-3);
+  align-items: flex-start;
+  gap: var(--space-5);
+  margin-bottom: var(--space-2);
 }
 
 .login-v2-mark {
   display: block;
-  width: calc(var(--space-8) * 1.35);
-  height: calc(var(--space-8) * 1.35);
-  border-radius: var(--radius-lg);
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
   background: var(--color-brand-primary);
   box-shadow: var(--shadow-none);
 }
 
 .login-v2-mark::after {
-  content: none;
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--color-text-on-brand);
+  content: "Q";
+  font-size: 15px;
+  font-weight: var(--font-weight-bold);
 }
 
 .login-panel h1,
 .login-v2-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: var(--text-display-size);
+  font-size: 22px;
   font-weight: var(--font-weight-semibold);
-  line-height: var(--text-display-line);
-  letter-spacing: 0.03em;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
   color: var(--color-text-primary);
-  text-align: center;
+  text-align: left;
   background: none;
   -webkit-text-fill-color: var(--color-text-primary);
   text-shadow: var(--shadow-none);
@@ -117,19 +111,19 @@
 
 .login-panel > p,
 .login-v2-subtitle {
-  margin: 0 0 var(--space-8);
+  margin: 0 0 var(--space-6);
   color: var(--color-text-muted);
-  font-size: var(--text-caption-size);
-  line-height: var(--text-caption-line);
+  font-size: 13px;
+  line-height: 1.5;
   font-weight: var(--font-weight-regular);
   letter-spacing: var(--letter-spacing-normal);
-  text-align: center;
+  text-align: left;
 }
 
 .login-v2-footer {
-  margin-top: var(--space-8);
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--color-border-light);
+  margin-top: var(--space-6);
+  padding-top: 0;
+  border-top: 0;
   text-align: center;
   color: var(--color-text-muted);
   font-size: 0.6875rem;
@@ -139,36 +133,38 @@
 }
 
 /* =============================================================================
-   Form — even vertical rhythm, more breath
+   Form
    ============================================================================= */
 
 .login-v2-form,
 .login-panel .form-grid {
   display: grid;
-  gap: var(--space-6);
+  gap: 16px;
 }
 
 .login-panel .field {
   display: grid;
-  gap: var(--space-2);
+  gap: 6px;
 }
 
 .login-panel .field label {
   color: var(--color-text-secondary);
-  font-size: var(--text-caption-size);
+  font-size: 12px;
   font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--letter-spacing-wide);
+  letter-spacing: 0;
   text-transform: none;
 }
 
 .login-panel .field input {
   width: 100%;
-  min-height: var(--input-height);
-  padding: var(--space-2) var(--input-padding-x);
-  border: 1px solid var(--input-border);
-  border-radius: var(--input-radius);
+  min-height: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 7px;
   color: var(--input-text);
   background: var(--input-bg);
+  font-size: 13px;
   box-shadow: var(--shadow-none);
   transition:
     border-color var(--motion-hover) var(--ease-out),
@@ -192,40 +188,41 @@
 .login-panel .remember-check {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 10px;
   min-height: auto;
-  margin: var(--space-1) 0 0;
-  padding: var(--space-1) 0;
+  margin: 2px 0 0;
+  padding: 2px 0;
   border: 0;
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: var(--text-body-size);
+  font-size: 13px;
   font-weight: var(--font-weight-medium);
   cursor: pointer;
 }
 
 .login-panel .remember-check input {
-  width: var(--space-5);
-  height: var(--space-5);
+  width: 16px;
+  height: 16px;
   min-height: 0;
   accent-color: var(--color-brand-primary);
   cursor: pointer;
 }
 
 /* =============================================================================
-   Primary submit — Design Token only (no gradient / glow / sweep)
+   Primary submit
    ============================================================================= */
 
 .login-panel .btn,
 .login-v2-submit {
   width: 100%;
-  min-height: var(--btn-height);
-  height: var(--btn-height);
-  margin-top: var(--space-2);
-  border-radius: var(--btn-radius);
+  min-height: 36px;
+  height: 36px;
+  margin-top: 4px;
+  border: 1px solid var(--color-brand-primary);
+  border-radius: 7px;
   color: var(--btn-primary-text);
   background: var(--btn-primary-bg);
-  font-size: var(--text-body-size);
+  font-size: 14px;
   font-weight: var(--btn-font-weight);
   letter-spacing: var(--letter-spacing-normal);
   box-shadow: var(--shadow-none);
@@ -240,6 +237,7 @@
 
 .login-panel .btn:hover:not(:disabled) {
   background: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
   transform: none;
   box-shadow: var(--shadow-none);
 }
@@ -256,7 +254,7 @@
 }
 
 /* =============================================================================
-   Responsive — 1366 / 1920 and narrow
+   Responsive
    ============================================================================= */
 
 @media (max-width: 560px) {
@@ -268,32 +266,32 @@
   .login-panel.login-v2-panel,
   .login-wrap .login-panel {
     width: 100%;
-    padding: var(--space-7) var(--space-5) var(--space-6);
-    border-radius: var(--radius-md);
+    padding: 28px 20px 24px;
+    border-radius: 10px;
   }
 
   .login-panel h1,
   .login-v2-title {
-    font-size: var(--text-h1-size);
+    font-size: 20px;
   }
 
   .login-v2-mark {
-    width: calc(var(--space-8) * 1.25);
-    height: calc(var(--space-8) * 1.25);
+    width: 36px;
+    height: 36px;
   }
 }
 
 @media (min-width: 1366px) {
   .login-panel.login-v2-panel,
   .login-wrap .login-panel {
-    width: min(476px, 100%);
+    width: min(420px, 100%);
   }
 }
 
 @media (min-width: 1920px) {
   .login-panel.login-v2-panel,
   .login-wrap .login-panel {
-    width: min(480px, 100%);
+    width: min(420px, 100%);
   }
 }
 

@@ -131,7 +131,7 @@ function requestPage(targetPage) {
     height: var(--v2-pagination-control-size);
     display: inline-grid;
     place-items: center;
-    padding: 0 var(--v2-pagination-gap);
+    padding: 0 8px;
     color: var(--v2-pagination-text);
     background: var(--v2-pagination-surface);
     border: var(--v2-border-width) solid var(--v2-pagination-border);
@@ -140,6 +140,7 @@ function requestPage(targetPage) {
     font-weight: var(--v2-pagination-font-weight);
     line-height: var(--v2-line-height-tight);
     cursor: pointer;
+    box-shadow: none;
     transition:
       color var(--v2-motion-duration) var(--v2-motion-easing),
       background-color var(--v2-motion-duration) var(--v2-motion-easing),
@@ -165,6 +166,7 @@ function requestPage(targetPage) {
   .v2-base-pagination__control:disabled {
     color: var(--v2-pagination-text-disabled);
     background: var(--v2-pagination-surface-disabled);
+    border-color: var(--v2-pagination-border);
     cursor: not-allowed;
     opacity: var(--v2-pagination-disabled-opacity);
   }
@@ -174,6 +176,7 @@ function requestPage(targetPage) {
     color: var(--v2-pagination-text-active);
     background: var(--v2-pagination-surface-active);
     border-color: var(--v2-pagination-surface-active);
+    font-weight: var(--v2-font-weight-medium);
   }
 
   .v2-base-pagination__control--direction {

@@ -107,6 +107,7 @@ function handleInput(event) {
   }
 
   .v2-base-input__control {
+    height: var(--v2-input-height);
     min-height: var(--v2-input-height);
     display: flex;
     align-items: center;
@@ -116,6 +117,7 @@ function handleInput(event) {
     background: var(--v2-input-surface);
     border: var(--v2-border-width) solid var(--v2-input-border);
     border-radius: var(--v2-input-radius);
+    box-shadow: none;
     transition:
       background-color var(--v2-motion-duration) var(--v2-motion-easing),
       border-color var(--v2-motion-duration) var(--v2-motion-easing),

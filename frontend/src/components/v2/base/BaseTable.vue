@@ -99,7 +99,7 @@ function resolveRowKey(row, index) {
     overflow-x: auto;
     color: var(--v2-table-text);
     background: var(--v2-table-surface);
-    border: var(--v2-border-width) solid var(--v2-table-border);
+    border: var(--v2-border-width) solid var(--v2-color-panel-border);
     border-radius: var(--v2-table-radius);
   }
 
@@ -125,6 +125,9 @@ function resolveRowKey(row, index) {
   .v2-base-table__header,
   .v2-base-table__cell {
     padding: var(--v2-table-cell-padding-y) var(--v2-table-cell-padding-x);
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
     border-bottom: var(--v2-border-width) solid var(--v2-table-border);
     vertical-align: middle;
   }
@@ -135,7 +138,8 @@ function resolveRowKey(row, index) {
     background: var(--v2-table-header-surface);
     font-size: var(--v2-table-header-font-size);
     font-weight: var(--v2-table-header-font-weight);
-    letter-spacing: 0;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
   }
 
   .v2-base-table__row {
@@ -145,6 +149,7 @@ function resolveRowKey(row, index) {
 
   .v2-base-table__cell {
     height: var(--v2-table-row-height);
+    color: var(--v2-color-text-body);
   }
 
   .v2-base-table__row:hover {
@@ -168,5 +173,7 @@ function resolveRowKey(row, index) {
 /* Legacy global th styles are unlayered, so keep the visual override unlayered too. */
 .v2-base-table__header {
   background: var(--v2-table-header-surface);
+  border-right: 0;
+  border-left: 0;
 }
 </style>

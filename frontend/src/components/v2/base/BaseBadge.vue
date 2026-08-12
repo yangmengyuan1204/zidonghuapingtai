@@ -27,6 +27,7 @@ defineProps({
 <style scoped>
 @layer v2-components {
   .v2-base-badge {
+    height: var(--v2-badge-height);
     min-height: var(--v2-badge-height);
     display: inline-flex;
     align-items: center;
@@ -34,14 +35,16 @@ defineProps({
     padding: 0 var(--v2-badge-padding);
     color: var(--v2-badge-text);
     background: var(--v2-badge-surface);
+    border: var(--v2-border-width) solid transparent;
     border-radius: var(--v2-badge-radius);
     font-size: var(--v2-badge-font-size);
     font-weight: var(--v2-badge-font-weight);
-    line-height: var(--v2-line-height-tight);
+    line-height: 1;
     white-space: nowrap;
   }
 
   .v2-base-badge--compact {
+    height: var(--v2-badge-height-compact);
     min-height: var(--v2-badge-height-compact);
     padding: 0 var(--v2-badge-padding-compact);
     font-size: var(--v2-badge-font-size-compact);

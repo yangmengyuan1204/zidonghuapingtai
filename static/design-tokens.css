@@ -1,6 +1,7 @@
 /**
- * Frontend V2 — Design Tokens (Forest Light)
+ * Frontend V3 — Light Workbench Design Tokens
  * ------------------------------------------------
+ * Version: 2026-08-12 Art Design Pro parity
  * 唯一设计真相源（Semantic Token）。
  * Static 与 Vue 均通过 /static/design-tokens.css 消费。
  *
@@ -26,53 +27,53 @@ html[data-theme="zhuanye"],
 html[data-theme="qingxuan"],
 html[data-theme="xiaolan"] {
   /* ----- Brand ----- */
-  --color-brand-primary: #2f5c4f;
-  --color-brand-secondary: #7a9a88;
-  --color-brand-hover: #254a40;
-  --color-brand-muted: #d8e5de;
+  --color-brand-primary: #5d87ff;
+  --color-brand-secondary: #8aa9ff;
+  --color-brand-hover: #4a7aff;
+  --color-brand-muted: #edf2ff;
 
   /* ----- Background / Surface ----- */
-  --color-bg-canvas: #f3f1ea;
-  --color-bg-surface: #fffdf8;
-  --color-bg-subtle: #ece8df;
-  --color-bg-muted: #e4e0d6;
-  --color-sidebar: #24352f;
-  --color-topbar: #fffdf8;
+  --color-bg-canvas: #f4f6f8;
+  --color-bg-surface: #ffffff;
+  --color-bg-subtle: #f2f4f7;
+  --color-bg-muted: #f8fafc;
+  --color-sidebar: #111827;
+  --color-topbar: #ffffff;
 
   /* ----- Text ----- */
-  --color-text-primary: #22332e;
-  --color-text-secondary: #5c6b63;
-  --color-text-muted: #7a877f;
-  --color-text-inverse: #f4f7f4;
+  --color-text-primary: #29343d;
+  --color-text-secondary: #4d5875;
+  --color-text-muted: #7987a1;
+  --color-text-inverse: #ffffff;
   --color-text-on-brand: #ffffff;
 
   /* ----- Border ----- */
-  --color-border: rgba(68, 82, 74, 0.22);
-  --color-border-light: rgba(68, 82, 74, 0.12);
-  --color-border-strong: rgba(68, 82, 74, 0.36);
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-light: #e2e8ee;
+  --color-border-strong: #dbdfe1;
 
   /* ----- Status ----- */
-  --color-success: #2f7b5f;
-  --color-success-subtle: #d8eee4;
-  --color-warning: #b5812f;
-  --color-warning-subtle: #f5ead2;
-  --color-danger: #9b3a32;
-  --color-danger-subtle: #f3ddd9;
-  --color-info: #4a7c6f;
-  --color-info-subtle: #d9e8e2;
+  --color-success: #027a48;
+  --color-success-subtle: #ecfdf3;
+  --color-warning: #c2410c;
+  --color-warning-subtle: #fff7ed;
+  --color-danger: #d92d20;
+  --color-danger-subtle: #fef3f2;
+  --color-info: #5d87ff;
+  --color-info-subtle: #edf2ff;
 
   /* ----- Focus ----- */
-  --color-focus: #2f5c4f;
-  --color-focus-ring: rgba(47, 92, 79, 0.28);
+  --color-focus: #5d87ff;
+  --color-focus-ring: rgba(93, 135, 255, 0.18);
 
   /* ----- Overlay ----- */
-  --color-overlay: rgba(34, 51, 46, 0.42);
-  --color-log-bg: #24352f;
-  --color-log-text: #e6ebe7;
+  --color-overlay: rgba(23, 43, 63, 0.42);
+  --color-log-bg: #172b3f;
+  --color-log-text: #edf4fa;
 
   /* ----- Typography ----- */
-  --font-sans: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-  --font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
+  --font-sans: Inter, "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --font-display: var(--font-sans);
   --font-mono: "JetBrains Mono", "Fira Code", Consolas, "Courier New", monospace;
   --font-numeric: var(--font-sans);
 
@@ -112,16 +113,16 @@ html[data-theme="xiaolan"] {
   --space-9: 48px;
 
   /* ----- Radius ----- */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
   --radius-pill: 999px;
 
   /* ----- Shadow (no glow) — Semantic only; Legacy Bridge must NOT reassign these ----- */
   --shadow-none: none;
-  --shadow-xs: 0 1px 2px rgba(34, 51, 46, 0.05);
-  --shadow-sm: 0 4px 14px rgba(34, 51, 46, 0.08);
+  --shadow-xs: 0 1px 2px rgba(23, 43, 63, 0.04);
+  --shadow-sm: 0 8px 24px rgba(23, 43, 63, 0.1);
 
   /* ----- Motion ----- */
   --motion-hover: 140ms;
@@ -143,10 +144,10 @@ html[data-theme="xiaolan"] {
   --z-overlay: 45;
 
   /* ----- Layout / Grid / Breakpoint refs ----- */
-  --layout-sidebar-width: 248px;
-  --layout-topbar-height: 64px;
-  --layout-content-padding-x: var(--space-7);
-  --layout-content-padding-y: var(--space-6);
+  --layout-sidebar-width: 240px;
+  --layout-topbar-height: 60px;
+  --layout-content-padding-x: var(--space-5);
+  --layout-content-padding-y: var(--space-5);
   --grid-gap: var(--space-4);
   --bp-sm: 560px;
   --bp-md: 900px;
@@ -155,37 +156,40 @@ html[data-theme="xiaolan"] {
 
   /* ----- Sidebar / Topbar ----- */
   --sidebar-bg: var(--color-sidebar);
-  --sidebar-text: var(--color-text-inverse);
-  --sidebar-text-muted: #c5d0c8;
-  --sidebar-hover-bg: rgba(255, 255, 245, 0.08);
-  --sidebar-active-bg: rgba(216, 229, 222, 0.14);
-  --sidebar-active-indicator: var(--color-brand-secondary);
+  --sidebar-text: var(--color-text-primary);
+  --sidebar-text-muted: #949eb7;
+  --sidebar-hover-bg: #f2f4f5;
+  --sidebar-active-bg: #edf2ff;
+  --sidebar-active-indicator: var(--color-brand-primary);
   --topbar-bg: var(--color-topbar);
   --topbar-height: var(--layout-topbar-height);
   --topbar-border: var(--color-border);
 
+  /* ----- Control density (Art Design Pro ~36px) ----- */
+  --control-height: 36px;
+
   /* ----- Button ----- */
-  --btn-height: 36px;
+  --btn-height: var(--control-height);
   --btn-padding-x: var(--space-4);
-  --btn-radius: var(--radius-sm);
+  --btn-radius: 7px;
   --btn-font-size: 13px;
-  --btn-font-weight: var(--font-weight-semibold);
+  --btn-font-weight: var(--font-weight-medium);
   --btn-primary-bg: var(--color-brand-primary);
   --btn-primary-hover: var(--color-brand-hover);
   --btn-primary-text: var(--color-text-on-brand);
   --btn-secondary-bg: var(--color-bg-surface);
   --btn-secondary-text: var(--color-text-primary);
-  --btn-secondary-border: var(--color-border);
+  --btn-secondary-border: var(--color-border-strong);
   --btn-danger-bg: var(--color-danger);
-  --btn-danger-hover: #7e2f29;
+  --btn-danger-hover: #b42318;
   --btn-ghost-text: var(--color-text-secondary);
 
   /* ----- Input ----- */
-  --input-height: 42px;
-  --input-padding-x: 14px;
-  --input-radius: var(--radius-sm);
+  --input-height: var(--control-height);
+  --input-padding-x: 12px;
+  --input-radius: 7px;
   --input-bg: var(--color-bg-surface);
-  --input-border: var(--color-border);
+  --input-border: var(--color-border-strong);
   --input-border-focus: var(--color-brand-primary);
   --input-text: var(--color-text-primary);
   --input-placeholder: var(--color-text-muted);
@@ -194,17 +198,19 @@ html[data-theme="xiaolan"] {
   --card-bg: var(--color-bg-surface);
   --card-border: var(--color-border);
   --card-radius: var(--radius-md);
-  --card-shadow: var(--shadow-xs);
-  --card-padding: var(--space-5);
+  --card-shadow: none;
+  --card-padding: var(--space-4);
 
   /* ----- Table ----- */
-  --table-header-bg: var(--color-bg-subtle);
-  --table-header-text: var(--color-text-secondary);
-  --table-row-hover: rgba(47, 92, 79, 0.04);
-  --table-border: var(--color-border-light);
-  --table-cell-padding-y: 12px;
+  --table-header-bg: #f2f4f7;
+  --table-header-text: var(--color-text-muted);
+  --table-row-hover: #f8fafc;
+  --table-border: #f0f2f5;
+  --table-cell-padding-y: 10px;
   --table-cell-padding-x: 16px;
-  --table-font-size: var(--text-body-size);
+  --table-font-size: 13px;
+  --table-header-height: 40px;
+  --table-row-height: 44px;
 
   /* ----- Modal ----- */
   --modal-bg: var(--color-bg-surface);
@@ -217,8 +223,8 @@ html[data-theme="xiaolan"] {
   --modal-padding: var(--space-6);
 
   /* ----- Toast ----- */
-  --toast-bg: #2a3b34;
-  --toast-text: var(--color-text-inverse);
+  --toast-bg: #172b3f;
+  --toast-text: #ffffff;
   --toast-border: var(--color-brand-secondary);
   --toast-radius: var(--radius-sm);
   --toast-shadow: var(--shadow-sm);
@@ -254,7 +260,7 @@ html[data-theme="xiaolan"] {
   /* ----- Loading / Skeleton / Empty / Error ----- */
   --loading-color: var(--color-brand-primary);
   --skeleton-base: var(--color-bg-subtle);
-  --skeleton-shine: rgba(255, 253, 248, 0.55);
+  --skeleton-shine: rgba(255, 255, 255, 0.65);
   --empty-text: var(--color-text-muted);
   --error-bg: var(--color-danger-subtle);
   --error-border: rgba(155, 58, 50, 0.28);
@@ -287,8 +293,9 @@ html[data-theme="xiaolan"] {
   --accent: var(--color-brand-primary);
   --accent-light: var(--color-brand-secondary);
   --accent-dark: var(--color-brand-hover);
+  --accent-soft: var(--color-brand-muted);
   --accent-gradient: var(--color-brand-primary);
-  --accent-glow: transparent;
+  --accent-glow: var(--color-focus-ring);
   --warn: var(--color-warning);
   --warn-light: var(--color-warning);
   --danger: var(--color-danger);
@@ -299,14 +306,14 @@ html[data-theme="xiaolan"] {
   --sidebar-glow-1: transparent;
   --sidebar-glow-2: transparent;
   --sidebar-glow-3: transparent;
-  --brand-gradient: var(--color-text-inverse);
+  --brand-gradient: var(--color-text-primary);
   --brand-glow: transparent;
   --brand-sub: var(--sidebar-text-muted);
   --nav-hover-bg: var(--sidebar-hover-bg);
   --nav-active-bg: var(--sidebar-active-bg);
   --nav-indicator-shadow: transparent;
-  --role-pill-bg: rgba(255, 255, 245, 0.1);
-  --role-pill-border: rgba(255, 255, 245, 0.16);
+  --role-pill-bg: rgba(255, 255, 255, 0.38);
+  --role-pill-border: rgba(80, 103, 124, 0.2);
   --role-pill-shadow: transparent;
   --panel-title-bg: var(--color-bg-subtle);
   --th-bg: var(--table-header-bg);

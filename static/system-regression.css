@@ -1,66 +1,94 @@
 .system-regression-page {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .system-regression-toolbar {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .system-regression-layout {
   display: grid;
   grid-template-columns: 190px minmax(520px, 1fr) minmax(340px, 0.72fr);
-  gap: 14px;
+  gap: 12px;
   align-items: start;
 }
 
 .system-regression-categories,
 .system-regression-cases,
 .system-regression-drawer {
-  border: 1px solid var(--line, #d8d5cc);
-  border-radius: 14px;
-  background: var(--panel, #fff);
-  padding: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+  box-shadow: none;
 }
 
 .system-regression-categories button {
   width: 100%;
   display: flex;
   justify-content: space-between;
-  margin-bottom: 6px;
+  align-items: center;
+  margin-bottom: 4px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 7px;
   padding: 9px 10px;
+  min-height: 36px;
   background: transparent;
   cursor: pointer;
   text-align: left;
+  color: var(--text, #29343d);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.system-regression-categories button:hover {
+  background: #f2f4f5;
 }
 
 .system-regression-categories button.active {
-  background: color-mix(in srgb, var(--accent, #2f4f46) 12%, transparent);
-  color: var(--accent, #2f4f46);
-  font-weight: 700;
+  background: color-mix(in srgb, var(--accent, #5d87ff) 12%, transparent);
+  color: var(--accent, #5d87ff);
+  font-weight: 600;
 }
 
 .system-regression-case-table {
   width: 100%;
   border-collapse: collapse;
+  border-spacing: 0;
 }
 
 .system-regression-case-table th,
 .system-regression-case-table td {
-  border-bottom: 1px solid var(--line, #e5e1d8);
-  padding: 9px 7px;
+  border-bottom: 1px solid var(--line, #f0f2f5);
+  border-left: 0;
+  border-right: 0;
+  padding: 10px 12px;
   text-align: left;
   vertical-align: middle;
+  font-size: 13px;
+}
+
+.system-regression-case-table th {
+  height: 38px;
+  background: #f2f4f7;
+  color: #7987a1;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .system-regression-case-table tr.active {
-  background: color-mix(in srgb, var(--accent, #2f4f46) 7%, transparent);
+  background: color-mix(in srgb, var(--accent, #5d87ff) 7%, transparent);
+}
+
+.system-regression-case-table tr:hover td {
+  background: #f8fafc;
 }
 
 .system-regression-drawer {
@@ -71,7 +99,7 @@
 }
 
 .system-regression-section {
-  border-top: 1px solid var(--line, #e5e1d8);
+  border-top: 1px solid var(--line, rgba(0, 0, 0, 0.08));
   margin-top: 14px;
   padding-top: 12px;
 }
@@ -87,26 +115,106 @@
 }
 
 .system-regression-repeat {
-  border: 1px solid var(--line, #e5e1d8);
-  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
   margin-top: 10px;
-  padding: 10px;
+  padding: 10px 12px;
+  background: #f4f6f8;
 }
 
 .system-regression-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.system-regression-actions .btn,
+.system-regression-actions input,
+.system-regression-actions select {
+  min-height: 36px;
 }
 
 .system-regression-status {
-  border-left: 4px solid var(--accent, #2f4f46);
+  border-left: 3px solid var(--accent, #5d87ff);
+  border-radius: 7px;
   padding: 10px 12px;
-  background: color-mix(in srgb, var(--accent, #2f4f46) 6%, transparent);
+  background: color-mix(in srgb, var(--accent, #5d87ff) 8%, #ffffff);
+  color: var(--text, #29343d);
+  font-size: 13px;
+}
+
+html.v3-embed .system-regression-page {
+  gap: 10px;
+  min-width: 0;
+}
+
+html.v3-embed .system-regression-layout {
+  grid-template-columns: 190px minmax(430px, 0.95fr) minmax(420px, 1.1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+html.v3-embed .system-regression-categories,
+html.v3-embed .system-regression-cases,
+html.v3-embed .system-regression-drawer {
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+html.v3-embed .system-regression-drawer {
+  top: 10px;
+  max-height: calc(100vh - 120px);
+}
+
+html.v3-embed .system-regression-case-table th,
+html.v3-embed .system-regression-case-table td {
+  padding: 8px 12px;
+  border-left: 0;
+  border-right: 0;
+}
+
+html.v3-embed .system-regression-case-table th {
+  height: 38px;
+  background: #f2f4f7;
+}
+
+html.v3-embed .system-regression-case-table td {
+  height: 44px;
+}
+
+html.v3-embed .system-regression-categories button {
+  border-radius: 7px;
+  min-height: 36px;
+}
+
+html.v3-embed .system-regression-categories button.active {
+  background: #edf2ff;
+  color: #5d87ff;
+}
+
+html.v3-embed .system-regression-status {
+  border-left-color: #5d87ff;
+  border-radius: 7px;
+  background: #edf2ff;
+  color: #29343d;
+}
+
+html.v3-embed .system-regression-repeat {
+  border-color: rgba(15, 23, 42, 0.06);
+  background: #f4f6f8;
+}
+
+html.v3-embed .system-regression-section {
+  border-top-color: rgba(15, 23, 42, 0.06);
 }
 
 @media (max-width: 1180px) {
-  .system-regression-layout {
+  .system-regression-layout,
+  html.v3-embed .system-regression-layout {
     grid-template-columns: 170px 1fr;
   }
 

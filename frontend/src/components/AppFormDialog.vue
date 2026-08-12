@@ -7,7 +7,12 @@
   >
     <form class="v2-app-form-dialog" @submit.prevent="handleSubmit">
       <div class="v2-app-form-dialog__grid">
-        <div v-for="field in fields" :key="field.name" class="v2-app-form-dialog__field">
+        <div
+          v-for="field in fields"
+          :key="field.name"
+          class="v2-app-form-dialog__field"
+          :class="{ 'v2-app-form-dialog__field--full': field.type === 'textarea' }"
+        >
           <BaseSelect
             v-if="field.type === 'select'"
             :id="field.name"
@@ -108,7 +113,7 @@ function handleOpenUpdate(open) {
 .v2-app-form-dialog,
 .v2-app-form-dialog__grid {
   display: grid;
-  gap: var(--v2-space-3);
+  gap: 16px;
 }
 
 .v2-app-form-dialog__grid {
@@ -117,6 +122,57 @@ function handleOpenUpdate(open) {
 
 .v2-app-form-dialog__field {
   min-width: 0;
+}
+
+.v2-app-form-dialog :deep(.v2-base-input__label),
+.v2-app-form-dialog :deep(.v2-base-select__label),
+.v2-app-form-dialog :deep(.v2-base-textarea__label) {
+  margin-bottom: 6px;
+  color: var(--v2-shell-pilot-text-body);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.v2-app-form-dialog :deep(.v2-base-input),
+.v2-app-form-dialog :deep(.v2-base-select),
+.v2-app-form-dialog :deep(.v2-base-textarea) {
+  --v2-input-border: var(--v2-shell-pilot-field-border);
+  --v2-input-border-hover: var(--v2-shell-pilot-field-border);
+  --v2-input-border-focus: var(--v2-shell-pilot-field-focus);
+  --v2-input-focus-ring: 0 0 0 3px rgba(93, 135, 255, 0.12);
+  --v2-select-border: var(--v2-shell-pilot-field-border);
+  --v2-select-border-hover: var(--v2-shell-pilot-field-border);
+  --v2-select-border-focus: var(--v2-shell-pilot-field-focus);
+  --v2-select-focus-ring: 0 0 0 3px rgba(93, 135, 255, 0.12);
+  --v2-textarea-border: var(--v2-shell-pilot-field-border);
+  --v2-textarea-border-hover: var(--v2-shell-pilot-field-border);
+  --v2-textarea-border-focus: var(--v2-shell-pilot-field-focus);
+  --v2-textarea-focus-ring: 0 0 0 3px rgba(93, 135, 255, 0.12);
+}
+
+.v2-app-form-dialog :deep(.v2-base-input__control),
+.v2-app-form-dialog :deep(.v2-base-select__native) {
+  height: var(--v2-control-height-default);
+  min-height: var(--v2-control-height-default);
+  border-radius: var(--v2-radius-sm);
+}
+
+.v2-app-form-dialog :deep(.v2-base-input__native),
+.v2-app-form-dialog :deep(.v2-base-select__native) {
+  font-size: 13px;
+}
+
+.v2-app-form-dialog :deep(.v2-base-textarea__native) {
+  min-height: 120px;
+  padding: 10px 12px;
+  border-radius: var(--v2-radius-sm);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.v2-app-form-dialog__field--full {
+  grid-column: 1 / -1;
 }
 
 .v2-app-form-dialog__actions {

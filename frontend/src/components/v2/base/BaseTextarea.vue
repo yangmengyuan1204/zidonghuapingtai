@@ -112,7 +112,7 @@ function handleInput(event) {
     width: 100%;
     min-width: 0;
     min-height: var(--v2-textarea-min-height);
-    padding: var(--v2-textarea-padding);
+    padding: 10px var(--v2-textarea-padding);
     color: var(--v2-textarea-text);
     background: var(--v2-textarea-surface);
     border: var(--v2-border-width) solid var(--v2-textarea-border);
@@ -122,6 +122,7 @@ function handleInput(event) {
     font-size: var(--v2-textarea-font-size);
     line-height: var(--v2-line-height-body);
     resize: vertical;
+    box-shadow: none;
     transition:
       background-color var(--v2-motion-duration) var(--v2-motion-easing),
       border-color var(--v2-motion-duration) var(--v2-motion-easing),

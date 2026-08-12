@@ -1,8 +1,8 @@
 {
   "branch": "codex/frontend-v3-workbench-redesign",
-  "head": "a4c5764a759720707b34d65caddce7661d54e13d",
-  "head_short": "a4c5764",
-  "generated_at": "2026-08-10T18:10:00+08:00",
+  "head": "0b5bf58722c057a2253b7aabe6f33249f915ebf9",
+  "head_short": "0b5bf58",
+  "generated_at": "2026-08-11T18:05:00+08:00",
   "completed_phases": [
     "phase-1-design-system",
     "login-prototype-production-redesign",
@@ -25,9 +25,10 @@
     "frontend-v3-redesign-task11-api-harvester",
     "frontend-v3-redesign-task12-system-regression",
     "frontend-v3-redesign-task13-route-migration",
-    "frontend-v3-redesign-task14-final-verification"
+    "frontend-v3-redesign-task14-final-verification",
+    "frontend-v3-light-workbench-redesign-task1-16"
   ],
-  "current_phase": "frontend-v3-redesign-complete",
+  "current_phase": "frontend-v3-light-workbench-redesign-complete",
   "next_phase": null,
   "production_components": [
     "BaseBadge",
@@ -92,7 +93,9 @@
     "frontend/scripts/validate-v3-data-scripts-parity.mjs",
     "frontend/scripts/validate-v3-requirement-verification-parity.mjs",
     "frontend/scripts/validate-v3-system-regression-parity.mjs",
-    "frontend/scripts/validate-v3-route-migration.mjs"
+    "frontend/scripts/validate-v3-route-migration.mjs",
+    "frontend/scripts/validate-v3-light-visual-contract.mjs",
+    "frontend/scripts/validate-v3-style-only-scope.mjs"
   ],
   "package_scripts": {
     "dev": "vite",
@@ -241,6 +244,11 @@
   ],
   "stash": [],
   "notes": [
+    "Frontend V3 Light Workbench Redesign Tasks 1-16 completed on 2026-08-11; production changes are CSS or existing style regions only, with no business behavior changes.",
+    "Final verification: build and HTTP smoke pass; 1332 pytest cases pass with 2 warnings; 19 validators pass and the same 6 stale V2 digest/allowlist validators recorded at baseline fail.",
+    "Browser validation at 1080, 1240, 1440, and 1920 covered nine routes per viewport plus the global AI configuration modal; no document or legacy iframe horizontal overflow was found.",
+    "Frontend V3 Light Workbench Redesign started on 2026-08-11 at HEAD 0b5bf58; production changes are restricted to CSS and existing style regions.",
+    "The 11 images under docs/ui-redesign are the active visual authority; the historical dark visual contract remains byte-identical and does not override the light design.",
     "Frontend V3 Tasks 1-14 completed on 2026-08-10; all V2/V3 validators, production build, 117 route/permission tests, and browser viewport checks pass.",
     "dataScripts, requirementVerification, and systemRegression use native Vue views; LegacyEmbedView remains only as a rollback asset.",
     "The API harvester menu, Vue/legacy pages, public API routes, and dedicated crawler/analyzer services were retired; api_extractor.py remains for AI case generation.",

@@ -29,57 +29,85 @@ defineProps({
 
 <style scoped>
 .v2-workbench-panel {
-  overflow: hidden;
-  border: var(--v2-border-width) solid var(--v2-border-panel);
-  border-radius: var(--v2-radius-panel);
-  background: var(--v2-panel-surface);
-  box-shadow: var(--v2-shadow-panel);
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .v2-workbench-panel__header {
   display: flex;
-  min-height: 52px;
+  min-height: 0;
   align-items: center;
   justify-content: space-between;
-  gap: var(--v2-space-3);
-  padding: var(--v2-space-2) var(--v2-space-3);
-  border-bottom: var(--v2-border-width) solid var(--v2-panel-header-border);
-  background: var(--v2-panel-header-surface);
+  gap: 12px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
 }
 
 .v2-workbench-panel__heading {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   min-width: 0;
 }
 
 .v2-workbench-panel__title {
   margin: 0;
-  color: var(--v2-text-primary);
-  font-size: var(--v2-panel-title-font-size);
-  font-weight: var(--v2-font-weight-semibold);
+  color: var(--v2-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .v2-workbench-panel__subtitle {
-  margin: var(--v2-space-micro) 0 0;
+  margin: 0;
   color: var(--v2-text-muted);
-  font-size: var(--v2-font-size-caption);
+  font-size: 12px;
+  text-align: right;
 }
 
 .v2-workbench-panel__actions {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: var(--v2-space-1);
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .v2-workbench-panel__heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .v2-workbench-panel__subtitle {
+    text-align: left;
+  }
 }
 
 .v2-workbench-panel__body {
   min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--v2-color-card-border-subtle);
+  border-radius: var(--v2-radius-panel);
+  background: var(--v2-surface-default);
+  box-shadow: var(--v2-shadow-card-enterprise);
 }
 
 .v2-workbench-panel__footer {
-  padding: var(--v2-space-2) var(--v2-space-3);
-  border-top: var(--v2-border-width) solid var(--v2-border-panel);
-  background: var(--v2-panel-footer-surface);
+  padding: 10px 16px;
+  border: 1px solid var(--v2-color-card-border-subtle);
+  border-radius: var(--v2-radius-panel);
+  background: var(--v2-surface-default);
   color: var(--v2-text-muted);
-  font-size: var(--v2-font-size-caption);
+  font-size: 12px;
+  box-shadow: var(--v2-shadow-card-enterprise);
 }
 </style>

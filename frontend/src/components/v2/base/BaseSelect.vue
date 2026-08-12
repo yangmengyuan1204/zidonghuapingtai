@@ -130,6 +130,7 @@ function handleChange(event) {
     width: 100%;
     min-width: 0;
     height: var(--v2-select-height);
+    min-height: var(--v2-select-height);
     padding: 0 var(--v2-select-padding);
     color: var(--v2-select-text);
     background: var(--v2-select-surface);
@@ -138,6 +139,7 @@ function handleChange(event) {
     outline: none;
     font-size: var(--v2-select-font-size);
     line-height: var(--v2-line-height-body);
+    box-shadow: none;
     transition:
       background-color var(--v2-motion-duration) var(--v2-motion-easing),
       border-color var(--v2-motion-duration) var(--v2-motion-easing),

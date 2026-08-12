@@ -1103,28 +1103,30 @@ thead::after {
   color: var(--text);
 }
 
-/* A3 embedded-page visual parity: data factory and system regression only. */
+/* A3 embedded-page visual parity: data factory and system regression only.
+   Enterprise AI Workbench: cold gray canvas #f4f6f8, white cards, dense toolbars.
+   Dark sidebar lives in V3 shell; embed pages only style the workspace. */
 html.v3-embed {
-  --bg: #e8eef5;
-  --soft: #d5e3ef;
+  --bg: #f4f6f8;
+  --soft: #eef1f4;
   --surface: #ffffff;
   --surface-solid: #ffffff;
-  --text: #172b3f;
-  --muted: #6c8092;
-  --line: #b9c8d6;
-  --accent: #245fa8;
-  --accent-light: #245fa8;
-  --accent-glow: rgba(36, 95, 168, 0.12);
-  --radius: 10px;
-  --radius-sm: 6px;
-  background: #e8eef5;
+  --text: #29343d;
+  --muted: #7987a1;
+  --line: rgba(15, 23, 42, 0.06);
+  --accent: #5d87ff;
+  --accent-light: #5d87ff;
+  --accent-glow: rgba(93, 135, 255, 0.18);
+  --radius: 8px;
+  --radius-sm: 7px;
+  background: #f4f6f8;
 }
 
 html.v3-embed body,
 html.v3-embed .main,
 html.v3-embed .content {
-  color: #172b3f;
-  background: #e8eef5;
+  color: #29343d;
+  background: #f4f6f8;
 }
 
 html.v3-embed body,
@@ -1132,26 +1134,33 @@ html.v3-embed button,
 html.v3-embed input,
 html.v3-embed select,
 html.v3-embed textarea {
-  font-family: "Microsoft YaHei UI", "PingFang SC", "Segoe UI", sans-serif;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
 }
 
+html.v3-embed .content {
+  padding: 14px 16px 20px;
+}
+
+/* Compact page cue — V3 shell already owns navigation chrome */
 html.v3-embed #content:not(:has(.system-regression-page))::before,
 html.v3-embed .system-regression-page::before {
-  display: none;
-  min-height: 91px;
+  box-sizing: border-box;
+  display: flex;
+  min-height: 44px;
   align-items: center;
-  margin-bottom: 13px;
-  padding: 16px 18px 16px 22px;
-  border: 1px solid #b9c8d6;
-  border-left: 4px solid #245fa8;
-  border-radius: 10px;
-  background: #dde7f0;
-  color: #172b3f;
-  font-family: "Microsoft YaHei UI", "PingFang SC", "Segoe UI", sans-serif;
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.2;
+  margin-bottom: 10px;
+  padding: 8px 14px 8px 16px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-left: 3px solid #5d87ff;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #323251;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
   white-space: pre-line;
+  box-shadow: none;
 }
 
 html.v3-embed #content:not(:has(.system-regression-page))::before {
@@ -1164,43 +1173,85 @@ html.v3-embed .system-regression-page::before {
 
 html.v3-embed .toolbar,
 html.v3-embed .system-regression-toolbar {
-  min-height: 58px;
-  margin-bottom: 14px;
-  padding: 10px 13px;
-  border: 1px solid #b9c8d6;
-  border-radius: 10px;
-  background: #e7eef4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-height: 48px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+html.v3-embed .toolbar .filters,
+html.v3-embed .toolbar .actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 html.v3-embed .panel,
 html.v3-embed .system-regression-categories,
 html.v3-embed .system-regression-cases,
 html.v3-embed .system-regression-drawer {
-  border: 1px solid #b9c8d6;
-  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
   background: #ffffff;
   box-shadow: none;
+  overflow: hidden;
 }
 
 html.v3-embed .panel-title {
-  min-height: 53px;
-  padding: 11px 16px;
-  border-bottom: 1px solid #b9c8d6;
-  background: #dde7f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  background: #f2f4f7;
+}
+
+html.v3-embed .panel-title h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #323251;
+}
+
+html.v3-embed .panel-body {
+  padding: 14px;
 }
 
 html.v3-embed .table-wrap {
-  border: 1px solid #b9c8d6;
-  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
   background: #ffffff;
+  overflow: auto;
+}
+
+html.v3-embed table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+html.v3-embed th,
+html.v3-embed td {
+  border-left: 0;
+  border-right: 0;
+  vertical-align: middle;
 }
 
 html.v3-embed th {
   height: 38px;
   padding: 0 14px;
-  background: #e7eef4;
-  color: #50677c;
-  border-bottom-color: #b9c8d6;
+  background: #f2f4f7;
+  color: #7987a1;
+  border-bottom: 1px solid #eaecf0;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0;
@@ -1208,21 +1259,23 @@ html.v3-embed th {
 }
 
 html.v3-embed td {
-  height: 46px;
+  height: 44px;
   padding: 8px 14px;
   background: #ffffff;
-  border-bottom-color: #d1dce6;
+  border-bottom: 1px solid #eaecf0;
   font-size: 13px;
+  color: #29343d;
 }
 
 html.v3-embed tr:hover td,
 html.v3-embed .system-regression-case-table tr.active td {
-  background: #d5e3ef;
+  background: #f8fafc;
 }
 
 html.v3-embed .field label {
-  color: #50677c;
+  color: #4d5875;
   font-size: 12px;
+  font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -1230,21 +1283,49 @@ html.v3-embed .field label {
 html.v3-embed .field input,
 html.v3-embed .field select,
 html.v3-embed .field textarea,
-html.v3-embed .system-regression-actions input {
+html.v3-embed .system-regression-actions input,
+html.v3-embed .quickrun-row input,
+html.v3-embed .quickrun-row select {
   min-height: 36px;
-  border-color: #b9c8d6;
-  border-radius: 6px;
+  height: 36px;
+  border: 1px solid #dbdfe1;
+  border-radius: 7px;
   background: #ffffff;
+  color: #29343d;
+  font-size: 13px;
+  box-shadow: none;
+}
+
+html.v3-embed .field textarea,
+html.v3-embed textarea {
+  height: auto;
+  min-height: 88px;
+  padding: 10px 12px;
+}
+
+html.v3-embed .field input:focus,
+html.v3-embed .field select:focus,
+html.v3-embed .field textarea:focus,
+html.v3-embed .system-regression-actions input:focus {
+  outline: none;
+  border-color: #5d87ff;
+  box-shadow: 0 0 0 3px rgba(93, 135, 255, 0.18);
 }
 
 html.v3-embed .btn {
-  min-height: 34px;
-  padding: 0 13px;
-  border: 1px solid #245fa8;
-  border-radius: 6px;
-  background: #245fa8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #5d87ff;
+  border-radius: 7px;
+  background: #5d87ff;
   box-shadow: none;
   color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
   transform: none;
 }
 
@@ -1254,29 +1335,58 @@ html.v3-embed .btn::after {
 
 html.v3-embed .btn:hover,
 html.v3-embed .btn:active {
-  background: #1d518f;
+  background: #4a7aff;
+  border-color: #4a7aff;
   box-shadow: none;
   transform: none;
 }
 
 html.v3-embed .btn.secondary {
-  border-color: #b9c8d6;
+  border-color: #dbdfe1;
   background: #ffffff;
   box-shadow: none;
-  color: #2d435b;
+  color: #4d5875;
 }
 
 html.v3-embed .btn.secondary:hover {
-  border-color: #9fb4c7;
-  background: #f7f9fb;
+  border-color: #cfd6dc;
+  background: #f2f4f5;
+  color: #29343d;
   box-shadow: none;
 }
 
 html.v3-embed .btn.danger {
-  border-color: #d6a19c;
+  border-color: #fecdca;
   background: #ffffff;
   box-shadow: none;
-  color: #b43e36;
+  color: #d92d20;
+}
+
+html.v3-embed .btn.danger:hover {
+  border-color: #f97066;
+  background: #fef3f2;
+  color: #b42318;
+}
+
+html.v3-embed .btn.ghost,
+html.v3-embed .btn.text {
+  border-color: transparent;
+  background: transparent;
+  color: #4d5875;
+}
+
+html.v3-embed .btn.ghost:hover,
+html.v3-embed .btn.text:hover {
+  background: #edf2ff;
+  color: #5d87ff;
+}
+
+html.v3-embed .badge {
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 html.v3-embed .system-regression-layout {
@@ -1290,10 +1400,197 @@ html.v3-embed .system-regression-drawer {
 }
 
 html.v3-embed .system-regression-categories button {
-  border-radius: 0;
+  border-radius: 7px;
+  min-height: 36px;
+  font-size: 13px;
 }
 
 html.v3-embed .system-regression-categories button.active {
-  background: #d5e3ef;
-  color: #164f91;
+  background: #edf2ff;
+  color: #5d87ff;
+  font-weight: 600;
+}
+
+html.v3-embed .factory-grid {
+  grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.75fr);
+  gap: 10px;
+  align-items: start;
+}
+
+html.v3-embed #content:not(:has(.system-regression-page)) > .toolbar,
+html.v3-embed #content:not(:has(.system-regression-page)) > .panel,
+html.v3-embed #content:not(:has(.system-regression-page)) > .factory-grid {
+  margin-bottom: 10px;
+}
+
+html.v3-embed .factory-grid > .panel {
+  min-width: 0;
+}
+
+html.v3-embed .factory-vars {
+  margin-top: 10px;
+}
+
+html.v3-embed .factory-vars textarea,
+html.v3-embed .mini-log,
+html.v3-embed pre,
+html.v3-embed .qr-grid textarea {
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 7px;
+  background: #f4f6f8;
+  color: #4d5875;
+  box-shadow: none;
+}
+
+html.v3-embed .advanced-vars summary {
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #323251;
+  background: #f2f4f7;
+}
+
+html.v3-embed .advanced-vars[open] summary {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+html.v3-embed .quickrun-panel {
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+  margin-bottom: 10px;
+}
+
+html.v3-embed .quickrun-body {
+  padding: 12px 14px;
+  gap: 10px;
+}
+
+html.v3-embed .qr-result-head {
+  background: #f2f4f7;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-bottom: 0;
+  border-radius: 7px 7px 0 0;
+}
+
+html.v3-embed .modal {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+}
+
+html.v3-embed .modal-head {
+  position: relative;
+  min-height: 48px;
+  padding: 10px 16px;
+  background: #f2f4f7;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+html.v3-embed .modal-body {
+  padding: 14px 16px;
+}
+
+html.v3-embed .modal-foot {
+  padding: 10px 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+}
+
+html.v3-embed .modal-foot .actions,
+html.v3-embed .panel-title .actions,
+html.v3-embed #data-agent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* AI agent zone: blue→violet accent ONLY on agent header / status badge */
+html.v3-embed .modal:has(#data-agent-status) .modal-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #5d87ff 0%, #7c6cf0 52%, #8b5cf6 100%);
+}
+
+html.v3-embed .data-agent-progress > .panel-title {
+  position: relative;
+}
+
+html.v3-embed .data-agent-progress > .panel-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #5d87ff 0%, #7c6cf0 52%, #8b5cf6 100%);
+}
+
+html.v3-embed #data-agent-status .badge,
+html.v3-embed .data-agent-progress > .panel-title > .badge {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background:
+    linear-gradient(#edf2ff, #edf2ff) padding-box,
+    linear-gradient(90deg, #5d87ff, #8b5cf6) border-box;
+  color: #5d87ff;
+  box-shadow: none;
+}
+
+html.v3-embed .data-agent-progress,
+html.v3-embed #data-agent-goal .panel,
+html.v3-embed #data-agent-events .panel,
+html.v3-embed #data-agent-result .panel,
+html.v3-embed #data-agent-question .panel {
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+html.v3-embed .tabs,
+html.v3-embed .tab-bar,
+html.v3-embed [role="tablist"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: #eef1f4;
+}
+
+html.v3-embed .tabs button,
+html.v3-embed .tab-bar button,
+html.v3-embed [role="tab"] {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #7987a1;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+html.v3-embed .tabs button.active,
+html.v3-embed .tab-bar button.active,
+html.v3-embed [role="tab"][aria-selected="true"],
+html.v3-embed [role="tab"].active {
+  background: #ffffff;
+  color: #5d87ff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+@media (max-width: 1240px) {
+  html.v3-embed .factory-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

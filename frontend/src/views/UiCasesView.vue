@@ -843,9 +843,68 @@ async function submitRecordSave() {
 <style scoped>
 .v2-ui-cases {
   display: grid;
-  gap: var(--v2-space-3);
-  max-width: var(--v2-layout-workspace-max);
-  margin: 0 auto;
+  gap: 12px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.v2-ui-cases :deep(.v2-workbench-page-header__eyebrow) {
+  color: #64748b;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.v2-ui-cases :deep(.v2-workbench-page-header__title) {
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.v2-ui-cases :deep(.v2-workbench-panel) {
+  min-width: 0;
+  gap: 10px;
+}
+
+.v2-ui-cases :deep(.v2-workbench-panel__header) {
+  min-height: 0;
+  padding: 0 2px;
+}
+
+.v2-ui-cases :deep(.v2-workbench-panel__body) {
+  min-height: calc(var(--v2-size-table-row) * 4 + var(--v2-size-table-header));
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.v2-ui-cases :deep(.v2-base-empty-state) {
+  min-height: 160px;
+  justify-content: center;
+}
+
+.v2-ui-cases :deep(.v2-base-empty-state__icon) {
+  width: 56px;
+  height: 56px;
+  color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.v2-ui-cases :deep(.v2-app-table__table) {
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-ui-cases :deep(.v2-app-table__header) {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 11px;
+}
+
+.v2-ui-cases :deep(.v2-app-table__cell) {
+  height: 44px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .toolbar,
@@ -857,7 +916,7 @@ async function submitRecordSave() {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--v2-space-2);
+  gap: 12px;
 }
 
 .toolbar,
@@ -868,8 +927,9 @@ async function submitRecordSave() {
 }
 
 .toolbar {
-  padding: var(--v2-space-3);
-  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--v2-border-panel);
+  background: #ffffff;
 }
 
 .field,
@@ -1018,7 +1078,7 @@ summary:focus-visible {
   padding: var(--v2-space-3);
   border: var(--v2-border-width) solid var(--v2-border-panel);
   border-radius: var(--v2-radius-panel);
-  background: var(--v2-surface-workspace);
+  background: color-mix(in srgb, var(--v2-surface-workspace) 62%, var(--v2-surface-default));
 }
 
 .diagnosis-summary div,

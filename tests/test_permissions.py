@@ -298,8 +298,9 @@ def test_vue_protected_routes_render_inside_app_shell():
 
     assert "import AppShell from './components/AppShell.vue'" in app_vue
     assert "const route = useRoute()" in app_vue
-    assert '<AppShell v-if="!route.meta.public" />' in app_vue
-    assert '<router-view v-else />' in app_vue
+    assert '<AppShell v-if="routeReady && !route.meta.public" />' in app_vue
+    assert '<router-view v-else-if="routeReady" />' in app_vue
+    assert "const routeReady = computed(() => route.matched.length > 0)" in app_vue
 
 
 def test_env_delete_rejects_referenced_api_cases():

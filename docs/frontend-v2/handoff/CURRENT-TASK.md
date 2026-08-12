@@ -1,4 +1,14 @@
-# Current Task — Frontend V3 Workbench Redesign Complete
+# Current Task — Frontend V3 Light Workbench Visual Redesign
+
+> **Status:** COMPLETE on branch `codex/frontend-v3-workbench-redesign` at baseline HEAD `0b5bf58722c057a2253b7aabe6f33249f915ebf9`; left uncommitted for user review.
+> **Plan:** `docs/superpowers/plans/2026-08-11-frontend-v3-light-workbench-visual-redesign.md`
+> **Constraint:** 源码决定功能，UI 图决定视觉；只允许 CSS / `<style>` 修改，功能变化必须为 0。
+> **Visual precedence:** `docs/ui-redesign/` 的浅色 220px/56px 新图为当前视觉依据；旧深色合同原样保留为历史基线，不得覆盖新设计。
+> **Verification:** production build and HTTP smoke PASS; full pytest `1332 passed, 2 warnings`; active style/light/historical contracts PASS. Six stale V2 digest/allowlist validators remain identical to the pre-change baseline.
+
+---
+
+# Previous Task — Frontend V3 Workbench Redesign Complete
 
 > **Status:** COMPLETE. Tasks 1–14 finished on branch `codex/frontend-v3-workbench-redesign` at base HEAD `a4c5764`.
 > **Plan:** `docs/superpowers/plans/2026-08-10-frontend-v3-workbench-redesign-implementation.md`

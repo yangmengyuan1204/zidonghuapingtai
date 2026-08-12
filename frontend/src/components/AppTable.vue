@@ -72,13 +72,13 @@ function short(value, length = 140) {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  border-radius: var(--v2-radius-panel);
+  border-radius: var(--v2-table-radius);
   background: var(--v2-surface-default);
 }
 
 .v2-app-table--framed {
-  border: var(--v2-border-width) solid var(--v2-border-panel);
-  box-shadow: var(--v2-shadow-panel);
+  border: var(--v2-border-width) solid var(--v2-color-panel-border);
+  box-shadow: none;
 }
 
 .v2-app-table:focus-visible {
@@ -91,19 +91,22 @@ function short(value, length = 140) {
   min-width: 760px;
   border-spacing: 0;
   border-collapse: separate;
-  color: var(--v2-text-secondary);
+  color: var(--v2-color-text-body);
   font-size: var(--v2-table-font-size);
   text-align: left;
 }
 
 .v2-app-table__head {
-  background: var(--v2-surface-soft);
+  background: var(--v2-table-header-surface);
 }
 
 .v2-app-table__header,
 .v2-app-table__cell {
   padding: var(--v2-table-cell-padding-y) var(--v2-table-cell-padding-x);
-  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  border-bottom: var(--v2-border-width) solid var(--v2-table-border);
   vertical-align: middle;
 }
 
@@ -113,8 +116,9 @@ function short(value, length = 140) {
   background: var(--v2-table-header-surface);
   font-size: var(--v2-table-header-font-size);
   font-weight: var(--v2-table-header-font-weight);
-  letter-spacing: 0;
+  letter-spacing: 0.01em;
   text-transform: none;
+  white-space: nowrap;
 }
 
 .v2-app-table__row {
@@ -127,7 +131,7 @@ function short(value, length = 140) {
 }
 
 .v2-app-table__row:hover {
-  background: var(--v2-surface-hover);
+  background: var(--v2-table-row-hover);
 }
 
 .v2-app-table__body .v2-app-table__row:last-child .v2-app-table__cell {

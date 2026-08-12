@@ -190,16 +190,61 @@ onBeforeUnmount(stopRunPolling)
 <style scoped>
 .v2-requirement {
   display: grid;
-  gap: var(--v2-space-3);
-  max-width: var(--v2-layout-workspace-max);
-  margin: 0 auto;
+  gap: 12px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .v2-requirement__layout {
   display: grid;
   grid-template-columns: minmax(280px, .72fr) minmax(0, 1.8fr);
-  gap: var(--v2-space-3);
-  align-items: start;
+  gap: 12px;
+  min-height: calc(100vh - 170px);
+  align-items: stretch;
+}
+
+.v2-requirement :deep(.v2-workbench-page-header__eyebrow) {
+  color: #64748b;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.v2-requirement :deep(.v2-workbench-page-header__title) {
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.v2-requirement :deep(.v2-workbench-panel) {
+  min-height: 0;
+  gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.v2-requirement :deep(.v2-workbench-panel__header) {
+  min-height: 0;
+  padding: 0 2px;
+}
+
+.v2-requirement :deep(.v2-workbench-panel__body) {
+  min-height: 0;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.v2-requirement :deep(.v2-base-empty-state) {
+  min-height: 160px;
+  justify-content: center;
+}
+
+.v2-requirement :deep(.v2-base-empty-state__icon) {
+  width: 56px;
+  height: 56px;
+  color: #94a3b8;
+  background: #f1f5f9;
 }
 
 .v2-requirement__filter,
@@ -210,28 +255,30 @@ onBeforeUnmount(stopRunPolling)
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--v2-space-2);
+  gap: 10px;
 }
 
 .v2-requirement__filter {
-  padding: var(--v2-space-3);
-  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--v2-border-panel);
+  background: #ffffff;
 }
 
 .v2-requirement__tasks {
   display: grid;
+  align-content: start;
 }
 
 .v2-requirement__task {
   display: flex;
-  min-height: var(--v2-size-table-row);
+  min-height: 44px;
   align-items: center;
   justify-content: space-between;
-  gap: var(--v2-space-2);
-  padding: var(--v2-space-2) var(--v2-space-3);
+  gap: 10px;
+  padding: 10px 16px;
   border: 0;
-  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
-  background: var(--v2-surface-default);
+  border-bottom: 1px solid var(--v2-border-panel);
+  background: #ffffff;
   color: var(--v2-text-secondary);
   cursor: pointer;
   font: inherit;
@@ -241,11 +288,12 @@ onBeforeUnmount(stopRunPolling)
 .v2-requirement__task--active,
 .v2-requirement__task:hover {
   background: var(--v2-action-primary-soft);
+  color: var(--v2-action-primary);
 }
 
 .v2-requirement__task > span {
   display: grid;
-  gap: var(--v2-space-micro);
+  gap: 2px;
   min-width: 0;
 }
 
@@ -260,13 +308,14 @@ onBeforeUnmount(stopRunPolling)
 .v2-requirement__detail-head p,
 .v2-requirement__item p {
   color: var(--v2-text-muted);
-  font-size: var(--v2-font-size-caption);
+  font-size: 12px;
 }
 
 .v2-requirement__detail {
   display: grid;
-  gap: var(--v2-space-3);
-  padding: var(--v2-space-3);
+  gap: 12px;
+  padding: 16px;
+  background: #ffffff;
 }
 
 .v2-requirement__detail-head,
@@ -281,44 +330,45 @@ onBeforeUnmount(stopRunPolling)
 }
 
 .v2-requirement__detail-head h2 {
-  font-size: var(--v2-font-size-section);
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .v2-requirement__metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--v2-space-2);
+  gap: 10px;
 }
 
 .v2-requirement__metrics div {
   display: grid;
-  gap: var(--v2-space-micro);
-  padding: var(--v2-space-2);
-  border: var(--v2-border-width) solid var(--v2-border-panel);
-  border-radius: var(--v2-radius-sm);
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--v2-border-panel);
+  border-radius: 8px;
   background: var(--v2-surface-workspace);
 }
 
 .v2-requirement__metrics span {
   color: var(--v2-text-muted);
-  font-size: var(--v2-font-size-tiny);
+  font-size: 11px;
 }
 
 .v2-requirement__items,
 .v2-requirement__form {
   display: grid;
-  gap: var(--v2-space-2);
+  gap: 10px;
 }
 
 .v2-requirement__item,
 .v2-requirement__run {
   display: flex;
   justify-content: space-between;
-  gap: var(--v2-space-3);
-  padding: var(--v2-space-3);
-  border: var(--v2-border-width) solid var(--v2-border-panel);
-  border-radius: var(--v2-radius-panel);
-  background: var(--v2-surface-workspace);
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--v2-border-panel);
+  border-radius: 10px;
+  background: #ffffff;
 }
 
 .v2-requirement__actions {

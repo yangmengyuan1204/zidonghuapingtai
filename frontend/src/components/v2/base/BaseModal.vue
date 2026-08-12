@@ -31,10 +31,10 @@
             v-if="hasTitle"
             type="button"
             class="v2-base-modal__close"
-            aria-label="Close modal"
+            aria-label="关闭弹窗"
             @click="requestUserClose('close-button')"
           >
-            Close
+            <span aria-hidden="true">×</span>
           </button>
         </header>
 
@@ -271,8 +271,8 @@ onBeforeUnmount(() => {
   .v2-base-modal__panel {
     position: relative;
     z-index: var(--v2-modal-z-index);
-    width: min(calc(var(--v2-space-7) * 9), 100%);
-    max-height: calc(100vh - var(--v2-space-6));
+    width: min(680px, calc(100vw - 40px));
+    max-height: calc(100vh - 48px);
     display: flex;
     flex-direction: column;
     color: var(--v2-text-primary);
@@ -292,8 +292,10 @@ onBeforeUnmount(() => {
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--v2-space-2);
-    padding: var(--v2-space-3) var(--v2-space-4);
+    min-height: 56px;
+    padding: 14px 20px;
     border-bottom: var(--v2-border-width) solid var(--v2-modal-border);
+    background: var(--v2-modal-surface);
   }
 
   .v2-base-modal__heading {
@@ -307,7 +309,9 @@ onBeforeUnmount(() => {
 
   .v2-base-modal__title {
     overflow-wrap: anywhere;
-    font-size: var(--v2-font-size-section);
+    font-size: 16px;
+    font-weight: var(--v2-font-weight-semibold);
+    color: var(--v2-color-text-heading);
     line-height: var(--v2-line-height-tight);
   }
 
@@ -319,21 +323,27 @@ onBeforeUnmount(() => {
   }
 
   .v2-base-modal__close {
-    min-height: var(--v2-control-height-compact);
+    width: var(--v2-control-height-compact);
+    height: var(--v2-control-height-compact);
+    display: grid;
     flex: 0 0 auto;
-    padding: 0 var(--v2-space-2);
-    color: var(--v2-text-secondary);
-    background: var(--v2-surface-default);
-    border: var(--v2-border-width) solid var(--v2-border-default);
+    place-items: center;
+    padding: 0;
+    color: var(--v2-text-muted);
+    background: transparent;
+    border: 0;
     border-radius: var(--v2-radius-sm);
-    font: inherit;
+    font-size: 18px;
+    line-height: 1;
     cursor: pointer;
+    transition:
+      color var(--v2-motion-duration) var(--v2-motion-easing),
+      background-color var(--v2-motion-duration) var(--v2-motion-easing);
   }
 
   .v2-base-modal__close:hover {
     color: var(--v2-text-primary);
     background: var(--v2-surface-hover);
-    border-color: var(--v2-border-strong);
   }
 
   .v2-base-modal__close:focus-visible {
@@ -343,7 +353,7 @@ onBeforeUnmount(() => {
 
   .v2-base-modal__body {
     min-height: 0;
-    padding: var(--v2-space-4);
+    padding: 18px 20px;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -354,8 +364,10 @@ onBeforeUnmount(() => {
     justify-content: flex-end;
     flex-wrap: wrap;
     gap: var(--v2-space-2);
-    padding: var(--v2-space-3) var(--v2-space-4);
+    min-height: 60px;
+    padding: 12px 20px;
     border-top: var(--v2-border-width) solid var(--v2-modal-border);
+    background: var(--v2-modal-surface);
   }
 
   @media (max-width: 480px) {

@@ -7,9 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/styles.css?v=20260629-frontend-redesign" />
-  <link rel="stylesheet" href="/static/design-tokens.css?v=20260728-phase1" />
-  <link rel="stylesheet" href="/static/design-system-base.css?v=20260728-phase1" />
+  <link rel="stylesheet" href="/static/styles.css?v=20260812-v3-grok-1" />
+  <link rel="stylesheet" href="/static/design-tokens.css?v=20260812-v3-grok-1" />
+  <link rel="stylesheet" href="/static/design-system-base.css?v=20260812-v3-grok-1" />
   <script src="/static/v2-theme-lock.js?v=20260728-phase1"></script>
   <style>
     body { padding: 32px 24px; max-width: 1180px; margin: 0 auto; position: relative; }
@@ -172,6 +172,97 @@
 
     .modal { border-radius: var(--radius); border: 1px solid var(--line); }
     :focus-visible { outline: 2px solid var(--accent-light); outline-offset: 2px; border-radius: 4px; }
+
+    /* v3-enterprise-admin-utilities */
+    /* Frontend V3 Enterprise AI Workbench: visual-only overrides. */
+    body {
+      max-width: none; min-height: 100vh; margin: 0; padding: 24px;
+      background: #f4f6f8; color: var(--text, #29343d);
+      font-family: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    body::before { background: none; }
+    .back-link, .page-head, .toolbar, #templateList {
+      width: min(100%, 1440px); margin-left: auto; margin-right: auto;
+    }
+    .back-link {
+      padding: 7px 10px; border-radius: 7px; color: #7987a1;
+    }
+    .back-link:hover { color: #5d87ff; background: #edf2ff; }
+    .page-head {
+      align-items: center; margin-top: 12px; margin-bottom: 10px; padding: 12px 16px;
+      background: #ffffff; border: 1px solid rgba(15, 23, 42, 0.06); border-radius: 8px;
+      box-shadow: none;
+    }
+    .page-head::after { left: 0; top: 12px; bottom: 12px; width: 3px; height: auto; background: #5d87ff; border-radius: 2px; }
+    .page-head h1, .template-card h3, .empty-state h3 {
+      font-family: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .page-head h1 { font-size: 18px; font-weight: 600; letter-spacing: 0; color: #323251; }
+    .toolbar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      min-height: 48px; margin-bottom: 10px; padding: 8px 12px;
+      background: #ffffff; border: 1px solid rgba(15, 23, 42, 0.06); border-radius: 8px;
+      box-shadow: none;
+    }
+    .toolbar .field.compact { min-width: 220px; }
+    .toolbar .field label { font-size: 12px; color: #4d5875; text-transform: none; letter-spacing: 0; }
+    .toolbar .field select,
+    .step-row select, .step-row input,
+    .field input, .field select, .field textarea {
+      min-height: 36px; border: 1px solid #dbdfe1; border-radius: 7px;
+      background: #ffffff; font-size: 13px;
+    }
+    .field textarea { min-height: 80px; height: auto; padding: 10px 12px; }
+    .btn {
+      min-height: 36px; height: 36px; padding: 0 14px; border-radius: 7px;
+      font-size: 13px; font-weight: 600; box-shadow: none;
+    }
+    .btn.secondary { border: 1px solid #dbdfe1; background: #ffffff; color: #4d5875; }
+    .btn.secondary:hover { background: #f2f4f5; border-color: #cfd6dc; }
+    .template-card {
+      padding: 12px 14px 10px; margin-bottom: 10px;
+      background: #ffffff; border: 1px solid rgba(15, 23, 42, 0.06); border-radius: 8px;
+      -webkit-backdrop-filter: none; backdrop-filter: none;
+      box-shadow: none; animation: none;
+    }
+    .template-card::before { background: #5d87ff; opacity: 1; width: 3px; }
+    .template-card:hover { transform: none; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06); border-color: rgba(15, 23, 42, 0.08); }
+    .template-card h3 { font-size: 15px; letter-spacing: 0; font-weight: 600; color: #323251; }
+    .template-card > div { line-height: 1.55; font-size: 13px; }
+    .template-card .steps-preview {
+      background: #f4f6f8; border: 1px solid rgba(15, 23, 42, 0.06); border-radius: 7px;
+      color: #4d5875;
+    }
+    .template-card .actions { gap: 8px; }
+    .keyword-tag {
+      background: #edf2ff; color: #5d87ff; border-color: #d6e2ff; border-radius: 6px;
+    }
+    .field-group {
+      border: 1px solid rgba(15, 23, 42, 0.06); border-left: 3px solid #5d87ff;
+      border-radius: 8px; background: #f4f6f8;
+    }
+    .field-group h4 {
+      text-transform: none; letter-spacing: 0; font-size: 13px; color: #323251;
+    }
+    .step-row { gap: 8px; }
+    .step-row .btn-remove { min-height: 36px; min-width: 36px; }
+    .empty-state {
+      min-height: 240px; padding: 56px 24px;
+      background: #ffffff; border: 1px solid rgba(15, 23, 42, 0.06); border-radius: 8px;
+    }
+    .empty-state .empty-mark { background: #edf2ff; opacity: 1; }
+    .modal {
+      border-radius: 10px; border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+    }
+    .modal-head { background: #f2f4f7; border-bottom: 1px solid rgba(15, 23, 42, 0.06); }
+    .modal-foot { border-top: 1px solid rgba(15, 23, 42, 0.06); }
+    .toast {
+      top: auto; bottom: 24px; left: auto; right: 24px;
+      transform: translateY(8px);
+      border-radius: 8px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    }
+    .toast:not([hidden]) { transform: translateY(0); }
   </style>
 </head>
 <body>

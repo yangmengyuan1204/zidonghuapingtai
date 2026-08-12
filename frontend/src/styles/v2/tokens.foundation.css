@@ -25,10 +25,29 @@
     --v2-color-blue-500: #5b8ff0;
     --v2-color-blue-600: #3e6678;
     --v2-color-blue-700: #2457ad;
+    --v2-color-cobalt-600: #245fa8;
+    --v2-color-brand-blue: #5d87ff;
+    --v2-color-brand-blue-hover: #4a7aff;
+    --v2-color-brand-blue-active: #5d87ff;
+    --v2-color-brand-blue-soft: #edf2ff;
+    --v2-color-brand-blue-focus: #5d87ff;
     --v2-color-navy-800: #223b5b;
     --v2-color-navy-950: #132238;
     --v2-color-canvas-cool: #f5f8fc;
+    --v2-color-canvas-neutral: #f4f6f8;
+    --v2-color-canvas-workspace: #f4f6f8;
     --v2-color-canvas-mist: #e8eef5;
+    --v2-color-sidebar-dark: #111827;
+    --v2-color-sidebar-surface: #1f2937;
+    --v2-color-sidebar-hover: rgba(255, 255, 255, 0.07);
+    --v2-color-sidebar-active: rgba(59, 130, 246, 0.16);
+    --v2-color-sidebar-text: #cbd5e1;
+    --v2-color-sidebar-text-strong: #ffffff;
+    --v2-color-sidebar-muted: #94a3b8;
+    --v2-color-sidebar-border: rgba(255, 255, 255, 0.08);
+    --v2-color-sidebar-field-border: rgba(255, 255, 255, 0.12);
+    --v2-color-sidebar-accent: #60a5fa;
+    --v2-color-card-border-subtle: rgba(15, 23, 42, 0.06);
     --v2-color-sidebar-slate: #c9d9e7;
     --v2-color-section-warm: #e4ebf2;
     --v2-color-section-cool: #dde7f0;
@@ -41,6 +60,26 @@
     --v2-color-ink-950: #172b3f;
     --v2-color-ink-700: #50677c;
     --v2-color-ink-500: #6c8092;
+    --v2-color-panel-border: #eaecf0;
+    --v2-color-field-border: #dbdfe1;
+    --v2-color-border-strong-neutral: #e2e8ee;
+    --v2-color-row-border: #f0f2f5;
+    --v2-color-surface-hover-neutral: #f8fafc;
+    --v2-color-surface-selected-neutral: #f5f9ff;
+    --v2-color-surface-soft-neutral: #f2f4f7;
+    --v2-color-text-heading: #323251;
+    --v2-color-text-body: #29343d;
+    --v2-color-text-secondary-neutral: #4d5875;
+    --v2-color-text-muted-neutral: #7987a1;
+    --v2-color-text-faint: #949eb7;
+    --v2-color-text-disabled-neutral: #b4bbc6;
+    --v2-color-success-bg: #ecfdf3;
+    --v2-color-success-text: #027a48;
+    --v2-color-warning-bg: #fff7ed;
+    --v2-color-warning-text: #c2410c;
+    --v2-color-danger-bg: #fef3f2;
+    --v2-color-danger-text: #b42318;
+    --v2-color-danger-base: #d92d20;
     --v2-color-overlay-transparent: rgba(23, 29, 26, 0);
     --v2-color-overlay-strong: rgba(23, 29, 26, 0.42);
 
@@ -81,17 +120,21 @@
     /* Radius */
     --v2-radius-xs: 4px;
     --v2-radius-sm: 6px;
-    --v2-radius-panel: 8px;
+    --v2-radius-panel: 10px;
+    --v2-radius-card-final: 10px;
+    --v2-radius-modal-final: 12px;
     --v2-radius-md: 10px;
+    --v2-radius-menu-item: 8px;
     --v2-radius-round: 999px;
 
-    /* Border and shadow */
+    /* Border and shadow — Art Design Pro soft levels */
     --v2-border-width: 1px;
-    --v2-shadow-dropdown: 0 12px 34px rgba(24, 36, 30, 0.14);
-    --v2-shadow-focus: 0 0 0 3px rgba(39, 112, 82, 0.18);
-    --v2-shadow-selected: 0 1px 2px rgba(25, 38, 32, 0.08);
-    --v2-shadow-panel: 0 1px 2px rgba(25, 48, 78, 0.025);
-    --v2-shadow-overlay: 0 20px 48px rgba(24, 36, 30, 0.2);
+    --v2-shadow-dropdown: 0 4px 16px rgba(16, 24, 40, 0.08);
+    --v2-shadow-focus: 0 0 0 3px rgba(93, 135, 255, 0.14);
+    --v2-shadow-selected: 0 1px 2px rgba(16, 24, 40, 0.04);
+    --v2-shadow-panel: 0 1px 2px rgba(16, 24, 40, 0.03);
+    --v2-shadow-card-enterprise: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
+    --v2-shadow-overlay: 0 12px 32px rgba(16, 24, 40, 0.12);
 
     /* Motion */
     --v2-motion-duration: 120ms;
@@ -107,18 +150,23 @@
     --v2-icon-size-sm: 16px;
     --v2-icon-size-md: 24px;
     --v2-control-height-compact: 32px;
-    --v2-control-height-default: 40px;
-    --v2-size-table-header: 38px;
-    --v2-size-table-row: 46px;
-    --v2-size-pagination: 64px;
+    --v2-control-height-default: 36px;
+    --v2-size-table-header: 40px;
+    --v2-size-table-row: 44px;
+    --v2-size-table-cell-padding-y: 10px;
+    --v2-size-pagination: 56px;
     --v2-size-dropdown-width: 132px;
     --v2-size-dropdown-offset: 40px;
 
     /* Layout */
     --v2-layout-viewport-min: 1080px;
     --v2-layout-sidebar-compact: 204px;
-    --v2-layout-sidebar: 220px;
-    --v2-layout-topbar: 56px;
+    --v2-layout-sidebar: 240px;
+    --v2-layout-sidebar-final: 240px;
+    --v2-layout-topbar: 60px;
+    --v2-layout-topbar-final: 60px;
+    --v2-layout-menu-item-height: 42px;
+    --v2-layout-content-max-final: 1680px;
     --v2-layout-workspace-max: none;
     --v2-layout-description-max: 680px;
 

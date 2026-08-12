@@ -1,56 +1,57 @@
 .frontend-v2,
   .frontend-v2-portal {
     /* Text */
-    --v2-text-primary: var(--v2-color-ink-950);
-    --v2-text-secondary: var(--v2-color-ink-700);
-    --v2-text-muted: var(--v2-color-ink-500);
+    --v2-text-primary: var(--v2-color-text-heading);
+    --v2-text-secondary: var(--v2-color-text-secondary-neutral);
+    --v2-text-muted: var(--v2-color-text-muted-neutral);
     --v2-text-inverse: var(--v2-color-white);
-    --v2-text-disabled: var(--v2-color-neutral-400);
-    --v2-text-danger: var(--v2-color-red-600);
-    --v2-text-success: var(--v2-color-forest-600);
+    --v2-text-disabled: var(--v2-color-text-disabled-neutral);
+    --v2-text-danger: var(--v2-color-danger-base);
+    --v2-text-success: var(--v2-color-success-text);
 
     /* Surface */
-    --v2-surface-canvas: var(--v2-color-neutral-75);
-    --v2-surface-workspace: var(--v2-color-canvas-cool);
-    --v2-surface-sidebar: var(--v2-color-navy-950);
-    --v2-surface-workspace-a3: var(--v2-color-canvas-mist);
-    --v2-surface-sidebar-a3: var(--v2-color-sidebar-slate);
-    --v2-surface-section: var(--v2-color-section-cool);
-    --v2-surface-context: var(--v2-color-context-blue);
-    --v2-surface-utility: var(--v2-color-utility-cool);
+    --v2-surface-canvas: var(--v2-color-canvas-workspace);
+    --v2-surface-workspace: var(--v2-color-canvas-workspace);
+    --v2-surface-sidebar: var(--v2-color-sidebar-dark);
+    --v2-surface-workspace-a3: var(--v2-color-canvas-workspace);
+    --v2-surface-sidebar-a3: var(--v2-color-sidebar-dark);
+    --v2-surface-section: var(--v2-color-neutral-0);
+    --v2-surface-context: var(--v2-color-surface-hover-neutral);
+    --v2-surface-utility: var(--v2-color-surface-hover-neutral);
     --v2-surface-default: var(--v2-color-neutral-0);
-    --v2-surface-soft: var(--v2-color-neutral-100);
-    --v2-surface-hover: var(--v2-color-neutral-150);
-    --v2-surface-pressed: var(--v2-color-neutral-200);
+    --v2-surface-soft: var(--v2-color-surface-soft-neutral);
+    --v2-surface-hover: var(--v2-color-surface-hover-neutral);
+    --v2-surface-pressed: var(--v2-color-surface-soft-neutral);
     --v2-surface-disabled: var(--v2-color-neutral-50);
-    --v2-surface-selected: var(--v2-color-forest-50);
+    --v2-surface-selected: var(--v2-color-brand-blue-soft);
     --v2-surface-inverse: var(--v2-color-neutral-950);
     --v2-surface-overlay: var(--v2-color-overlay-strong);
 
     /* Border */
-    --v2-border-default: var(--v2-color-neutral-250);
-    --v2-border-panel: var(--v2-color-border-slate);
-    --v2-border-layer: var(--v2-color-border-slate);
-    --v2-border-section: var(--v2-color-border-slate);
-    --v2-border-strong: var(--v2-color-neutral-300);
-    --v2-border-focus: var(--v2-color-blue-700);
-    --v2-border-danger: var(--v2-color-red-600);
+    --v2-border-default: var(--v2-color-panel-border);
+    --v2-border-panel: var(--v2-color-panel-border);
+    --v2-border-layer: var(--v2-color-panel-border);
+    --v2-border-section: var(--v2-color-panel-border);
+    --v2-border-strong: var(--v2-color-border-strong-neutral);
+    --v2-border-focus: var(--v2-color-brand-blue);
+    --v2-border-danger: var(--v2-color-danger-base);
 
     /* Action */
-    --v2-action-primary: var(--v2-color-blue-700);
-    --v2-action-primary-hover: color-mix(in srgb, var(--v2-color-blue-700) 88%, var(--v2-color-navy-950));
-    --v2-action-primary-pressed: color-mix(in srgb, var(--v2-color-blue-700) 78%, var(--v2-color-navy-950));
-    --v2-action-primary-soft: color-mix(in srgb, var(--v2-color-blue-500) 12%, var(--v2-color-white));
+    --v2-action-primary: var(--v2-color-brand-blue);
+    --v2-action-primary-a3: var(--v2-color-brand-blue);
+    --v2-action-primary-hover: var(--v2-color-brand-blue-hover);
+    --v2-action-primary-pressed: var(--v2-color-brand-blue-hover);
+    --v2-action-primary-soft: var(--v2-color-brand-blue-soft);
 
     /* Feedback */
-    --v2-feedback-success: var(--v2-color-forest-600);
-    --v2-feedback-success-soft: var(--v2-color-forest-50);
-    --v2-feedback-warning: var(--v2-color-amber-600);
-    --v2-feedback-warning-soft: var(--v2-color-amber-50);
-    --v2-feedback-danger: var(--v2-color-red-600);
-    --v2-feedback-danger-soft: var(--v2-color-red-50);
-    --v2-feedback-info: var(--v2-color-blue-600);
-    --v2-feedback-info-soft: var(--v2-color-blue-50);
+    --v2-feedback-success: var(--v2-color-success-text);
+    --v2-feedback-success-soft: var(--v2-color-success-bg);
+    --v2-feedback-warning: var(--v2-color-warning-text);
+    --v2-feedback-warning-soft: var(--v2-color-warning-bg);
+    --v2-feedback-danger: var(--v2-color-danger-base);
+    --v2-feedback-danger-soft: var(--v2-color-danger-bg);
+    --v2-feedback-info: var(--v2-color-brand-blue);
+    --v2-feedback-info-soft: var(--v2-color-brand-blue-soft);
 
     /* State */
     --v2-state-focus-ring: var(--v2-shadow-focus);

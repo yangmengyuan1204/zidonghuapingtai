@@ -5,8 +5,19 @@
     eyebrow="TEST ASSETS"
     title="接口用例库"
     description="按项目与环境管理接口测试资产，支持选择、批量执行和单条调试。"
-  />
+  >
+    <template #actions>
+      <BaseButton
+        v-if="auth.isAdmin"
+        type="button"
+        variant="primary"
+        @click="openForm(null)"
+      >新增接口用例</BaseButton>
+    </template>
+  </WorkbenchPageHeader>
   <WorkbenchPanel title="接口用例" subtitle="筛选条件与选择状态在执行前保持不变">
+  <div class="v2-api-cases-content">
+  <section class="v2-api-cases-section v2-api-cases-section--toolbar" aria-label="筛选与批量操作">
   <div class="v2-api-cases-toolbar">
     <div class="v2-api-cases-filters">
       <div class="v2-api-cases-filter">
@@ -39,15 +50,11 @@
         :disabled="selectedIds.size === 0"
         @click="openBatchRun"
       >批量执行 {{ selectedIds.size || '' }}</BaseButton>
-      <BaseButton
-        v-if="auth.isAdmin"
-        type="button"
-        variant="primary"
-        @click="openForm(null)"
-      >新增接口用例</BaseButton>
     </div>
   </div>
+  </section>
 
+  <section class="v2-api-cases-section v2-api-cases-section--table" aria-label="用例列表">
   <BaseTable
     :columns="columns"
     :rows="rows"
@@ -76,7 +83,7 @@
       <BaseBadge :tone="apiCaseStatusTone(row.status)" size="compact">{{ apiCaseStatusText(row.status) }}</BaseBadge>
     </template>
     <template #actions="{ row }">
-      <div class="v2-api-cases-actions">
+      <div class="v2-api-cases-row-actions">
         <BaseButton type="button" variant="primary" size="compact" @click="onRun(row)">执行</BaseButton>
         <template v-if="auth.isAdmin">
           <BaseButton type="button" variant="secondary" size="compact" @click="onCopy(row)">复制</BaseButton>
@@ -86,8 +93,10 @@
       </div>
     </template>
   </BaseTable>
+  </section>
 
   <!-- 分页：对齐旧应用 renderApiCases 分页结构 -->
+  <footer class="v2-api-cases-section v2-api-cases-section--footer">
   <div class="v2-api-cases-pagination">
     <span class="v2-api-cases-page-info">共 {{ total }} 条，第 {{ page }}/{{ totalPages }} 页</span>
     <BasePagination
@@ -98,6 +107,8 @@
       aria-label="接口用例分页"
       @change="goPage"
     />
+  </div>
+  </footer>
   </div>
   </WorkbenchPanel>
 
@@ -503,42 +514,439 @@ onMounted(async () => {
 <style scoped>
 .v2-api-cases {
   display: grid;
-  gap: var(--v2-space-3);
-  max-width: var(--v2-layout-workspace-max);
-  margin: 0 auto;
+  gap: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
-.v2-api-cases-toolbar,
+.v2-api-cases :deep(.v2-workbench-page-header) {
+  min-height: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.v2-api-cases :deep(.v2-workbench-page-header::before) {
+  background: transparent;
+}
+
+.v2-api-cases :deep(.v2-workbench-page-header__eyebrow) {
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.v2-api-cases :deep(.v2-workbench-page-header__title) {
+  color: var(--v2-shell-pilot-text-heading);
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.v2-api-cases :deep(.v2-workbench-page-header__description) {
+  margin-top: 3px;
+  color: var(--v2-shell-pilot-text-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.v2-api-cases :deep(.v2-workbench-page-header__actions) {
+  gap: 8px;
+}
+
+.v2-api-cases :deep(.v2-workbench-page-header__actions .v2-base-button--primary) {
+  --v2-button-height: 36px;
+  --v2-button-radius: 7px;
+  --v2-button-padding: 14px;
+  --v2-button-font-size: 13px;
+  --v2-button-font-weight: 500;
+  --v2-button-bg: var(--v2-shell-pilot-primary);
+  --v2-button-bg-hover: var(--v2-shell-pilot-primary-hover);
+  --v2-button-bg-pressed: var(--v2-shell-pilot-primary-hover);
+}
+
+.v2-api-cases :deep(.v2-workbench-panel) {
+  gap: 10px;
+}
+
+.v2-api-cases :deep(.v2-workbench-panel__header) {
+  min-height: 0;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+}
+
+.v2-api-cases :deep(.v2-workbench-panel__title) {
+  color: var(--v2-shell-pilot-text-body);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.v2-api-cases :deep(.v2-workbench-panel__subtitle) {
+  color: var(--v2-shell-pilot-text-faint);
+  font-size: 12px;
+}
+
+.v2-api-cases :deep(.v2-workbench-panel__body) {
+  display: flex;
+  min-height: calc(100vh - 180px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.v2-api-cases-content {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.v2-api-cases-section--toolbar {
+  flex: 0 0 auto;
+}
+
+.v2-api-cases-section--table {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.v2-api-cases-section--footer {
+  flex: 0 0 auto;
+}
+
+.v2-api-cases-toolbar {
+  min-height: 64px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--v2-shell-pilot-card-border);
+  background: #ffffff;
+}
+
 .v2-api-cases-filters,
 .v2-api-cases-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--v2-space-2);
+  gap: 12px;
 }
 
-.v2-api-cases-toolbar {
-  justify-content: space-between;
-  padding: var(--v2-space-3);
-  border-bottom: var(--v2-border-width) solid var(--v2-border-panel);
+.v2-api-cases-actions {
+  align-items: center;
 }
 
 .v2-api-cases-filter {
-  min-width: 200px;
+  min-width: 160px;
+  max-width: 220px;
+}
+
+.v2-api-cases-filter :deep(.v2-base-select__label) {
+  margin-bottom: 5px;
+  color: var(--v2-shell-pilot-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.v2-api-cases-filter :deep(.v2-base-select) {
+  --v2-select-height: 36px;
+  --v2-select-radius: 7px;
+  --v2-select-border: var(--v2-shell-pilot-field-border);
+  --v2-select-border-hover: var(--v2-shell-pilot-field-border);
+  --v2-select-border-focus: var(--v2-shell-pilot-field-focus);
+  --v2-select-font-size: 13px;
+  --v2-select-focus-ring: 0 0 0 3px rgba(93, 135, 255, 0.12);
+}
+
+.v2-api-cases-toolbar :deep(.v2-base-button--secondary) {
+  --v2-button-height: 36px;
+  --v2-button-radius: 7px;
+  --v2-button-padding: 13px;
+  --v2-button-font-size: 13px;
+  --v2-button-font-weight: 500;
+  --v2-button-secondary-bg: #ffffff;
+  --v2-button-secondary-border: var(--v2-shell-pilot-field-border);
+  --v2-button-secondary-text: var(--v2-shell-pilot-text-body);
+  --v2-button-secondary-bg-hover: #ffffff;
+  --v2-button-secondary-bg-pressed: #ffffff;
+}
+
+.v2-api-cases-toolbar :deep(.v2-base-button--secondary:disabled) {
+  background: transparent;
+  border-color: var(--v2-shell-pilot-card-border);
+  color: var(--v2-color-text-disabled-neutral);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.v2-api-cases :deep(.v2-base-table) {
+  flex: 1 1 auto;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+}
+
+.v2-api-cases :deep(.v2-base-table__table) {
+  min-width: 900px;
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-api-cases :deep(.v2-base-table__header),
+.v2-api-cases :deep(.v2-base-table__cell) {
+  padding-right: 12px;
+  padding-left: 12px;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2-api-cases :deep(.v2-base-table__header) {
+  height: 40px;
+  background: var(--v2-color-surface-hover-neutral);
+  color: var(--v2-shell-pilot-text-muted);
+  border-bottom: 1px solid var(--v2-shell-pilot-card-border);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.v2-api-cases :deep(.v2-base-table__cell) {
+  height: 44px;
+  background: #ffffff;
+  color: var(--v2-shell-pilot-text-body);
+  border-bottom: 1px solid var(--v2-color-row-border);
+  font-size: 13px;
+}
+
+.v2-api-cases :deep(.v2-base-table__row:hover .v2-base-table__cell) {
+  background: var(--v2-color-surface-hover-neutral);
+}
+
+.v2-api-cases :deep(.v2-base-table__header:nth-child(1)),
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(1)) {
+  width: 44px;
+  padding-right: 8px;
+  padding-left: 14px;
+}
+
+.v2-api-cases :deep(.v2-base-table__header:nth-child(2)),
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(2)) {
+  width: 86px;
+  color: var(--v2-shell-pilot-text-muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-api-cases :deep(.v2-base-table__header:nth-child(3)),
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(3)) {
+  width: 116px;
+}
+
+.v2-api-cases :deep(.v2-base-table__header:nth-child(4)),
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(4)) {
+  width: 136px;
+}
+
+.v2-api-cases :deep(.v2-base-table__header:nth-child(5)),
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(5)) {
+  width: 180px;
+  color: var(--v2-shell-pilot-text-heading);
+  font-weight: 500;
+}
+
+.v2-api-cases :deep(.v2-base-table__header:nth-child(6)),
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(6)) {
+  width: 84px;
+}
+
+.v2-api-cases :deep(.v2-base-table__header:nth-child(7)),
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(7)) {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  color: var(--v2-shell-pilot-text-secondary);
+}
+
+.v2-api-cases :deep(.v2-base-table__header:nth-child(8)),
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(8)) {
+  width: 92px;
+}
+
+.v2-api-cases :deep(.v2-base-table__header:nth-child(9)),
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(9)) {
+  width: 226px;
+  padding-right: 12px;
+  padding-left: 4px;
+}
+
+.v2-api-cases :deep(.v2-base-checkbox) {
+  --v2-checkbox-size: 14px;
+  --v2-checkbox-selected-surface: var(--v2-shell-pilot-primary);
+  --v2-checkbox-focus-ring: 0 0 0 3px rgba(93, 135, 255, 0.16);
+}
+
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(6)) .v2-base-badge {
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 5px;
+  background: var(--v2-color-surface-soft-neutral);
+  color: var(--v2-shell-pilot-text-secondary);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(8)) .v2-base-badge--success {
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--v2-color-success-bg);
+  color: var(--v2-color-success-text);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.v2-api-cases :deep(.v2-base-table__cell:nth-child(8)) .v2-base-badge--warning {
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--v2-color-warning-bg);
+  color: var(--v2-color-warning-text);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.v2-api-cases-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.v2-api-cases-row-actions :deep(.v2-base-button--compact) {
+  --v2-button-height: 30px;
+  --v2-button-font-size: 12px;
+  --v2-button-font-weight: 500;
+}
+
+.v2-api-cases-row-actions :deep(.v2-base-button--primary) {
+  --v2-button-radius: 6px;
+  --v2-button-padding: 10px;
+  --v2-button-bg: var(--v2-shell-pilot-primary);
+  --v2-button-bg-hover: var(--v2-shell-pilot-primary-hover);
+  --v2-button-bg-pressed: var(--v2-shell-pilot-primary-hover);
+}
+
+.v2-api-cases-row-actions :deep(.v2-base-button--secondary) {
+  --v2-button-radius: 6px;
+  --v2-button-padding: 8px;
+  --v2-button-secondary-bg: transparent;
+  --v2-button-secondary-border: transparent;
+  --v2-button-secondary-text: var(--v2-shell-pilot-text-secondary);
+  --v2-button-secondary-bg-hover: var(--v2-color-surface-soft-neutral);
+  --v2-button-secondary-bg-pressed: var(--v2-color-surface-soft-neutral);
+}
+
+.v2-api-cases-row-actions :deep(.v2-base-button--danger) {
+  --v2-button-radius: 6px;
+  --v2-button-padding: 8px;
+  --v2-button-danger-bg: transparent;
+  --v2-button-danger-border: transparent;
+  --v2-button-danger-text: var(--v2-color-danger-base);
+  --v2-button-danger-bg-hover: var(--v2-color-danger-bg);
+  --v2-button-danger-bg-pressed: var(--v2-color-danger-bg);
+}
+
+.v2-api-cases-row-actions :deep(.v2-base-button--danger:hover:not(:disabled)) {
+  color: var(--v2-color-danger-text);
 }
 
 .v2-api-cases-pagination {
+  min-height: 56px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--v2-space-2);
-  padding: var(--v2-space-2) 0;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: var(--v2-border-width) solid var(--v2-shell-pilot-card-border);
+  background: #ffffff;
 }
 
 .v2-api-cases-page-info {
-  color: var(--v2-table-text-muted);
-  font-size: var(--v2-font-size-caption);
+  margin-right: auto;
+  color: var(--v2-shell-pilot-text-faint);
+  font-size: 12px;
   white-space: nowrap;
+}
+
+.v2-api-cases :deep(.v2-base-pagination) {
+  --v2-pagination-control-size: 30px;
+  --v2-pagination-radius: 6px;
+  --v2-pagination-font-size: 12px;
+  --v2-pagination-gap: 4px;
+  --v2-pagination-surface-active: var(--v2-color-brand-blue-soft);
+  --v2-pagination-text-active: var(--v2-color-brand-blue-active);
+  --v2-pagination-surface-hover: var(--v2-color-surface-hover-neutral);
+  --v2-pagination-text-hover: var(--v2-color-brand-blue-active);
+  --v2-pagination-border-hover: var(--v2-color-brand-blue-focus);
+  --v2-pagination-font-weight: 500;
+}
+
+.v2-api-cases :deep(.v2-base-table__state-cell) {
+  padding: 56px 20px;
+  color: var(--v2-shell-pilot-text-faint);
+  border-bottom: 0;
+}
+
+.v2-api-cases :deep(.v2-base-empty-state) {
+  min-height: 180px;
+  justify-content: center;
+}
+
+.v2-api-cases :deep(.v2-base-empty-state__icon) {
+  width: 56px;
+  height: 56px;
+  color: #94a3b8;
+  background: #f1f5f9;
+}
+
+@media (max-width: 720px) {
+  .v2-api-cases-toolbar,
+  .v2-api-cases-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .v2-api-cases-actions {
+    justify-content: flex-end;
+  }
+
+  .v2-api-cases-page-info {
+    margin-right: 0;
+  }
 }
 </style>
