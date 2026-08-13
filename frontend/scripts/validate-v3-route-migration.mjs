@@ -5,16 +5,12 @@ const root = path.resolve(import.meta.dirname, '..')
 const router = fs.readFileSync(path.join(root, 'src/router/index.js'), 'utf8')
 const shell = fs.readFileSync(path.join(root, 'src/components/AppShell.vue'), 'utf8')
 const migration = JSON.parse(fs.readFileSync(path.resolve(root, '../static/migration-config.json'), 'utf8'))
-for (const key of ['requirementVerification', 'systemRegression']) {
+for (const key of ['dataScripts', 'requirementVerification', 'systemRegression']) {
   const block = router.match(new RegExp(`path: '\\/${key}'[\\s\\S]*?meta:`))?.[0] || ''
   if (!block.includes('LegacyEmbedView')) throw new Error(`${key} no longer preserves its original feature page`)
   if (migration.migrated.includes(key)) throw new Error(`migration config incorrectly marks ${key} as native`)
   if (!shell.includes(key)) throw new Error(`AppShell missing ${key}`)
 }
-const dataScriptsRoute = router.match(/path: '\/dataScripts'[\s\S]*?meta:/)?.[0] || ''
-if (!dataScriptsRoute.includes("../views/DataScriptsView.vue")) throw new Error('dataScripts must use the native V3 view')
-if (dataScriptsRoute.includes('LegacyEmbedView')) throw new Error('dataScripts must not fall back to the legacy embed')
-if (!migration.migrated.includes('dataScripts')) throw new Error('migration config must mark dataScripts as native')
 if (!/path:\s*'\/:pathMatch\(\.\*\)\*'[\s\S]*?redirect:\s*'\/dashboard'/.test(router)) {
   throw new Error('router missing authenticated catch-all recovery')
 }
