@@ -189,6 +189,78 @@ def test_api_reexecute_rejects_environment_from_other_project(monkeypatch):
     assert exc_info.value.status_code == 400
 
 
+def test_api_reexecute_allows_env_and_variable_overrides_without_dropping_sensitive_values(monkeypatch):
+    captured = {}
+    with SessionLocal() as db:
+        project = _project(db, "api-override-project")
+        original_env = Env(
+            project_id=project.id,
+            env_name="original-env",
+            base_url="https://original.example.invalid",
+            global_headers="{}",
+            global_vars="{}",
+            timeout=5,
+        )
+        override_env = Env(
+            project_id=project.id,
+            env_name="override-env",
+            base_url="https://override.example.invalid",
+            global_headers="{}",
+            global_vars="{}",
+            timeout=5,
+        )
+        db.add_all([original_env, override_env])
+        db.flush()
+        case = ApiCase(
+            project_id=project.id,
+            env_id=original_env.id,
+            case_name="case",
+            method="GET",
+            url="/health",
+            headers="{}",
+            params="{}",
+            body="",
+            assert_rule="{}",
+            status="active",
+            create_time=datetime.now(),
+        )
+        db.add(case)
+        db.commit()
+        override_env_id = override_env.id
+        record = RecordModel(
+            id=7,
+            case_type="api",
+            case_id=case.id,
+            project_id=project.id,
+            log=_record_log(
+                kind="api_case",
+                script_key="api_case",
+                target_id=case.id,
+                project_id=project.id,
+                env_id=original_env.id,
+                variables={"keyword": "old", "obsolete": "remove-me", "password": "secret"},
+            ),
+        )
+
+        def fake_execute(case_arg, env_arg, variables):
+            captured["env_id"] = env_arg.id
+            captured["variables"] = variables
+            return True, json.dumps({"status": "done"}), "report.json", {}
+
+        monkeypatch.setattr(reexecution, "execute_api_case", fake_execute)
+        result = reexecution.reexecute_record(
+            db,
+            record,
+            True,
+            env_id=override_env_id,
+            variables={"keyword": "new", "page": 2},
+        )
+
+    assert result["result"] == "passed"
+    assert captured["env_id"] == override_env_id
+    assert captured["variables"] == {"keyword": "new", "password": "secret", "page": 2}
+
+
 def test_ui_reexecute_restores_account_context(monkeypatch):
     captured = {}
     with SessionLocal() as db:

@@ -293,6 +293,22 @@ def test_api_case_library_vue_frontend_uses_pagination_and_chinese_disabled_stat
     assert "qs.set('page_size', params.pageSize)" in api_module
 
 
+def test_vue_execution_actions_open_prefilled_dialogs_before_executing():
+    api_cases_view = Path("frontend/src/views/ApiCasesView.vue").read_text(encoding="utf-8")
+    records_view = Path("frontend/src/views/RecordsView.vue").read_text(encoding="utf-8")
+    records_api = Path("frontend/src/api/modules/records.js").read_text(encoding="utf-8")
+
+    assert ':visible="runVisible"' in api_cases_view
+    assert "runValues.value =" in api_cases_view
+    assert "async function submitRun(data)" in api_cases_view
+    assert "apiCasesApi.executeApiCase(runningItem.value.id, payload)" in api_cases_view
+    assert ':visible="rerunVisible"' in records_view
+    assert "rerunValues.value =" in records_view
+    assert "JSON.stringify(context.variables || {}, null, 2)" in records_view
+    assert "recordsApi.confirmReexecute(rerunningItem.value.id, payload)" in records_view
+    assert "export function confirmReexecute(id, overrides = {})" in records_api
+
+
 def test_vue_protected_routes_render_inside_app_shell():
     app_vue = Path("frontend/src/App.vue").read_text(encoding="utf-8")
 

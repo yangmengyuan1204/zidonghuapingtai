@@ -122,7 +122,14 @@ def build_reexecute_context(db: Session, record: TestRecord) -> Dict[str, Any]:
     return context
 
 
-def reexecute_record(db: Session, record: TestRecord, confirmed: bool) -> Dict[str, Any]:
+def reexecute_record(
+    db: Session,
+    record: TestRecord,
+    confirmed: bool,
+    *,
+    env_id: int | None = None,
+    variables: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
     if not confirmed:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="必须确认后才能再次执行")
     metadata = _execution_metadata(record)
@@ -134,10 +141,17 @@ def reexecute_record(db: Session, record: TestRecord, confirmed: bool) -> Dict[s
 
     target_id = int(metadata.get("target_id") or record.case_id or 0)
     runtime_variables = _metadata_variables(metadata)
+    if variables is not None:
+        runtime_variables = {
+            key: value
+            for key, value in runtime_variables.items()
+            if is_sensitive_account_key(key)
+        }
+        runtime_variables.update(variables)
     if kind == "api_case":
         case = get_or_404(db, ApiCase, target_id)
-        env_id = int(metadata.get("env_id") or case.env_id or 0)
-        env = get_or_404(db, Env, env_id)
+        effective_env_id = int(env_id or metadata.get("env_id") or case.env_id or 0)
+        env = get_or_404(db, Env, effective_env_id)
         ensure_env_belongs_to_project(env, case.project_id)
         passed, log_text, report_path, extracted_vars = execute_api_case(case, env, runtime_variables)
         new_record = save_record(

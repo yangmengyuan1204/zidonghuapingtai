@@ -122,6 +122,17 @@
     @submit="submitForm"
   />
 
+  <!-- 单条执行参数弹窗 -->
+  <AppFormDialog
+    :visible="runVisible"
+    title="执行接口用例"
+    :fields="runFields"
+    :values="runValues"
+    submit-label="执行"
+    @close="closeRun"
+    @submit="submitRun"
+  />
+
   <!-- 批量执行弹窗 -->
   <AppFormDialog
     :visible="batchVisible"
@@ -144,7 +155,7 @@
  * - 筛选：项目筛选 + 环境筛选（环境跟随项目联动）
  * - 分页：上一页/下一页 + 页码按钮 + 首尾省略号
  * - CRUD：新增/编辑/复制/删除（admin）
- * - 单条执行：runApiCase → POST /execute → 跳转 /records
+ * - 单条执行：打开参数弹窗 → POST /execute → 跳转 /records
  * - 批量执行：openBatchApiRun → 选择用例 → variables → 跳转 /records
  * - 选择：checkbox + state.selectedApiIds
  * - 权限：admin 可见增删改按钮，normal 不可见
@@ -421,14 +432,46 @@ async function onDelete(item) {
 }
 
 // ========== 单条执行 ==========
-async function onRun(item) {
+const runVisible = ref(false)
+const runningItem = ref(null)
+const runValues = ref({})
+const runFields = computed(() => [
+  {
+    name: 'env_id',
+    label: '执行环境',
+    type: 'select',
+    options: allEnvs.value
+      .filter((env) => String(env.project_id) === String(runningItem.value?.project_id))
+      .map((env) => ({ value: env.id, label: env.env_name })),
+    required: true,
+  },
+  { name: 'variables', label: '运行时变量 JSON', type: 'textarea', rows: 8, default: '{}' },
+])
+
+function onRun(item) {
+  runningItem.value = item
+  runValues.value = {
+    env_id: filterEnvId.value || item.env_id || '',
+    variables: '{}',
+  }
+  runVisible.value = true
+}
+
+function closeRun() {
+  runVisible.value = false
+  runningItem.value = null
+}
+
+async function submitRun(data) {
   try {
     toast.show('正在执行，请稍候')
-    const body = {}
-    if (filterEnvId.value) body.env_id = Number(filterEnvId.value)
-    const record = await apiCasesApi.executeApiCase(item.id, body)
+    const payload = {
+      env_id: Number(data.env_id),
+      variables: parseJsonObject(data.variables),
+    }
+    const record = await apiCasesApi.executeApiCase(runningItem.value.id, payload)
     toast.show(`执行完成：${record.result === 'passed' ? '成功' : '失败'}`)
-    // 对齐旧应用 state.view = 'records'; await renderShell();
+    closeRun()
     router.push('/records')
   } catch (error) {
     toast.show(error.message)
@@ -485,6 +528,16 @@ function parseJsonText(text, fallback) {
     return JSON.parse(text)
   } catch {
     return fallback
+  }
+}
+
+function parseJsonObject(text) {
+  try {
+    const value = JSON.parse(text || '{}')
+    if (!value || Array.isArray(value) || typeof value !== 'object') throw new Error()
+    return value
+  } catch {
+    throw new Error('运行时变量必须是有效的 JSON 对象')
   }
 }
 

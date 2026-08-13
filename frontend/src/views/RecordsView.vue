@@ -69,6 +69,16 @@
   <BaseModal :open="logVisible" :title="logTitle" @update:open="!$event && closeLog()">
     <div class="v2-records__log" v-html="logBodyHtml"></div>
   </BaseModal>
+
+  <AppFormDialog
+    :visible="rerunVisible"
+    title="再次执行"
+    :fields="rerunFields"
+    :values="rerunValues"
+    submit-label="执行"
+    @close="closeRerun"
+    @submit="submitRerun"
+  />
   </div>
 </template>
 
@@ -90,11 +100,13 @@ import { useAuthStore } from '../stores/auth.js'
 import { useAppStore } from '../stores/app.js'
 import { useToastStore } from '../stores/toast.js'
 import AppTable from '../components/AppTable.vue'
+import AppFormDialog from '../components/AppFormDialog.vue'
 import { BaseModal } from '../components/v2/base/index.js'
 import { WorkbenchPageHeader, WorkbenchPanel } from '../components/v2/workbench/index.js'
 import { badgeText, badgeClass } from '../utils/badge.js'
 import { buildLogContent } from '../utils/recordLog.js'
 import * as recordsApi from '../api/modules/records.js'
+import { listEnvs } from '../api/modules/envs.js'
 
 const auth = useAuthStore()
 const appStore = useAppStore()
@@ -236,7 +248,35 @@ async function openProtectedFile(path) {
   }
 }
 
-// ========== 再次执行（对齐旧应用 TestRecordRerun.open，仅 api/ui 类型） ==========
+// ========== 再次执行（回填上次上下文并允许修改） ==========
+const rerunVisible = ref(false)
+const rerunningItem = ref(null)
+const rerunContext = ref(null)
+const rerunValues = ref({})
+const rerunEnvs = ref([])
+const rerunFields = computed(() => {
+  const fields = []
+  if (rerunContext.value?.kind === 'api_case') {
+    fields.push({
+      name: 'env_id',
+      label: '执行环境',
+      type: 'select',
+      options: rerunEnvs.value.map((env) => ({ value: env.id, label: env.env_name })),
+      required: true,
+    })
+  }
+  fields.push({
+    name: 'variables',
+    label: '运行时变量 JSON',
+    type: 'textarea',
+    rows: 8,
+    help: rerunContext.value?.sensitive_keys?.length
+      ? `敏感参数 ${rerunContext.value.sensitive_keys.join('、')} 已安全保留；如需替换，请在 JSON 中填写同名字段。`
+      : '',
+  })
+  return fields
+})
+
 async function onRerun(item) {
   try {
     const context = await recordsApi.getReexecuteContext(item.id)
@@ -249,16 +289,47 @@ async function onRerun(item) {
       toast.show('请在旧系统数据工厂中再次执行')
       return
     }
-    const sensitiveHint = context.sensitive_keys?.length
-      ? `\n敏感参数：${context.sensitive_keys.join('、')}（已加密保存）`
-      : ''
-    if (!confirm(`确认再次执行记录 #${item.id}？${sensitiveHint}`)) return
+    rerunningItem.value = item
+    rerunContext.value = context
+    rerunEnvs.value = context.kind === 'api_case' ? await listEnvs(context.project_id) : []
+    rerunValues.value = {
+      env_id: context.env_id || '',
+      variables: JSON.stringify(context.variables || {}, null, 2),
+    }
+    rerunVisible.value = true
+  } catch (error) {
+    toast.show(error.message || '加载再次执行参数失败')
+  }
+}
+
+function closeRerun() {
+  rerunVisible.value = false
+  rerunningItem.value = null
+  rerunContext.value = null
+  rerunEnvs.value = []
+}
+
+async function submitRerun(data) {
+  try {
+    const payload = { variables: parseJsonObject(data.variables) }
+    if (rerunContext.value?.kind === 'api_case') payload.env_id = Number(data.env_id)
     toast.show('正在执行，请稍候')
-    const result = await recordsApi.confirmReexecute(item.id)
+    const result = await recordsApi.confirmReexecute(rerunningItem.value.id, payload)
     toast.show(`执行完成：${result.result === 'passed' ? '成功' : '失败'}`)
+    closeRerun()
     await loadRecords()
   } catch (error) {
     toast.show(error.message || '再次执行失败')
+  }
+}
+
+function parseJsonObject(text) {
+  try {
+    const value = JSON.parse(text || '{}')
+    if (!value || Array.isArray(value) || typeof value !== 'object') throw new Error()
+    return value
+  } catch {
+    throw new Error('运行时变量必须是有效的 JSON 对象')
   }
 }
 

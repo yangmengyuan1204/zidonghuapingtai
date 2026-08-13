@@ -105,4 +105,10 @@ def confirm_reexecute_record(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     record = get_or_404(db, TestRecord, record_id)
-    return reexecute_record(db, record, payload.confirmed)
+    return reexecute_record(
+        db,
+        record,
+        payload.confirmed,
+        env_id=payload.env_id,
+        variables=payload.variables,
+    )

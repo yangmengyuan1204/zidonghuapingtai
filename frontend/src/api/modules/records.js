@@ -30,6 +30,9 @@ export function getReexecuteContext(id) {
   return api(`/api/test-records/${id}/re-execute`)
 }
 
-export function confirmReexecute(id) {
-  return api(`/api/test-records/${id}/re-execute`, { method: 'POST', body: { confirmed: true } })
+export function confirmReexecute(id, overrides = {}) {
+  return api(`/api/test-records/${id}/re-execute`, {
+    method: 'POST',
+    body: { confirmed: true, ...overrides },
+  })
 }

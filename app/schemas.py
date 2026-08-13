@@ -297,6 +297,8 @@ class FunctionalExecuteRequest(BaseModel):
 
 class ReExecuteConfirmRequest(BaseModel):
     confirmed: bool = False
+    env_id: Optional[int] = None
+    variables: Optional[Dict[str, Any]] = None
 
 
 class CaseGenerationTaskCreate(BaseModel):
