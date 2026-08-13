@@ -17,6 +17,8 @@ from uuid import uuid4
 
 from playwright.async_api import async_playwright
 
+from .har_recorder import parameterize_headers
+
 # 静态资源后缀过滤
 _STATIC_EXT = (".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".woff", ".woff2", ".ico", ".ttf", ".otf")
 # 会话最大空闲时长（30 分钟）
@@ -241,6 +243,15 @@ async def start_session(start_url: str) -> str:
     page = await context.new_page()
     session = _Session(pw, browser, context, page)
     _register_handlers(session)
+    try:
+        await page.goto(start_url, wait_until="domcontentloaded")
+    except Exception:
+        for closer in (page.close, context.close, browser.close, pw.stop):
+            try:
+                await closer()
+            except Exception:
+                pass
+        raise
     async with _LOCK:
         session_id = uuid4().hex
         _SESSIONS[session_id] = session
@@ -248,12 +259,6 @@ async def start_session(start_url: str) -> str:
     if not _cleanup_started:
         _cleanup_started = True
         asyncio.create_task(_cleanup_loop())
-    # 跳转到起始页
-    try:
-        await page.goto(start_url, wait_until="domcontentloaded")
-    except Exception:
-        # 跳转失败不阻塞会话创建，用户可手动 navigate
-        pass
     return session_id
 
 
@@ -271,10 +276,11 @@ def get_events(session_id: str) -> list[dict]:
     """返回会话事件列表副本（去掉内部字段）。"""
     session = _SESSIONS.get(session_id)
     if not session:
-        return []
+        raise ValueError(f"会话不存在: {session_id}")
     result = []
     for ev in session.events:
         copy = {k: v for k, v in ev.items() if not k.startswith("_")}
+        copy["headers"] = parameterize_headers(copy.get("headers") or {})
         result.append(copy)
     return result
 

@@ -8,10 +8,15 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import RecordedFlow, RecordedFlowStep
+from ..security import require_admin
 from ..services import har_recorder
 from ..services.flow_player import play_flow
 
-router = APIRouter(prefix="/api/flow-recorder", tags=["flow-recorder"])
+router = APIRouter(
+    prefix="/api/flow-recorder",
+    tags=["flow-recorder"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 @router.post("/upload")
@@ -58,7 +63,11 @@ def save_flow(payload: Dict[str, Any], db: Session = Depends(get_db)) -> Dict[st
     flow_definition = payload.get("flow_definition") or {}
     steps_data = flow_definition.get("steps") or []
 
-    flow = RecordedFlow(name=name, description=description)
+    flow = RecordedFlow(
+        name=name,
+        description=description,
+        base_url=flow_definition.get("base_url") or None,
+    )
     db.add(flow)
     db.flush()
     for step in steps_data:
@@ -67,7 +76,8 @@ def save_flow(payload: Dict[str, Any], db: Session = Depends(get_db)) -> Dict[st
             step_index=step.get("step_index", 0),
             method=step.get("method", "GET"),
             path=step.get("path", ""),
-            headers_json=step.get("headers_json"),
+            full_url=step.get("full_url") or None,
+            headers_json=har_recorder.parameterize_headers_json(step.get("headers_json")),
             body_template=step.get("body_template"),
             field_schema_json=step.get("field_schema_json"),
             response_extraction_json=step.get("response_extraction_json"),
@@ -111,6 +121,11 @@ def get_flow(flow_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
             if name and name not in seen:
                 seen.add(name)
                 merged_fields.append(field)
+        for field in har_recorder.sensitive_header_fields(step.headers_json):
+            name = field["name"]
+            if name not in seen:
+                seen.add(name)
+                merged_fields.append(field)
     return {
         "id": flow.id,
         "name": flow.name,
@@ -122,7 +137,7 @@ def get_flow(flow_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
                 "method": step.method,
                 "path": step.path,
                 "full_url": step.full_url or "",
-                "headers_json": step.headers_json,
+                "headers_json": har_recorder.parameterize_headers_json(step.headers_json),
                 "body_template": step.body_template,
                 "field_schema_json": step.field_schema_json,
                 "response_extraction_json": step.response_extraction_json,

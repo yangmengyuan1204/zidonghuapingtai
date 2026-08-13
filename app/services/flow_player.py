@@ -12,6 +12,7 @@ import requests
 from sqlalchemy.orm import Session
 
 from ..models import Env, RecordedFlow, RecordedFlowStep
+from .har_recorder import parameterize_headers
 
 # 占位符 {{var}} / {{step_N.data.field}}
 _PLACEHOLDER_RE = re.compile(r"\{\{([^}]+)\}\}")
@@ -38,7 +39,10 @@ def play_flow(flow_id: int, variables: Dict[str, Any], db: Session, skip_on_fail
     skipped_steps = []
     for step in steps:
         body_str = _replace_placeholders(step.body_template or "", variables, step_results)
-        headers = _parse_headers(step.headers_json)
+        headers = {
+            key: _replace_placeholders(value, variables, step_results)
+            for key, value in parameterize_headers(_parse_headers(step.headers_json)).items()
+        }
         if token and not _has_auth_header(headers):
             headers["Authorization"] = f"Bearer {token}"
         # 优先用录制时记录的完整 URL，支持多域名回放

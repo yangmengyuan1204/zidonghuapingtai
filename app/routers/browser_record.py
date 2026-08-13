@@ -8,9 +8,14 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import RecordedFlow, RecordedFlowStep
+from ..security import require_admin
 from ..services import browser_session, har_recorder
 
-router = APIRouter(prefix="/api/browser-record", tags=["browser-record"])
+router = APIRouter(
+    prefix="/api/browser-record",
+    tags=["browser-record"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 @router.post("/sessions")
@@ -29,7 +34,10 @@ async def create_session(payload: Dict[str, Any]) -> Dict[str, Any]:
 @router.get("/sessions/{session_id}/events")
 def list_events(session_id: str) -> Dict[str, Any]:
     """返回当前会话已捕获的接口事件列表。"""
-    items = browser_session.get_events(session_id)
+    try:
+        items = browser_session.get_events(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return {"count": len(items), "items": items}
 
 
@@ -66,7 +74,10 @@ async def save_session(
     if not name:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="流程名称不能为空")
     description = payload.get("description") or ""
-    events = browser_session.get_events(session_id)
+    try:
+        events = browser_session.get_events(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     if not events:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="会话无捕获事件")
     har_content = _events_to_har(events)
@@ -77,7 +88,11 @@ async def save_session(
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"流程构建失败: {exc}") from exc
     steps_data = flow_definition.get("steps") or []
-    flow = RecordedFlow(name=name, description=description)
+    flow = RecordedFlow(
+        name=name,
+        description=description,
+        base_url=flow_definition.get("base_url") or None,
+    )
     db.add(flow)
     db.flush()
     for step in steps_data:
@@ -86,7 +101,8 @@ async def save_session(
             step_index=step.get("step_index", 0),
             method=step.get("method", "GET"),
             path=step.get("path", ""),
-            headers_json=step.get("headers_json"),
+            full_url=step.get("full_url") or None,
+            headers_json=har_recorder.parameterize_headers_json(step.get("headers_json")),
             body_template=step.get("body_template"),
             field_schema_json=step.get("field_schema_json"),
             response_extraction_json=step.get("response_extraction_json"),
@@ -110,7 +126,7 @@ def _events_to_har(events: list[dict]) -> dict:
             "queryString": query_pairs,
             "headers": headers_pairs,
         }
-        if method == "POST" and ev.get("body"):
+        if method in {"POST", "PUT", "PATCH", "DELETE"} and ev.get("body"):
             request["postData"] = {"text": ev["body"]}
         content: dict = {}
         body = ev.get("response_body")

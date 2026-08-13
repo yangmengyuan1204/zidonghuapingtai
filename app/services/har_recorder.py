@@ -39,6 +39,15 @@ FIELD_LABEL_CN = {
     "inquiry_order_sn": "询价单号",
     "large_order_sn": "大订单号",
     "qt_code": "QT编码",
+    "authorization": "Authorization 请求头",
+    "cookie": "Cookie 请求头",
+    "proxy_authorization": "Proxy-Authorization 请求头",
+}
+
+SENSITIVE_HEADER_VARIABLES = {
+    "authorization": "authorization",
+    "cookie": "cookie",
+    "proxy-authorization": "proxy_authorization",
 }
 
 
@@ -54,7 +63,7 @@ def parse_har(har_content: dict) -> list[dict]:
         query = _pairs_to_dict(request.get("queryString") or [])
         headers = _pairs_to_dict(request.get("headers") or [])
         body = ""
-        if method.upper() == "POST":
+        if method.upper() in {"POST", "PUT", "PATCH", "DELETE"}:
             post_data = request.get("postData") or {}
             body = post_data.get("text") or ""
         response_status = response.get("status", 0)
@@ -99,6 +108,10 @@ def identify_dynamic_fields(steps: list[dict]) -> dict:
         for key, value in query.items():
             if key in DYNAMIC_FIELD_NAMES and _value_not_empty(value):
                 _ensure_field(fields, key)
+        for key, value in (step.get("headers") or {}).items():
+            variable = SENSITIVE_HEADER_VARIABLES.get(str(key).lower())
+            if variable and _value_not_empty(value):
+                _ensure_field(fields, variable)
 
     return {"fields": list(fields.values()), "steps": body_templates}
 
@@ -118,12 +131,51 @@ def build_flow_definition(parsed_steps: list[dict], dynamic_schema: dict) -> dic
             "method": step.get("method", "GET"),
             "path": step.get("path", ""),
             "full_url": step.get("url", ""),
-            "headers_json": json.dumps(step.get("headers") or {}, ensure_ascii=False),
+            "headers_json": parameterize_headers_json(step.get("headers") or {}),
             "body_template": body_str,
             "field_schema_json": field_schema_json,
         })
     base_url = _infer_base_url(parsed_steps)
     return {"name": "", "description": "", "base_url": base_url, "steps": steps_def}
+
+
+def parameterize_headers(headers: dict) -> dict[str, str]:
+    """把敏感请求头替换为运行时变量，避免持久化或返回真实凭据。"""
+    result: dict[str, str] = {}
+    for key, value in (headers or {}).items():
+        header_name = str(key)
+        variable = SENSITIVE_HEADER_VARIABLES.get(header_name.lower())
+        result[header_name] = "{{" + variable + "}}" if variable else str(value)
+    return result
+
+
+def parameterize_headers_json(headers: dict | str | None) -> str:
+    if isinstance(headers, str):
+        try:
+            parsed = json.loads(headers)
+        except (ValueError, TypeError):
+            parsed = {}
+    else:
+        parsed = headers or {}
+    return json.dumps(parameterize_headers(parsed if isinstance(parsed, dict) else {}), ensure_ascii=False)
+
+
+def sensitive_header_fields(headers: dict | str | None) -> list[dict]:
+    """返回敏感请求头对应的运行时输入字段，兼容历史流程。"""
+    if isinstance(headers, str):
+        try:
+            parsed = json.loads(headers)
+        except (ValueError, TypeError):
+            parsed = {}
+    else:
+        parsed = headers or {}
+    fields: dict = {}
+    if isinstance(parsed, dict):
+        for key in parsed:
+            variable = SENSITIVE_HEADER_VARIABLES.get(str(key).lower())
+            if variable:
+                _ensure_field(fields, variable)
+    return list(fields.values())
 
 
 def _infer_base_url(parsed_steps: list[dict]) -> str:
