@@ -38,7 +38,7 @@ function main() {
     issues.push('LegacyEmbedView must inject CSS that hides legacy .sidebar and .topbar')
   }
 
-  for (const key of ['dataScripts', 'requirementVerification', 'systemRegression']) {
+  for (const key of ['requirementVerification', 'systemRegression']) {
     if (!new RegExp(`name:\\s*'${key}'`).test(router)) issues.push(`router missing ${key} route name`)
     if (!new RegExp(`viewKey:\\s*'${key}'`).test(router)) issues.push(`router missing ${key} viewKey meta`)
     const routeBlock = router.match(new RegExp(`path:\\s*'\\/${key}'[\\s\\S]*?meta:\\s*\\{\\s*viewKey:\\s*'${key}'`))?.[0] || ''
@@ -47,7 +47,7 @@ function main() {
   }
   if (!/LegacyEmbedView\.vue/.test(router)) issues.push('router must retain the original feature page bridge')
 
-  for (const key of ['dataScripts', 'requirementVerification', 'systemRegression']) {
+  for (const key of ['requirementVerification', 'systemRegression']) {
     if (!new RegExp(`\\b${key}\\b`).test(appShell)) issues.push(`AppShell missing navigation item ${key}`)
   }
   if (/apiHarvester|ApiHarvester/.test(router) || /apiHarvester|ApiHarvester/.test(appShell)) {

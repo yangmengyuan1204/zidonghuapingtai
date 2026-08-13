@@ -85,7 +85,7 @@ const routes = [
     path: '/dataScripts',
     alias: '/data-scripts',
     name: 'dataScripts',
-    component: () => import('../views/LegacyEmbedView.vue'),
+    component: () => import('../views/DataScriptsView.vue'),
     meta: { viewKey: 'dataScripts' },
   },
   {

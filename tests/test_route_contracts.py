@@ -94,6 +94,17 @@ def test_migration_bridge_consumes_initial_legacy_hash():
     assert behavior["invalid"] == {"clicked": 0, "href": "UNCHANGED", "queryCalls": 0}
 
 
+def test_data_factory_route_uses_native_v3_view_and_is_marked_migrated():
+    root = Path(__file__).resolve().parents[1]
+    router_source = (root / "frontend" / "src" / "router" / "index.js").read_text(encoding="utf-8")
+    migration = json.loads((root / "static" / "migration-config.json").read_text(encoding="utf-8"))
+    route_start = router_source.index("path: '/dataScripts'")
+    route_block = router_source[route_start : router_source.index("  },", route_start) + 4]
+    assert "../views/DataScriptsView.vue" in route_block
+    assert "../views/LegacyEmbedView.vue" not in route_block
+    assert "dataScripts" in migration["migrated"]
+
+
 def test_vue_legacy_agent_integration_assets_are_pinned_and_harvester_is_retired():
     root = Path(__file__).resolve().parents[1]
     index_source = (root / "static" / "index.html").read_text(encoding="utf-8")
