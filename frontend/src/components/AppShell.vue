@@ -183,11 +183,6 @@ function adminPageHref(page) {
 
 function navigate(item) {
   closeDrawer()
-  // Prefer direct named push for shell menus (all keys are registered routes).
-  if (router.hasRoute(item.key)) {
-    router.push({ name: item.key }).catch(() => {})
-    return
-  }
   navigateToView(item.key)
 }
 

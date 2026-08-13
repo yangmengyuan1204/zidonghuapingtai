@@ -37,7 +37,7 @@
     <template #actions="{ row }">
       <div class="actions">
         <button
-          v-if="row.case_type === 'api' || row.case_type === 'ui'"
+          v-if="auth.isAdmin && (row.case_type === 'api' || row.case_type === 'ui')"
           class="btn"
           @click="onRerun(row)"
         >再次执行</button>
@@ -72,10 +72,10 @@
 
   <AppFormDialog
     :visible="rerunVisible"
-    title="再次执行"
+    title="提交执行"
     :fields="rerunFields"
     :values="rerunValues"
-    submit-label="执行"
+    submit-label="提交执行"
     @close="closeRerun"
     @submit="submitRerun"
   />
@@ -93,9 +93,10 @@
  * - 日志：showLog（结构化摘要 + 原始日志 + 智能体记录特殊处理）
  * - 下载：openProtectedFile（报告/截图，blob URL 新窗口打开）
  * - 再次执行：TestRecordRerun（仅 api/ui 类型，GET 上下文 + confirm + POST）
- * - 权限：所有操作需登录（路由守卫保证）
+ * - 权限：再次执行仅管理员可用，其余查看操作需登录
  */
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useAppStore } from '../stores/app.js'
 import { useToastStore } from '../stores/toast.js'
@@ -111,6 +112,7 @@ import { listEnvs } from '../api/modules/envs.js'
 const auth = useAuthStore()
 const appStore = useAppStore()
 const toast = useToastStore()
+const router = useRouter()
 
 // ========== 状态 ==========
 const projects = ref([])
@@ -286,7 +288,7 @@ async function onRerun(item) {
     }
     // data_script 类型走数据工厂流程（旧系统中此按钮不会对 data_script 显示，此处兜底防护）
     if (context.kind === 'data_script') {
-      toast.show('请在旧系统数据工厂中再次执行')
+      await router.push({ name: 'dataScripts', query: { rerun_record_id: String(item.id) } })
       return
     }
     rerunningItem.value = item

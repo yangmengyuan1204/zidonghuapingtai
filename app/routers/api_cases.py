@@ -107,12 +107,12 @@ def delete_api_case(case_id: int, db: Session = Depends(get_db), current_user: U
     return {"message": "deleted"}
 
 
-@router.post("/api/api-cases/{case_id}/execute")
+@router.post("/api/api-cases/{case_id:int}/execute")
 def run_api_case(
     case_id: int,
     payload: ApiExecuteRequest | None = Body(default=None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     case = get_or_404(db, ApiCase, case_id)
     env_id = payload.env_id if payload and payload.env_id else case.env_id
@@ -143,7 +143,7 @@ def run_api_case(
 def batch_run_api_cases(
     payload: ApiBatchExecuteRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     if not payload.case_ids:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请选择要执行的接口用例")

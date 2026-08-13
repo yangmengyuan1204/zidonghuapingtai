@@ -221,6 +221,12 @@ ADMIN_ONLY_ENDPOINTS = [
     ("post", "/api/ui-record/sessions/missing/save"),
     ("delete", "/api/ui-record/sessions/missing"),
     ("get", "/api/users"),
+    ("post", "/api/api-cases/1/execute"),
+    ("post", "/api/api-cases/batch-execute"),
+    ("post", "/api/ui-cases/1/execute"),
+    ("post", "/api/ui-cases/1/visual-execute"),
+    ("get", "/api/test-records/1/re-execute"),
+    ("post", "/api/test-records/1/re-execute"),
 ]
 
 
@@ -258,6 +264,12 @@ def test_admin_only_endpoints_block_normal_user():
         elif method == "delete":
             r = client.delete(path, headers=_user_headers())
         assert r.status_code == 403, f"{method.upper()} {path} 普通用户应被拒绝，实际: {r.status_code}"
+
+
+def test_api_batch_execute_static_route_is_not_shadowed_by_case_id_route():
+    paths = [route.path for route in app.routes]
+    assert "/api/api-cases/batch-execute" in paths
+    assert "/api/api-cases/{case_id:int}/execute" in paths
 
 
 def test_login_and_me():

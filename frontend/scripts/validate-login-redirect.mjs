@@ -33,8 +33,10 @@ function extractAsyncFunction(source, name) {
 const functionSource = extractAsyncFunction(navigationSource, 'navigateAfterLogin')
 const viewFunctionSource = extractAsyncFunction(navigationSource, 'navigateToView')
 
-function createHarness({ migrated = ['dashboard'] } = {}) {
+function createHarness({ migrated = ['dashboard', 'apiCases'], initiallyLoaded = true } = {}) {
   const pushes = []
+  let loaded = initiallyLoaded
+  let loadCalls = 0
   const knownPaths = new Set([
     '/',
     '/login',
@@ -44,6 +46,7 @@ function createHarness({ migrated = ['dashboard'] } = {}) {
     '/records',
     '/ui-cases',
     '/users',
+    '/requirementVerification',
   ])
   const router = {
     push(target) {
@@ -53,7 +56,8 @@ function createHarness({ migrated = ['dashboard'] } = {}) {
     resolve(target) {
       const raw = typeof target === 'string' ? target : target.path
       const path = raw.split(/[?#]/, 1)[0]
-      return { matched: knownPaths.has(path) ? [{}] : [] }
+      const viewKey = path === '/requirementVerification' ? 'requirementVerification' : path === '/api-cases' ? 'apiCases' : null
+      return { matched: knownPaths.has(path) ? [{ name: viewKey || path, meta: viewKey ? { viewKey } : {} }] : [{ meta: {} }] }
     },
   }
   const browserWindow = { location: { href: 'about:blank' } }
@@ -63,16 +67,18 @@ function createHarness({ migrated = ['dashboard'] } = {}) {
     'isMigrationConfigLoaded',
     'loadMigrationConfig',
     'getMigratedList',
-    `const LEGACY_APP_BASE = '/'; ${functionSource}; return navigateAfterLogin;`,
+    'isMigrated',
+    `const LEGACY_APP_BASE = '/'; const LEGACY_HASH_BASE = '/#/'; ${functionSource}; return navigateAfterLogin;`,
   )
   const navigateAfterLogin = factory(
     router,
     browserWindow,
-    () => true,
-    async () => {},
+    () => loaded,
+    async () => { loadCalls += 1; loaded = true },
     () => migrated,
+    (key) => migrated.includes(key),
   )
-  return { navigateAfterLogin, pushes, browserWindow }
+  return { navigateAfterLogin, pushes, browserWindow, get loadCalls() { return loadCalls } }
 }
 
 function createViewHarness({ migrated = [], knownRouteNames = ['systemRegression'] } = {}) {
@@ -120,12 +126,40 @@ async function expectVueRedirect(redirect, expected) {
 
 const cases = [
   {
-    name: '系统回归已有 Vue 路由时不受陈旧迁移配置影响',
+    name: 'V3 未知路径交给 Vue catch-all 恢复到工作台',
+    run: async () => {
+      const harness = createHarness()
+      await harness.navigateAfterLogin('/v3/not-exist')
+      assert.deepEqual(harness.pushes, ['/not-exist'])
+      assert.equal(harness.browserWindow.location.href, 'about:blank')
+    },
+  },
+  {
+    name: '登录回跳等待迁移配置加载后再决定 Vue 页面',
+    run: async () => {
+      const harness = createHarness({ migrated: ['apiCases'], initiallyLoaded: false })
+      await harness.navigateAfterLogin('/v3/api-cases')
+      assert.equal(harness.loadCalls, 1)
+      assert.deepEqual(harness.pushes, ['/api-cases'])
+      assert.equal(harness.browserWindow.location.href, 'about:blank')
+    },
+  },
+  {
+    name: '登录回跳到未迁移需求验证时进入完整旧版',
+    run: async () => {
+      const harness = createHarness()
+      await harness.navigateAfterLogin('/v3/requirementVerification')
+      assert.deepEqual(harness.pushes, [])
+      assert.equal(harness.browserWindow.location.href, '/#/requirementVerification')
+    },
+  },
+  {
+    name: '系统回归未迁移时即使存在 Vue 路由也回到旧版',
     run: async () => {
       const harness = createViewHarness()
       await harness.navigateToView('systemRegression')
-      assert.deepEqual(harness.pushes, [{ name: 'systemRegression' }])
-      assert.equal(harness.browserWindow.location.href, 'about:blank')
+      assert.deepEqual(harness.pushes, [])
+      assert.equal(harness.browserWindow.location.href, '/#/systemRegression')
     },
   },
   {
@@ -172,12 +206,12 @@ const cases = [
     },
   },
   {
-    name: '带 /v3 前缀但未匹配 Vue 路由的目标不伪装成内部路由',
+    name: '带 /v3 前缀的未知目标交给 Vue catch-all',
     run: async () => {
       const harness = createHarness()
       await harness.navigateAfterLogin('/v3/legacy-path')
-      assert.deepEqual(harness.pushes, [])
-      assert.equal(harness.browserWindow.location.href, '/v3/legacy-path')
+      assert.deepEqual(harness.pushes, ['/legacy-path'])
+      assert.equal(harness.browserWindow.location.href, 'about:blank')
     },
   },
   {

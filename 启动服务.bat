@@ -55,7 +55,7 @@ if not defined PYTHON_CMD if exist "%SYS_PY314%" (
 
 if defined PYTHON_CMD (
     rem Wait until the API is ready, then open the cache-busted V3 login page.
-    start "" /b powershell.exe -NoProfile -WindowStyle Hidden -Command "$url='http://127.0.0.1:8000/v3/login?ui=20260812-v3-enterprise-3'; for($i=0; $i -lt 40; $i++){ try { Invoke-WebRequest 'http://127.0.0.1:8000/health' -UseBasicParsing -TimeoutSec 1 | Out-Null; Start-Process $url; break } catch { Start-Sleep -Milliseconds 500 } }"
+    start "" /b powershell.exe -NoProfile -WindowStyle Hidden -Command "$mutex=New-Object Threading.Mutex($false,'Local\AutoTestPlatformBrowserOpen'); if(-not $mutex.WaitOne(0)){ exit 0 }; try { $url='http://127.0.0.1:8000/v3/login?ui=20260812-v3-enterprise-3'; for($i=0; $i -lt 40; $i++){ try { Invoke-WebRequest 'http://127.0.0.1:8000/health' -UseBasicParsing -TimeoutSec 1 | Out-Null; Start-Process $url; break } catch { Start-Sleep -Milliseconds 500 } } } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }"
     "%PYTHON_CMD%" "%PROJECT_DIR%run_server.py" --host 127.0.0.1 --port 8000
 ) else (
     echo [ERROR] Python not found. Please install Python 3.11 or 3.14

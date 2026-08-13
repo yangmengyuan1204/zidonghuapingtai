@@ -15,9 +15,10 @@
  * Legacy 页面壳层桥接：在 V2 AppShell 内嵌同一源旧应用，
  * 通过 ?v3_embed=1 跳过 migration-bridge 重定向，并隐藏旧侧栏/顶栏。
  */
-import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { menuViews } from '../router/index.js'
+import { useToastStore } from '../stores/toast.js'
 
 const EMBED_STYLE_ID = 'v3-embed-style'
 const EMBED_STYLE = `
@@ -49,7 +50,13 @@ html.v3-embed .content {
 `
 
 const route = useRoute()
+const router = useRouter()
+const toast = useToastStore()
 const frameEl = ref(null)
+const openedRerunRecordId = ref('')
+const openingRerunRecordId = ref('')
+const frameReady = ref(false)
+const bridgeGeneration = ref(0)
 
 const viewKey = computed(() => String(route.meta.viewKey || ''))
 
@@ -73,13 +80,95 @@ function applyEmbedChrome(doc) {
   doc.head?.appendChild(style)
 }
 
-function onFrameLoad() {
+function waitForRerunModule(frameWindow, attempts = 20) {
+  return new Promise((resolve, reject) => {
+    let remaining = attempts
+    const check = () => {
+      if (frameWindow?.TestRecordRerun?.open) {
+        resolve(frameWindow.TestRecordRerun)
+        return
+      }
+      remaining -= 1
+      if (remaining <= 0) {
+        reject(new Error('TestRecordRerun module unavailable'))
+        return
+      }
+      window.setTimeout(check, 100)
+    }
+    check()
+  })
+}
+
+function frameMatchesCurrentView(frameWindow) {
   try {
-    applyEmbedChrome(frameEl.value?.contentDocument)
+    return frameWindow?.location?.hash === `#/${viewKey.value}`
   } catch {
-    // cross-origin or unavailable document — ignore
+    return false
   }
 }
+
+function invalidateRerunBridge() {
+  bridgeGeneration.value += 1
+  frameReady.value = false
+  openedRerunRecordId.value = ''
+  openingRerunRecordId.value = ''
+}
+
+function isCurrentRerunTask(task) {
+  return bridgeGeneration.value === task.generation
+    && route.name === task.routeName
+    && viewKey.value === 'dataScripts'
+    && String(route.query.rerun_record_id || '').trim() === task.recordId
+    && frameEl.value?.contentWindow === task.frameWindow
+    && frameMatchesCurrentView(task.frameWindow)
+}
+
+async function openPendingRerun() {
+  const recordId = String(route.query.rerun_record_id || '').trim()
+  if (!frameReady.value || !recordId) return
+  if (openedRerunRecordId.value === recordId || openingRerunRecordId.value === recordId) return
+  openingRerunRecordId.value = recordId
+  const task = {
+    generation: bridgeGeneration.value,
+    recordId,
+    routeName: route.name,
+    frameWindow: frameEl.value?.contentWindow,
+  }
+  try {
+    const rerunModule = await waitForRerunModule(task.frameWindow)
+    if (!isCurrentRerunTask(task)) return
+    await rerunModule.open(Number(recordId))
+    if (!isCurrentRerunTask(task)) return
+    openedRerunRecordId.value = recordId
+    const nextQuery = { ...route.query }
+    delete nextQuery.rerun_record_id
+    await router.replace({ name: task.routeName, query: nextQuery })
+  } catch {
+    if (isCurrentRerunTask(task)) {
+      toast.show('数据工厂执行表单加载失败，请刷新后重试')
+    }
+  } finally {
+    if (bridgeGeneration.value === task.generation && openingRerunRecordId.value === recordId) {
+      openingRerunRecordId.value = ''
+    }
+  }
+}
+
+function onFrameLoad() {
+  try {
+    const frameWindow = frameEl.value?.contentWindow
+    if (!frameMatchesCurrentView(frameWindow)) return
+    applyEmbedChrome(frameEl.value?.contentDocument)
+    frameReady.value = true
+    openPendingRerun()
+  } catch {
+    toast.show('数据工厂页面加载失败，请刷新后重试')
+  }
+}
+
+watch(viewKey, invalidateRerunBridge, { flush: 'sync' })
+watch(() => route.query.rerun_record_id, openPendingRerun)
+onBeforeUnmount(invalidateRerunBridge)
 </script>
 
 <style scoped>

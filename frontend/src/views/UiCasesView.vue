@@ -31,7 +31,7 @@
     </template>
     <template #actions="{ row }">
       <div class="actions">
-        <button class="btn" @click="onRun(row)">执行</button>
+        <button v-if="auth.isAdmin" class="btn" @click="onRun(row)">执行</button>
         <template v-if="auth.isAdmin">
           <button class="btn secondary" @click="openForm(row)">编辑</button>
           <button class="btn danger" @click="onDelete(row)">删除</button>

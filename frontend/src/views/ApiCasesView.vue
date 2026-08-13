@@ -45,6 +45,7 @@
     </div>
     <div class="v2-api-cases-actions">
       <BaseButton
+        v-if="auth.isAdmin"
         type="button"
         variant="secondary"
         :disabled="selectedIds.size === 0"
@@ -84,7 +85,7 @@
     </template>
     <template #actions="{ row }">
       <div class="v2-api-cases-row-actions">
-        <BaseButton type="button" variant="primary" size="compact" @click="onRun(row)">执行</BaseButton>
+        <BaseButton v-if="auth.isAdmin" type="button" variant="primary" size="compact" @click="onRun(row)">执行</BaseButton>
         <template v-if="auth.isAdmin">
           <BaseButton type="button" variant="secondary" size="compact" @click="onCopy(row)">复制</BaseButton>
           <BaseButton type="button" variant="secondary" size="compact" @click="openForm(row)">编辑</BaseButton>

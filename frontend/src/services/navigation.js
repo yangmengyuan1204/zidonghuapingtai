@@ -39,16 +39,10 @@ const LEGACY_STATIC_VIEW_ALIASES = {
 export async function navigateToView(viewKey) {
   const resolvedKey = LEGACY_STATIC_VIEW_ALIASES[viewKey] || viewKey
 
-  // Registered Vue routes must navigate immediately — never wait on migration-config fetch
-  // (a hung/slow fetch previously blocked all sidebar clicks).
-  if (router.hasRoute(resolvedKey)) {
-    return router.push({ name: resolvedKey }).catch(() => {})
-  }
-
   if (!isMigrationConfigLoaded()) {
     await loadMigrationConfig()
   }
-  if (isMigrated(resolvedKey)) {
+  if (isMigrated(resolvedKey) && router.hasRoute(resolvedKey)) {
     return router.push({ name: resolvedKey }).catch(() => {})
   }
   window.location.href = LEGACY_HASH_BASE + resolvedKey
@@ -66,13 +60,25 @@ export async function navigateToView(viewKey) {
  */
 export async function navigateAfterLogin(redirect) {
   if (redirect && typeof redirect === 'string') {
+    if (!isMigrationConfigLoaded()) {
+      await loadMigrationConfig()
+    }
     const hasVueBase = /^\/v3(?:\/|[?#]|$)/.test(redirect)
     const path = hasVueBase ? (redirect.replace(/^\/v3/, '') || '/') : redirect
     let isVueRoute = hasVueBase && path === '/'
+    let resolvedRoute = null
     if (!isVueRoute && path !== '/' && !path.startsWith('/#/')) {
       try {
-        isVueRoute = router.resolve(path).matched.length > 0
+        resolvedRoute = router.resolve(path)
+        const knownVueRoute = resolvedRoute.matched.some((record) => Boolean(record.name))
+        isVueRoute = knownVueRoute || (hasVueBase && resolvedRoute.matched.length > 0)
       } catch { /* 非法或非 Vue 路径按 legacy 目标处理 */ }
+    }
+
+    const matchedViewKey = isVueRoute ? (resolvedRoute || router.resolve(path)).matched.at(-1)?.meta?.viewKey : null
+    if (matchedViewKey && !isMigrated(matchedViewKey)) {
+      window.location.href = LEGACY_HASH_BASE + matchedViewKey
+      return
     }
 
     if (isVueRoute) {

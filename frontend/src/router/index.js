@@ -92,7 +92,7 @@ const routes = [
     path: '/requirementVerification',
     alias: '/requirement-verification',
     name: 'requirementVerification',
-    component: () => import('../views/RequirementVerificationView.vue'),
+    component: () => import('../views/LegacyEmbedView.vue'),
     meta: { viewKey: 'requirementVerification' },
   },
   {
@@ -101,6 +101,10 @@ const routes = [
     name: 'systemRegression',
     component: () => import('../views/LegacyEmbedView.vue'),
     meta: { viewKey: 'systemRegression', adminOnly: true },
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/dashboard',
   },
 ]
 

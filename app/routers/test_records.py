@@ -91,7 +91,7 @@ def get_screenshot_by_path(path: str = Query(..., description="截图文件路�
 def get_reexecute_context(
     record_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     record = get_or_404(db, TestRecord, record_id)
     return build_reexecute_context(db, record)
@@ -102,7 +102,7 @@ def confirm_reexecute_record(
     record_id: int,
     payload: ReExecuteConfirmRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     record = get_or_404(db, TestRecord, record_id)
     return reexecute_record(

@@ -395,7 +395,7 @@ def run_ui_case(
     case_id: int,
     payload: FunctionalExecuteRequest | None = Body(default=None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     case = get_or_404(db, UiCase, case_id)
     runtime_variables = dict(payload.variables if payload else {})
@@ -422,7 +422,7 @@ def start_visual_ui_case(
     case_id: int,
     payload: Dict[str, Any] | None = Body(default=None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     case = get_or_404(db, UiCase, case_id)
     payload_data = payload if isinstance(payload, dict) else {}

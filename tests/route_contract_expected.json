@@ -76,7 +76,7 @@
   },
   {
     "method": "POST",
-    "path": "/api/api-cases/{case_id}/execute",
+    "path": "/api/api-cases/{case_id:int}/execute",
     "name": "run_api_case"
   },
   {

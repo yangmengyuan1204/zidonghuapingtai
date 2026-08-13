@@ -296,17 +296,57 @@ def test_api_case_library_vue_frontend_uses_pagination_and_chinese_disabled_stat
 def test_vue_execution_actions_open_prefilled_dialogs_before_executing():
     api_cases_view = Path("frontend/src/views/ApiCasesView.vue").read_text(encoding="utf-8")
     records_view = Path("frontend/src/views/RecordsView.vue").read_text(encoding="utf-8")
+    legacy_embed_view = Path("frontend/src/views/LegacyEmbedView.vue").read_text(encoding="utf-8")
     records_api = Path("frontend/src/api/modules/records.js").read_text(encoding="utf-8")
 
     assert ':visible="runVisible"' in api_cases_view
+    assert 'v-if="auth.isAdmin"' in api_cases_view
+    assert 'v-if="auth.isAdmin && (row.case_type === \'api\' || row.case_type === \'ui\')"' in records_view
     assert "runValues.value =" in api_cases_view
     assert "async function submitRun(data)" in api_cases_view
     assert "apiCasesApi.executeApiCase(runningItem.value.id, payload)" in api_cases_view
     assert ':visible="rerunVisible"' in records_view
+    assert 'title="提交执行"' in records_view
+    assert 'submit-label="提交执行"' in records_view
     assert "rerunValues.value =" in records_view
     assert "JSON.stringify(context.variables || {}, null, 2)" in records_view
+    assert "router.push({ name: 'dataScripts', query: { rerun_record_id: String(item.id) } })" in records_view
+    assert "toast.show('请在旧系统数据工厂中再次执行')" not in records_view
+    assert "route.query.rerun_record_id" in legacy_embed_view
+    assert "async function openPendingRerun()" in legacy_embed_view
+    assert "await waitForRerunModule(task.frameWindow)" in legacy_embed_view
+    assert "await rerunModule.open(Number(recordId))" in legacy_embed_view
+    assert "watch(() => route.query.rerun_record_id, openPendingRerun)" in legacy_embed_view
+    assert "openingRerunRecordId.value === recordId" in legacy_embed_view
+    assert "const bridgeGeneration = ref(0)" in legacy_embed_view
+    assert "function isCurrentRerunTask(task)" in legacy_embed_view
+    assert "if (!isCurrentRerunTask(task)) return" in legacy_embed_view
+    assert "watch(viewKey, invalidateRerunBridge" in legacy_embed_view
+    assert "onBeforeUnmount(invalidateRerunBridge)" in legacy_embed_view
+    assert "toast.show('数据工厂执行表单加载失败，请刷新后重试')" in legacy_embed_view
+    assert "router.replace({ name: task.routeName, query: nextQuery })" in legacy_embed_view
+    assert "await router.push({ name: 'dataScripts'" in records_view
     assert "recordsApi.confirmReexecute(rerunningItem.value.id, payload)" in records_view
     assert "export function confirmReexecute(id, overrides = {})" in records_api
+
+
+def test_v3_execution_entry_points_are_admin_only():
+    api_cases_view = Path("frontend/src/views/ApiCasesView.vue").read_text(encoding="utf-8")
+    ui_cases_view = Path("frontend/src/views/UiCasesView.vue").read_text(encoding="utf-8")
+    records_view = Path("frontend/src/views/RecordsView.vue").read_text(encoding="utf-8")
+    api_router = Path("app/routers/api_cases.py").read_text(encoding="utf-8")
+    ui_router = Path("app/routers/ui_cases.py").read_text(encoding="utf-8")
+    records_router = Path("app/routers/test_records.py").read_text(encoding="utf-8")
+
+    assert 'v-if="auth.isAdmin"' in api_cases_view
+    assert '<button v-if="auth.isAdmin" class="btn" @click="onRun(row)">执行</button>' in ui_cases_view
+    assert 'v-if="auth.isAdmin && (row.case_type === \'api\' || row.case_type === \'ui\')"' in records_view
+    assert "def run_api_case(" in api_router and "def batch_run_api_cases(" in api_router
+    assert api_router.count("current_user: User = Depends(require_admin)") >= 5
+    assert "def run_ui_case(" in ui_router and "def start_visual_ui_case(" in ui_router
+    assert ui_router.count("current_user: User = Depends(require_admin)") >= 6
+    assert "def get_reexecute_context(" in records_router and "def confirm_reexecute_record(" in records_router
+    assert records_router.count("current_user: User = Depends(require_admin)") >= 3
 
 
 def test_vue_protected_routes_render_inside_app_shell():
