@@ -88,12 +88,23 @@ def configure_app(app: FastAPI) -> None:
 
         v3_static = StaticFiles(directory=str(frontend_dist))
 
+        def _v3_html_response() -> Response:
+            index_path = frontend_dist / "index.html"
+            return Response(
+                content=index_path.read_bytes(),
+                media_type="text/html",
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0",
+                },
+            )
+
         @app.get("/v3", include_in_schema=False)
         @app.get("/v3/", include_in_schema=False)
         async def _v3_index(request: Request):
             """根路径 /v3/ 返回 index.html"""
-            index_path = frontend_dist / "index.html"
-            return Response(content=index_path.read_bytes(), media_type="text/html")
+            return _v3_html_response()
 
         @app.get("/v3/{path:path}", include_in_schema=False)
         async def _v3_assets(request: Request, path: str):
@@ -102,5 +113,4 @@ def configure_app(app: FastAPI) -> None:
             if full.is_file():
                 # 修复：传入 request.scope，避免 Starlette StaticFiles.get_response 读取 scope["method"] 时 KeyError
                 return await v3_static.get_response(path, request.scope)
-            index_path = frontend_dist / "index.html"
-            return Response(content=index_path.read_bytes(), media_type="text/html")
+            return _v3_html_response()

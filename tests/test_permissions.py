@@ -301,7 +301,7 @@ def test_vue_execution_actions_open_prefilled_dialogs_before_executing():
 
     assert ':visible="runVisible"' in api_cases_view
     assert 'v-if="auth.isAdmin"' in api_cases_view
-    assert 'v-if="auth.isAdmin && (row.case_type === \'api\' || row.case_type === \'ui\')"' in records_view
+    assert 'v-if="auth.isAdmin && [\'api\', \'ui\', \'data_script\'].includes(row.case_type)"' in records_view
     assert "runValues.value =" in api_cases_view
     assert "async function submitRun(data)" in api_cases_view
     assert "apiCasesApi.executeApiCase(runningItem.value.id, payload)" in api_cases_view
@@ -312,6 +312,10 @@ def test_vue_execution_actions_open_prefilled_dialogs_before_executing():
     assert "JSON.stringify(context.variables || {}, null, 2)" in records_view
     assert 'src="/?v3_embed=1#/dataScripts"' in records_view
     assert "await rerunModule.open(Number(recordId))" in records_view
+    assert "await waitForDialogOpen(modal)" in records_view
+    assert "function waitForDialogOpen(" in records_view
+    assert "class=\"v2-records__factory-rerun-cancel\"" in records_view
+    assert "function armFactoryRerunTimeout(" in records_view
     assert "html.v3-embed.v3-rerun-form-only #app" in records_view
     assert "router.push({ name: 'dataScripts'" not in records_view
     assert "toast.show('请在旧系统数据工厂中再次执行')" not in records_view
@@ -344,7 +348,7 @@ def test_v3_execution_entry_points_are_admin_only():
 
     assert 'v-if="auth.isAdmin"' in api_cases_view
     assert '<button v-if="auth.isAdmin" class="btn" @click="onRun(row)">执行</button>' in ui_cases_view
-    assert 'v-if="auth.isAdmin && (row.case_type === \'api\' || row.case_type === \'ui\')"' in records_view
+    assert 'v-if="auth.isAdmin && [\'api\', \'ui\', \'data_script\'].includes(row.case_type)"' in records_view
     assert "def run_api_case(" in api_router and "def batch_run_api_cases(" in api_router
     assert api_router.count("current_user: User = Depends(require_admin)") >= 5
     assert "def run_ui_case(" in ui_router and "def start_visual_ui_case(" in ui_router

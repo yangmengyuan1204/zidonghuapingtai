@@ -37,7 +37,7 @@
     <template #actions="{ row }">
       <div class="actions">
         <button
-          v-if="auth.isAdmin && (row.case_type === 'api' || row.case_type === 'ui')"
+          v-if="auth.isAdmin && ['api', 'ui', 'data_script'].includes(row.case_type)"
           class="btn"
           @click="onRerun(row)"
         >再次执行</button>
@@ -82,6 +82,11 @@
 
   <Teleport to="body">
     <div v-if="factoryRerunRecordId" class="v2-records__factory-rerun">
+      <button
+        type="button"
+        class="v2-records__factory-rerun-cancel"
+        @click="closeFactoryRerun()"
+      >取消</button>
       <iframe
         :key="`${factoryRerunGeneration}-${factoryRerunRecordId}`"
         ref="factoryRerunFrame"
@@ -306,8 +311,8 @@ html.v3-embed .sidebar,
 html.v3-embed .topbar {
   display: none !important;
 }
-html.v3-embed .modal::backdrop,
-html.v3-embed #modal::backdrop {
+html.v3-embed.v3-rerun-form-only .modal::backdrop,
+html.v3-embed.v3-rerun-form-only #modal::backdrop {
   background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -328,6 +333,56 @@ const factoryRerunRecordId = ref('')
 const factoryRerunGeneration = ref(0)
 const factoryRerunOpeningId = ref('')
 const factoryRerunOpenedId = ref('')
+const FACTORY_RERUN_TIMEOUT_MS = 20000
+let factoryRerunTimer = 0
+
+function waitForDialogOpen(dialog, attempts = 150) {
+  return new Promise((resolve, reject) => {
+    if (!dialog) {
+      reject(new Error('未找到对应数据脚本入口，请到数据工厂中执行'))
+      return
+    }
+    let remaining = attempts
+    const check = () => {
+      if (dialog?.open) {
+        resolve(dialog)
+        return
+      }
+      remaining -= 1
+      if (remaining <= 0) {
+        reject(new Error('未找到对应数据脚本入口，请到数据工厂中执行'))
+        return
+      }
+      window.setTimeout(check, 100)
+    }
+    check()
+  })
+}
+
+function clearFactoryRerunTimeout() {
+  if (factoryRerunTimer) {
+    window.clearTimeout(factoryRerunTimer)
+    factoryRerunTimer = 0
+  }
+}
+
+function armFactoryRerunTimeout() {
+  clearFactoryRerunTimeout()
+  factoryRerunTimer = window.setTimeout(() => {
+    factoryRerunTimer = 0
+    if (factoryRerunRecordId.value && !factoryRerunOpenedId.value) {
+      toast.show('数据工厂执行表单加载失败，请刷新后重试')
+      closeFactoryRerun()
+    }
+  }, FACTORY_RERUN_TIMEOUT_MS)
+}
+
+function onFactoryRerunKeydown(event) {
+  if (event.key === 'Escape' && factoryRerunRecordId.value) {
+    event.preventDefault()
+    closeFactoryRerun()
+  }
+}
 
 function waitForRerunModule(frameWindow, attempts = 30) {
   return new Promise((resolve, reject) => {
@@ -364,6 +419,8 @@ function isCurrentFactoryRerun(task) {
 }
 
 function closeFactoryRerun(options = {}) {
+  clearFactoryRerunTimeout()
+  window.removeEventListener('keydown', onFactoryRerunKeydown)
   factoryRerunGeneration.value += 1
   factoryRerunRecordId.value = ''
   factoryRerunOpeningId.value = ''
@@ -382,7 +439,12 @@ async function onFactoryRerunLoad(event) {
   const frameEl = event?.target || factoryRerunFrame.value
   const frameWindow = frameEl?.contentWindow
   const doc = frameEl?.contentDocument
-  if (!recordId || !frameWindow || !doc) return
+  if (!recordId) return
+  if (!frameWindow || !doc) {
+    toast.show('数据工厂执行表单加载失败，请刷新后重试')
+    closeFactoryRerun()
+    return
+  }
   if (factoryRerunOpenedId.value === recordId || factoryRerunOpeningId.value === recordId) return
   factoryRerunOpeningId.value = recordId
   const task = {
@@ -405,12 +467,10 @@ async function onFactoryRerunLoad(event) {
     if (!isCurrentFactoryRerun(task)) return
     await rerunModule.open(Number(recordId))
     if (!isCurrentFactoryRerun(task)) return
-    if (!modal?.open) {
-      toast.show('未找到对应数据脚本入口，请到数据工厂中执行')
-      closeFactoryRerun()
-      return
-    }
+    await waitForDialogOpen(modal)
+    if (!isCurrentFactoryRerun(task)) return
     factoryRerunOpenedId.value = recordId
+    clearFactoryRerunTimeout()
   } catch (error) {
     if (isCurrentFactoryRerun(task)) {
       toast.show(error.message || '数据工厂执行表单加载失败，请刷新后重试')
@@ -440,6 +500,8 @@ async function onRerun(item) {
       factoryRerunOpenedId.value = ''
       factoryRerunOpeningId.value = ''
       factoryRerunRecordId.value = String(item.id)
+      window.addEventListener('keydown', onFactoryRerunKeydown)
+      armFactoryRerunTimeout()
       return
     }
     rerunningItem.value = item
@@ -520,7 +582,23 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 
+.v2-records__factory-rerun-cancel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+}
+
 .v2-records__factory-rerun-frame {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   border: 0;

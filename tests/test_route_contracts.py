@@ -116,6 +116,36 @@ def test_requirement_verification_stays_on_v3_with_legacy_embed():
     assert "requirementVerification" in migration["migrated"]
 
 
+def test_v3_embed_keeps_modal_backdrop_except_records_rerun():
+    root = Path(__file__).resolve().parents[1]
+    styles = (root / "static" / "styles.css").read_text(encoding="utf-8")
+    embed = (root / "frontend" / "src" / "views" / "LegacyEmbedView.vue").read_text(encoding="utf-8")
+    records = (root / "frontend" / "src" / "views" / "RecordsView.vue").read_text(encoding="utf-8")
+    app_js = (root / "static" / "app.js").read_text(encoding="utf-8")
+    setup = (root / "app" / "core" / "app_setup.py").read_text(encoding="utf-8")
+
+    assert "html.v3-embed.v3-rerun-form-only .modal::backdrop" in styles
+    assert "html.v3-embed .modal::backdrop,\nhtml.v3-embed dialog.modal::backdrop" not in styles
+    assert "html.v3-embed .modal::backdrop" not in embed
+    assert "html.v3-embed.v3-rerun-form-only .modal::backdrop" in records
+    actions_block = styles.split("html.v3-embed td .actions {", 1)[-1][:120]
+    assert "flex-wrap: wrap;" in actions_block
+    assert "flex-wrap: nowrap;" not in actions_block
+    assert "function openV3RecordsIfEmbedded(" in app_js
+    assert 'window.top.location.assign("/v3/records")' in app_js
+    assert 'id="goRecords"' in app_js
+    assert "openV3RecordsIfEmbedded()" in app_js
+    assert '"Cache-Control": "no-cache, no-store, must-revalidate"' in setup
+
+
+def test_v3_html_responses_are_not_cached():
+    response = client.get("/v3/")
+    if response.status_code == 404:
+        return
+    assert response.status_code == 200
+    assert "no-cache" in (response.headers.get("cache-control") or "").lower()
+
+
 def test_system_regression_stays_on_v3_with_legacy_embed():
     root = Path(__file__).resolve().parents[1]
     router_source = (root / "frontend" / "src" / "router" / "index.js").read_text(encoding="utf-8")

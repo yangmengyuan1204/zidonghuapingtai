@@ -1283,7 +1283,7 @@ html.v3-embed .system-regression-case-table tr.active td {
 }
 
 html.v3-embed td .actions {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -1660,9 +1660,9 @@ html.v3-embed #content > #dataFactoryAgentPanel {
   flex: 0 0 auto;
 }
 
-html.v3-embed .modal::backdrop,
-html.v3-embed dialog.modal::backdrop,
-html.v3-embed #modal::backdrop {
+html.v3-embed.v3-rerun-form-only .modal::backdrop,
+html.v3-embed.v3-rerun-form-only dialog.modal::backdrop,
+html.v3-embed.v3-rerun-form-only #modal::backdrop {
   background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;

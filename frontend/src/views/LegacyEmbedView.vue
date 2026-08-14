@@ -54,12 +54,6 @@ html.v3-embed #content {
 html.v3-embed .content {
   padding: 8px 12px 12px;
 }
-html.v3-embed .modal::backdrop,
-html.v3-embed #modal::backdrop {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
 `
 
 const route = useRoute()
