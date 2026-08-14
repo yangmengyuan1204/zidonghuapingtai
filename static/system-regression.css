@@ -192,20 +192,20 @@ html.v3-embed .system-regression-categories button {
 }
 
 html.v3-embed .system-regression-categories button.active {
-  background: #edf2ff;
-  color: #5d87ff;
+  background: var(--color-brand-muted, #edf2ff);
+  color: var(--accent, #5d87ff);
 }
 
 html.v3-embed .system-regression-status {
-  border-left-color: #5d87ff;
+  border-left-color: var(--accent, #5d87ff);
   border-radius: 7px;
-  background: #edf2ff;
-  color: #29343d;
+  background: var(--color-brand-muted, #edf2ff);
+  color: var(--color-text-primary, #29343d);
 }
 
 html.v3-embed .system-regression-repeat {
   border-color: rgba(15, 23, 42, 0.06);
-  background: #f4f6f8;
+  background: var(--color-bg-canvas, #f4f6f8);
 }
 
 html.v3-embed .system-regression-section {

@@ -72,13 +72,26 @@
 
   <AppFormDialog
     :visible="rerunVisible"
-    title="提交执行"
+    :title="rerunTitle"
     :fields="rerunFields"
     :values="rerunValues"
     submit-label="提交执行"
     @close="closeRerun"
     @submit="submitRerun"
   />
+
+  <Teleport to="body">
+    <div v-if="factoryRerunRecordId" class="v2-records__factory-rerun">
+      <iframe
+        :key="`${factoryRerunGeneration}-${factoryRerunRecordId}`"
+        ref="factoryRerunFrame"
+        class="v2-records__factory-rerun-frame"
+        title="数据脚本再次执行"
+        src="/?v3_embed=1#/dataScripts"
+        @load="onFactoryRerunLoad"
+      />
+    </div>
+  </Teleport>
   </div>
 </template>
 
@@ -92,11 +105,10 @@
  * - 分页：上一页/下一页 + 页码按钮 + 首尾省略号
  * - 日志：showLog（结构化摘要 + 原始日志 + 智能体记录特殊处理）
  * - 下载：openProtectedFile（报告/截图，blob URL 新窗口打开）
- * - 再次执行：TestRecordRerun（仅 api/ui 类型，GET 上下文 + confirm + POST）
+ * - 再次执行：当前页弹窗回填。api/ui 走记录确认接口；data_script 复用数据工厂同一套执行表单
  * - 权限：再次执行仅管理员可用，其余查看操作需登录
  */
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useAppStore } from '../stores/app.js'
 import { useToastStore } from '../stores/toast.js'
@@ -112,7 +124,6 @@ import { listEnvs } from '../api/modules/envs.js'
 const auth = useAuthStore()
 const appStore = useAppStore()
 const toast = useToastStore()
-const router = useRouter()
 
 // ========== 状态 ==========
 const projects = ref([])
@@ -256,6 +267,7 @@ const rerunningItem = ref(null)
 const rerunContext = ref(null)
 const rerunValues = ref({})
 const rerunEnvs = ref([])
+const rerunTitle = computed(() => '提交执行')
 const rerunFields = computed(() => {
   const fields = []
   if (rerunContext.value?.kind === 'api_case') {
@@ -279,6 +291,138 @@ const rerunFields = computed(() => {
   return fields
 })
 
+const FACTORY_RERUN_STYLE_ID = 'v3-rerun-form-style'
+const FACTORY_RERUN_STYLE = `
+html.v3-embed,
+html.v3-embed body {
+  height: 100%;
+  overflow: hidden;
+  background: transparent !important;
+}
+html.v3-embed body::before {
+  display: none !important;
+}
+html.v3-embed .sidebar,
+html.v3-embed .topbar {
+  display: none !important;
+}
+html.v3-embed .modal::backdrop,
+html.v3-embed #modal::backdrop {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html.v3-embed.v3-rerun-form-only #app {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+html.v3-embed.v3-rerun-form-only .modal,
+html.v3-embed.v3-rerun-form-only #modal,
+html.v3-embed.v3-rerun-form-only #toast {
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+`
+const factoryRerunFrame = ref(null)
+const factoryRerunRecordId = ref('')
+const factoryRerunGeneration = ref(0)
+const factoryRerunOpeningId = ref('')
+const factoryRerunOpenedId = ref('')
+
+function waitForRerunModule(frameWindow, attempts = 30) {
+  return new Promise((resolve, reject) => {
+    let remaining = attempts
+    const check = () => {
+      if (frameWindow?.TestRecordRerun?.open && typeof frameWindow.openRunScriptForm === 'function') {
+        resolve(frameWindow.TestRecordRerun)
+        return
+      }
+      remaining -= 1
+      if (remaining <= 0) {
+        reject(new Error('TestRecordRerun module unavailable'))
+        return
+      }
+      window.setTimeout(check, 100)
+    }
+    check()
+  })
+}
+
+function applyFactoryRerunChrome(doc) {
+  if (!doc?.documentElement) return
+  doc.documentElement.classList.add('v3-embed', 'v3-rerun-form-only')
+  if (doc.getElementById(FACTORY_RERUN_STYLE_ID)) return
+  const style = doc.createElement('style')
+  style.id = FACTORY_RERUN_STYLE_ID
+  style.textContent = FACTORY_RERUN_STYLE
+  doc.head?.appendChild(style)
+}
+
+function isCurrentFactoryRerun(task) {
+  return factoryRerunGeneration.value === task.generation
+    && String(factoryRerunRecordId.value || '') === task.recordId
+}
+
+function closeFactoryRerun(options = {}) {
+  factoryRerunGeneration.value += 1
+  factoryRerunRecordId.value = ''
+  factoryRerunOpeningId.value = ''
+  factoryRerunOpenedId.value = ''
+  if (options.refresh) loadRecords()
+}
+
+function onFactoryModalClose(event) {
+  const recordId = event?.currentTarget?.dataset?.factoryRerunId || factoryRerunRecordId.value
+  if (!recordId || factoryRerunOpenedId.value !== String(recordId)) return
+  closeFactoryRerun({ refresh: true })
+}
+
+async function onFactoryRerunLoad(event) {
+  const recordId = String(factoryRerunRecordId.value || '').trim()
+  const frameEl = event?.target || factoryRerunFrame.value
+  const frameWindow = frameEl?.contentWindow
+  const doc = frameEl?.contentDocument
+  if (!recordId || !frameWindow || !doc) return
+  if (factoryRerunOpenedId.value === recordId || factoryRerunOpeningId.value === recordId) return
+  factoryRerunOpeningId.value = recordId
+  const task = {
+    generation: factoryRerunGeneration.value,
+    recordId,
+    frameWindow,
+  }
+  try {
+    applyFactoryRerunChrome(doc)
+    if (doc.querySelector('#loginForm')) {
+      throw new Error('登录已失效，请重新登录后再再次执行')
+    }
+    const modal = doc.getElementById('modal')
+    if (modal && modal.dataset.factoryRerunBound !== recordId) {
+      modal.dataset.factoryRerunId = recordId
+      modal.dataset.factoryRerunBound = recordId
+      modal.addEventListener('close', onFactoryModalClose)
+    }
+    const rerunModule = await waitForRerunModule(task.frameWindow)
+    if (!isCurrentFactoryRerun(task)) return
+    await rerunModule.open(Number(recordId))
+    if (!isCurrentFactoryRerun(task)) return
+    if (!modal?.open) {
+      toast.show('未找到对应数据脚本入口，请到数据工厂中执行')
+      closeFactoryRerun()
+      return
+    }
+    factoryRerunOpenedId.value = recordId
+  } catch (error) {
+    if (isCurrentFactoryRerun(task)) {
+      toast.show(error.message || '数据工厂执行表单加载失败，请刷新后重试')
+      closeFactoryRerun()
+    }
+  } finally {
+    if (factoryRerunGeneration.value === task.generation && factoryRerunOpeningId.value === recordId) {
+      factoryRerunOpeningId.value = ''
+    }
+  }
+}
+
 async function onRerun(item) {
   try {
     const context = await recordsApi.getReexecuteContext(item.id)
@@ -286,14 +430,23 @@ async function onRerun(item) {
       toast.show(context?.message || '该记录缺少完整参数，请从原入口执行')
       return
     }
-    // data_script 类型走数据工厂流程（旧系统中此按钮不会对 data_script 显示，此处兜底防护）
     if (context.kind === 'data_script') {
-      await router.push({ name: 'dataScripts', query: { rerun_record_id: String(item.id) } })
+      if (!context.script_key) {
+        toast.show('该记录缺少脚本类型，请从数据工厂执行')
+        return
+      }
+      closeRerun()
+      factoryRerunGeneration.value += 1
+      factoryRerunOpenedId.value = ''
+      factoryRerunOpeningId.value = ''
+      factoryRerunRecordId.value = String(item.id)
       return
     }
     rerunningItem.value = item
     rerunContext.value = context
-    rerunEnvs.value = context.kind === 'api_case' ? await listEnvs(context.project_id) : []
+    rerunEnvs.value = context.kind === 'api_case'
+      ? await listEnvs(context.project_id)
+      : []
     rerunValues.value = {
       env_id: context.env_id || '',
       variables: JSON.stringify(context.variables || {}, null, 2),
@@ -313,9 +466,10 @@ function closeRerun() {
 
 async function submitRerun(data) {
   try {
-    const payload = { variables: parseJsonObject(data.variables) }
-    if (rerunContext.value?.kind === 'api_case') payload.env_id = Number(data.env_id)
+    const variables = parseJsonObject(data.variables)
     toast.show('正在执行，请稍候')
+    const payload = { variables }
+    if (rerunContext.value?.kind === 'api_case') payload.env_id = Number(data.env_id)
     const result = await recordsApi.confirmReexecute(rerunningItem.value.id, payload)
     toast.show(`执行完成：${result.result === 'passed' ? '成功' : '失败'}`)
     closeRerun()
@@ -344,6 +498,10 @@ onMounted(async () => {
   projects.value = await appStore.fetchProjects()
   await loadRecords()
 })
+
+onBeforeUnmount(() => {
+  closeFactoryRerun()
+})
 </script>
 
 <style scoped>
@@ -353,6 +511,21 @@ onMounted(async () => {
   width: 100%;
   max-width: none;
   margin: 0;
+}
+
+.v2-records__factory-rerun {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: transparent;
+}
+
+.v2-records__factory-rerun-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color-scheme: none;
 }
 
 .v2-records :deep(.v2-workbench-page-header__eyebrow) {

@@ -43,7 +43,11 @@ function main() {
     if (!new RegExp(`viewKey:\\s*'${key}'`).test(router)) issues.push(`router missing ${key} viewKey meta`)
     const routeBlock = router.match(new RegExp(`path:\\s*'\\/${key}'[\\s\\S]*?meta:\\s*\\{\\s*viewKey:\\s*'${key}'`))?.[0] || ''
     if (!/LegacyEmbedView/.test(routeBlock)) issues.push(`${key} must preserve its original legacy feature page`)
-    if ((config.migrated || []).includes(key)) issues.push(`migration-config must not mark ${key} as natively migrated`)
+  }
+  for (const key of ['dataScripts', 'requirementVerification', 'systemRegression']) {
+    if (!(config.migrated || []).includes(key)) {
+      issues.push(`migration-config must mark ${key} migrated so the V3 shell keeps /v3/${key}`)
+    }
   }
   if (!/LegacyEmbedView\.vue/.test(router)) issues.push('router must retain the original feature page bridge')
 

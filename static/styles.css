@@ -1103,42 +1103,44 @@ thead::after {
   color: var(--text);
 }
 
-/* A3 embedded-page visual parity: data factory and system regression only.
-   Enterprise AI Workbench: cold gray canvas #f4f6f8, white cards, dense toolbars.
-   Dark sidebar lives in V3 shell; embed pages only style the workspace. */
+/* V3 embed skin: align factory / requirement / regression to current V3 workbench.
+   Consume design-tokens; keep DOM/JS unchanged; V3 shell owns navigation chrome. */
 html.v3-embed {
-  --bg: #f4f6f8;
-  --soft: #eef1f4;
-  --surface: #ffffff;
-  --surface-solid: #ffffff;
-  --text: #29343d;
-  --muted: #7987a1;
-  --line: rgba(15, 23, 42, 0.06);
-  --accent: #5d87ff;
-  --accent-light: #5d87ff;
-  --accent-glow: rgba(93, 135, 255, 0.18);
-  --radius: 8px;
+  --bg: var(--color-bg-canvas, #f4f6f8);
+  --soft: var(--color-bg-subtle, #f2f4f7);
+  --surface: var(--color-bg-surface, #ffffff);
+  --surface-solid: var(--color-bg-surface, #ffffff);
+  --text: var(--color-text-primary, #29343d);
+  --muted: var(--color-text-muted, #7987a1);
+  --line: var(--color-border, rgba(15, 23, 42, 0.06));
+  --accent: var(--color-brand-primary, #5d87ff);
+  --accent-light: var(--color-brand-primary, #5d87ff);
+  --accent-glow: var(--color-focus-ring, rgba(93, 135, 255, 0.18));
+  --radius: 10px;
   --radius-sm: 7px;
-  background: #f4f6f8;
+  --font-display: Inter, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+  background: var(--color-bg-canvas, #f4f6f8);
 }
 
 html.v3-embed body,
 html.v3-embed .main,
 html.v3-embed .content {
-  color: #29343d;
-  background: #f4f6f8;
+  color: var(--color-text-primary, #29343d);
+  background: var(--color-bg-canvas, #f4f6f8);
 }
 
 html.v3-embed body,
 html.v3-embed button,
 html.v3-embed input,
 html.v3-embed select,
-html.v3-embed textarea {
+html.v3-embed textarea,
+html.v3-embed .panel-title h3,
+html.v3-embed .modal-head h3,
+html.v3-embed .stat strong,
+html.v3-embed .empty-state h3,
+html.v3-embed .page-head h1 {
   font-family: Inter, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
-}
-
-html.v3-embed .content {
-  padding: 14px 16px 20px;
+  letter-spacing: 0;
 }
 
 /* Compact page cue — V3 shell already owns navigation chrome */
@@ -1177,13 +1179,13 @@ html.v3-embed .system-regression-toolbar {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 10px;
-  min-height: 48px;
-  margin-bottom: 10px;
-  padding: 8px 12px;
+  min-height: 56px;
+  margin-bottom: 12px;
+  padding: 10px 16px;
   border: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 html.v3-embed .toolbar .filters,
@@ -1199,9 +1201,9 @@ html.v3-embed .system-regression-categories,
 html.v3-embed .system-regression-cases,
 html.v3-embed .system-regression-drawer {
   border: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
   overflow: hidden;
 }
 
@@ -1210,10 +1212,10 @@ html.v3-embed .panel-title {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 40px;
-  padding: 6px 14px;
+  min-height: 48px;
+  padding: 8px 16px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-  background: #f2f4f7;
+  background: #ffffff;
 }
 
 html.v3-embed .panel-title h3 {
@@ -1223,14 +1225,22 @@ html.v3-embed .panel-title h3 {
   color: #323251;
 }
 
+html.v3-embed .panel-title p {
+  margin: 2px 0 0;
+  color: #7987a1;
+  font-size: 12px;
+  font-weight: 400;
+}
+
 html.v3-embed .panel-body {
-  padding: 14px;
+  padding: 14px 16px;
 }
 
 html.v3-embed .table-wrap {
   border: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
   overflow: auto;
 }
 
@@ -1248,19 +1258,19 @@ html.v3-embed td {
 
 html.v3-embed th {
   height: 38px;
-  padding: 0 14px;
-  background: #f2f4f7;
+  padding: 0 12px;
+  background: #f8fafc;
   color: #7987a1;
   border-bottom: 1px solid #eaecf0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
 }
 
 html.v3-embed td {
-  height: 44px;
-  padding: 8px 14px;
+  height: 45px;
+  padding: 6px 12px;
   background: #ffffff;
   border-bottom: 1px solid #eaecf0;
   font-size: 13px;
@@ -1270,6 +1280,20 @@ html.v3-embed td {
 html.v3-embed tr:hover td,
 html.v3-embed .system-regression-case-table tr.active td {
   background: #f8fafc;
+}
+
+html.v3-embed td .actions {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+html.v3-embed td .actions .btn {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 html.v3-embed .field label {
@@ -1308,8 +1332,8 @@ html.v3-embed .field select:focus,
 html.v3-embed .field textarea:focus,
 html.v3-embed .system-regression-actions input:focus {
   outline: none;
-  border-color: #5d87ff;
-  box-shadow: 0 0 0 3px rgba(93, 135, 255, 0.18);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 html.v3-embed .btn {
@@ -1319,9 +1343,9 @@ html.v3-embed .btn {
   min-height: 36px;
   height: 36px;
   padding: 0 14px;
-  border: 1px solid #5d87ff;
+  border: 1px solid var(--accent);
   border-radius: 7px;
-  background: #5d87ff;
+  background: var(--accent);
   box-shadow: none;
   color: #ffffff;
   font-size: 13px;
@@ -1335,8 +1359,8 @@ html.v3-embed .btn::after {
 
 html.v3-embed .btn:hover,
 html.v3-embed .btn:active {
-  background: #4a7aff;
-  border-color: #4a7aff;
+  background: var(--color-brand-hover, #4a7aff);
+  border-color: var(--color-brand-hover, #4a7aff);
   box-shadow: none;
   transform: none;
 }
@@ -1377,8 +1401,8 @@ html.v3-embed .btn.text {
 
 html.v3-embed .btn.ghost:hover,
 html.v3-embed .btn.text:hover {
-  background: #edf2ff;
-  color: #5d87ff;
+  background: var(--color-brand-muted, #edf2ff);
+  color: var(--accent);
 }
 
 html.v3-embed .badge {
@@ -1406,8 +1430,8 @@ html.v3-embed .system-regression-categories button {
 }
 
 html.v3-embed .system-regression-categories button.active {
-  background: #edf2ff;
-  color: #5d87ff;
+  background: var(--color-brand-muted, #edf2ff);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -1417,10 +1441,21 @@ html.v3-embed .factory-grid {
   align-items: start;
 }
 
-html.v3-embed #content:not(:has(.system-regression-page)) > .toolbar,
+html.v3-embed #content:has(> .table-wrap) > .toolbar {
+  margin-bottom: 0;
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  box-shadow: none;
+}
+
+html.v3-embed #content:has(> .table-wrap) > .table-wrap {
+  margin-top: 0;
+  border-radius: 0 0 10px 10px;
+}
+
 html.v3-embed #content:not(:has(.system-regression-page)) > .panel,
 html.v3-embed #content:not(:has(.system-regression-page)) > .factory-grid {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 html.v3-embed .factory-grid > .panel {
@@ -1475,27 +1510,33 @@ html.v3-embed .qr-result-head {
 }
 
 html.v3-embed .modal {
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid #eaecf0;
   border-radius: 10px;
   background: #ffffff;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.1);
 }
 
 html.v3-embed .modal-head {
   position: relative;
-  min-height: 48px;
-  padding: 10px 16px;
-  background: #f2f4f7;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  min-height: 56px;
+  padding: 14px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #eaecf0;
+}
+
+html.v3-embed .modal-head h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #323251;
 }
 
 html.v3-embed .modal-body {
-  padding: 14px 16px;
+  padding: 16px 20px;
 }
 
 html.v3-embed .modal-foot {
-  padding: 10px 16px;
-  border-top: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 12px 20px;
+  border-top: 1px solid #eaecf0;
   background: #ffffff;
 }
 
@@ -1508,39 +1549,21 @@ html.v3-embed #data-agent-actions {
   align-items: center;
 }
 
-/* AI agent zone: blue→violet accent ONLY on agent header / status badge */
-html.v3-embed .modal:has(#data-agent-status) .modal-head::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #5d87ff 0%, #7c6cf0 52%, #8b5cf6 100%);
+html.v3-embed .modal:has(#data-agent-status) .modal-head {
+  border-bottom-color: var(--accent);
 }
 
 html.v3-embed .data-agent-progress > .panel-title {
   position: relative;
-}
-
-html.v3-embed .data-agent-progress > .panel-title::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #5d87ff 0%, #7c6cf0 52%, #8b5cf6 100%);
+  border-top: 2px solid var(--accent);
 }
 
 html.v3-embed #data-agent-status .badge,
 html.v3-embed .data-agent-progress > .panel-title > .badge {
-  border: 1px solid transparent;
+  border: 1px solid var(--accent);
   border-radius: 6px;
-  background:
-    linear-gradient(#edf2ff, #edf2ff) padding-box,
-    linear-gradient(90deg, #5d87ff, #8b5cf6) border-box;
-  color: #5d87ff;
+  background: var(--color-brand-muted, #edf2ff);
+  color: var(--accent);
   box-shadow: none;
 }
 
@@ -1585,7 +1608,7 @@ html.v3-embed .tab-bar button.active,
 html.v3-embed [role="tab"][aria-selected="true"],
 html.v3-embed [role="tab"].active {
   background: #ffffff;
-  color: #5d87ff;
+  color: var(--accent);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
@@ -1593,4 +1616,71 @@ html.v3-embed [role="tab"].active {
   html.v3-embed .factory-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+html.v3-embed .content {
+  padding: 16px 20px 20px;
+}
+
+html.v3-embed #content:not(:has(.system-regression-page))::before,
+html.v3-embed .system-regression-page::before {
+  display: none !important;
+  content: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+}
+
+html.v3-embed .shell,
+html.v3-embed .main,
+html.v3-embed .content,
+html.v3-embed #content,
+html.v3-embed .system-regression-page {
+  min-height: 100%;
+}
+
+html.v3-embed #content,
+html.v3-embed .system-regression-page {
+  display: flex;
+  flex-direction: column;
+}
+
+html.v3-embed #content > .factory-grid,
+html.v3-embed #content > .table-wrap,
+html.v3-embed .system-regression-page > .system-regression-cases {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+html.v3-embed #content > .panel,
+html.v3-embed #content > #dataFactoryAgentPanel {
+  flex: 0 0 auto;
+}
+
+html.v3-embed .modal::backdrop,
+html.v3-embed dialog.modal::backdrop,
+html.v3-embed #modal::backdrop {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html.v3-embed details.functional-requirement,
+html.v3-embed #fullFlowRunForm details {
+  margin-bottom: 8px;
+  border: 1px solid #eaecf0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+html.v3-embed details.functional-requirement > summary,
+html.v3-embed #fullFlowRunForm details > summary {
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #323251;
+  cursor: pointer;
 }

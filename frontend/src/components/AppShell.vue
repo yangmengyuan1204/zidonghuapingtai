@@ -137,8 +137,8 @@ const projects = ref([])
 const navigationGroups = [
   { label: '工作空间', keys: ['dashboard', 'projects'] },
   { label: '测试资产', keys: ['apiCases'] },
-  { label: '自动化执行', keys: ['dataScripts', 'requirementVerification', 'uiCases', 'records'] },
-  { label: '系统管理', keys: ['systemRegression', 'users'] },
+  { label: '自动化执行', keys: ['dataScripts', 'requirementVerification', 'uiCases', 'systemRegression', 'records'] },
+  { label: '系统管理', keys: ['users'] },
 ]
 const iconPaths = {
   dashboard: 'M4 4h6v6H4V4Zm10 0h6v10h-6V4ZM4 14h6v6H4v-6Zm10 4h6v2h-6v-2Z',
@@ -543,6 +543,9 @@ onMounted(async () => {
   position: relative;
   z-index: var(--v2-z-base);
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   background: var(--v2-shell-pilot-workspace-surface);
 }
 
@@ -611,12 +614,28 @@ onMounted(async () => {
 
 .v2-shell__content {
   padding: 28px 28px 32px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .v2-shell__content > * {
   width: 100%;
   max-width: var(--v2-shell-pilot-content-max);
   margin-inline: auto;
+}
+
+.v2-shell__content:has(.v2-legacy-embed) {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.v2-shell__content:has(.v2-legacy-embed) > * {
+  max-width: none;
+  margin-inline: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
 .v2-shell__drawer-trigger,
@@ -634,6 +653,10 @@ onMounted(async () => {
 @media (min-width: 1081px) and (max-width: 1599px) {
   .v2-shell__content {
     padding: 24px 24px 32px;
+  }
+
+  .v2-shell__content:has(.v2-legacy-embed) {
+    padding: 0;
   }
 }
 
@@ -719,6 +742,10 @@ onMounted(async () => {
 
   .v2-shell__content {
     padding: 16px 16px 28px;
+  }
+
+  .v2-shell__content:has(.v2-legacy-embed) {
+    padding: 0;
   }
 
   .v2-shell__breadcrumb > span {

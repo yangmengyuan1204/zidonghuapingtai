@@ -5,12 +5,21 @@ const root = path.resolve(import.meta.dirname, '..')
 const router = fs.readFileSync(path.join(root, 'src/router/index.js'), 'utf8')
 const shell = fs.readFileSync(path.join(root, 'src/components/AppShell.vue'), 'utf8')
 const migration = JSON.parse(fs.readFileSync(path.resolve(root, '../static/migration-config.json'), 'utf8'))
-for (const key of ['dataScripts', 'requirementVerification', 'systemRegression']) {
-  const block = router.match(new RegExp(`path: '\\/${key}'[\\s\\S]*?meta:`))?.[0] || ''
-  if (!block.includes('LegacyEmbedView')) throw new Error(`${key} no longer preserves its original feature page`)
-  if (migration.migrated.includes(key)) throw new Error(`migration config incorrectly marks ${key} as native`)
-  if (!shell.includes(key)) throw new Error(`AppShell missing ${key}`)
-}
+const dataScriptsBlock = router.match(/path: '\/dataScripts'[\s\S]*?meta:/)?.[0] || ''
+if (!dataScriptsBlock.includes('LegacyEmbedView')) throw new Error('dataScripts no longer preserves its original feature page')
+if (dataScriptsBlock.includes('DataScriptsView')) throw new Error('dataScripts must not use the native catalog view')
+if (!migration.migrated.includes('dataScripts')) throw new Error('dataScripts must stay on the V3 address via migration config')
+if (!shell.includes('dataScripts')) throw new Error('AppShell missing dataScripts')
+const requirementBlock = router.match(/path: '\/requirementVerification'[\s\S]*?meta:/)?.[0] || ''
+if (!requirementBlock.includes('LegacyEmbedView')) throw new Error('requirementVerification no longer preserves its original feature page')
+if (requirementBlock.includes('RequirementVerificationView')) throw new Error('requirementVerification must not use the native catalog view')
+if (!migration.migrated.includes('requirementVerification')) throw new Error('requirementVerification must stay on the V3 address via migration config')
+if (!shell.includes('requirementVerification')) throw new Error('AppShell missing requirementVerification')
+const systemRegressionBlock = router.match(/path: '\/systemRegression'[\s\S]*?meta:/)?.[0] || ''
+if (!systemRegressionBlock.includes('LegacyEmbedView')) throw new Error('systemRegression no longer preserves its original feature page')
+if (systemRegressionBlock.includes('SystemRegressionView')) throw new Error('systemRegression must not use the native catalog view')
+if (!migration.migrated.includes('systemRegression')) throw new Error('systemRegression must stay on the V3 address via migration config')
+if (!shell.includes('systemRegression')) throw new Error('AppShell missing systemRegression')
 if (!/path:\s*'\/:pathMatch\(\.\*\)\*'[\s\S]*?redirect:\s*'\/dashboard'/.test(router)) {
   throw new Error('router missing authenticated catch-all recovery')
 }

@@ -46,7 +46,9 @@ function createHarness({ migrated = ['dashboard', 'apiCases'], initiallyLoaded =
     '/records',
     '/ui-cases',
     '/users',
+    '/dataScripts',
     '/requirementVerification',
+    '/systemRegression',
   ])
   const router = {
     push(target) {
@@ -56,7 +58,7 @@ function createHarness({ migrated = ['dashboard', 'apiCases'], initiallyLoaded =
     resolve(target) {
       const raw = typeof target === 'string' ? target : target.path
       const path = raw.split(/[?#]/, 1)[0]
-      const viewKey = path === '/requirementVerification' ? 'requirementVerification' : path === '/api-cases' ? 'apiCases' : null
+      const viewKey = path === '/requirementVerification' ? 'requirementVerification' : path === '/systemRegression' ? 'systemRegression' : path === '/dataScripts' ? 'dataScripts' : path === '/api-cases' ? 'apiCases' : null
       return { matched: knownPaths.has(path) ? [{ name: viewKey || path, meta: viewKey ? { viewKey } : {} }] : [{ meta: {} }] }
     },
   }
@@ -145,21 +147,57 @@ const cases = [
     },
   },
   {
-    name: '登录回跳到未迁移需求验证时进入完整旧版',
+    name: '侧栏进入数据工厂时留在 V3',
     run: async () => {
-      const harness = createHarness()
-      await harness.navigateAfterLogin('/v3/requirementVerification')
-      assert.deepEqual(harness.pushes, [])
-      assert.equal(harness.browserWindow.location.href, '/#/requirementVerification')
+      const harness = createViewHarness({ migrated: ['dataScripts'], knownRouteNames: ['dataScripts'] })
+      await harness.navigateToView('dataScripts')
+      assert.deepEqual(harness.pushes, [{ name: 'dataScripts' }])
+      assert.equal(harness.browserWindow.location.href, 'about:blank')
     },
   },
   {
-    name: '系统回归未迁移时即使存在 Vue 路由也回到旧版',
+    name: '登录回跳到数据工厂时留在 V3',
     run: async () => {
-      const harness = createViewHarness()
+      const harness = createHarness({ migrated: ['dashboard', 'apiCases', 'dataScripts'] })
+      await harness.navigateAfterLogin('/v3/dataScripts')
+      assert.deepEqual(harness.pushes, ['/dataScripts'])
+      assert.equal(harness.browserWindow.location.href, 'about:blank')
+    },
+  },
+  {
+    name: '侧栏进入需求验证中心时留在 V3',
+    run: async () => {
+      const harness = createViewHarness({ migrated: ['requirementVerification'], knownRouteNames: ['requirementVerification'] })
+      await harness.navigateToView('requirementVerification')
+      assert.deepEqual(harness.pushes, [{ name: 'requirementVerification' }])
+      assert.equal(harness.browserWindow.location.href, 'about:blank')
+    },
+  },
+  {
+    name: '登录回跳到需求验证中心时留在 V3',
+    run: async () => {
+      const harness = createHarness({ migrated: ['dashboard', 'apiCases', 'requirementVerification'] })
+      await harness.navigateAfterLogin('/v3/requirementVerification')
+      assert.deepEqual(harness.pushes, ['/requirementVerification'])
+      assert.equal(harness.browserWindow.location.href, 'about:blank')
+    },
+  },
+  {
+    name: '侧栏进入系统回归时留在 V3',
+    run: async () => {
+      const harness = createViewHarness({ migrated: ['systemRegression'], knownRouteNames: ['systemRegression'] })
       await harness.navigateToView('systemRegression')
-      assert.deepEqual(harness.pushes, [])
-      assert.equal(harness.browserWindow.location.href, '/#/systemRegression')
+      assert.deepEqual(harness.pushes, [{ name: 'systemRegression' }])
+      assert.equal(harness.browserWindow.location.href, 'about:blank')
+    },
+  },
+  {
+    name: '登录回跳到系统回归时留在 V3',
+    run: async () => {
+      const harness = createHarness({ migrated: ['dashboard', 'apiCases', 'systemRegression'] })
+      await harness.navigateAfterLogin('/v3/systemRegression')
+      assert.deepEqual(harness.pushes, ['/systemRegression'])
+      assert.equal(harness.browserWindow.location.href, 'about:blank')
     },
   },
   {

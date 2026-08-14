@@ -306,11 +306,14 @@ def test_vue_execution_actions_open_prefilled_dialogs_before_executing():
     assert "async function submitRun(data)" in api_cases_view
     assert "apiCasesApi.executeApiCase(runningItem.value.id, payload)" in api_cases_view
     assert ':visible="rerunVisible"' in records_view
-    assert 'title="提交执行"' in records_view
+    assert ':title="rerunTitle"' in records_view
     assert 'submit-label="提交执行"' in records_view
     assert "rerunValues.value =" in records_view
     assert "JSON.stringify(context.variables || {}, null, 2)" in records_view
-    assert "router.push({ name: 'dataScripts', query: { rerun_record_id: String(item.id) } })" in records_view
+    assert 'src="/?v3_embed=1#/dataScripts"' in records_view
+    assert "await rerunModule.open(Number(recordId))" in records_view
+    assert "html.v3-embed.v3-rerun-form-only #app" in records_view
+    assert "router.push({ name: 'dataScripts'" not in records_view
     assert "toast.show('请在旧系统数据工厂中再次执行')" not in records_view
     assert "route.query.rerun_record_id" in legacy_embed_view
     assert "async function openPendingRerun()" in legacy_embed_view
@@ -325,7 +328,8 @@ def test_vue_execution_actions_open_prefilled_dialogs_before_executing():
     assert "onBeforeUnmount(invalidateRerunBridge)" in legacy_embed_view
     assert "toast.show('数据工厂执行表单加载失败，请刷新后重试')" in legacy_embed_view
     assert "router.replace({ name: task.routeName, query: nextQuery })" in legacy_embed_view
-    assert "await router.push({ name: 'dataScripts'" in records_view
+    assert "await router.push({ name: 'dataScripts'" not in records_view
+    assert "await rerunModule.open(Number(recordId))" in records_view
     assert "recordsApi.confirmReexecute(rerunningItem.value.id, payload)" in records_view
     assert "export function confirmReexecute(id, overrides = {})" in records_api
 

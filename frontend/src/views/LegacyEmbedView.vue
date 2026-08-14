@@ -44,8 +44,21 @@ html.v3-embed .main {
   min-width: 0;
   min-height: 100%;
 }
+html.v3-embed .shell,
+html.v3-embed .main,
+html.v3-embed .content,
+html.v3-embed #content {
+  min-height: 100%;
+  height: 100%;
+}
 html.v3-embed .content {
-  padding: 0;
+  padding: 8px 12px 12px;
+}
+html.v3-embed .modal::backdrop,
+html.v3-embed #modal::backdrop {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 `
 
@@ -177,15 +190,15 @@ onBeforeUnmount(invalidateRerunBridge)
     display: flex;
     flex-direction: column;
     min-width: 0;
-    min-height: calc(100vh - 160px);
-    min-height: calc(100dvh - 160px);
+    min-height: 0;
+    height: 100%;
   }
 
   .v2-legacy-embed__frame {
     flex: 1 1 auto;
     width: 100%;
-    min-height: calc(100vh - 160px);
-    min-height: calc(100dvh - 160px);
+    height: 100%;
+    min-height: 0;
     border: 0;
     background: transparent;
   }
