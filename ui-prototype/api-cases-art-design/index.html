@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>接口用例库 · UI Prototype</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="proto-shell">
+    <!-- ============ Sidebar ============ -->
+    <aside class="proto-sidebar">
+      <div class="proto-brand">
+        <span class="proto-brand-mark" aria-hidden="true">Q</span>
+        <div class="proto-brand-copy">
+          <strong>质量工作台</strong>
+          <span>AI TEST OPERATIONS</span>
+        </div>
+      </div>
+
+      <div class="proto-project">
+        <span class="proto-project-label">当前项目</span>
+        <div class="proto-project-card">
+          <span class="proto-project-dot" aria-hidden="true"></span>
+          <select class="proto-project-select" aria-label="切换当前项目">
+            <option value="">全部项目</option>
+            <option value="1" selected>oem-测试</option>
+            <option value="2">默认项目</option>
+          </select>
+        </div>
+      </div>
+
+      <nav class="proto-nav" aria-label="主导航">
+        <section class="proto-nav-group">
+          <h2 class="proto-nav-heading">工作空间</h2>
+          <a class="proto-nav-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4h6v6H4V4Zm10 0h6v10h-6V4ZM4 14h6v6H4v-6Zm10 4h6v2h-6v-2Z" /></svg>
+            <span>工作台总览</span>
+          </a>
+          <a class="proto-nav-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7h7l2 2h9v10H3V7Z" /></svg>
+            <span>项目空间</span>
+          </a>
+        </section>
+
+        <section class="proto-nav-group">
+          <h2 class="proto-nav-heading">测试资产</h2>
+          <a class="proto-nav-item is-active" href="#" aria-current="page">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4h14v16H5V4Zm3 4h8M8 12h8M8 16h5" /></svg>
+            <span>接口用例库</span>
+          </a>
+        </section>
+
+        <section class="proto-nav-group">
+          <h2 class="proto-nav-heading">自动化执行</h2>
+          <a class="proto-nav-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4 3 12l5 8M16 4l5 8-5 8M14 3l-4 18" /></svg>
+            <span>数据工厂</span>
+          </a>
+          <a class="proto-nav-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Zm-3 9 2 2 4-5" /></svg>
+            <span>需求验证中心</span>
+          </a>
+          <a class="proto-nav-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 5h18v12H3V5Zm5 16h8M12 17v4" /></svg>
+            <span>UI自动化</span>
+          </a>
+          <a class="proto-nav-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4h14v16H5V4Zm3 4h8M8 12h8M8 16h4" /></svg>
+            <span>执行报告</span>
+          </a>
+        </section>
+
+        <section class="proto-nav-group">
+          <h2 class="proto-nav-heading">系统管理</h2>
+          <a class="proto-nav-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16v11H4V7Zm4-3h8v3H8V4Zm0 8 2 2 5-5m-8 9h10" /></svg>
+            <span>系统回归</span>
+          </a>
+          <a class="proto-nav-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-1a3 3 0 1 0 0-6M2 21c0-4 2-7 6-7s6 3 6 7m1-7c4 0 7 2 7 6" /></svg>
+            <span>权限中心</span>
+          </a>
+        </section>
+      </nav>
+
+      <div class="proto-sidebar-foot">
+        <div class="proto-account">
+          <span class="proto-avatar" aria-hidden="true">A</span>
+          <div class="proto-account-copy">
+            <strong>admin</strong>
+            <small>admin</small>
+          </div>
+          <span class="proto-role">管理员</span>
+        </div>
+        <div class="proto-admin-links">
+          <a href="#">模板管理</a>
+          <a href="#">自愈记录</a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ Main ============ -->
+    <div class="proto-main">
+      <header class="proto-topbar">
+        <div class="proto-topbar-leading">
+          <nav class="proto-breadcrumb" aria-label="面包屑">
+            <span>测试资产</span>
+            <span class="proto-breadcrumb-sep" aria-hidden="true">/</span>
+            <strong>接口用例库</strong>
+          </nav>
+        </div>
+        <div class="proto-topbar-actions">
+          <button class="proto-text-button" type="button">全局 AI 配置</button>
+          <button class="proto-text-button" type="button">退出</button>
+        </div>
+      </header>
+
+      <main class="proto-content">
+        <!-- ============ Page Header ============ -->
+        <div class="proto-page-header">
+          <div class="proto-page-header-copy">
+            <p class="proto-eyebrow">TEST ASSETS</p>
+            <h1 class="proto-page-title">接口用例库</h1>
+            <p class="proto-page-desc">按项目与环境管理接口测试资产，支持选择、批量执行和单条调试。</p>
+          </div>
+          <div class="proto-page-header-actions">
+            <button class="proto-btn proto-btn-primary" type="button">新增接口用例</button>
+          </div>
+        </div>
+
+        <!-- ============ Toolbar Card ============ -->
+        <section class="proto-card proto-toolbar" aria-label="筛选与操作">
+          <div class="proto-toolbar-fields">
+            <div class="proto-field">
+              <label class="proto-field-label" for="proto-filter-project">项目</label>
+              <select id="proto-filter-project" class="proto-select">
+                <option value="" selected>全部</option>
+                <option value="1">oem-测试</option>
+                <option value="2">默认项目</option>
+              </select>
+            </div>
+            <div class="proto-field">
+              <label class="proto-field-label" for="proto-filter-env">环境</label>
+              <select id="proto-filter-env" class="proto-select">
+                <option value="" selected>全部</option>
+                <option value="1">oem-测试</option>
+                <option value="2">正式环境</option>
+              </select>
+            </div>
+          </div>
+          <div class="proto-toolbar-actions">
+            <button class="proto-btn proto-btn-secondary" type="button" disabled>批量执行</button>
+          </div>
+        </section>
+
+        <!-- ============ Table Card ============ -->
+        <section class="proto-card proto-table-card" aria-label="接口用例列表">
+          <div class="proto-table-head">
+            <div class="proto-table-head-copy">
+              <strong>接口用例</strong>
+              <span>筛选条件与选择状态在执行前保持不变</span>
+            </div>
+          </div>
+
+          <div class="proto-table-scroll">
+            <table class="proto-table">
+              <thead>
+                <tr>
+                  <th class="col-select" aria-label="选择"></th>
+                  <th class="col-id">ID</th>
+                  <th class="col-project">项目</th>
+                  <th class="col-env">环境</th>
+                  <th class="col-name">用例名称</th>
+                  <th class="col-method">方法</th>
+                  <th class="col-url">URL</th>
+                  <th class="col-status">状态</th>
+                  <th class="col-actions">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="col-select"><input type="checkbox" class="proto-checkbox" aria-label="选择接口用例 OEM-大货单下单" /></td>
+                  <td class="col-id">82</td>
+                  <td class="col-project">oem-测试</td>
+                  <td class="col-env">oem-测试</td>
+                  <td class="col-name">OEM-大货单下单</td>
+                  <td class="col-method"><span class="proto-tag tag-post">POST</span></td>
+                  <td class="col-url">/oem/createBigOrder</td>
+                  <td class="col-status"><span class="proto-tag tag-success">启用</span></td>
+                  <td class="col-actions">
+                    <div class="proto-row-actions">
+                      <button class="proto-btn proto-btn-primary proto-btn-sm" type="button">执行</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">复制</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">编辑</button>
+                      <button class="proto-btn proto-btn-danger proto-btn-sm" type="button">删除</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="col-select"><input type="checkbox" class="proto-checkbox" checked aria-label="选择接口用例 前台登录" /></td>
+                  <td class="col-id">1</td>
+                  <td class="col-project">oem-测试</td>
+                  <td class="col-env">oem-测试</td>
+                  <td class="col-name">前台登录</td>
+                  <td class="col-method"><span class="proto-tag tag-post">POST</span></td>
+                  <td class="col-url">/client/userLogin</td>
+                  <td class="col-status"><span class="proto-tag tag-success">启用</span></td>
+                  <td class="col-actions">
+                    <div class="proto-row-actions">
+                      <button class="proto-btn proto-btn-primary proto-btn-sm" type="button">执行</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">复制</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">编辑</button>
+                      <button class="proto-btn proto-btn-danger proto-btn-sm" type="button">删除</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="col-select"><input type="checkbox" class="proto-checkbox" aria-label="选择接口用例 搜索商品" /></td>
+                  <td class="col-id">2</td>
+                  <td class="col-project">oem-测试</td>
+                  <td class="col-env">oem-测试</td>
+                  <td class="col-name">搜索商品</td>
+                  <td class="col-method"><span class="proto-tag tag-post">POST</span></td>
+                  <td class="col-url">/client/searchGoods</td>
+                  <td class="col-status"><span class="proto-tag tag-success">启用</span></td>
+                  <td class="col-actions">
+                    <div class="proto-row-actions">
+                      <button class="proto-btn proto-btn-primary proto-btn-sm" type="button">执行</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">复制</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">编辑</button>
+                      <button class="proto-btn proto-btn-danger proto-btn-sm" type="button">删除</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="col-select"><input type="checkbox" class="proto-checkbox" aria-label="选择接口用例 获取店铺信息" /></td>
+                  <td class="col-id">3</td>
+                  <td class="col-project">oem-测试</td>
+                  <td class="col-env">oem-测试</td>
+                  <td class="col-name">获取店铺信息</td>
+                  <td class="col-method"><span class="proto-tag tag-post">POST</span></td>
+                  <td class="col-url">/client/getStoreShopId</td>
+                  <td class="col-status"><span class="proto-tag tag-success">启用</span></td>
+                  <td class="col-actions">
+                    <div class="proto-row-actions">
+                      <button class="proto-btn proto-btn-primary proto-btn-sm" type="button">执行</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">复制</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">编辑</button>
+                      <button class="proto-btn proto-btn-danger proto-btn-sm" type="button">删除</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="col-select"><input type="checkbox" class="proto-checkbox" aria-label="选择接口用例 查询订单详情" /></td>
+                  <td class="col-id">76</td>
+                  <td class="col-project">默认项目</td>
+                  <td class="col-env">正式环境</td>
+                  <td class="col-name">查询订单详情</td>
+                  <td class="col-method"><span class="proto-tag tag-get">GET</span></td>
+                  <td class="col-url">/client/getOrderDetail?orderSn={{order_sn}}</td>
+                  <td class="col-status"><span class="proto-tag tag-success">启用</span></td>
+                  <td class="col-actions">
+                    <div class="proto-row-actions">
+                      <button class="proto-btn proto-btn-primary proto-btn-sm" type="button">执行</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">复制</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">编辑</button>
+                      <button class="proto-btn proto-btn-danger proto-btn-sm" type="button">删除</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="col-select"><input type="checkbox" class="proto-checkbox" aria-label="选择接口用例 更新商品" /></td>
+                  <td class="col-id">75</td>
+                  <td class="col-project">默认项目</td>
+                  <td class="col-env">正式环境</td>
+                  <td class="col-name">更新商品</td>
+                  <td class="col-method"><span class="proto-tag tag-put">PUT</span></td>
+                  <td class="col-url">/client/updateGoods</td>
+                  <td class="col-status"><span class="proto-tag tag-warning">停用</span></td>
+                  <td class="col-actions">
+                    <div class="proto-row-actions">
+                      <button class="proto-btn proto-btn-primary proto-btn-sm" type="button">执行</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">复制</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">编辑</button>
+                      <button class="proto-btn proto-btn-danger proto-btn-sm" type="button">删除</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="col-select"><input type="checkbox" class="proto-checkbox" aria-label="选择接口用例 删除订单" /></td>
+                  <td class="col-id">74</td>
+                  <td class="col-project">默认项目</td>
+                  <td class="col-env">正式环境</td>
+                  <td class="col-name">删除订单</td>
+                  <td class="col-method"><span class="proto-tag tag-delete">DELETE</span></td>
+                  <td class="col-url">/client/deleteOrder</td>
+                  <td class="col-status"><span class="proto-tag tag-success">启用</span></td>
+                  <td class="col-actions">
+                    <div class="proto-row-actions">
+                      <button class="proto-btn proto-btn-primary proto-btn-sm" type="button">执行</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">复制</button>
+                      <button class="proto-btn proto-btn-ghost proto-btn-sm" type="button">编辑</button>
+                      <button class="proto-btn proto-btn-danger proto-btn-sm" type="button">删除</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="proto-pagination">
+            <span class="proto-page-info">共 82 条，第 1/5 页</span>
+            <nav class="proto-pager" aria-label="接口用例分页">
+              <button class="proto-page-btn" type="button" aria-label="上一页" disabled>‹</button>
+              <button class="proto-page-btn is-current" type="button" aria-current="page">1</button>
+              <button class="proto-page-btn" type="button">2</button>
+              <button class="proto-page-btn" type="button">3</button>
+              <span class="proto-page-ellipsis">…</span>
+              <button class="proto-page-btn" type="button">5</button>
+              <button class="proto-page-btn" type="button" aria-label="下一页">›</button>
+            </nav>
+          </div>
+        </section>
+
+        <!-- ============ Dialog Visual Reference ============ -->
+        <section class="proto-dialog-ref" aria-label="Dialog Visual Reference Section">
+          <div class="proto-dialog-ref-label">Dialog Visual Reference · 新增接口用例</div>
+          <div class="proto-dialog-backdrop">
+            <div class="proto-dialog" role="dialog" aria-modal="true" aria-label="新增接口用例">
+              <header class="proto-dialog-header">
+                <h2>新增接口用例</h2>
+                <button class="proto-dialog-close" type="button" aria-label="关闭弹窗">×</button>
+              </header>
+              <div class="proto-dialog-body">
+                <div class="proto-form-grid">
+                  <div class="proto-form-field">
+                    <label>项目 *</label>
+                    <select class="proto-input">
+                      <option>oem-测试</option>
+                      <option>默认项目</option>
+                    </select>
+                  </div>
+                  <div class="proto-form-field">
+                    <label>环境 *</label>
+                    <select class="proto-input">
+                      <option>oem-测试</option>
+                      <option>正式环境</option>
+                    </select>
+                  </div>
+                  <div class="proto-form-field">
+                    <label>用例名称 *</label>
+                    <input class="proto-input" type="text" placeholder="请输入用例名称" />
+                  </div>
+                  <div class="proto-form-field">
+                    <label>请求方法 *</label>
+                    <select class="proto-input">
+                      <option>GET</option>
+                      <option selected>POST</option>
+                      <option>PUT</option>
+                      <option>PATCH</option>
+                      <option>DELETE</option>
+                    </select>
+                  </div>
+                  <div class="proto-form-field proto-form-field-full">
+                    <label>URL *</label>
+                    <input class="proto-input" type="text" placeholder="请输入 URL" />
+                  </div>
+                  <div class="proto-form-field proto-form-field-full">
+                    <label>请求头 JSON</label>
+                    <textarea class="proto-input proto-textarea" rows="4">{"Content-Type": "application/json"}</textarea>
+                  </div>
+                  <div class="proto-form-field proto-form-field-full">
+                    <label>参数 JSON</label>
+                    <textarea class="proto-input proto-textarea" rows="4">{"page": 1, "pageSize": 20}</textarea>
+                  </div>
+                  <div class="proto-form-field proto-form-field-full">
+                    <label>请求体</label>
+                    <textarea class="proto-input proto-textarea" rows="4">{"account": "{{account}}", "password": "{{password}}"}</textarea>
+                  </div>
+                  <div class="proto-form-field proto-form-field-full">
+                    <label>断言/提取 JSON</label>
+                    <textarea class="proto-input proto-textarea" rows="4">{"status_code": 200, "extract": {"id": "json.data.id"}}</textarea>
+                  </div>
+                  <div class="proto-form-field">
+                    <label>状态</label>
+                    <select class="proto-input">
+                      <option selected>启用</option>
+                      <option>停用</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <footer class="proto-dialog-footer">
+                <button class="proto-btn proto-btn-secondary" type="button">取消</button>
+                <button class="proto-btn proto-btn-primary" type="button">保存</button>
+              </footer>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

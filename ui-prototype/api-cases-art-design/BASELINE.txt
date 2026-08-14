@@ -1,0 +1,115 @@
+﻿Branch: codex/frontend-v3-workbench-redesign
+
+--- git status --short ---
+ M docs/frontend-v2/handoff/CURRENT-TASK.md
+ M docs/frontend-v2/handoff/STATE.json
+ M frontend/index.html
+ M frontend/scripts/validate-v3-visual-contract.mjs
+ M frontend/src/App.vue
+ M frontend/src/components/AiConfigDialog.vue
+ M frontend/src/components/AppFormDialog.vue
+ M frontend/src/components/AppModal.vue
+ M frontend/src/components/AppShell.vue
+ M frontend/src/components/AppTable.vue
+ M frontend/src/components/v2/base/BaseModal.vue
+ M frontend/src/components/v2/workbench/WorkbenchPageHeader.vue
+ M frontend/src/components/v2/workbench/WorkbenchPanel.vue
+ M frontend/src/styles/v2/tokens.component.css
+ M frontend/src/styles/v2/tokens.foundation.css
+ M frontend/src/styles/v2/tokens.semantic.css
+ M frontend/src/views/ApiCasesView.vue
+ M frontend/src/views/DashboardView.vue
+ M frontend/src/views/ProjectsView.vue
+ M frontend/src/views/RecordsView.vue
+ M frontend/src/views/RequirementVerificationView.vue
+ M frontend/src/views/UiCasesView.vue
+ M frontend/src/views/UsersView.vue
+ M static/admin/heal-logs.html
+ M static/admin/templates.html
+ M static/design-system-base.css
+ M static/design-tokens.css
+ M static/index.html
+ M static/login.css
+ M static/styles.css
+ M static/system-regression.css
+ M "\345\220\257\345\212\250\346\234\215\345\212\241.bat"
+?? .pytest_cache/
+?? docs/frontend-v2/phase-reports/frontend-v3-art-design-pro-source-pilot-report-2026-08-12.md
+?? docs/frontend-v2/phase-reports/frontend-v3-art-design-pro-ui-pilot-report-2026-08-12.md
+?? docs/frontend-v2/phase-reports/frontend-v3-light-workbench-redesign-2026-08-11.md
+?? docs/frontend-v2/ui-pilot-screenshots/
+?? docs/superpowers/plans/2026-08-11-frontend-v3-light-workbench-visual-redesign.md
+?? docs/superpowers/plans/2026-08-12-art-design-pro-ui-pilot.md
+?? docs/ui-redesign/
+?? frontend/scripts/validate-v3-light-visual-contract.mjs
+?? frontend/scripts/validate-v3-style-only-scope.mjs
+?? ui-reference/
+
+--- git diff --name-only ---
+docs/frontend-v2/handoff/CURRENT-TASK.md
+docs/frontend-v2/handoff/STATE.json
+frontend/index.html
+frontend/scripts/validate-v3-visual-contract.mjs
+frontend/src/App.vue
+frontend/src/components/AiConfigDialog.vue
+frontend/src/components/AppFormDialog.vue
+frontend/src/components/AppModal.vue
+frontend/src/components/AppShell.vue
+frontend/src/components/AppTable.vue
+frontend/src/components/v2/base/BaseModal.vue
+frontend/src/components/v2/workbench/WorkbenchPageHeader.vue
+frontend/src/components/v2/workbench/WorkbenchPanel.vue
+frontend/src/styles/v2/tokens.component.css
+frontend/src/styles/v2/tokens.foundation.css
+frontend/src/styles/v2/tokens.semantic.css
+frontend/src/views/ApiCasesView.vue
+frontend/src/views/DashboardView.vue
+frontend/src/views/ProjectsView.vue
+frontend/src/views/RecordsView.vue
+frontend/src/views/RequirementVerificationView.vue
+frontend/src/views/UiCasesView.vue
+frontend/src/views/UsersView.vue
+static/admin/heal-logs.html
+static/admin/templates.html
+static/design-system-base.css
+static/design-tokens.css
+static/index.html
+static/login.css
+static/styles.css
+static/system-regression.css
+"\345\220\257\345\212\250\346\234\215\345\212\241.bat"
+
+--- git diff --stat ---
+ docs/frontend-v2/handoff/CURRENT-TASK.md           |   12 +-
+ docs/frontend-v2/handoff/STATE.json                |   20 +-
+ frontend/index.html                                |    8 +-
+ frontend/scripts/validate-v3-visual-contract.mjs   |  175 +---
+ frontend/src/App.vue                               |    6 +-
+ frontend/src/components/AiConfigDialog.vue         |   15 +-
+ frontend/src/components/AppFormDialog.vue          |   59 +-
+ frontend/src/components/AppModal.vue               |    6 +-
+ frontend/src/components/AppShell.vue               | 1100 ++++++++------------
+ frontend/src/components/AppTable.vue               |    6 +-
+ frontend/src/components/v2/base/BaseModal.vue      |   50 +-
+ .../v2/workbench/WorkbenchPageHeader.vue           |   19 +-
+ .../src/components/v2/workbench/WorkbenchPanel.vue |   49 +-
+ frontend/src/styles/v2/tokens.component.css        |   48 +-
+ frontend/src/styles/v2/tokens.foundation.css       |   40 +-
+ frontend/src/styles/v2/tokens.semantic.css         |   19 +-
+ frontend/src/views/ApiCasesView.vue                |  408 +++++++-
+ frontend/src/views/DashboardView.vue               |   38 +-
+ frontend/src/views/ProjectsView.vue                |   20 +
+ frontend/src/views/RecordsView.vue                 |   16 +
+ frontend/src/views/RequirementVerificationView.vue |   16 +-
+ frontend/src/views/UiCasesView.vue                 |   15 +-
+ frontend/src/views/UsersView.vue                   |   12 +
+ static/admin/heal-logs.html                        |   45 +-
+ static/admin/templates.html                        |   48 +-
+ static/design-system-base.css                      |   20 +-
+ static/design-tokens.css                           |   96 +-
+ static/index.html                                  |   10 +-
+ static/login.css                                   |   81 +-
+ static/styles.css                                  |   52 +-
+ static/system-regression.css                       |   38 +-
+ ...20\257\345\212\250\346\234\215\345\212\241.bat" |    6 +-
+ 32 files changed, 1451 insertions(+), 1102 deletions(-)
