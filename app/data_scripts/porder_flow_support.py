@@ -48,6 +48,113 @@ def _compat_wrapper(func):
     return wrapped
 
 
+def _extract_predicted_price(payload):
+    data = payload.get("data") if isinstance(payload, dict) else None
+    keys = (
+        "price",
+        "logistics_price",
+        "predict_price",
+        "predictLogisticsPrice",
+        "amount",
+        "logistics_price_artificial",
+    )
+
+    def from_mapping(row):
+        for key in keys:
+            value = row.get(key)
+            if value not in (None, "", []):
+                return str(value)
+        return ""
+
+    if isinstance(data, dict):
+        found = from_mapping(data)
+        if found:
+            return found
+        rows = data.get("list") or data.get("rows") or data.get("freight") or []
+        if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+            return from_mapping(rows[0])
+    if isinstance(data, list) and data and isinstance(data[0], dict):
+        return from_mapping(data[0])
+    return ""
+
+
+def _freight_mappings(payload):
+    data = payload.get("data") if isinstance(payload, dict) else None
+    rows: list = []
+    if isinstance(data, dict):
+        for key in ("list", "rows", "freight", "logistics", "logistics_list", "group"):
+            value = data.get(key)
+            if isinstance(value, list):
+                rows.extend(item for item in value if isinstance(item, dict))
+        if not rows:
+            rows.append(data)
+    elif isinstance(data, list):
+        rows.extend(item for item in data if isinstance(item, dict))
+    expanded: list = []
+    for row in rows:
+        expanded.append(row)
+        for key in ("group", "list", "rows", "freight", "logistics"):
+            nested = row.get(key)
+            if isinstance(nested, list):
+                expanded.extend(item for item in nested if isinstance(item, dict))
+    return expanded
+
+
+def _logistics_ids_from_freight(payload, requested: str):
+    requested = str(requested or "").strip()
+    sea_hint = requested in {"20", "sea", "ship"} or "船" in requested or "海" in requested
+    seen: set[str] = set()
+    ordered: list[str] = []
+
+    def add(value: str) -> None:
+        text = str(value or "").strip()
+        if text and text not in seen:
+            seen.add(text)
+            ordered.append(text)
+
+    if sea_hint:
+        for row in _freight_mappings(payload):
+            name = str(row.get("name") or row.get("logistics_name") or row.get("express_name") or row.get("title") or "")
+            lid = str(row.get("logistics_id") or row.get("id") or "")
+            if lid and ("船" in name or "海" in name or "sea" in name.lower() or "ship" in name.lower()):
+                add(lid)
+    add(requested)
+    for row in _freight_mappings(payload):
+        add(str(row.get("logistics_id") or ""))
+    return ordered
+
+
+def _predict_porder_logistics_price(session, base_url, variables, freight_id, timeout):
+    length = str(variables.get("box_length") or "58")
+    width = str(variables.get("box_width") or "51")
+    height = str(variables.get("box_height") or "50")
+    weight = str(variables.get("box_weight") or "10")
+    try:
+        volume = str(int(float(length) * float(width) * float(height)))
+    except (TypeError, ValueError):
+        volume = "0"
+    payload = _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_predict_logistics_price", "/porder.predictLogisticsPrice"),
+        {
+            "datetime": "",
+            "list": [
+                {
+                    "weight": weight,
+                    "volume": volume,
+                    "height": height,
+                    "width": width,
+                    "length": length,
+                    "freight_id": freight_id,
+                }
+            ],
+        },
+        timeout,
+    )
+    return _extract_predicted_price(payload), payload
+
+
 def _impl__run_backend_porder_flow(
     base_url: str,
     timeout: int,
@@ -381,25 +488,50 @@ def _impl__run_backend_porder_flow(
         )
 
     logistics_id = str(variables.get("delivery_quote_logistics_id") or variables.get("quote_logistics_id") or "25")
-    logistics_price = str(variables.get("logistics_price_artificial") or "775")
-    logistics_payload = _post_admin_urlencoded(
-        session,
-        base_url,
-        _api_path(variables, "admin_porder_batch_update_freight_logistics", "/porder.batchUpdateFreightLogistics"),
-        {"logistics_id": logistics_id, "freight_id_set": [freight_id]},
-        timeout,
-    )
+    from_api = variables.get("logistics_price_from_api")
+    if isinstance(from_api, str):
+        from_api = from_api.strip().lower() in {"1", "true", "yes"}
+    manual_price = str(variables.get("logistics_price_artificial") or "").strip()
+    logistics_price = manual_price or "775"
+    logistics_payload = {}
+    selected_id = ""
+    for candidate_id in _logistics_ids_from_freight(freight_before_box_payload, logistics_id) or [logistics_id]:
+        logistics_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_porder_batch_update_freight_logistics", "/porder.batchUpdateFreightLogistics"),
+            {"logistics_id": candidate_id, "freight_id_set": [freight_id]},
+            timeout,
+        )
+        backend_log.setdefault("batch_update_freight_logistics_attempts", []).append(
+            {**_payload_brief(logistics_payload), "logistics_id": candidate_id, "freight_id": freight_id}
+        )
+        if _api_success(logistics_payload):
+            selected_id = candidate_id
+            break
     backend_log["batch_update_freight_logistics"] = {
         **_payload_brief(logistics_payload),
-        "logistics_id": logistics_id,
+        "logistics_id": selected_id or logistics_id,
         "freight_id": freight_id,
     }
-    if not _api_success(logistics_payload):
+    if not selected_id:
         return False, {
             "backend_passed": False,
             "reason": "配送单选择国际物流失败",
             "batch_update_freight_logistics": _payload_brief(logistics_payload),
         }
+    logistics_id = selected_id
+
+    predicted = ""
+    if from_api:
+        predicted, predict_payload = _predict_porder_logistics_price(session, base_url, variables, str(freight_id), timeout)
+        backend_log["predict_logistics_price"] = {
+            **_payload_brief(predict_payload),
+            "predicted": predicted,
+            "freight_id": freight_id,
+        }
+        if predicted:
+            logistics_price = predicted
 
     freight_list_payload = _post_admin_urlencoded(
         session,
@@ -417,6 +549,10 @@ def _impl__run_backend_porder_flow(
     )
     backend_log["freight_list"] = _payload_brief(freight_list_payload)
     backend_log["amount_current"] = _payload_brief(current_payload)
+    if from_api and not predicted and not manual_price:
+        listed = _extract_predicted_price(freight_list_payload) or _extract_predicted_price(current_payload)
+        if listed:
+            logistics_price = listed
 
     offer_payload = _post_admin_urlencoded(
         session,

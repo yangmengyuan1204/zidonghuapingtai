@@ -139,6 +139,23 @@ def create_batch(
     return batch
 
 
+def list_batches(
+    db: Session,
+    *,
+    suite_key: str,
+    limit: int = 20,
+) -> list[SystemRegressionBatch]:
+    size = max(1, min(int(limit or 20), 50))
+    return (
+        db.query(SystemRegressionBatch)
+        .join(SystemRegressionSuite, SystemRegressionSuite.id == SystemRegressionBatch.suite_id)
+        .filter(SystemRegressionSuite.suite_key == suite_key)
+        .order_by(SystemRegressionBatch.id.desc())
+        .limit(size)
+        .all()
+    )
+
+
 def _invoke_runner(runner: Any, case: Mapping[str, Any], context: Mapping[str, Any]) -> CaseRunResult:
     result = runner(case, context) if callable(runner) else runner.execute(case, context)
     if isinstance(result, CaseRunResult):
@@ -526,6 +543,7 @@ __all__ = [
     "checkpoint_run",
     "create_batch",
     "execute_batch",
+    "list_batches",
     "reconcile_interrupted_runs",
     "recover_interrupted_runs_on_startup",
     "request_stop",

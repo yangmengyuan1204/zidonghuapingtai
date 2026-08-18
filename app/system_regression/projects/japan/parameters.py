@@ -82,6 +82,8 @@ class OrderDefaultsInput(BaseModel):
     default_quantity: int = 1
     other_fee_name: str = ""
     other_fee_amount: MoneyInput = Field(default_factory=lambda: MoneyInput(value=0))
+    default_offer_price: MoneyInput | None = None
+    default_freight: MoneyInput | None = None
 
     @field_validator("item_count", "default_quantity", mode="before")
     @classmethod
@@ -129,6 +131,7 @@ class ProblemGoodsInput(BaseModel):
     g_deal_type: Literal["退货退款", "换货", "丢货重拍", "少货补买", "其他", "仅退款"] = "仅退款"
     business_decision: str = "系统回归自动处理"
     purchase_remark: str = "系统回归"
+    confirm_distribution: bool = True
 
     @field_validator("problem_type", mode="before")
     @classmethod
@@ -144,13 +147,81 @@ class ProblemGoodsInput(BaseModel):
         return _non_negative_integer(value, "问题产品数量")
 
 
+class PartPayInput(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    enabled: bool = False
+    percent: int = 50
+    tail_node: Literal["before_shelf", "before_porder_create"] = "before_shelf"
+    tail_partial: bool = False
+    tail_sortings: str = ""
+    fee_timing: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("percent", mode="before")
+    @classmethod
+    def validate_percent(cls, value: Any) -> int:
+        number = _non_negative_integer(value, "首款比例")
+        if number > 100:
+            raise ValueError("首款比例不能大于100")
+        return int(round(number / 5) * 5)
+
+
+class CouponInput(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    selected_id: str = Field(default="", alias="selectedId")
+
+
+class PorderVoucherInput(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    selected_id: str = Field(default="", alias="selectedId")
+
+
+class PorderInput(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    sku_count: int = 1
+    send_num: int = 1
+    box_count: int = 1
+    box_length: Decimal = Decimal("58")
+    box_width: Decimal = Decimal("51")
+    box_height: Decimal = Decimal("50")
+    box_weight: Decimal = Decimal("10")
+    logistics: str = "25"
+    price_manual: bool = False
+    logistics_price: MoneyInput = Field(default_factory=lambda: MoneyInput(value=0))
+    extra_name: str = ""
+    extra_fee: MoneyInput = Field(default_factory=lambda: MoneyInput(value=0))
+    payment_mode: Literal["balance", "bank"] | None = None
+    voucher: PorderVoucherInput = Field(default_factory=PorderVoucherInput)
+
+    @field_validator("sku_count", "send_num", "box_count", mode="before")
+    @classmethod
+    def validate_porder_count(cls, value: Any) -> int:
+        number = _non_negative_integer(value, "配送单数量")
+        return max(1, number)
+
+    @field_validator("box_length", "box_width", "box_height", "box_weight", mode="before")
+    @classmethod
+    def validate_box_number(cls, value: Any) -> Decimal:
+        return _non_negative_decimal(value, "箱子尺寸")
+
+
 class JapanCaseParameters(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     project_key: Literal["japan"] = "japan"
+    payment_mode: Literal["balance", "bank"] | None = None
+    payment_plan: Literal["full", "part"] | None = None
+    service_discount: bool = False
+    discounts_id: str = ""
     order: OrderDefaultsInput = Field(default_factory=OrderDefaultsInput)
     items: list[OrderItemInput] = Field(default_factory=list)
     problem_goods: ProblemGoodsInput | None = None
+    part_pay: PartPayInput = Field(default_factory=PartPayInput)
+    coupon: CouponInput = Field(default_factory=CouponInput)
+    porder: PorderInput = Field(default_factory=PorderInput)
     tolerance_jpy: int = 1
     ledger_wait_seconds: int = 30
 

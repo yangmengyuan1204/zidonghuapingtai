@@ -130,3 +130,26 @@ def test_required_component_kind_cannot_be_downgraded_to_optional():
     assert result.passed is False
     assert result.reason_code == "fee_component_missing"
     assert "goods" in result.reason
+
+
+def test_extract_order_fee_components_reads_japan_order_detail_list():
+    components = extract_order_fee_components(
+        {
+            "data": {
+                "order_detail": [
+                    {
+                        "id": 201,
+                        "sorting": 1,
+                        "offer_num": 2,
+                        "offer_price": "10",
+                        "offer_freight": "3",
+                        "option": [{"id": 7, "name": "检品", "price_type": 0, "price": "2", "num": 2, "checked": True}],
+                    }
+                ]
+            }
+        }
+    )
+
+    by_id = {component.component_id: component for component in components}
+    assert by_id["goods:sorting:1"].amount_cny == Decimal("20.00")
+    assert by_id["option:7"].amount_cny == Decimal("4.00")

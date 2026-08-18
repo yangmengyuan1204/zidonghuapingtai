@@ -22,6 +22,18 @@ DATA_SCRIPT_API_CASES = [
         "extract": {"userToken": "json.data.userToken"},
     },
     {
+        "key": "client_usable_discount",
+        "case_name": "数据脚本-前台可用优惠券",
+        "url": "/client/user.usableDiscount",
+        "body": {"page": "{{page}}", "pageSize": "{{page_size}}"},
+    },
+    {
+        "key": "client_order_option_list",
+        "case_name": "数据脚本-前台订单OPTION",
+        "url": "/client/order.optionList",
+        "body": {},
+    },
+    {
         "key": "client_search_goods",
         "case_name": "\u6570\u636e\u811a\u672c-\u641c\u7d22\u5546\u54c1",
         "url": "/client/searchGoods",
@@ -162,10 +174,10 @@ DATA_SCRIPT_API_CASES = [
         "body": {"porder_sn": "{{porder_sn}}"},
     },
     {
-        "key": "admin_porder_submit_offer",
-        "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u62a5\u4ef7",
-        "url": "/porder.submitOffer",
-        "body": {"porder_sn": "{{porder_sn}}", "list[0][id]": "{{porder_detail_id}}", "logistics_price_artificial": "{{logistics_price_artificial}}"},
+        "key": "admin_porder_predict_logistics_price",
+        "case_name": "数据脚本-配送单预估国际运费",
+        "url": "/porder.predictLogisticsPrice",
+        "body": {"list[0][weight]": "{{box_weight}}", "list[0][volume]": "{{box_volume}}", "list[0][height]": "{{box_height}}", "list[0][width]": "{{box_width}}", "list[0][length]": "{{box_length}}", "list[0][freight_id]": "{{freight_id}}"},
     },
     {
         "key": "client_balance_pay",
@@ -236,6 +248,12 @@ DATA_SCRIPT_API_CASES = [
         "key": "admin_order_detail",
         "case_name": "\u6570\u636e\u811a\u672c-\u540e\u53f0\u8ba2\u5355\u8be6\u60c5",
         "url": "/order.detail",
+        "body": {"order_sn": "{{order_sn}}"},
+    },
+    {
+        "key": "admin_spot_order_detail",
+        "case_name": "数据脚本-抽检订单详情",
+        "url": "/spot/spot/check/getSpotOrderDetail",
         "body": {"order_sn": "{{order_sn}}"},
     },
     {
@@ -315,6 +333,16 @@ DATA_SCRIPT_API_CASES = [
         "case_name": "\u6570\u636e\u811a\u672c-\u63d0\u4ea4\u5f85\u8d22\u52a1\u4ed8\u6b3e",
         "url": "/purchase.toWaitPay",
         "body": {"data": "{{data}}", "ids": "{{ids}}"},
+    },
+    {
+        "key": "admin_purchase_split_purchase_no",
+        "case_name": "数据脚本-订单交易号拆分",
+        "url": "/purchase.splitPurchaseNo",
+        "body": {
+            "new_purchase_no": "{{new_purchase_no}}",
+            "data[0][new_num]": "{{new_num}}",
+            "data[0][order_purchase_id]": "{{order_purchase_id}}",
+        },
     },
     {
         "key": "admin_bill_purchase_wait_pay_list",

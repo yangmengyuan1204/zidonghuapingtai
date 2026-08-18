@@ -48,7 +48,7 @@ def cny_components_to_jpy(components: Iterable[Decimal], exchange_rate: Decimal)
 
 
 def _detail_rows(order_detail: Mapping[str, Any]) -> list[Mapping[str, Any]]:
-    for key in ("list", "order_details", "details", "items"):
+    for key in ("list", "order_detail", "order_details", "details", "items"):
         value = order_detail.get(key)
         if isinstance(value, list):
             return [row for row in value if isinstance(row, Mapping)]

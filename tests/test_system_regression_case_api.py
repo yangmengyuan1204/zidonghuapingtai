@@ -48,8 +48,8 @@ def test_list_japan_cases_seeds_catalog_and_returns_field_values(api_client):
     assert response.status_code == 200
     data = response.json()
     assert data["suite"]["suite_key"] == "japan"
-    assert data["total"] == 10
-    assert len(data["cases"]) == 10
+    assert data["total"] == 15
+    assert len(data["cases"]) == 15
     assert data["cases"][0]["case_key"] == "JP-PAY-001"
     assert isinstance(data["cases"][0]["parameters"], dict)
     assert "parameters_json" not in data["cases"][0]
@@ -95,6 +95,40 @@ def test_admin_can_update_copy_and_reset_case(api_client):
     reset = reset_response.json()
     assert reset["name"] == case["name"]
     assert reset["user_modified"] is False
+
+
+def test_admin_can_create_custom_cases_and_cannot_delete_system_cases(api_client):
+    created = api_client.post("/api/system-regression/cases", json={"kind": "part", "name": "我的分批"})
+    assert created.status_code == 201
+    first = created.json()
+    assert first["case_key"] == "CUSTOM-PAY-001"
+    assert first["runner_kind"] == "order_part_payment"
+    assert first["is_system"] is False
+    assert first["parameters"]["part_pay"]["enabled"] is True
+
+    second = api_client.post("/api/system-regression/cases", json={"kind": "part"}).json()
+    assert second["case_key"] == "CUSTOM-PAY-002"
+
+    deleted = api_client.delete(f"/api/system-regression/cases/{first['id']}")
+    assert deleted.status_code == 204
+
+    third = api_client.post("/api/system-regression/cases", json={"kind": "part"}).json()
+    assert third["case_key"] == "CUSTOM-PAY-003"
+
+    porder = api_client.post("/api/system-regression/cases", json={"kind": "porder", "name": "海运"}).json()
+    assert porder["case_key"] == "CUSTOM-PORDER-001"
+    assert porder["runner_kind"] == "porder_payment"
+    assert porder["category"] == "porder"
+
+    listed = api_client.get("/api/system-regression/suites/japan/cases?category=payment").json()
+    system_case = next(row for row in listed["cases"] if row["case_key"] == "JP-PAY-001")
+    blocked = api_client.delete(f"/api/system-regression/cases/{system_case['id']}")
+    assert blocked.status_code == 400
+    assert blocked.json()["detail"] == "系统预置用例不能删除"
+
+    invalid = api_client.post("/api/system-regression/cases", json={"kind": "unknown"})
+    assert invalid.status_code == 400
+    assert invalid.json()["detail"] == "不支持的用例类型"
 
 
 def test_reset_custom_case_returns_business_error(api_client):

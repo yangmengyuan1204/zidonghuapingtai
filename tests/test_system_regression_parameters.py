@@ -84,6 +84,21 @@ def test_structured_form_payload_preserves_money_items_and_options():
     assert result.problem_goods.translation_content == "システム回帰テスト"
 
 
+def test_part_pay_percent_zero_and_coupon_selected_id_are_kept():
+    payload = valid_problem_payload()
+    payload["part_pay"] = {"enabled": True, "percent": 0, "tail_node": "before_shelf"}
+    payload["coupon"] = {"selectedId": "__service_discount__"}
+    payload["porder"] = {"box_length": 58, "box_width": 51, "box_height": 50, "box_weight": 10, "logistics": "25"}
+
+    result = validate_case_parameters("problem_goods", payload, current_num=3)
+
+    assert result.part_pay.enabled is True
+    assert result.part_pay.percent == 0
+    assert result.coupon.selected_id == "__service_discount__"
+    assert result.porder.box_length == Decimal("58")
+    assert int(result.porder.box_length * result.porder.box_width * result.porder.box_height) == 147900
+
+
 def test_quantity_increase_rejects_auto_option():
     payload = valid_problem_payload(pre_num=4, option_deal_suggest=2, option_new=[])
 

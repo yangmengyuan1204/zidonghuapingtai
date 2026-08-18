@@ -34,7 +34,7 @@ def db_session():
         Base.metadata.drop_all(bind=engine)
 
 
-def test_seed_japan_suite_is_idempotent_and_contains_77_cases(db_session):
+def test_seed_japan_suite_is_idempotent_and_contains_87_cases(db_session):
     first = ensure_japan_suite(db_session)
     second = ensure_japan_suite(db_session)
 
@@ -42,8 +42,8 @@ def test_seed_japan_suite_is_idempotent_and_contains_77_cases(db_session):
     assert first.suite_key == "japan"
     assert first.name == "日本站"
     cases = list_cases(db_session, suite_key="japan")
-    assert len(cases) == 77
-    assert len({case.case_key for case in cases}) == 77
+    assert len(cases) == 87
+    assert len({case.case_key for case in cases}) == 87
     assert all(case.is_system for case in cases)
 
 
@@ -141,5 +141,23 @@ def test_list_cases_supports_category_and_enabled_filters(db_session):
         enabled=False,
     )
 
-    assert len(enabled) == 9
+    assert len(enabled) == 14
     assert [case.id for case in disabled] == [payment_cases[0].id]
+
+
+def test_reseed_refreshes_unmodified_panel_and_keeps_edited_case(db_session):
+    ensure_japan_suite(db_session)
+    pay = next(row for row in list_cases(db_session, suite_key="japan") if row.case_key == "JP-PAY-001")
+    edited = next(row for row in list_cases(db_session, suite_key="japan") if row.case_key == "JP-PAY-002")
+    pay.parameters_json = json.dumps({"payment_mode": "balance"}, ensure_ascii=False)
+    db_session.commit()
+    update_case(db_session, edited.id, {"name": "我改过的银行支付"}, actor_id=3)
+
+    ensure_japan_suite(db_session)
+    db_session.refresh(pay)
+    db_session.refresh(edited)
+
+    assert pay.user_modified is False
+    assert pay.parameters["items"][0]["offer_price"]["value"] == "10"
+    assert edited.user_modified is True
+    assert edited.name == "我改过的银行支付"

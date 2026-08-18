@@ -325,16 +325,19 @@ def test_contextual_runner_resolves_customer_login_in_memory(monkeypatch):
         stored_context,
     )
     result = runner({}, {"variables": {"customer_id": "300001", "backend_account": "temporary"}})
+    second = runner({}, {"variables": {"customer_id": "300001"}})
 
     assert result == "executed"
+    assert second == "executed"
     assert resolved_calls == [({"customer_id": "300001"}, 1, 1, "japan")]
-    assert executed_contexts[0]["variables"] == {
-        "customer_id": "300001",
-        "account": "userID/300001In",
-        "password": "runtime-only-password",
-        "api_paths": {"client_login": "/client/login"},
-        "backend_account": "temporary",
-    }
+    first_vars = executed_contexts[0]["variables"]
+    assert first_vars["customer_id"] == "300001"
+    assert first_vars["account"] == "userID/300001In"
+    assert first_vars["password"] == "runtime-only-password"
+    assert first_vars["api_paths"] == {"client_login": "/client/login"}
+    assert first_vars["backend_account"] == "temporary"
+    assert first_vars["follow_delay"] == 0.8
+    assert first_vars["_runtime"] is executed_contexts[1]["variables"]["_runtime"]
     assert stored_context == {"variables": {"customer_id": "300001"}}
 
 
@@ -383,3 +386,27 @@ def test_batch_creation_persists_safe_login_hint_without_plain_password(api_cont
     assert "password" not in stored.context_json.lower()
     assert "system_regression_login" in stored.context_json
     session.close()
+
+
+def test_list_batches_returns_newest_first_without_runs(api_context):
+    client, _session_factory, queued, _resumes = api_context
+    case = client.get("/api/system-regression/suites/japan/cases").json()["cases"][0]
+    payload = {
+        "suite_key": "japan",
+        "case_ids": [case["id"]],
+        "project_id": 1,
+        "env_id": 1,
+        "context": {"variables": {"customer_id": "300001"}},
+    }
+    first = client.post("/api/system-regression/batches", json=payload).json()
+    second = client.post("/api/system-regression/batches", json=payload).json()
+
+    response = client.get("/api/system-regression/batches?suite_key=japan&limit=20")
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert [row["id"] for row in items[:2]] == [second["id"], first["id"]]
+    assert "runs" not in items[0]
+    assert items[0]["batch_no"] == second["batch_no"]
+    assert items[0]["create_time"]
+    assert queued == [first["id"], second["id"]]

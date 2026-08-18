@@ -1,6 +1,17 @@
 from __future__ import annotations
 
+import re
 import sys
+
+_RESUME_ORDER_SN_PREFIX_RE = re.compile(
+    r"^(?:订单号\s*[:：]?\s*|订单\s*[:：]\s*|订单(?=\d)|order_sn\s*[:：]?\s*)",
+    re.IGNORECASE,
+)
+
+
+def _normalize_resume_order_sn(value: object) -> str:
+    return _RESUME_ORDER_SN_PREFIX_RE.sub("", str(value or "").strip(), count=1).strip()
+
 
 
 _COMPAT_NAMES = (
@@ -390,7 +401,9 @@ def _impl_run_resume_order_flow_script(
     input_adjustments = _full_flow_prepare_warehouse_counts(variables)
     stop_after = _stop_after_node(variables) or "porder_shipped"
     variables["stop_after_node"] = stop_after
-    order_sn = str(variables.get("order_sn") or variables.get("last_order_sn") or "").strip()
+    order_sn = _normalize_resume_order_sn(variables.get("order_sn") or variables.get("last_order_sn"))
+    if order_sn:
+        variables["order_sn"] = order_sn
     log: Dict[str, Any] = {
         "script": RESUME_ORDER_FLOW_SCRIPT_NAME,
         "mode": "resume_order_flow",

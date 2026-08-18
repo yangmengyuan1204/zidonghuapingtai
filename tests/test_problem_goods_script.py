@@ -9,12 +9,14 @@ from app.data_scripts.problem_goods import (
     ProblemGoodsError,
     ProblemGoodsFlow,
     ProblemGoodsGateway,
+    ProblemGoodsMutationUncertain,
     available_option_catalog,
     client_deal_text,
     normalize_customer_id,
     order_purchase_candidates,
     parse_preview_bills,
     refund_cny_from_preview,
+    same_sorting_purchase_rows,
     validate_auto_option_eligibility,
     validate_manual_options,
 )
@@ -598,6 +600,49 @@ def test_admin_requests_use_form_urlencoded_data():
     assert "files" not in captured
 
 
+def test_catalog_registers_purchase_split_path():
+    from app.core.data_script_catalog import DATA_SCRIPT_API_CASES
+
+    item = next(row for row in DATA_SCRIPT_API_CASES if row["key"] == "admin_purchase_split_purchase_no")
+    assert item["url"] == "/purchase.splitPurchaseNo"
+    assert item["body"]["new_purchase_no"] == "{{new_purchase_no}}"
+    assert item["body"]["data[0][new_num]"] == "{{new_num}}"
+    assert item["body"]["data[0][order_purchase_id]"] == "{{order_purchase_id}}"
+
+
+def test_split_purchase_no_posts_form_fields(monkeypatch):
+    captured = {}
+    gateway = ProblemGoodsGateway(type("Env", (), {"base_url": "https://example.test"})(), {}, {})
+
+    def request(path, fields, action, *, mutation):
+        captured.update({"path": path, "fields": dict(fields), "action": action, "mutation": mutation})
+        return {"success": True, "code": 0}
+
+    monkeypatch.setattr(gateway, "_admin_request", request)
+    gateway.split_purchase_no(order_purchase_id=15330717, new_num=1, new_purchase_no="00818")
+
+    assert captured["path"] == "/purchase.splitPurchaseNo"
+    assert captured["fields"] == {
+        "new_purchase_no": "00818",
+        "data[0][new_num]": 1,
+        "data[0][order_purchase_id]": 15330717,
+    }
+    assert captured["mutation"] is True
+    assert captured["action"] == "交易号拆分"
+
+
+def test_same_sorting_purchase_rows_prefer_same_detail_id():
+    rows = [
+        {"order_purchase_id": 1, "order_detail_id": 10, "sorting": 1},
+        {"order_purchase_id": 2, "order_detail_id": 10, "sorting": 1},
+        {"order_purchase_id": 3, "order_detail_id": 11, "sorting": 2},
+    ]
+
+    same = same_sorting_purchase_rows(rows, {"order_purchase_id": 1, "order_detail_id": 10, "sorting": 1})
+
+    assert [row["order_purchase_id"] for row in same] == [1, 2]
+
+
 def test_full_flow_runs_each_mutation_once_and_completes():
     gateway = FakeGateway(status=1)
     log = {"steps": []}
@@ -705,6 +750,21 @@ def test_distribution_resume_only_needs_order_and_problem_id():
     names = _call_names(gateway)
     assert names.count("distribution_deal") == 1
     assert "purchase_deal" not in names
+
+
+def test_update_options_uncertain_continues_when_problem_still_queryable():
+    gateway = FakeGateway(status=3)
+
+    def boom(problem_goods_id, options):
+        gateway.calls.append(("update_options", options))
+        raise ProblemGoodsMutationUncertain("修改问题产品OPTION网络结果不确定，必须先查询状态")
+
+    gateway.update_options = boom
+    summary = ProblemGoodsFlow(gateway, _variables(), {"steps": []}).run()
+
+    assert summary["completed"] is True
+    assert _call_names(gateway).count("update_options") == 1
+    assert "business_deal" in _call_names(gateway)
 
 
 def test_script_entry_returns_standard_four_tuple(monkeypatch):

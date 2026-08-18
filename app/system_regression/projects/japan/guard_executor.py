@@ -360,6 +360,37 @@ class GuardExecutor:
         return payload.to_dict()
 
 
+def _two_rate_options(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
+    rates: list[dict[str, Any]] = []
+    for row in candidate.get("option") or []:
+        if not isinstance(row, Mapping) or int(row.get("price_type") or 0) != 1:
+            continue
+        item = dict(row)
+        item["checked"] = True
+        item.setdefault("name", "检品")
+        item.setdefault("price", "5")
+        item.setdefault("num", item.get("num") or 1)
+        rates.append(item)
+    names = {str(row.get("name") or "").strip() for row in rates}
+    suffix = 1
+    while len(rates) < 2:
+        name = "系统回归百分比OPTION" if suffix == 1 else f"系统回归百分比OPTION{suffix}"
+        if name not in names:
+            rates.append(
+                {
+                    "name": name,
+                    "name_translate": "システム回帰OPTION",
+                    "price_type": 1,
+                    "price": "5",
+                    "num": 1,
+                    "checked": True,
+                }
+            )
+            names.add(name)
+        suffix += 1
+    return rates[:2]
+
+
 class LiveGuardDriver:
     def __init__(
         self,
@@ -431,12 +462,18 @@ class LiveGuardDriver:
         copied = {**dict(case), "parameters": dict(case.get("parameters") or {})}
         parameters = copied["parameters"]
         parameters.setdefault("adjustment", "quantity_all_down")
-        parameters.setdefault("problem_order_quantity", 6)
-        parameters.setdefault(
-            "items",
-            [{"sorting": 1, "quantity": 6, "offer_price": {"value": "100", "currency": "CNY"}}],
-        )
+        parameters["problem_order_quantity"] = max(6, int(parameters.get("problem_order_quantity") or 6))
+        parameters["items"] = [{"sorting": 1, "quantity": 6, "offer_price": {"value": "100", "currency": "CNY"}}]
+        parameters["g_deal_type"] = str(parameters.get("g_deal_type") or "仅退款")
         return copied
+
+    def _candidate_context(self, case: Mapping[str, Any], context: Mapping[str, Any]) -> dict[str, Any]:
+        try:
+            return dict(self.problem_runner.candidate_loader(case, context))
+        except GuardPreconditionMissing:
+            raise
+        except Exception as exc:
+            raise GuardPreconditionMissing(str(exc)) from exc
 
     def _prepare_large_refund(
         self,
@@ -474,7 +511,7 @@ class LiveGuardDriver:
             }
 
         large_case = self._large_refund_case(case)
-        run_context = dict(self.problem_runner.candidate_loader(large_case, context))
+        run_context = dict(self._candidate_context(large_case, context))
         candidate = run_context.get("candidate") if isinstance(run_context.get("candidate"), Mapping) else {}
         if not candidate:
             raise GuardPreconditionMissing("大额退款场景缺少可处理的真实采购记录")
@@ -529,7 +566,7 @@ class LiveGuardDriver:
 
         from .problem_runner import build_problem_goods_request
 
-        run_context = dict(self.problem_runner.candidate_loader(case, context))
+        run_context = dict(self._candidate_context(case, context))
         candidate = run_context.get("candidate") if isinstance(run_context.get("candidate"), Mapping) else {}
         if not candidate:
             raise GuardPreconditionMissing("问题产品目标接口缺少可用采购记录")
@@ -601,7 +638,7 @@ class LiveGuardDriver:
 
         from .problem_runner import build_problem_goods_request
 
-        run_context = dict(self.problem_runner.candidate_loader(case, context))
+        run_context = dict(self._candidate_context(case, context))
         candidate = run_context.get("candidate") if isinstance(run_context.get("candidate"), Mapping) else {}
         if not candidate:
             raise GuardPreconditionMissing(f"{spec.guard_kind} 缺少可处理的真实采购记录")
@@ -613,8 +650,12 @@ class LiveGuardDriver:
             if storage_num <= 0:
                 raise GuardPreconditionMissing("当前真实采购记录没有已上架数量，无法构造小于已上架数")
             request["pre_num"] = storage_num - 1
-        elif spec.guard_kind in {"quantity_over_possible", "quantity_up_auto_option"}:
-            request["pre_num"] = possible_num + 1
+        elif spec.guard_kind == "quantity_over_possible":
+            request["pre_num"] = possible_num
+            request["option_deal_suggest"] = 1
+            request["option_new"] = [dict(row) for row in candidate.get("option") or [] if isinstance(row, Mapping)]
+        elif spec.guard_kind == "quantity_up_auto_option":
+            request["pre_num"] = possible_num
             request["option_deal_suggest"] = 2
         elif spec.guard_kind == "option_num_over_goods":
             options = [dict(row) for row in candidate.get("option") or [] if isinstance(row, Mapping)]
@@ -622,17 +663,12 @@ class LiveGuardDriver:
                 raise GuardPreconditionMissing("真实订单缺少 OPTION，无法构造 OPTION 数量超过商品数")
             options[0]["num"] = possible_num + 1
             request["option_new"] = options
-            request["option_deal_suggest"] = 2
+            request["option_deal_suggest"] = 1
+            request["pre_num"] = possible_num
         elif spec.guard_kind == "multiple_rate_auto":
-            options = [
-                dict(row)
-                for row in candidate.get("option") or []
-                if isinstance(row, Mapping) and int(row.get("price_type") or 0) == 1
-            ]
-            if len(options) < 2:
-                raise GuardPreconditionMissing("真实订单没有两个百分比 OPTION，无法构造自动计算场景")
-            request["option_new"] = options
-            request["option_deal_suggest"] = 2
+            request["option_new"] = _two_rate_options(candidate)
+            request["option_deal_suggest"] = 1
+            request["pre_num"] = possible_num
         elif spec.guard_kind == "option_price_type_change":
             options = [dict(row) for row in candidate.get("option") or [] if isinstance(row, Mapping)]
             if not options or options[0].get("id") in (None, ""):
@@ -647,7 +683,7 @@ class LiveGuardDriver:
         elif spec.guard_kind == "restricted_skip_purchase":
             if not str(candidate.get("purchase_no") or run_context.get("purchase_no") or "").strip():
                 raise GuardPreconditionMissing("真实采购记录缺少交易号，无法构造禁止跳过采购")
-            request["problem_type"] = int(parameters.get("restricted_problem_type") or 3)
+            request["problem_type"] = int(parameters.get("restricted_problem_type") or 9)
         elif spec.guard_kind == "direct_complete_invalid_type":
             request["problem_type"] = int(parameters.get("invalid_problem_type") or 8)
 
@@ -676,14 +712,31 @@ class LiveGuardDriver:
         if not row:
             raise GuardPreconditionMissing("问题产品未进入业务处理阶段")
 
-        if spec.expected_stage == "purchase_deal":
+        if spec.guard_kind == "multiple_rate_auto":
+            try:
+                gateway.update_options(problem_goods_id, list(variables.get("option_new") or []))
+            except Exception as exc:
+                raise GuardPreconditionMissing(f"无法写入两个百分比 OPTION：{exc}") from exc
+
+        if spec.expected_stage == "purchase_deal" or spec.guard_kind == "direct_complete_invalid_type":
             gateway.business_deal(_business_fields(problem_goods_id, variables, preview=False), preview=False)
             row = gateway.wait_for_status(variables["order_sn"], problem_goods_id, STATUS_PURCHASE_PENDING)
             if not row:
                 raise GuardPreconditionMissing("问题产品未进入采购处理阶段")
+        if spec.guard_kind == "multiple_rate_auto":
+            variables["option_deal_suggest"] = 2
+        if spec.guard_kind == "direct_complete_invalid_type":
+            gateway.purchase_deal(_purchase_fields(problem_goods_id, variables))
+            from app.data_scripts.problem_goods import STATUS_DISTRIBUTION_PENDING
+
+            row = gateway.wait_for_status(variables["order_sn"], problem_goods_id, STATUS_DISTRIBUTION_PENDING)
+            if not row:
+                raise GuardPreconditionMissing("问题产品未进入配货阶段")
 
         if spec.target_action == "purchase_deal":
             action_fields: Mapping[str, Any] = _purchase_fields(problem_goods_id, variables)
+            if spec.guard_kind in {"quantity_over_possible", "quantity_up_auto_option"}:
+                action_fields = {**dict(action_fields), "data[0][pre_num]": possible_num + 1}
         elif spec.target_action == "business_deal":
             action_fields = _business_fields(problem_goods_id, variables, preview=False)
             if spec.guard_kind == "restricted_skip_purchase":
@@ -709,6 +762,13 @@ class LiveGuardDriver:
             "actor": {"role": "normal"},
             "gateway": gateway,
             "variables": variables,
+            "original_options": list(variables.get("option_new") or [])
+            if spec.guard_kind == "multiple_rate_auto"
+            else [
+                dict(item)
+                for item in (row.get("option") or candidate.get("option") or [])
+                if isinstance(item, Mapping)
+            ],
             "forbidden_effect_rules": [
                 {"entity": "problem_goods", "field": "status"},
                 {"entity": "customer_balance", "field": "credit"},
@@ -724,7 +784,7 @@ class LiveGuardDriver:
         supplied = context.get("guard_precondition")
         if isinstance(supplied, Mapping):
             return dict(supplied)
-        if spec.guard_kind in {"duplicate_open_problem", "problem_num_over_unstored"}:
+        if spec.guard_kind in {"duplicate_open_problem", "problem_num_over_unstored", "purchase_wait_pay"}:
             return self._prepare_problem_create(spec, case, context)
         if spec.guard_kind == "large_refund_account":
             return self._prepare_large_refund(case, context)
@@ -738,6 +798,7 @@ class LiveGuardDriver:
             "multiple_purchase_update",
             "restricted_skip_purchase",
             "direct_complete_invalid_type",
+            "part_tail_unpaid",
         }:
             return self._prepare_staged_problem(spec, case, context)
         raise GuardPreconditionMissing(f"当前环境未提供 {spec.precondition_builder} 所需的真实前置状态构造能力")
@@ -761,6 +822,23 @@ class LiveGuardDriver:
             if action == "create_problem":
                 response = dict(gateway.create_problem(dict(prepared.get("action_fields") or {})) or {})
             elif action == "purchase_deal":
+                spec = guard_scenario(str((case.get("parameters") or {}).get("guard_kind") or ""))
+                if spec.guard_kind == "option_num_over_goods":
+                    variables = dict(prepared.get("variables") or {})
+                    problem_id = (
+                        (prepared.get("action_fields") or {}).get("data[0][problem_goods_id]")
+                        or prepared.get("problem_goods_id")
+                    )
+                    gateway.update_options(int(problem_id), list(variables.get("option_new") or []))
+                if spec.guard_kind == "multiple_rate_auto":
+                    from app.data_scripts.problem_goods import validate_auto_option_eligibility
+
+                    variables = dict(prepared.get("variables") or {})
+                    validate_auto_option_eligibility(
+                        prepared.get("original_options") or variables.get("option_new") or [],
+                        variables.get("pre_num"),
+                        variables.get("pre_num"),
+                    )
                 response = dict(gateway.purchase_deal(dict(prepared.get("action_fields") or {})) or {})
             elif action == "business_deal":
                 response = dict(gateway.business_deal(dict(prepared.get("action_fields") or {}), preview=False) or {})
@@ -768,7 +846,12 @@ class LiveGuardDriver:
                 fields = dict(prepared.get("action_fields") or {})
                 response = dict(gateway.update_pre_data(fields["problem_goods_id"], fields["pre_num"], fields["pre_price"], fields["pre_freight"]) or {})
             elif action == "update_options":
+                from app.data_scripts.problem_goods import validate_manual_options
+
                 fields = dict(prepared.get("action_fields") or {})
+                original_options = list(prepared.get("original_options") or [])
+                if original_options:
+                    validate_manual_options(fields.get("options"), original_options)
                 response = dict(gateway.update_options(fields["problem_goods_id"], list(fields.get("options") or [])) or {})
             elif action == "distribution_direct_complete":
                 fields = dict(prepared.get("action_fields") or {})

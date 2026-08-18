@@ -275,7 +275,7 @@ def test_batch_result_persists_identity_type_from_case_snapshot(dual_identity_db
 def test_case_catalog_declares_all_japan_cases_as_both(dual_identity_db):
     db, _factory, _admin, _client = dual_identity_db
     cases = regression_router.list_cases(db, suite_key="japan")
-    assert len(cases) == 77
+    assert len(cases) == 87
     assert {tuple(case.expectation.get("required_identities") or []) for case in cases} == {
         (ADMIN_IDENTITY, CLIENT_IDENTITY)
     }

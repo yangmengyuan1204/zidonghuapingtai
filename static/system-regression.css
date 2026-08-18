@@ -9,6 +9,11 @@
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  flex-shrink: 0;
+  background: #ffffff;
 }
 
 .system-regression-layout {
@@ -110,8 +115,22 @@
   gap: 10px;
 }
 
-.system-regression-grid .field.wide {
+.system-regression-grid .field.wide,
+.system-regression-grid .wide {
   grid-column: 1 / -1;
+}
+
+.system-regression-hint {
+  display: block;
+  margin-top: 4px;
+  color: #7987a1;
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+.system-regression-page [hidden] {
+  display: none !important;
 }
 
 .system-regression-repeat {
@@ -147,12 +166,41 @@
 html.v3-embed .system-regression-page {
   gap: 10px;
   min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+html.v3-embed:has(.system-regression-page) {
+  overflow: hidden;
+}
+
+html.v3-embed:has(.system-regression-page) body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+html.v3-embed:has(.system-regression-page) .shell,
+html.v3-embed:has(.system-regression-page) .main,
+html.v3-embed:has(.system-regression-page) .content,
+html.v3-embed:has(.system-regression-page) #content {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+html.v3-embed .system-regression-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  flex-shrink: 0;
 }
 
 html.v3-embed .system-regression-layout {
   grid-template-columns: 190px minmax(430px, 0.95fr) minmax(420px, 1.1fr);
   gap: 10px;
   align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 html.v3-embed .system-regression-categories,
@@ -166,8 +214,11 @@ html.v3-embed .system-regression-drawer {
 }
 
 html.v3-embed .system-regression-drawer {
-  top: 10px;
-  max-height: calc(100vh - 120px);
+  position: static;
+  top: auto;
+  max-height: none;
+  min-height: 0;
+  overflow: auto;
 }
 
 html.v3-embed .system-regression-case-table th,
@@ -223,4 +274,608 @@ html.v3-embed .system-regression-section {
     position: static;
     max-height: none;
   }
+}
+
+.system-regression-run {
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.system-regression-run.is-waiting {
+  border-color: #fdba74;
+}
+
+.system-regression-run.is-failed {
+  border-color: #f5c2c0;
+}
+
+.system-regression-run.is-passed {
+  border-color: #abefc6;
+}
+
+.system-regression-run-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f7f8fb;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.system-regression-run-id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.system-regression-run-id strong {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 13px;
+}
+
+.system-regression-run-pick {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.system-regression-run-pick span {
+  color: #7987a1;
+  font-size: 11px;
+}
+
+.system-regression-run-pick select {
+  max-width: min(460px, 100%);
+}
+
+.system-regression-pill {
+  display: inline-flex;
+  height: 22px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #edf2ff;
+  color: var(--accent, #5d87ff);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.system-regression-run.is-waiting .system-regression-pill {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.system-regression-run.is-failed .system-regression-pill {
+  background: #fef0f0;
+  color: #d92d20;
+}
+
+.system-regression-run.is-passed .system-regression-pill {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.system-regression-run-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.system-regression-clock {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.system-regression-hold {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.system-regression-run-body {
+  padding: 14px 16px 8px;
+}
+
+.system-regression-meters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.system-regression-meters div {
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: #f4f6f8;
+}
+
+.system-regression-meters span {
+  color: #7987a1;
+  font-size: 11px;
+}
+
+.system-regression-meters b {
+  display: block;
+  margin-top: 2px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.system-regression-seq {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.system-regression-seq-cell {
+  flex: 0 0 118px;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid #e2e8ee;
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.system-regression-seq-cell kbd {
+  display: block;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.system-regression-seq-cell em {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #7987a1;
+  font-size: 11px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.system-regression-seq-cell small {
+  display: block;
+  margin-top: 6px;
+  color: #949eb7;
+  font-size: 10px;
+}
+
+.system-regression-seq-cell.is-running,
+.system-regression-seq-cell.is-current {
+  border-color: var(--accent, #5d87ff);
+  background: #edf2ff;
+}
+
+.system-regression-seq-cell.is-passed {
+  border-color: #abefc6;
+  background: #ecfdf3;
+}
+
+.system-regression-seq-cell.is-failed,
+.system-regression-seq-cell.is-blocked {
+  border-color: #f5c2c0;
+  background: #fef0f0;
+}
+
+.system-regression-seq-cell.is-waiting_account {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.system-regression-seq-cell.is-stopped,
+.system-regression-seq-cell.is-pending {
+  background: #fbfcfd;
+}
+
+.system-regression-now {
+  margin: 8px 0 4px;
+}
+
+.system-regression-tabs {
+  display: flex;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.system-regression-tabs button {
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #7987a1;
+  cursor: pointer;
+}
+
+.system-regression-tabs button.active {
+  color: var(--accent, #5d87ff);
+  border-bottom-color: var(--accent, #5d87ff);
+  font-weight: 600;
+}
+
+.system-regression-pane {
+  max-height: 320px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.system-regression-result-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px 8px;
+}
+
+.system-regression-result-tools input {
+  min-width: 180px;
+  flex: 1 1 180px;
+}
+
+.system-regression-result-filters {
+  display: flex;
+  gap: 4px;
+}
+
+.system-regression-result-filters button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 6px;
+  background: #ffffff;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.system-regression-result-filters button.active {
+  border-color: var(--accent, #5d87ff);
+  color: var(--accent, #5d87ff);
+  font-weight: 600;
+}
+
+.system-regression-event {
+  display: grid;
+  grid-template-columns: 64px 108px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+
+.system-regression-event time,
+.system-regression-event kbd {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.system-regression-event kbd {
+  color: var(--accent, #5d87ff);
+}
+
+.system-regression-event p {
+  margin: 0;
+}
+
+.system-regression-empty {
+  margin: 8px;
+  color: #7987a1;
+}
+
+.system-regression-result {
+  margin: 6px 8px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 7px;
+}
+
+.system-regression-result-head {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr) 72px;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+  padding: 10px 12px;
+  border: 0;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.system-regression-result-head kbd {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.system-regression-result-head em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.system-regression-result-head small {
+  color: #7987a1;
+}
+
+.system-regression-result-copy {
+  margin: 0;
+  padding: 10px 12px 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.system-regression-evidence {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fafbfc;
+}
+
+.system-regression-evidence .wide {
+  grid-column: 1 / -1;
+}
+
+.system-regression-evidence label {
+  display: block;
+  margin-bottom: 4px;
+  color: #7987a1;
+  font-size: 11px;
+}
+
+@media (max-width: 1180px) {
+  .system-regression-meters {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .system-regression-result-head {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.system-regression-how {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.system-regression-bill {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.system-regression-bill > div {
+  padding: 8px 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 7px;
+  background: #f8fafc;
+}
+
+.system-regression-bill span {
+  display: block;
+  color: #7987a1;
+  font-size: 11px;
+}
+
+.system-regression-bill strong {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 16px;
+}
+
+.system-regression-bill .first {
+  background: #fff7ed;
+}
+
+.system-regression-drawer-tabs {
+  display: flex;
+  gap: 0;
+  margin-top: 10px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.system-regression-drawer-tabs button {
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #7987a1;
+  font-weight: 600;
+}
+
+.system-regression-drawer-tabs button.active {
+  color: var(--accent, #5d87ff);
+  border-bottom-color: var(--accent, #5d87ff);
+}
+
+.system-regression-block {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.system-regression-block > summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  background: #f7f8fb;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.system-regression-block > summary::-webkit-details-marker {
+  display: none;
+}
+
+.system-regression-block > summary em {
+  font-style: normal;
+  font-weight: 500;
+  color: #7987a1;
+  font-size: 11px;
+}
+
+.system-regression-block .inner {
+  padding: 12px;
+}
+
+.system-regression-money {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+}
+
+.system-regression-money span {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line, #dbdfe1);
+  border-left: 0;
+  border-radius: 0 7px 7px 0;
+  background: #f4f6f8;
+  color: #949eb7;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.system-regression-money input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.system-regression-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-size: 12px;
+}
+
+.system-regression-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.system-regression-option-live {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.system-regression-option-live input[type="number"] {
+  width: 72px;
+  height: 32px;
+}
+
+.system-regression-kind-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.system-regression-kind-pick button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  border: 1px solid var(--line, #dbdfe1);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.system-regression-kind-pick button.active {
+  border-color: var(--accent, #5d87ff);
+  background: color-mix(in srgb, var(--accent, #5d87ff) 10%, #fff);
+}
+
+.system-regression-kind-pick strong,
+.system-regression-kind-pick span {
+  display: block;
+}
+
+.system-regression-kind-pick span {
+  margin-top: 6px;
+  color: #7987a1;
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 400;
+}
+
+.system-regression-case-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.system-regression-case-tools .panel-title {
+  margin: 0;
+}
+
+.system-regression-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.system-regression-modal.show {
+  display: grid;
+}
+
+.system-regression-dialog {
+  width: min(520px, calc(100% - 32px));
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.system-regression-step {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  background: #fff;
+}
+
+.system-regression-step header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.system-regression-step header b {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent, #5d87ff);
+  color: #fff;
+  font-size: 11px;
+}
+
+.system-regression-compare td:nth-child(2) {
+  color: #7987a1;
 }

@@ -480,6 +480,23 @@ def merge_purchase_candidates(*groups: list[Dict[str, Any]]) -> list[Dict[str, A
     return list(merged.values())
 
 
+def same_sorting_purchase_rows(candidates: Iterable[Any], candidate: Any) -> list[Dict[str, Any]]:
+    rows = [dict(row) for row in candidates if isinstance(row, dict)]
+    source = dict(candidate or {}) if isinstance(candidate, dict) else {}
+    detail_id = str(source.get("order_detail_id") or "").strip()
+    sorting = str(source.get("sorting") or "").strip()
+    same_detail = [
+        row for row in rows if detail_id not in {"", "0"} and str(row.get("order_detail_id") or "").strip() == detail_id
+    ]
+    if len(same_detail) >= 2:
+        return same_detail
+    if sorting:
+        same_sorting = [row for row in rows if str(row.get("sorting") or "").strip() == sorting]
+        if len(same_sorting) >= 2:
+            return same_sorting
+    return same_detail or ([source] if source else [])
+
+
 def available_option_catalog(payload: Dict[str, Any]) -> list[Dict[str, Any]]:
     data: Any = payload.get("data")
     if isinstance(data, dict):
@@ -835,6 +852,35 @@ class ProblemGoodsGateway:
             raise ProblemGoodsApiError("查询订单详情", payload)
         return payload.get("data") if isinstance(payload.get("data"), dict) else {}
 
+    def spot_order_detail(self, order_sn: str) -> Dict[str, Any]:
+        payload = self._admin_request(
+            self._path("admin_spot_order_detail", "/spot/spot/check/getSpotOrderDetail"),
+            {"order_sn": order_sn},
+            "查询抽检订单详情",
+            mutation=False,
+        )
+        if not _api_success(payload):
+            raise ProblemGoodsApiError("查询抽检订单详情", payload)
+        return payload.get("data") if isinstance(payload.get("data"), dict) else {}
+
+    def split_purchase_no(self, order_purchase_id: int, new_num: int, new_purchase_no: str) -> Dict[str, Any]:
+        purchase_no = str(new_purchase_no or "").strip()
+        if not purchase_no:
+            raise ProblemGoodsError("新交易号不能为空")
+        payload = self._admin_request(
+            self._path("admin_purchase_split_purchase_no", "/purchase.splitPurchaseNo"),
+            {
+                "new_purchase_no": purchase_no,
+                "data[0][new_num]": int(new_num),
+                "data[0][order_purchase_id]": int(order_purchase_id),
+            },
+            "交易号拆分",
+            mutation=True,
+        )
+        if not _api_success(payload):
+            raise ProblemGoodsApiError("交易号拆分", payload)
+        return payload
+
 
 def _business_fields(problem_goods_id: int, variables: Dict[str, Any], *, preview: bool) -> Dict[str, Any]:
     return {
@@ -1084,17 +1130,28 @@ class ProblemGoodsFlow:
                 options = []
 
             if pre_data_needs_update(row, self.variables):
-                self.gateway.update_pre_data(
-                    problem_goods_id,
-                    self.variables["pre_num"],
-                    self.variables["pre_price"],
-                    self.variables["pre_freight"],
-                )
+                try:
+                    self.gateway.update_pre_data(
+                        problem_goods_id,
+                        self.variables["pre_num"],
+                        self.variables["pre_price"],
+                        self.variables["pre_freight"],
+                    )
+                except ProblemGoodsMutationUncertain as exc:
+                    refreshed = self.gateway.find_problem(order_sn, problem_goods_id)
+                    if refreshed is None or pre_data_needs_update(refreshed, self.variables):
+                        raise ProblemGoodsError("修改问题产品数据网络结果不确定，必须先查询状态") from exc
+                    row = refreshed
                 self._record_step("pre_data_updated")
             else:
                 self._record_step("pre_data_unchanged")
             if self.variables["option_deal_suggest"] == 1:
-                self.gateway.update_options(problem_goods_id, options)
+                try:
+                    self.gateway.update_options(problem_goods_id, options)
+                except ProblemGoodsMutationUncertain as exc:
+                    refreshed = self.gateway.find_problem(order_sn, problem_goods_id)
+                    if refreshed is None:
+                        raise ProblemGoodsError("修改问题产品OPTION网络结果不确定，必须先查询状态") from exc
                 self._record_step("options_updated", option_count=len(options))
 
             preview_payload = self.gateway.business_deal(_business_fields(problem_goods_id, self.variables, preview=True), preview=True)
@@ -1266,6 +1323,7 @@ __all__ = [
     "is_department_permission_error",
     "normalize_customer_id",
     "order_purchase_candidates",
+    "same_sorting_purchase_rows",
     "parse_preview_bills",
     "refund_cny_from_preview",
     "run_problem_goods_script",

@@ -22,13 +22,28 @@ def _money_value(value: Any) -> str:
     return str(value if value not in (None, "") else "0")
 
 
-def build_payment_variables(parameters: Mapping[str, Any]) -> dict[str, Any]:
+def _mapping(value: Any) -> dict[str, Any]:
+    return dict(value) if isinstance(value, Mapping) else {}
+
+
+def _coupon_selected_id(parameters: Mapping[str, Any]) -> str:
+    coupon = _mapping(parameters.get("coupon"))
+    return str(coupon.get("selectedId") or coupon.get("selected_id") or "").strip()
+
+
+def _voucher_selected_id(parameters: Mapping[str, Any]) -> str:
+    porder = _mapping(parameters.get("porder"))
+    voucher = _mapping(porder.get("voucher"))
+    return str(voucher.get("selectedId") or voucher.get("selected_id") or "").strip()
+
+
+def build_payment_variables(parameters: Mapping[str, Any], *, runner_kind: str = "") -> dict[str, Any]:
     values = {
         key: value
         for key, value in dict(parameters).items()
-        if key not in {"order", "items", "actual_amount", "actual_evidence", "actual"}
+        if key not in {"order", "items", "actual_amount", "actual_evidence", "actual", "part_pay", "coupon", "porder", "problem_goods"}
     }
-    order = parameters.get("order") if isinstance(parameters.get("order"), Mapping) else {}
+    order = _mapping(parameters.get("order"))
     items = [dict(row) for row in parameters.get("items", []) if isinstance(row, Mapping)]
     item_count = int(order.get("item_count") or parameters.get("item_count") or len(items) or 1)
     default_quantity = int(order.get("default_quantity") or 1)
@@ -40,6 +55,10 @@ def build_payment_variables(parameters: Mapping[str, Any]) -> dict[str, Any]:
     values["other_price_remark"] = str(
         order.get("other_fee_name") or parameters.get("other_fee_name") or "系统回归其他费用"
     )
+    default_offer = order.get("default_offer_price") or (items[0].get("offer_price") if items else None)
+    if default_offer is not None:
+        values["payment_regression_offer_price"] = _money_value(default_offer)
+        values["offer_price"] = _money_value(default_offer)
 
     if items:
         values["system_regression_items"] = items
@@ -58,12 +77,69 @@ def build_payment_variables(parameters: Mapping[str, Any]) -> dict[str, Any]:
                     continue
                 key = str(option.get("key") or option.get("id") or option.get("name") or "").strip()
                 if key:
-                    option_counts[key] = option_counts.get(key, 0) + int(option.get("num") or 0)
+                    option_counts[key] = option_counts.get(key, 0) + int(option.get("num") or option.get("order_num") or 0)
         if option_counts:
             values["order_option_counts"] = option_counts
 
-    first_payment_rate = Decimal(str(parameters.get("first_payment_rate") or "0.5"))
-    values["order_part_pay_percent"] = int(first_payment_rate * Decimal("100"))
+    part_pay = _mapping(parameters.get("part_pay"))
+    part_enabled = bool(part_pay.get("enabled")) or str(parameters.get("payment_plan") or "") == "part"
+    if part_pay.get("percent") not in (None, ""):
+        percent = int(part_pay.get("percent"))
+    else:
+        percent = int(Decimal(str(parameters.get("first_payment_rate") or "0.5")) * Decimal("100"))
+    values["first_payment_rate"] = str((Decimal(percent) / Decimal("100")).quantize(Decimal("0.01")))
+    values["order_part_pay_percent"] = percent
+    values["payment_regression_part_pay_percent"] = percent
+    values["order_part_pay"] = 1 if part_enabled else 0
+    values["_full_flow_part_pay_script"] = bool(part_enabled)
+    values["payment_plan"] = "part" if part_enabled else str(parameters.get("payment_plan") or "full")
+    if part_enabled:
+        values["order_part_pay_tail_node"] = str(part_pay.get("tail_node") or "before_shelf")
+        values["order_part_pay_tail_partial_enabled"] = 1 if part_pay.get("tail_partial") else 0
+        values["order_part_pay_tail_select_by"] = "sorting"
+        values["order_part_pay_tail_sortings"] = str(part_pay.get("tail_sortings") or "")
+        timing = part_pay.get("fee_timing") if isinstance(part_pay.get("fee_timing"), Mapping) else {}
+        values["order_part_pay_fee_timing"] = {
+            key: ("tail" if str(timing.get(key) or "first") == "tail" else "first")
+            for key in ("domestic_freight", "service_fee", "additional_service_fee", "other_fee")
+        }
+
+    coupon_id = _coupon_selected_id(parameters)
+    synthetic_coupon = coupon_id in {"", "__service_discount__"}
+    values["service_discount"] = bool(parameters.get("service_discount")) or bool(coupon_id)
+    if coupon_id and not synthetic_coupon:
+        values["discounts_id"] = coupon_id
+    elif parameters.get("discounts_id"):
+        values["discounts_id"] = str(parameters.get("discounts_id") or "")
+
+    porder = _mapping(parameters.get("porder"))
+    apply_porder = runner_kind == "porder_payment" or (
+        runner_kind == "" and isinstance(parameters.get("porder"), Mapping) and bool(porder)
+    )
+    if apply_porder:
+        values["warehouse_sku_count"] = int(porder.get("sku_count") or 1)
+        values["send_num"] = int(porder.get("send_num") or 1)
+        values["box_count"] = str(porder.get("box_count") or "1")
+        values["box_length"] = str(porder.get("box_length") or "58")
+        values["box_width"] = str(porder.get("box_width") or "51")
+        values["box_height"] = str(porder.get("box_height") or "50")
+        values["box_weight"] = str(porder.get("box_weight") or "10")
+        values["delivery_quote_logistics_id"] = str(porder.get("logistics") or "25")
+        voucher_id = _voucher_selected_id(parameters)
+        if voucher_id:
+            values["discounts_id"] = voucher_id
+        if porder.get("price_manual"):
+            values["logistics_price_artificial"] = _money_value(porder.get("logistics_price"))
+            values["logistics_price_from_api"] = False
+        else:
+            values["logistics_price_from_api"] = True
+            values.pop("logistics_price_artificial", None)
+
+    wait_seconds = int(parameters.get("ledger_wait_seconds") or 30)
+    values["ledger_wait_seconds"] = wait_seconds
+    evidence_delay = 0.5
+    values["payment_regression_evidence_delay"] = evidence_delay
+    values["payment_regression_evidence_retries"] = max(1, int(wait_seconds / evidence_delay))
     values["finance_confirm"] = bool(parameters.get("finance_confirm", True))
     return values
 
@@ -236,16 +312,26 @@ class PaymentRunner:
         if runner_kind not in category_by_runner:
             raise ValueError(f"不支持的支付执行类型：{runner_kind}")
         parameters = dict(case.get("parameters") or {})
+        part_pay = _mapping(parameters.get("part_pay"))
+        if runner_kind in {"order_payment", "order_part_payment"}:
+            if "enabled" in part_pay:
+                category = "order_part" if part_pay.get("enabled") else "order"
+            elif str(parameters.get("payment_plan") or "") == "part" or runner_kind == "order_part_payment":
+                category = "order_part"
+            else:
+                category = "order"
+        else:
+            category = category_by_runner[runner_kind]
         variables = {
             **self.base_variables,
             **dict(context.get("variables") or {}),
-            **build_payment_variables(parameters),
+            **build_payment_variables(parameters, runner_kind=runner_kind),
         }
         fee_contract = self._apply_fee_profile(parameters, variables)
         scenario = ScenarioSpec(
             key=str(case.get("case_key") or ""),
             name=str(case.get("name") or case.get("case_key") or ""),
-            category=category_by_runner[runner_kind],
+            category=category,
             payment_mode=str(parameters.get("payment_mode") or "balance"),
             expected_direction=str((case.get("expectation") or {}).get("direction") or "debit"),
         )

@@ -1294,10 +1294,20 @@
     "path": "/v3/{path:path}",
     "name": "_v3_assets"
   },
-  {
+    {
     "method": "GET",
     "path": "/api/system-regression/suites/{suite_key}/cases",
     "name": "get_regression_cases"
+  },
+  {
+    "method": "POST",
+    "path": "/api/system-regression/cases",
+    "name": "create_regression_case"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/system-regression/cases/{case_id}",
+    "name": "delete_regression_case"
   },
   {
     "method": "PATCH",
@@ -1321,6 +1331,11 @@
   },
   {
     "method": "GET",
+    "path": "/api/system-regression/batches",
+    "name": "list_regression_batches"
+  },
+  {
+    "method": "GET",
     "path": "/api/system-regression/batches/{batch_id}",
     "name": "get_regression_batch"
   },
@@ -1338,5 +1353,15 @@
     "method": "POST",
     "path": "/api/system-regression/runs/{run_id}/resume-account",
     "name": "resume_regression_account"
+  },
+  {
+    "method": "POST",
+    "path": "/api/system-regression/tickets",
+    "name": "list_regression_tickets"
+  },
+  {
+    "method": "POST",
+    "path": "/api/system-regression/options",
+    "name": "list_regression_options"
   }
 ]

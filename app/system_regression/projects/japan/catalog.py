@@ -3,9 +3,27 @@ from __future__ import annotations
 from typing import Any, Iterable
 
 from ...common.catalog import CaseExpectation, RegressionCaseDefinition
-
+from .panel import (
+    INSPECT_OPTION,
+    PACK_OPTION,
+    SERVICE_COUPON_ID,
+    _item,
+    _part_pay,
+    guard_panel,
+    order_panel,
+    porder_panel,
+    problem_panel,
+)
 
 JAPAN_REQUIRED_IDENTITIES = ("admin", "client")
+
+
+def _direction_deals(direction: str) -> dict[str, Any]:
+    if direction == "debit":
+        return {"g_deal_type": "其他", "service_deal_suggest": 1}
+    if direction == "none":
+        return {"g_deal_type": "其他", "service_deal_suggest": 1}
+    return {}
 
 
 def _success(
@@ -46,7 +64,7 @@ def _guard(
     error_codes: Iterable[str] = (),
     parameters: dict[str, Any] | None = None,
 ) -> tuple[str, str, str, str, dict[str, Any], CaseExpectation, tuple[str, ...]]:
-    values = {"guard_kind": guard_kind, **dict(parameters or {})}
+    values = dict(parameters or {})
     return (
         key,
         name,
@@ -64,17 +82,286 @@ def _guard(
 
 
 def _raw_definitions():
+    mixed_options = [dict(PACK_OPTION), dict(INSPECT_OPTION)]
     payment = (
-        _success("JP-PAY-001", "单番余额全额支付", "payment", "debit", runner_kind="order_payment", parameters={"payment_mode": "balance", "payment_plan": "full"}, tags=("支付", "余额")),
-        _success("JP-PAY-002", "单番银行全额支付", "payment", "debit", runner_kind="order_payment", parameters={"payment_mode": "bank", "payment_plan": "full", "finance_confirm": True}, tags=("支付", "银行")),
-        _success("JP-PAY-003", "余额分批付款", "payment", "debit", runner_kind="order_part_payment", parameters={"payment_mode": "balance", "payment_plan": "part", "first_payment_rate": "0.5"}, tags=("支付", "分批")),
-        _success("JP-PAY-004", "银行分批付款", "payment", "debit", runner_kind="order_part_payment", parameters={"payment_mode": "bank", "payment_plan": "part", "first_payment_rate": "0.5", "finance_confirm": True}, tags=("支付", "分批", "银行")),
-        _success("JP-PAY-005", "配送单余额支付", "payment", "debit", runner_kind="porder_payment", parameters={"payment_mode": "balance"}, tags=("支付", "配送单")),
-        _success("JP-PAY-006", "配送单银行支付", "payment", "debit", runner_kind="porder_payment", parameters={"payment_mode": "bank", "finance_confirm": True}, tags=("支付", "配送单", "银行")),
-        _success("JP-PAY-007", "多单番独立国内运费", "payment", "debit", runner_kind="order_payment", parameters={"payment_mode": "balance", "item_count": 2, "per_item_freight": True}, tags=("支付", "多番", "国内运费")),
-        _success("JP-PAY-008", "其他费用金额与名义", "payment", "debit", runner_kind="order_payment", parameters={"payment_mode": "balance", "other_fee_name": "包装材料费", "other_fee_amount": "5"}, tags=("支付", "其他费用")),
-        _success("JP-PAY-009", "多 OPTION 混合", "payment", "debit", runner_kind="order_payment", parameters={"payment_mode": "balance", "option_profile": "fixed_and_rate"}, tags=("支付", "OPTION")),
-        _success("JP-PAY-010", "全费用混合订单", "payment", "debit", runner_kind="order_payment", parameters={"payment_mode": "balance", "fee_profile": "all"}, tags=("支付", "综合费用")),
+        _success(
+            "JP-PAY-001",
+            "单番余额全额支付",
+            "payment",
+            "debit",
+            runner_kind="order_payment",
+            parameters=order_panel(payment_mode="balance", payment_plan="full"),
+            tags=("支付", "余额"),
+        ),
+        _success(
+            "JP-PAY-002",
+            "单番银行全额支付",
+            "payment",
+            "debit",
+            runner_kind="order_payment",
+            parameters=order_panel(payment_mode="bank", payment_plan="full", finance_confirm=True),
+            tags=("支付", "银行"),
+        ),
+        _success(
+            "JP-PAY-003",
+            "余额分批付款",
+            "payment",
+            "debit",
+            runner_kind="order_part_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                payment_plan="part",
+                part=_part_pay(True, percent=50),
+                first_payment_rate="0.5",
+            ),
+            tags=("支付", "分批"),
+        ),
+        _success(
+            "JP-PAY-004",
+            "银行分批付款",
+            "payment",
+            "debit",
+            runner_kind="order_part_payment",
+            parameters=order_panel(
+                payment_mode="bank",
+                payment_plan="part",
+                part=_part_pay(True, percent=50),
+                first_payment_rate="0.5",
+                finance_confirm=True,
+            ),
+            tags=("支付", "分批", "银行"),
+        ),
+        _success(
+            "JP-PAY-005",
+            "配送单余额支付",
+            "porder",
+            "debit",
+            runner_kind="porder_payment",
+            parameters=porder_panel(payment_mode="balance"),
+            tags=("支付", "配送单"),
+        ),
+        _success(
+            "JP-PAY-006",
+            "配送单银行支付",
+            "porder",
+            "debit",
+            runner_kind="porder_payment",
+            parameters=porder_panel(payment_mode="bank", finance_confirm=True),
+            tags=("支付", "配送单", "银行"),
+        ),
+        _success(
+            "JP-PAY-007",
+            "多单番独立国内运费",
+            "payment",
+            "debit",
+            runner_kind="order_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                items=[_item(1, freight="3"), _item(2, freight="4")],
+                item_count=2,
+                per_item_freight=True,
+            ),
+            tags=("支付", "多番", "国内运费"),
+        ),
+        _success(
+            "JP-PAY-008",
+            "其他费用金额与名义",
+            "payment",
+            "debit",
+            runner_kind="order_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                other_name="包装材料费",
+                other_amount="5",
+            ),
+            tags=("支付", "其他费用"),
+        ),
+        _success(
+            "JP-PAY-009",
+            "固定金额和百分比 OPTION 一起买",
+            "payment",
+            "debit",
+            runner_kind="order_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                items=[_item(1, quantity=2, options=mixed_options)],
+                option_profile="fixed_and_rate",
+                option_quantity=2,
+            ),
+            tags=("支付", "OPTION"),
+        ),
+        _success(
+            "JP-PAY-010",
+            "全费用混合订单",
+            "payment",
+            "debit",
+            runner_kind="order_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                items=[
+                    _item(1, quantity=2, price="10", freight="3", options=mixed_options),
+                    _item(2, quantity=2, price="10", freight="4", options=mixed_options),
+                ],
+                other_name="系统回归包装费",
+                other_amount="5",
+                fee_profile="all",
+                option_profile="fixed_and_rate",
+                item_count=2,
+                item_quantity=2,
+            ),
+            tags=("支付", "综合费用"),
+        ),
+        _success(
+            "JP-PAY-011",
+            "订单优惠券免手续费",
+            "payment",
+            "debit",
+            runner_kind="order_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                coupon_id=SERVICE_COUPON_ID,
+                service_discount=True,
+            ),
+            tags=("支付", "优惠券"),
+        ),
+        _success(
+            "JP-PAY-012",
+            "配送单其他费用",
+            "porder",
+            "debit",
+            runner_kind="porder_payment",
+            parameters=porder_panel(payment_mode="balance", extra_name="加固包装", extra_fee="8"),
+            tags=("支付", "配送单", "其他费用"),
+        ),
+        _success(
+            "JP-PAY-013",
+            "分批付款国内运费跟尾款",
+            "payment",
+            "debit",
+            runner_kind="order_part_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                payment_plan="part",
+                part=_part_pay(True, percent=50, fee_timing={
+                    "domestic_freight": "tail",
+                    "service_fee": "first",
+                    "additional_service_fee": "first",
+                    "other_fee": "first",
+                }),
+                first_payment_rate="0.5",
+            ),
+            tags=("支付", "分批", "国内运费"),
+        ),
+        _success(
+            "JP-PAY-014",
+            "分批付款尾款在提出配送单前",
+            "payment",
+            "debit",
+            runner_kind="order_part_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                payment_plan="part",
+                part=_part_pay(True, percent=50, tail_node="before_porder_create"),
+                first_payment_rate="0.5",
+            ),
+            tags=("支付", "分批", "尾款节点"),
+        ),
+        _success(
+            "JP-PAY-015",
+            "分批付款按番付尾款",
+            "payment",
+            "debit",
+            runner_kind="order_part_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                payment_plan="part",
+                items=[_item(1, freight="3"), _item(2, freight="4")],
+                item_count=2,
+                part=_part_pay(True, percent=50, tail_partial=True, tail_sortings="1"),
+                first_payment_rate="0.5",
+            ),
+            tags=("支付", "分批", "按番尾款"),
+        ),
+        _success(
+            "JP-PAY-016",
+            "分批付款手续费跟尾款",
+            "payment",
+            "debit",
+            runner_kind="order_part_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                payment_plan="part",
+                part=_part_pay(True, percent=50, fee_timing={
+                    "domestic_freight": "first",
+                    "service_fee": "tail",
+                    "additional_service_fee": "first",
+                    "other_fee": "first",
+                }),
+                first_payment_rate="0.5",
+            ),
+            tags=("支付", "分批", "手续费"),
+        ),
+        _success(
+            "JP-PAY-017",
+            "分批付款 OPTION 跟尾款",
+            "payment",
+            "debit",
+            runner_kind="order_part_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                payment_plan="part",
+                items=[_item(1, quantity=2, options=mixed_options)],
+                part=_part_pay(True, percent=50, fee_timing={
+                    "domestic_freight": "first",
+                    "service_fee": "first",
+                    "additional_service_fee": "tail",
+                    "other_fee": "first",
+                }),
+                first_payment_rate="0.5",
+                option_profile="fixed_and_rate",
+                option_quantity=2,
+            ),
+            tags=("支付", "分批", "OPTION"),
+        ),
+        _success(
+            "JP-PAY-018",
+            "分批付款其他费用跟尾款",
+            "payment",
+            "debit",
+            runner_kind="order_part_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                payment_plan="part",
+                other_name="包装材料费",
+                other_amount="5",
+                part=_part_pay(True, percent=50, fee_timing={
+                    "domestic_freight": "first",
+                    "service_fee": "first",
+                    "additional_service_fee": "first",
+                    "other_fee": "tail",
+                }),
+                first_payment_rate="0.5",
+            ),
+            tags=("支付", "分批", "其他费用"),
+        ),
+        _success(
+            "JP-PAY-019",
+            "配送单人工钉死物流价",
+            "porder",
+            "debit",
+            runner_kind="porder_payment",
+            parameters=porder_panel(payment_mode="balance", price_manual=True, logistics_price="88"),
+            tags=("支付", "配送单", "人工运费"),
+        ),
+        _success(
+            "JP-PAY-020",
+            "配送单船便计费",
+            "porder",
+            "debit",
+            runner_kind="porder_payment",
+            parameters=porder_panel(payment_mode="balance", logistics="20"),
+            tags=("支付", "配送单", "船便"),
+        ),
     )
 
     amount_rows = (
@@ -98,7 +385,7 @@ def _raw_definitions():
             "problem_amount",
             direction,
             runner_kind="problem_goods",
-            parameters={"problem_type": problem_type, "adjustment": adjustment},
+            parameters=problem_panel(name=name, problem_type=problem_type, adjustment=adjustment, **_direction_deals(direction)),
             tags=("问题产品", "基础金额"),
         )
         for index, (name, problem_type, adjustment, direction) in enumerate(amount_rows, 1)
@@ -119,7 +406,14 @@ def _raw_definitions():
             "problem_service_fee",
             direction,
             runner_kind="problem_goods",
-            parameters={"problem_type": 1, "adjustment": adjustment, "service_deal_suggest": rule, "service_discount": discount},
+            parameters=problem_panel(
+                name=name,
+                problem_type=1,
+                adjustment=adjustment,
+                service_deal_suggest=rule,
+                service_discount=discount,
+                **{key: value for key, value in _direction_deals(direction).items() if key != "service_deal_suggest"},
+            ),
             tags=("问题产品", "手续费"),
         )
         for index, (name, adjustment, rule, discount, direction) in enumerate(service_rows, 1)
@@ -149,7 +443,13 @@ def _raw_definitions():
             "problem_option_manual",
             direction,
             runner_kind="problem_goods",
-            parameters={"problem_type": 6, "option_deal_suggest": 1, "option_adjustment": adjustment},
+            parameters=problem_panel(
+                name=name,
+                problem_type=6,
+                option_adjustment=adjustment,
+                option_deal_suggest=1,
+                **_direction_deals(direction),
+            ),
             tags=("问题产品", "OPTION", "业务修改"),
         )
         for index, (name, adjustment, direction) in enumerate(manual_option_rows, 1)
@@ -170,7 +470,13 @@ def _raw_definitions():
             "problem_option_auto",
             direction,
             runner_kind="problem_goods",
-            parameters={"problem_type": 6, "option_deal_suggest": 2, "option_adjustment": adjustment},
+            parameters=problem_panel(
+                name=name,
+                problem_type=6,
+                option_adjustment=adjustment,
+                option_deal_suggest=2,
+                **_direction_deals(direction),
+            ),
             tags=("问题产品", "OPTION", "系统自动"),
         )
         for index, (name, adjustment, direction) in enumerate(auto_option_rows, 1)
@@ -188,7 +494,19 @@ def _raw_definitions():
             "problem_mixed",
             direction,
             runner_kind="problem_goods",
-            parameters={"problem_type": 8, "adjustment": adjustment, "validate_components": True},
+            parameters=problem_panel(
+                name=name,
+                problem_type=8,
+                adjustment=adjustment,
+                validate_components=True,
+                items=[
+                    _item(1, quantity=2, freight="3", options=mixed_options),
+                    _item(2, quantity=2, freight="4", options=mixed_options),
+                ],
+                other_name="系统回归包装费",
+                other_amount="5",
+                **_direction_deals(direction),
+            ),
             tags=("问题产品", "综合净额"),
         )
         for index, (name, adjustment, direction) in enumerate(mixed_rows, 1)
@@ -213,28 +531,34 @@ def _raw_definitions():
             "problem_flow",
             direction,
             runner_kind="problem_flow",
-            parameters={"problem_type": problem_type, "client_deal_choice": client_choice, "g_deal_type": purchase_type},
+            parameters=problem_panel(
+                name=name,
+                problem_type=problem_type,
+                client_deal_choice=client_choice,
+                g_deal_type=purchase_type,
+                **{key: value for key, value in _direction_deals(direction).items() if key != "g_deal_type"},
+            ),
             tags=("问题产品", "完整流程"),
         )
         for index, (name, problem_type, client_choice, purchase_type, direction) in enumerate(flow_rows, 1)
     )
 
     guard_rows = (
-        ("分批付款尾款未完成禁止决策", "part_tail_unpaid", ("未分批付款完成", "尾款")),
-        ("转寄订单禁止提出问题产品", "resend_order", ("转寄订单",)),
-        ("待财务付款采购禁止提出", "purchase_wait_pay", ("待财务付款",)),
-        ("处理中问题产品禁止重复提出", "duplicate_open_problem", ("不可以重复提出", "进行中的问题产品")),
-        ("问题数量超过未上架数量", "problem_num_over_unstored", ("超过未上架数",)),
-        ("修改后数量小于已上架数量", "pre_num_below_storage", ("不能小于仓库已上架",)),
-        ("普通账号数量超过可入库数", "quantity_over_possible", ("修改后数量应该 <=",)),
-        ("数量增加禁止 OPTION 自动计算", "quantity_up_auto_option", ("商品数量增加", "业务修改OPTION")),
-        ("OPTION 数量超过商品数禁止自动计算", "option_num_over_goods", ("OPTION数量大于商品数", "option数比商品数多")),
-        ("多个百分比 OPTION 禁止自动计算", "multiple_rate_auto", ("多个百分比OPTION",)),
-        ("已有 OPTION 禁止修改计价类型", "option_price_type_change", ("不允许修改OPTION计价类型",)),
-        ("同番多采购禁止修改预处理数据", "multiple_purchase_update", ("有多条采购记录",)),
-        ("大额退款切换部长账号", "large_refund_account", ("大于500人民币", "部长账号")),
-        ("受限类型已有交易号禁止跳过采购", "restricted_skip_purchase", ("不允许跳过采购",)),
-        ("非允许类型禁止配货直接完成", "direct_complete_invalid_type", ("只有【少货、不良、不良且少货】",)),
+        ("分批付款尾款未完成禁止决策", "part_tail_unpaid", ("未分批付款完成", "尾款"), True),
+        ("转寄订单禁止提出问题产品", "resend_order", ("转寄订单",), False),
+        ("待财务付款采购禁止提出", "purchase_wait_pay", ("待财务付款",), False),
+        ("处理中问题产品禁止重复提出", "duplicate_open_problem", ("不可以重复提出", "进行中的问题产品"), False),
+        ("问题数量超过未上架数量", "problem_num_over_unstored", ("超过未上架数",), False),
+        ("修改后数量小于已上架数量", "pre_num_below_storage", ("不能小于仓库已上架",), False),
+        ("普通账号数量超过可入库数", "quantity_over_possible", ("修改后数量应该 <=",), False),
+        ("数量增加禁止 OPTION 自动计算", "quantity_up_auto_option", ("商品数量增加", "业务修改OPTION"), False),
+        ("OPTION 数量超过商品数禁止自动计算", "option_num_over_goods", ("OPTION数量大于商品数", "option数比商品数多"), False),
+        ("多个百分比 OPTION 禁止自动计算", "multiple_rate_auto", ("多个百分比OPTION",), False),
+        ("已有 OPTION 禁止修改计价类型", "option_price_type_change", ("不允许修改OPTION计价类型",), False),
+        ("同番多采购禁止修改预处理数据", "multiple_purchase_update", ("有多条采购记录",), False),
+        ("大额退款切换部长账号", "large_refund_account", ("大于500人民币", "部长账号"), False),
+        ("受限类型已有交易号禁止跳过采购", "restricted_skip_purchase", ("不允许跳过采购",), False),
+        ("非允许类型禁止配货直接完成", "direct_complete_invalid_type", ("只有【少货、不良、不良且少货】",), False),
     )
     guards = tuple(
         _guard(
@@ -242,8 +566,9 @@ def _raw_definitions():
             name,
             guard_kind=guard_kind,
             error_keywords=keywords,
+            parameters=guard_panel(name, guard_kind=guard_kind, part_pay=part_pay),
         )
-        for index, (name, guard_kind, keywords) in enumerate(guard_rows, 1)
+        for index, (name, guard_kind, keywords, part_pay) in enumerate(guard_rows, 1)
     )
     return payment + amounts + services + manual_options + auto_options + mixed + flows + guards
 

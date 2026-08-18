@@ -212,9 +212,9 @@ def build_problem_goods_request(
         "pre_freight": str((structured.get("pre_freight") or {}).get("value", freight)) if isinstance(structured.get("pre_freight"), Mapping) else _text(freight),
         "client_deal_choice": str(structured.get("client_deal_choice") or parameters.get("client_deal_choice") or "accept"),
         "client_deal_other": str(structured.get("client_deal_other") or parameters.get("client_deal_other") or ""),
-        "service_deal_suggest": int(structured.get("service_deal_suggest") or parameters.get("service_deal_suggest") or 2),
-        "option_deal_suggest": int(structured.get("option_deal_suggest") or parameters.get("option_deal_suggest") or 2),
-        "g_deal_type": str(structured.get("g_deal_type") or parameters.get("g_deal_type") or "仅退款"),
+        "service_deal_suggest": int(parameters.get("service_deal_suggest") or structured.get("service_deal_suggest") or 2),
+        "option_deal_suggest": int(parameters.get("option_deal_suggest") or structured.get("option_deal_suggest") or 2),
+        "g_deal_type": str(parameters.get("g_deal_type") or structured.get("g_deal_type") or "仅退款"),
         "business_decision": str(
             structured.get("business_decision")
             or parameters.get("business_decision")
@@ -222,8 +222,22 @@ def build_problem_goods_request(
         ).strip(),
         "purchase_remark": str(structured.get("purchase_remark") or "系统回归"),
         "create_if_missing": True,
-        "confirm_distribution": True,
+        "confirm_distribution": bool(structured.get("confirm_distribution", True)),
         "refund_channel": "customer_balance",
+        "service_discount": bool(
+            structured.get("service_discount")
+            or parameters.get("service_discount")
+            or (
+                (parameters.get("coupon") or {}).get("selectedId")
+                if isinstance(parameters.get("coupon"), Mapping)
+                else ""
+            )
+            or (
+                (parameters.get("coupon") or {}).get("selected_id")
+                if isinstance(parameters.get("coupon"), Mapping)
+                else ""
+            )
+        ),
     }
     if not request["order_purchase_id"] or not request["order_detail_id"]:
         raise ValueError("问题产品候选缺少采购明细或订单明细ID")
@@ -265,10 +279,10 @@ def build_problem_goods_request(
 
     original_options = _active_options(candidate)
     option_adjustment = str(parameters.get("option_adjustment") or "")
-    if structured.get("option_new") is not None:
-        request["option_new"] = list(structured.get("option_new") or [])
-    elif option_adjustment:
+    if option_adjustment:
         request["option_new"] = _adjust_options(original_options, option_adjustment, step)
+    elif structured.get("option_new"):
+        request["option_new"] = list(structured.get("option_new") or [])
     if request["option_deal_suggest"] == 1 and "option_new" not in request:
         request["option_new"] = original_options
     if adjustment == "zero_service_rate":
@@ -411,20 +425,32 @@ class ProblemGoodsRunner:
         return self._h5_purchase_candidates_from_payload(payload)
 
     def _prepare_candidate(self, case: Mapping[str, Any], context: Mapping[str, Any]) -> Mapping[str, Any]:
-        from app.data_scripts import run_full_flow_script, run_resume_order_flow_script
+        from app.data_scripts import run_full_flow_script, run_purchase_to_shelf_script, run_resume_order_flow_script
         from app.data_scripts.orders import inspect_order_options
         from app.data_scripts.problem_goods import inspect_problem_goods
 
         from .payment_runner import build_payment_variables
 
         parameters = dict(case.get("parameters") or {})
+        guard_kind = str(parameters.get("guard_kind") or "")
+        stop_after = "checking_started"
+        if guard_kind == "purchase_wait_pay":
+            stop_after = "purchase_wait_pay"
+        elif guard_kind == "pre_num_below_storage":
+            stop_after = "shelf_stored"
+        elif guard_kind == "multiple_purchase_update":
+            stop_after = "purchase_paid"
         variables = {
             **dict(context.get("variables") or {}),
-            **build_payment_variables(parameters),
-            "stop_after_node": "checking_started",
+            **build_payment_variables(parameters, runner_kind=str(case.get("runner_kind") or "")),
+            "stop_after_node": stop_after,
             "order_item_num": max(3, int(parameters.get("problem_order_quantity") or 3)),
             "purchase_freight": str(parameters.get("purchase_freight") or "3"),
         }
+        if guard_kind == "purchase_wait_pay":
+            variables["finance_confirm"] = False
+        if guard_kind == "large_refund_account":
+            variables["order_item_num"] = max(6, int(parameters.get("problem_order_quantity") or 6))
         variables.setdefault("confirm_freight", variables["purchase_freight"])
         variables.setdefault("offer_freight", variables["purchase_freight"])
         existing_order_sn = str(context.get("order_sn") or "").strip()
@@ -441,32 +467,72 @@ class ProblemGoodsRunner:
             )
             if candidate is None:
                 raise RuntimeError("恢复执行前无法确认原问题产品采购明细状态，已停止避免重复写入")
+            if guard_kind == "multiple_purchase_update":
+                candidate, _purchase_no = self._ensure_same_sorting_multiple_purchases(
+                    variables,
+                    existing_order_sn,
+                    candidate,
+                    candidates,
+                )
             return {**dict(context), "candidate": candidate, "order_sn": existing_order_sn, "variables": variables}
-        if parameters.get("option_adjustment") or int(parameters.get("option_deal_suggest") or 0) in {1, 2}:
+        if parameters.get("option_adjustment") or int(parameters.get("option_deal_suggest") or 0) in {1, 2} or guard_kind in {
+            "multiple_rate_auto",
+            "option_num_over_goods",
+            "option_price_type_change",
+            "quantity_over_possible",
+            "quantity_up_auto_option",
+        }:
             option_catalog = inspect_order_options(self.env, variables)
             options = [row for row in option_catalog.get("options", []) if isinstance(row, Mapping)]
             adjustment = str(parameters.get("option_adjustment") or "")
-            required_types = {1} if adjustment.startswith("rate_") else {0}
-            if adjustment in {"mixed_net_refund", "all_delete"}:
-                required_types = {0, 1}
-            selected: dict[str, int] = {}
-            for price_type in required_types:
-                option = next((row for row in options if int(row.get("price_type") or 0) == price_type), None)
-                if option is None:
-                    raise ValueError(f"缺少计价类型为{price_type}的可用OPTION")
-                key = str(option.get("key") or option.get("id") or option.get("name") or "").strip()
-                if not key:
-                    raise ValueError("可用OPTION缺少唯一标识")
-                selected[key] = max(1, int(parameters.get("problem_order_quantity") or 3))
-            variables["order_option_counts"] = selected
+            if guard_kind == "multiple_rate_auto":
+                option = next((row for row in options if int(row.get("price_type") or 0) == 1), None)
+                if option is not None:
+                    key = str(option.get("key") or option.get("id") or option.get("name") or "").strip()
+                    if key:
+                        variables["order_option_counts"] = {
+                            key: max(1, int(parameters.get("problem_order_quantity") or 3))
+                        }
+            else:
+                required_types = {1} if adjustment.startswith("rate_") else {0}
+                if adjustment in {"mixed_net_refund", "all_delete"} or guard_kind in {
+                    "option_num_over_goods",
+                    "option_price_type_change",
+                    "quantity_over_possible",
+                    "quantity_up_auto_option",
+                }:
+                    required_types = {0, 1} if adjustment in {"mixed_net_refund", "all_delete"} else required_types or {0}
+                selected = {}
+                for price_type in required_types:
+                    option = next((row for row in options if int(row.get("price_type") or 0) == price_type), None)
+                    if option is None:
+                        if guard_kind:
+                            continue
+                        raise ValueError(f"缺少计价类型为{price_type}的可用OPTION")
+                    key = str(option.get("key") or option.get("id") or option.get("name") or "").strip()
+                    if not key:
+                        if guard_kind:
+                            continue
+                        raise ValueError("可用OPTION缺少唯一标识")
+                    selected[key] = max(1, int(parameters.get("problem_order_quantity") or 3))
+                if selected:
+                    variables["order_option_counts"] = selected
 
         passed, _log, _report, summary = run_full_flow_script(self.env, variables)
         order_sn = str((summary or {}).get("order_sn") or "")
         if not passed and order_sn:
-            passed, _log, _report, resumed_summary = run_resume_order_flow_script(
-                self.env,
-                {**variables, "order_sn": order_sn},
-            )
+            shelf_vars = {
+                **variables,
+                "order_sn": order_sn,
+                "auto_quote_and_pay": False,
+                "link_quote_balance_before_shelf": False,
+            }
+            passed, _log, _report, resumed_summary = run_purchase_to_shelf_script(self.env, shelf_vars)
+            if not passed:
+                passed, _log, _report, resumed_summary = run_resume_order_flow_script(
+                    self.env,
+                    {**variables, "order_sn": order_sn},
+                )
             summary = {**dict(summary or {}), **dict(resumed_summary or {}), "order_sn": order_sn}
         if not passed:
             raise RuntimeError(str((summary or {}).get("reason") or "问题产品前置订单创建失败"))
@@ -495,6 +561,13 @@ class ProblemGoodsRunner:
                 if isinstance(row, Mapping)
             ]
             raise RuntimeError(f"未找到可提交的问题产品采购明细：{diagnostics}")
+        if guard_kind == "multiple_purchase_update":
+            candidate, purchase_no = self._ensure_same_sorting_multiple_purchases(
+                variables,
+                order_sn,
+                candidate,
+                candidates,
+            )
         return {
             **dict(context),
             "candidate": candidate,
@@ -502,6 +575,61 @@ class ProblemGoodsRunner:
             "purchase_no": purchase_no,
             "variables": variables,
         }
+
+    def _ensure_same_sorting_multiple_purchases(
+        self,
+        variables: Mapping[str, Any],
+        order_sn: str,
+        candidate: Mapping[str, Any],
+        candidates: list[dict[str, Any]],
+    ) -> tuple[dict[str, Any], str]:
+        from datetime import datetime
+
+        from app.data_scripts.problem_goods import (
+            merge_purchase_candidates,
+            order_purchase_candidates,
+            same_sorting_purchase_rows,
+        )
+
+        same = same_sorting_purchase_rows(candidates, dict(candidate))
+        if len(same) >= 2:
+            chosen = dict(candidate)
+            chosen["same_purchase_count"] = len(same)
+            chosen["order_purchase_count"] = len(same)
+            return chosen, str(chosen.get("purchase_no") or "")
+
+        qty = int(candidate.get("possible_num") or candidate.get("confirm_num") or candidate.get("max_submit_num") or 0)
+        order_purchase_id = int(candidate.get("order_purchase_id") or 0)
+        if qty < 2:
+            raise RuntimeError("同番拆分需要采购数量至少为2")
+        if order_purchase_id <= 0:
+            raise RuntimeError("同番拆分缺少采购记录ID")
+
+        gateway = ProblemGoodsGateway(
+            self.env,
+            dict(variables),
+            {"script": "系统回归交易号拆分", "order_sn": order_sn},
+        )
+        new_no = datetime.now().strftime("%d%H%M%S")
+        gateway.split_purchase_no(
+            order_purchase_id=order_purchase_id,
+            new_num=1,
+            new_purchase_no=new_no,
+        )
+        rows = gateway.list_purchase_candidates(order_sn)
+        same = same_sorting_purchase_rows(rows, dict(candidate))
+        if len(same) < 2:
+            try:
+                spot_rows = order_purchase_candidates(gateway.spot_order_detail(order_sn) or {})
+                same = same_sorting_purchase_rows(merge_purchase_candidates(rows, spot_rows), dict(candidate))
+            except Exception:
+                pass
+        if len(same) < 2:
+            raise RuntimeError(f"交易号拆分后同番仍只有{len(same)}条采购记录")
+        chosen = next((dict(row) for row in same if row.get("can_submit") is not False), dict(same[0]))
+        chosen["same_purchase_count"] = len(same)
+        chosen["order_purchase_count"] = len(same)
+        return chosen, str(chosen.get("purchase_no") or new_no)
 
     def _live_execute(self, case: Mapping[str, Any], context: Mapping[str, Any], request: Mapping[str, Any]) -> Mapping[str, Any]:
         from app.data_scripts import run_problem_goods_script
@@ -767,6 +895,21 @@ class ProblemGoodsRunner:
                         parameters["option_deal_suggest"] = 1
             if parameters.get("client_deal_choice") == "other" and not parameters.get("client_deal_other"):
                 parameters["client_deal_other"] = "系统回归自定义回复"
+            nested = parameters.get("problem_goods")
+            if isinstance(nested, Mapping):
+                nested = dict(nested)
+                for key in (
+                    "adjustment",
+                    "option_adjustment",
+                    "option_deal_suggest",
+                    "service_deal_suggest",
+                    "g_deal_type",
+                    "client_deal_choice",
+                    "client_deal_other",
+                ):
+                    if parameters.get(key) not in (None, ""):
+                        nested[key] = parameters[key]
+                parameters["problem_goods"] = nested
         run_context = dict(context)
         if not isinstance(run_context.get("candidate"), Mapping):
             run_context = dict(self.candidate_loader(case, run_context))

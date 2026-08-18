@@ -8,6 +8,7 @@ import pytest
 from app.services.system_regression.account_service import AccountLoginRequired
 from app.system_regression.projects.japan import problem_runner as problem_runner_module
 from app.system_regression.projects.japan.guard_runner import GuardRunner
+from app.data_scripts.porder_flow_support import _extract_predicted_price, _logistics_ids_from_freight
 from app.system_regression.projects.japan.payment_runner import PaymentRunner, build_payment_variables
 from app.system_regression.projects.japan.problem_runner import (
     ProblemGoodsRunner,
@@ -75,6 +76,87 @@ def test_build_payment_variables_maps_all_editable_fee_fields_without_actual_evi
     assert "actual_evidence" not in values
 
 
+def test_build_payment_variables_maps_part_pay_coupon_and_porder_boxes():
+    values = build_payment_variables(
+        {
+            "part_pay": {"enabled": True, "percent": 0, "tail_node": "before_porder_create", "tail_partial": True, "tail_sortings": "1,2"},
+            "coupon": {"selectedId": "__service_discount__"},
+            "porder": {
+                "sku_count": 2,
+                "box_count": 1,
+                "box_length": 58,
+                "box_width": 51,
+                "box_height": 50,
+                "box_weight": 10,
+                "logistics": "25",
+                "price_manual": False,
+                "voucher": {"selectedId": "VOUCHER-9"},
+            },
+            "ledger_wait_seconds": 12,
+        }
+    )
+
+    assert values["order_part_pay"] == 1
+    assert values["_full_flow_part_pay_script"] is True
+    assert values["order_part_pay_percent"] == 0
+    assert values["first_payment_rate"] == "0.00"
+    assert values["service_discount"] is True
+    assert "discounts_id" in values
+    assert values["discounts_id"] == "VOUCHER-9"
+    assert values["logistics_price_from_api"] is True
+    assert values["box_length"] == "58"
+    assert values["delivery_quote_logistics_id"] == "25"
+    assert values["ledger_wait_seconds"] == 12
+    assert values["payment_regression_evidence_delay"] == 0.5
+    assert values["payment_regression_evidence_retries"] == 24
+
+
+def test_sea_logistics_ids_are_read_from_nested_freight_groups():
+    ids = _logistics_ids_from_freight(
+        {
+            "success": True,
+            "data": [
+                {
+                    "group": [
+                        {"logistics_id": "15", "name": "航空便"},
+                        {"logistics_id": "31", "name": "船便", "list": [{"id": 10, "logistics_id": "31"}]},
+                    ]
+                }
+            ],
+        },
+        "20",
+    )
+
+    assert ids[0] == "31"
+    assert "20" in ids
+
+
+def test_build_payment_variables_keeps_real_coupon_id_and_manual_freight():
+    coupon_only = build_payment_variables({"coupon": {"selectedId": "COUPON-3"}})
+    assert coupon_only["service_discount"] is True
+    assert coupon_only["discounts_id"] == "COUPON-3"
+
+    manual = build_payment_variables(
+        {"porder": {"price_manual": True, "logistics_price": {"value": "88", "currency": "CNY"}}}
+    )
+    assert manual["logistics_price_from_api"] is False
+    assert manual["logistics_price_artificial"] == "88"
+
+
+def test_build_payment_variables_ignores_porder_block_for_order_cases():
+    values = build_payment_variables(
+        {"porder": {"logistics": "25", "box_count": 1, "price_manual": False}},
+        runner_kind="order_payment",
+    )
+    assert "logistics_price_from_api" not in values
+    assert "delivery_quote_logistics_id" not in values
+
+
+def test_extract_predicted_logistics_price_from_nested_list():
+    assert _extract_predicted_price({"data": {"list": [{"price": "123.45"}]}}) == "123.45"
+    assert _extract_predicted_price({"data": {"logistics_price": "88"}}) == "88"
+
+
 def test_payment_runner_dispatches_all_payment_runner_kinds():
     calls = []
 
@@ -90,6 +172,31 @@ def test_payment_runner_dispatches_all_payment_runner_kinds():
     assert runner.execute(_case(key="P2", runner_kind="order_part_payment", parameters={"payment_mode": "bank"}), contexts).status == "passed"
     assert runner.execute(_case(key="P3", runner_kind="porder_payment", parameters={"payment_mode": "balance"}), contexts).status == "passed"
     assert calls == [("order", "balance", "B1"), ("order_part", "bank", "B1"), ("porder", "balance", "B1")]
+
+
+def test_payment_runner_uses_part_pay_enabled_to_pick_order_part_category():
+    calls = []
+
+    class FakeExecutor:
+        def execute(self, scenario, batch_no):
+            calls.append(scenario.category)
+            return {"status": "passed", "order_sn": "O1", "checks": [{"passed": True}]}
+
+    runner = PaymentRunner(env=object(), executor_factory=lambda _env, _variables: FakeExecutor())
+    contexts = {"batch_no": "B1", "variables": {}}
+
+    enabled = runner.execute(
+        _case(key="C1", runner_kind="order_payment", parameters={"payment_mode": "balance", "part_pay": {"enabled": True, "percent": 50}}),
+        contexts,
+    )
+    disabled = runner.execute(
+        _case(key="C2", runner_kind="order_part_payment", parameters={"payment_mode": "balance", "part_pay": {"enabled": False}}),
+        contexts,
+    )
+
+    assert enabled.status == "passed"
+    assert disabled.status == "passed"
+    assert calls == ["order_part", "order"]
 
 
 def test_payment_runner_fixed_and_rate_profile_selects_real_option_ids():
@@ -339,6 +446,29 @@ def test_auto_rate_price_down_changes_goods_price_for_option_linkage():
     )
 
     assert request["pre_price"] == "18"
+
+
+def test_empty_nested_option_new_does_not_block_option_adjustment():
+    request = build_problem_goods_request(
+        {
+            "option_adjustment": "fixed_add",
+            "option_deal_suggest": 1,
+            "problem_goods": {"option_new": [], "option_deal_suggest": 2},
+        },
+        {
+            "order_purchase_id": 21,
+            "order_detail_id": 31,
+            "possible_num": 3,
+            "confirm_price": "20",
+            "confirm_freight": "6",
+            "option": [],
+        },
+        expected_direction="debit",
+    )
+
+    assert request["option_deal_suggest"] == 1
+    assert request["option_new"]
+    assert request["option_new"][0]["name"]
 
 
 def test_problem_runner_rejects_non_balance_actual_evidence():
@@ -689,6 +819,146 @@ def test_problem_candidate_stops_before_storage(monkeypatch):
     assert result["candidate"]["can_submit"] is True
 
 
+def test_problem_candidate_splits_purchase_no_for_same_sorting(monkeypatch):
+    import app.data_scripts as data_scripts
+    import app.system_regression.projects.japan.problem_runner as problem_runner_mod
+
+    captured = {}
+    split_calls = []
+
+    def run_full_flow(_env, variables):
+        captured.update(variables)
+        return True, "", "", {"order_sn": "O-300001", "purchase_no": "PURCHASE-1"}
+
+    class FakeSplitGateway:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def split_purchase_no(self, order_purchase_id, new_num, new_purchase_no):
+            split_calls.append(
+                {
+                    "order_purchase_id": order_purchase_id,
+                    "new_num": new_num,
+                    "new_purchase_no": new_purchase_no,
+                }
+            )
+            return {"success": True, "code": 0}
+
+        def list_purchase_candidates(self, _order_sn):
+            return [
+                {
+                    "order_purchase_id": 11,
+                    "order_detail_id": 22,
+                    "sorting": 1,
+                    "possible_num": 2,
+                    "storage_num": 0,
+                    "can_submit": True,
+                    "purchase_no": "PURCHASE-1",
+                },
+                {
+                    "order_purchase_id": 12,
+                    "order_detail_id": 22,
+                    "sorting": 1,
+                    "possible_num": 1,
+                    "storage_num": 0,
+                    "can_submit": True,
+                    "purchase_no": split_calls[-1]["new_purchase_no"],
+                },
+            ]
+
+        def spot_order_detail(self, _order_sn):
+            return {}
+
+    monkeypatch.setattr(data_scripts, "run_full_flow_script", run_full_flow)
+    monkeypatch.setattr(problem_runner_mod, "ProblemGoodsGateway", FakeSplitGateway)
+
+    runner = ProblemGoodsRunner(object())
+    monkeypatch.setattr(
+        runner,
+        "_load_h5_purchase_candidates",
+        lambda _variables, _purchase_no: [
+            {
+                "order_purchase_id": 11,
+                "order_detail_id": 22,
+                "sorting": 1,
+                "possible_num": 3,
+                "storage_num": 0,
+                "can_submit": True,
+                "purchase_no": "PURCHASE-1",
+            }
+        ],
+        raising=False,
+    )
+
+    result = runner._prepare_candidate(
+        _case(
+            key="JP-PG-GUARD-012",
+            runner_kind="problem_guard",
+            parameters={"guard_kind": "multiple_purchase_update"},
+            direction="none",
+        ),
+        {"variables": {}},
+    )
+
+    assert captured["stop_after_node"] == "purchase_paid"
+    assert captured["order_item_num"] == 3
+    assert split_calls[0]["order_purchase_id"] == 11
+    assert split_calls[0]["new_num"] == 1
+    assert split_calls[0]["new_purchase_no"]
+    assert result["candidate"]["same_purchase_count"] == 2
+    assert result["candidate"]["order_purchase_count"] == 2
+
+
+def test_problem_candidate_multiple_rate_uses_one_catalog_option(monkeypatch):
+    import app.data_scripts as data_scripts
+    import app.data_scripts.orders as orders
+
+    captured = {}
+
+    def run_full_flow(_env, variables):
+        captured.update(variables)
+        return True, "", "", {"order_sn": "O-300001", "purchase_no": "PURCHASE-1"}
+
+    monkeypatch.setattr(data_scripts, "run_full_flow_script", run_full_flow)
+    monkeypatch.setattr(
+        orders,
+        "inspect_order_options",
+        lambda _env, _variables: {
+            "options": [
+                {"id": "rate-1", "key": "rate-1", "name": "检品", "price_type": 1, "price": "5"},
+            ]
+        },
+    )
+
+    runner = ProblemGoodsRunner(object())
+    monkeypatch.setattr(
+        runner,
+        "_load_h5_purchase_candidates",
+        lambda _variables, _purchase_no: [
+            {
+                "order_purchase_id": 11,
+                "order_detail_id": 22,
+                "possible_num": 3,
+                "storage_num": 0,
+                "can_submit": True,
+            }
+        ],
+        raising=False,
+    )
+
+    runner._prepare_candidate(
+        _case(
+            key="JP-PG-GUARD-010",
+            runner_kind="problem_guard",
+            parameters={"guard_kind": "multiple_rate_auto"},
+            direction="none",
+        ),
+        {"variables": {}},
+    )
+
+    assert captured["order_option_counts"] == {"rate-1": 3}
+
+
 def test_h5_purchase_candidates_are_flattened_and_normalized():
     payload = {
         "success": True,
@@ -748,11 +1018,16 @@ def test_problem_candidate_resumes_created_order_after_state_race(monkeypatch):
         calls.append(("full", dict(variables)))
         return False, "", "", {"order_sn": "O1", "reason": "订单翻译提交失败"}
 
+    def run_shelf(_env, variables):
+        calls.append(("shelf", dict(variables)))
+        return False, "", "", {"order_sn": "O1", "reason": "订单已进入采购中间状态"}
+
     def run_resume(_env, variables):
         calls.append(("resume", dict(variables)))
         return True, "", "", {"order_sn": "O1", "stopped_after_node": "checking_started"}
 
     monkeypatch.setattr(data_scripts, "run_full_flow_script", run_full_flow)
+    monkeypatch.setattr(data_scripts, "run_purchase_to_shelf_script", run_shelf)
     monkeypatch.setattr(data_scripts, "run_resume_order_flow_script", run_resume)
     monkeypatch.setattr(
         problem_goods,
@@ -780,7 +1055,7 @@ def test_problem_candidate_resumes_created_order_after_state_race(monkeypatch):
         {"variables": {}},
     )
 
-    assert [name for name, _variables in calls] == ["full", "resume"]
+    assert [name for name, _variables in calls] == ["full", "shelf", "resume"]
     assert calls[1][1]["order_sn"] == "O1"
     assert calls[1][1]["stop_after_node"] == "checking_started"
     assert result["order_sn"] == "O1"

@@ -623,9 +623,21 @@ class LivePaymentRegressionExecutor:
             reference=order_sn,
             record_id=",".join(filter(None, [first_actual.record_id, tail_actual.record_id])),
         )
+        partial_tail = bool(int(variables.get("order_part_pay_tail_partial_enabled") or 0))
+        total_expected = (
+            MoneyEvidence(
+                "payment_stage_sum",
+                _sum_evidence_jpy((first_expected, tail_expected)),
+                "JPY",
+                "debit",
+                reference=order_sn,
+            )
+            if partial_tail
+            else _expected_evidence(quote_total, "order_quote", order_sn, "debit")
+        )
         total_check = reconcile_amount(
             f"{scenario.key}_total",
-            _expected_evidence(quote_total, "order_quote", order_sn, "debit"),
+            total_expected,
             total_actual,
         )
         checks = [first_check, tail_check, total_check]

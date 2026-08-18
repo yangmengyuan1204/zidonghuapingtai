@@ -76,7 +76,7 @@ _SCENARIOS = (
         "purchase_deal",
         "build_possible_quantity_problem",
         "purchase_deal",
-        (r"修改后数量应该.*购买时数量", r"可入库数"),
+        (r"修改后数量应该", r"可入库数", r"购买时数量"),
         ("QUANTITY_OVER_POSSIBLE",),
     ),
     GuardScenarioSpec(

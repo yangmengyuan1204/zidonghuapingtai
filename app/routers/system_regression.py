@@ -4,10 +4,11 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.data_scripts import DataScriptRuntime
 from app.data_scripts.problem_goods import PROBLEM_TYPES
 from app.database import SessionLocal, get_db
 from app.models import Env, User
@@ -15,6 +16,8 @@ from app.security import require_admin
 from app.services.system_regression.case_service import (
     CaseServiceError,
     copy_case,
+    create_case,
+    delete_case,
     ensure_japan_suite,
     list_cases,
     reset_case,
@@ -24,6 +27,7 @@ from app.services.system_regression.batch_service import (
     BatchServiceError,
     create_batch,
     execute_batch,
+    list_batches,
     request_stop,
     rerun_case,
     resume_run_with_account,
@@ -34,6 +38,8 @@ from app.services.system_regression.login_context import (
     SystemRegressionLoginContextError,
     resolve_system_regression_login_context,
 )
+from app.services.system_regression.option_service import list_order_options
+from app.services.system_regression.ticket_service import list_usable_tickets
 from app.system_regression.models import (
     SystemRegressionBatch,
     SystemRegressionCase,
@@ -49,6 +55,11 @@ from app.system_regression.projects.japan.runner import JapanRegressionRunner
 
 router = APIRouter(prefix="/api/system-regression", tags=["system-regression"])
 _EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="system-regression")
+
+
+class RegressionCaseCreate(BaseModel):
+    kind: str
+    name: str = ""
 
 
 class RegressionCaseUpdate(BaseModel):
@@ -75,6 +86,12 @@ class RegressionBatchCreate(BaseModel):
 class RegressionAccountResume(BaseModel):
     username: str
     password: str
+
+
+class RegressionTicketQuery(BaseModel):
+    project_id: int
+    env_id: int
+    customer_id: str = ""
 
 
 def _serialize_suite(suite: SystemRegressionSuite) -> dict[str, Any]:
@@ -192,6 +209,14 @@ def _read_json(value: str | None, fallback: Any) -> Any:
         return fallback
 
 
+def _iso_time(value: Any) -> str:
+    if value is None:
+        return ""
+    if hasattr(value, "isoformat"):
+        return value.isoformat(timespec="seconds")
+    return str(value)
+
+
 def _serialize_batch(db: Session, batch: SystemRegressionBatch, *, include_runs: bool = False) -> dict[str, Any]:
     data = {
         "id": batch.id,
@@ -205,6 +230,9 @@ def _serialize_batch(db: Session, batch: SystemRegressionBatch, *, include_runs:
         "failed_count": batch.failed_count,
         "blocked_count": batch.blocked_count,
         "stop_requested": bool(batch.stop_requested),
+        "create_time": _iso_time(batch.create_time),
+        "start_time": _iso_time(batch.start_time),
+        "end_time": _iso_time(batch.end_time),
     }
     if include_runs:
         runs = (
@@ -254,12 +282,29 @@ def _build_contextual_japan_runner(
         resolution_kwargs["required_identities"] = required_identities
     login_resolution = resolve_system_regression_login_context(db, **resolution_kwargs)
     runner = _build_japan_runner(env, db, project_id)
+    shared_runtime = DataScriptRuntime()
+    regression_pace = {
+        "follow_delay": 0.8,
+        "follow_retries": 6,
+        "purchase_transition_delay": 0.4,
+        "inspection_transition_delay": 0.4,
+        "finance_confirm_initial_delay": 1.0,
+        "finance_confirm_delay": 1.0,
+        "warehouse_fill_retry_delay": 0.4,
+        "after_box_submit_delay": 0.2,
+        "after_complete_box_delay": 0.2,
+        "to_wait_offer_retry_delay": 0.4,
+    }
 
     def execute_case(case: dict[str, Any], run_context: dict[str, Any]) -> Any:
         context = dict(run_context)
+        incoming = dict(run_context.get("variables") or {})
+        incoming.pop("_runtime", None)
         context["variables"] = {
+            **regression_pace,
             **login_resolution.variables,
-            **dict(run_context.get("variables") or {}),
+            **incoming,
+            "_runtime": shared_runtime,
         }
         context["system_regression_login"] = dict(login_resolution.login_context)
         context["system_regression_identity"] = {
@@ -362,6 +407,32 @@ def get_regression_cases(
             for value, label in PROBLEM_TYPES.items()
         ],
     }
+
+
+@router.post("/cases", status_code=status.HTTP_201_CREATED)
+def create_regression_case(
+    payload: RegressionCaseCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> dict[str, Any]:
+    try:
+        case = create_case(db, kind=payload.kind, name=payload.name, actor_id=current_user.id)
+    except CaseServiceError as exc:
+        raise _business_error(exc) from exc
+    return _serialize_case(case)
+
+
+@router.delete("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+def delete_regression_case(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Response:
+    try:
+        delete_case(db, case_id)
+    except CaseServiceError as exc:
+        raise _business_error(exc) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch("/cases/{case_id}")
@@ -481,6 +552,19 @@ def create_regression_batch(
     return _serialize_batch(db, batch)
 
 
+@router.get("/batches")
+def list_regression_batches(
+    suite_key: str = Query(default="japan"),
+    limit: int = Query(default=20, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> dict[str, Any]:
+    if suite_key == "japan":
+        ensure_japan_suite(db)
+    batches = list_batches(db, suite_key=suite_key, limit=limit)
+    return {"items": [_serialize_batch(db, item) for item in batches]}
+
+
 @router.get("/batches/{batch_id}")
 def get_regression_batch(
     batch_id: int,
@@ -534,6 +618,60 @@ def resume_regression_account(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="只有等待账号的用例可以恢复")
     queue_account_resume(run.id, payload.username, payload.password)
     return {"id": run.id, "status": "account_resume_queued"}
+
+
+@router.post("/tickets")
+def list_regression_tickets(
+    payload: RegressionTicketQuery,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> dict[str, Any]:
+    customer_id = str(payload.customer_id or "").strip()
+    if not customer_id.isdigit():
+        return {"coupons": [], "vouchers": [], "reason": "客户 ID 只能填写数字"}
+    env = db.get(Env, payload.env_id)
+    if env is None:
+        return {"coupons": [], "vouchers": [], "reason": "执行环境不存在"}
+    if env.project_id != payload.project_id:
+        return {"coupons": [], "vouchers": [], "reason": "环境不属于所选项目"}
+    try:
+        login_resolution = resolve_system_regression_login_context(
+            db,
+            project_id=payload.project_id,
+            env_id=payload.env_id,
+            context={"variables": {"customer_id": customer_id}},
+            required_identities=("client",),
+        )
+    except SystemRegressionLoginContextError as exc:
+        return {"coupons": [], "vouchers": [], "reason": exc.failure_reason}
+    return list_usable_tickets(env, login_resolution.variables)
+
+
+@router.post("/options")
+def list_regression_options(
+    payload: RegressionTicketQuery,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> dict[str, Any]:
+    customer_id = str(payload.customer_id or "").strip()
+    if not customer_id.isdigit():
+        return {"options": [], "path": "/client/order.optionList", "reason": "客户 ID 只能填写数字"}
+    env = db.get(Env, payload.env_id)
+    if env is None:
+        return {"options": [], "path": "/client/order.optionList", "reason": "执行环境不存在"}
+    if env.project_id != payload.project_id:
+        return {"options": [], "path": "/client/order.optionList", "reason": "环境不属于所选项目"}
+    try:
+        login_resolution = resolve_system_regression_login_context(
+            db,
+            project_id=payload.project_id,
+            env_id=payload.env_id,
+            context={"variables": {"customer_id": customer_id}},
+            required_identities=("client",),
+        )
+    except SystemRegressionLoginContextError as exc:
+        return {"options": [], "path": "/client/order.optionList", "reason": exc.failure_reason}
+    return list_order_options(env, login_resolution.variables)
 
 
 __all__ = ["router"]
