@@ -23,6 +23,7 @@
     customerId: localStorage.getItem("systemRegressionCustomerId") || "",
     ledgerWait: localStorage.getItem("systemRegressionLedgerWait") || "30",
     tickets: { coupons: [], vouchers: [], reason: "" },
+    membership: { kind: "", level_name: "", service_rate: "", preview_cny_to_jpy: "", reason: "" },
     options: { rows: [], reason: "" },
     drawerTab: "process",
     newKind: "order",
@@ -42,6 +43,9 @@
     eventLog: [],
     resumeUsername: "",
     resumePassword: "",
+    runConsoleScrollBusy: false,
+    pendingRunConsolePatch: false,
+    runConsoleScrollGuardBound: false,
   };
 
   const BATCH_STORAGE_KEY = "systemRegressionActiveBatch";
@@ -184,6 +188,77 @@
     }, 250);
   }
 
+  function captureRunConsoleScroll() {
+    const seq = document.querySelector(".system-regression-seq");
+    const pane = document.querySelector(".system-regression-pane");
+    return {
+      seqLeft: seq ? seq.scrollLeft : 0,
+      paneTop: pane ? pane.scrollTop : 0,
+      paneHeight: pane ? pane.scrollHeight : 0,
+    };
+  }
+
+  function capturePageScroll() {
+    const scroll = document.querySelector(".system-regression-scroll");
+    const cases = document.querySelector(".system-regression-cases");
+    const drawer = document.querySelector(".system-regression-drawer");
+    const cats = document.querySelector(".system-regression-categories");
+    const host = document.querySelector("#srRunConsoleHost");
+    return {
+      scrollTop: scroll ? scroll.scrollTop : 0,
+      casesTop: cases ? cases.scrollTop : 0,
+      drawerTop: drawer ? drawer.scrollTop : 0,
+      catsTop: cats ? cats.scrollTop : 0,
+      hostTop: host ? host.scrollTop : 0,
+      run: captureRunConsoleScroll(),
+    };
+  }
+
+  function restorePageScroll(saved, options = {}) {
+    const scroll = document.querySelector(".system-regression-scroll");
+    const cases = document.querySelector(".system-regression-cases");
+    const drawer = document.querySelector(".system-regression-drawer");
+    const cats = document.querySelector(".system-regression-categories");
+    const host = document.querySelector("#srRunConsoleHost");
+    if (scroll) scroll.scrollTop = saved.scrollTop;
+    if (cases) cases.scrollTop = saved.casesTop;
+    if (cats) cats.scrollTop = saved.catsTop;
+    if (host) host.scrollTop = saved.hostTop;
+    if (drawer) drawer.scrollTop = options.resetDrawer ? 0 : saved.drawerTop;
+    restoreRunConsoleScroll(saved.run);
+  }
+
+  function restoreRunConsoleScroll(saved) {
+    const seq = document.querySelector(".system-regression-seq");
+    const pane = document.querySelector(".system-regression-pane");
+    if (seq) seq.scrollLeft = saved.seqLeft;
+    if (!pane) return;
+    if (saved.paneTop <= 8) {
+      pane.scrollTop = 0;
+      return;
+    }
+    pane.scrollTop = saved.paneTop + Math.max(0, pane.scrollHeight - saved.paneHeight);
+  }
+
+  function bindRunConsoleScrollGuard() {
+    if (srState.runConsoleScrollGuardBound) return;
+    srState.runConsoleScrollGuardBound = true;
+    document.addEventListener("pointerdown", (event) => {
+      if (event.target?.closest?.(".system-regression-seq, .system-regression-pane")) {
+        srState.runConsoleScrollBusy = true;
+      }
+    });
+    const release = () => {
+      if (!srState.runConsoleScrollBusy) return;
+      srState.runConsoleScrollBusy = false;
+      if (!srState.pendingRunConsolePatch) return;
+      srState.pendingRunConsolePatch = false;
+      patchRunConsole();
+    };
+    document.addEventListener("pointerup", release);
+    document.addEventListener("pointercancel", release);
+  }
+
   function currentCase() {
     return srState.cases.find((item) => item.id === srState.activeId) || srState.cases[0] || null;
   }
@@ -201,6 +276,36 @@
 
   function money(n) { return Math.round((Number(n) || 0) * 100) / 100; }
   function yen(n) { return money(n).toFixed(2); }
+  function emptyMembership() {
+    return { kind: "", level_name: "", service_rate: "", preview_cny_to_jpy: "", reason: "" };
+  }
+  function cnyToJpyRate() {
+    const n = Number(srState.membership && srState.membership.preview_cny_to_jpy);
+    return n > 0 ? n : 21.2;
+  }
+  function membershipServiceRate() {
+    const raw = srState.membership && srState.membership.service_rate;
+    if (raw === 0 || raw === "0") return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0.05;
+  }
+  function membershipCustomerAttr() {
+    const m = srState.membership || emptyMembership();
+    const name = String(m.level_name || "").trim().toUpperCase();
+    if (!name && !m.kind) return m.reason || "未拉取";
+    if (name.includes("SVIP")) return "SVIP";
+    if (name.includes("VIP") || m.kind === "fixed") return "VIP";
+    return "普通用户";
+  }
+  function membershipFeeNoteHtml() {
+    const percent = money(membershipServiceRate() * 100);
+    return `<div class="system-regression-bill-member" id="srBillMembership"><span>客户属性：${escapeHtml(membershipCustomerAttr())}</span><strong>手续费比例 ${escapeHtml(String(percent))}%</strong></div>`;
+  }
+  function jpyFromCny(n) { return Math.round(money(n) * cnyToJpyRate()); }
+  function dualCnyJpy(n, minus) {
+    const sign = minus ? "−" : "";
+    return `<strong class="system-regression-money-dual"><b><em>人民币</em><i>${sign}${yen(n)}</i></b><b><em>日元</em><i>${sign}${jpyFromCny(n)}</i></b></strong>`;
+  }
   function moneyValue(value) {
     if (value && typeof value === "object") return money(value.value);
     return money(value);
@@ -364,9 +469,10 @@
     });
     const other = moneyValue(c.order?.other_fee_amount);
     const couponOn = Boolean(c.coupon?.selectedId || c.service_discount);
-    const serviceBase = money(goods * 0.05);
+    const serviceRate = membershipServiceRate();
+    const serviceBase = money(goods * serviceRate);
     const service = couponOn ? 0 : serviceBase;
-    return { goods, freight, options, other, service, serviceBase, couponOn, payable: money(goods + freight + options + other + service) };
+    return { goods, freight, options, other, service, serviceBase, couponOn, serviceRate, payable: money(goods + freight + options + other + service) };
   }
 
   function porderTotals(c) {
@@ -393,16 +499,17 @@
     if (isPorderCase(item)) {
       const p = porderTotals(parameters);
       return `<div class="system-regression-bill" id="srBill">
-        <div><span>${p.manual ? "国际运费（人工钉死）" : "国际运费（执行时按箱子+物流算）"}</span><strong>${yen(p.logistics)}</strong></div>
-        <div><span>${escapeHtml(p.voucher ? p.voucherHint : "代金券抵扣")}</span><strong>−${yen(p.voucher)}</strong></div>
-        <div class="first"><span>配送单应付</span><strong>${yen(p.payable)}</strong></div>
+        <div><span>${p.manual ? "国际运费（人工钉死）" : "国际运费（执行时按箱子+物流算）"}</span>${dualCnyJpy(p.logistics)}</div>
+        <div><span>${escapeHtml(p.voucher ? p.voucherHint : "代金券抵扣")}</span>${dualCnyJpy(p.voucher, true)}</div>
+        <div class="first"><span>配送单应付</span>${dualCnyJpy(p.payable)}</div>
       </div>`;
     }
     const t = orderTotals(parameters);
     return `<div class="system-regression-bill" id="srBill">
-      <div><span>报给客户的商品金额</span><strong>${yen(t.goods)}</strong></div>
-      <div><span>${t.couponOn ? "手续费（优惠券免）" : "手续费"}</span><strong>${yen(t.service)}</strong></div>
-      <div class="first"><span>订单应付</span><strong>${yen(t.payable)}</strong></div>
+      <div><span>报给客户的商品金额</span>${dualCnyJpy(t.goods)}</div>
+      <div><span>${t.couponOn ? "手续费（优惠券免）" : "手续费"}</span>${dualCnyJpy(t.service)}</div>
+      ${membershipFeeNoteHtml()}
+      <div class="first"><span>订单应付</span>${dualCnyJpy(t.payable)}</div>
     </div>`;
   }
 
@@ -469,7 +576,7 @@
       <summary>订单优惠券 <em>选一张就把手续费变成 0</em></summary>
       <div class="inner">
         <div class="field wide"><label>优惠券</label><select id="srCouponId">${couponOptions(selected)}</select></div>
-        <p class="system-regression-hint">${selected ? `已选券。手续费从 ${yen(t.serviceBase)} 变成 0。优惠券只免手续费，不减商品货款。` : `没选券。手续费按商品金额 5% 预估，现在是 ${yen(t.service)}。${srState.tickets.reason ? escapeHtml(srState.tickets.reason) : ""}`}</p>
+        <p class="system-regression-hint">${selected ? `已选券。手续费从 ${yen(t.serviceBase)} 变成 0。优惠券只免手续费，不减商品货款。` : `没选券。手续费按会员费率 ${money(t.serviceRate * 100)}% 预估，现在是 ${yen(t.service)}。${srState.membership && srState.membership.level_name ? escapeHtml("当前账号：" + srState.membership.level_name + "。") : ""}${srState.tickets.reason ? escapeHtml(srState.tickets.reason) : ""}`}</p>
       </div>
     </details>`;
   }
@@ -574,6 +681,7 @@
         ${parameters.coupon?.selectedId || parameters.service_discount ? `<p class="system-regression-hint">这条订单选了手续费减免券，手续费按 0。</p>` : ""}
         <div class="system-regression-grid">
           <div class="field"><label>手续费</label><select id="srServiceSuggest"><option value="2" ${Number(problem.service_deal_suggest || 2) !== 1 ? "selected" : ""}>多退少补</option><option value="1" ${Number(problem.service_deal_suggest) === 1 ? "selected" : ""}>已收不退</option></select></div>
+          <div class="field"><label>客户属性</label><input id="srMembershipLevel" readonly value="${escapeHtml(membershipCustomerAttr())}" /></div>
           <div class="field wide"><label>业务处理意见</label><input id="srBusinessDecision" value="${escapeHtml(problem.business_decision || "系统回归自动处理")}" /></div>
         </div>
       </div>
@@ -765,10 +873,17 @@
     const note = String(run.error_message || run.structured_evidence?.failure_reason || "").trim();
     const orderSn = String(run.order_sn || "").trim();
     const porderSn = String(run.porder_sn || "").trim();
+    const ledger = String(
+      run.result?.customer_balance_jpy
+      || run.structured_evidence?.customer_balance_jpy
+      || run.structured_evidence?.after_evidence?.customer_balance_jpy
+      || ""
+    ).trim();
+    const ledgerText = ledger ? `客户出入金 ${ledger} 日元。` : "";
     if (run.status === "passed") {
-      if (porderSn) return `通过。配送单 ${porderSn} 已付款。`;
-      if (orderSn) return `通过。订单 ${orderSn} 已付款。`;
-      return "通过。";
+      if (porderSn) return `通过。配送单 ${porderSn} 已付款。${ledgerText}`;
+      if (orderSn) return `通过。订单 ${orderSn} 已付款。${ledgerText}`;
+      return ledgerText ? `通过。${ledgerText}` : "通过。";
     }
     if (run.status === "waiting_account") return "等部长账号。";
     if (run.status === "running") return "正在执行。";
@@ -848,20 +963,24 @@
     </section>`;
   }
 
-  function renderPage() {
+  function renderPage(options = {}) {
     const active = currentCase();
     const live = hasLiveBatch();
+    const saved = capturePageScroll();
     contentEl().innerHTML = `<section class="system-regression-page">
       <div class="system-regression-toolbar">
         <div class="filters"><div class="field compact"><label>回归项目</label><select id="srSuite"><option value="japan">日本站</option></select></div><div class="field compact"><label>业务项目</label><select id="srProject">${optionList(srState.projects, "id", "name", srState.projectId)}</select></div><div class="field compact"><label>执行环境</label><select id="srEnv">${optionList(srState.envs, "id", "env_name", srState.envId)}</select></div><div class="field compact"><label>客户 ID</label><input id="srCustomerId" inputmode="numeric" value="${escapeHtml(srState.customerId)}" placeholder="例如 300001" /></div><div class="field compact"><label>付钱后等多久再对数</label><input id="srLedgerWait" type="number" min="0" value="${escapeHtml(srState.ledgerWait)}" /></div></div>
         <div class="system-regression-actions"><button class="btn secondary" id="srRefreshTickets" type="button">重新拉券和 OPTION</button><button class="btn secondary" id="srSelectVisible" type="button">选择当前分类</button><button class="btn" id="srRunBatch" type="button" ${live ? "disabled" : ""}>${live ? "执行中…" : "批量执行"}</button></div>
       </div>
+      <div class="system-regression-scroll">
       <div id="srRunConsoleHost">${runConsoleTags(srState.batch)}</div>
       <div class="system-regression-layout"><nav class="system-regression-categories"><div class="panel-title"><h3>用例分类</h3></div>${categoryTags()}</nav><main class="system-regression-cases">${caseTableTags()}</main>${drawerTags(active)}</div>
       ${newCaseModalTags()}
+      </div>
     </section>`;
     bindPage();
     startClock();
+    restorePageScroll(saved, options);
   }
 
   function newCaseModalTags() {
@@ -933,12 +1052,14 @@
     srState.customerId = String(document.querySelector("#srCustomerId")?.value || srState.customerId || "").trim();
     if (!srState.projectId || !srState.envId) {
       srState.tickets = { coupons: [], vouchers: [], reason: "先选业务项目和执行环境。" };
+      srState.membership = emptyMembership();
       srState.options = { rows: [], reason: "先选业务项目和执行环境。" };
       if (!silent) showToast(srState.tickets.reason);
       return srState.tickets;
     }
     if (!/^\d+$/.test(srState.customerId)) {
       srState.tickets = { coupons: [], vouchers: [], reason: "填客户 ID 后才能拉这个账号的券。" };
+      srState.membership = emptyMembership();
       srState.options = { rows: [], reason: "填客户 ID 后才能拉 OPTION。" };
       if (!silent) showToast(srState.tickets.reason);
       return srState.tickets;
@@ -957,11 +1078,13 @@
         vouchers: Array.isArray(data.vouchers) ? data.vouchers : [],
         reason: data.reason || "",
       };
+      srState.membership = data.membership && typeof data.membership === "object" ? data.membership : emptyMembership();
       preferRealServiceCoupon();
       return srState.tickets;
     }).catch((error) => {
       if (ticketSeq !== ticketsRequest) return srState.tickets;
       srState.tickets = { coupons: [], vouchers: [], reason: error.message || "优惠券列表拉取失败" };
+      srState.membership = emptyMembership();
       return srState.tickets;
     });
     const optionTask = api(OPTIONS_API, { method: "POST", body }).then((data) => {
@@ -1192,8 +1315,14 @@
       if (srState.batch) renderPage();
       return;
     }
+    if (srState.runConsoleScrollBusy) {
+      srState.pendingRunConsolePatch = true;
+      return;
+    }
+    const saved = captureRunConsoleScroll();
     host.innerHTML = runConsoleTags(srState.batch);
     bindRunConsole();
+    restoreRunConsoleScroll(saved);
     document.querySelectorAll("[data-sr-run-status]").forEach((cell) => {
       const id = Number(cell.dataset.srRunStatus);
       const item = srState.cases.find((row) => row.id === id);
@@ -1329,6 +1458,7 @@
   }
 
   function bindRunConsole() {
+    bindRunConsoleScrollGuard();
     document.querySelector("#srStopBatch")?.addEventListener("click", stopActiveBatch);
     document.querySelector("#srRerunFailed")?.addEventListener("click", rerunFailedRuns);
     document.querySelector("#srRecentBatch")?.addEventListener("change", (event) => {
@@ -1402,7 +1532,7 @@
       persistDrawer();
       srState.activeId = Number(button.dataset.srOpen);
       srState.drawerTab = isProblemCase(currentCase()) ? "process" : "order";
-      renderPage();
+      renderPage({ resetDrawer: true });
     }));
     document.querySelectorAll("[data-sr-drawer-tab]").forEach((button) => button.addEventListener("click", () => {
       persistDrawer();

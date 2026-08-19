@@ -8,7 +8,8 @@ def test_legacy_index_loads_independent_system_regression_assets():
     html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
 
     assert "/static/system-regression.css" in html
-    assert "/static/system-regression.js?v=20260817-live-option" in html
+    assert "/static/system-regression.css?v=20260819-attr-simple" in html
+    assert "/static/system-regression.js?v=20260819-attr-simple" in html
 
 
 def test_system_regression_menu_and_execution_controls_are_present():
@@ -66,15 +67,44 @@ def test_layout_has_project_category_case_table_and_parameter_drawer():
 
 def test_regression_toolbar_stays_at_top_when_scrolling():
     stylesheet = (ROOT / "static" / "system-regression.css").read_text(encoding="utf-8")
-    start = stylesheet.find(".system-regression-toolbar {\n  display: flex")
+    script = (ROOT / "static" / "system-regression.js").read_text(encoding="utf-8")
+    start = stylesheet.find("html.v3-embed .system-regression-scroll {")
     if start < 0:
-        start = stylesheet.find(".system-regression-toolbar {\r\n  display: flex")
+        start = stylesheet.find("html.v3-embed .system-regression-scroll {\r\n")
     assert start >= 0
-    block = stylesheet[start:start + 280]
+    block = stylesheet[start:start + 220]
+    body_start = stylesheet.find("html.v3-embed:has(.system-regression-page) body {")
+    if body_start < 0:
+        body_start = stylesheet.find("html.v3-embed:has(.system-regression-page) body {\r\n")
+    assert body_start >= 0
+    body_block = stylesheet[body_start:body_start + 160]
+    app_start = stylesheet.find("html.v3-embed:has(.system-regression-page) #app {")
+    if app_start < 0:
+        app_start = stylesheet.find("html.v3-embed:has(.system-regression-page) #app {\r\n")
+    assert app_start >= 0
+    app_block = stylesheet[app_start:app_start + 220]
 
-    assert "position: sticky" in block
-    assert "top: 0" in block
-    assert "html.v3-embed:has(.system-regression-page) body" in stylesheet
+    assert 'class="system-regression-scroll"' in script
+    assert "<div class=\"system-regression-toolbar\">" in script
+    toolbar_at = script.find("<div class=\"system-regression-toolbar\">")
+    scroll_at = script.find('class="system-regression-scroll"')
+    layout_at = script.find('class="system-regression-layout"')
+    assert 0 <= toolbar_at < scroll_at < layout_at
+    assert "overflow: auto" in block
+    assert "height: 0" in block
+    assert "flex-shrink: 0" in stylesheet
+    assert "overflow: hidden" in body_block
+    assert "overflow-y: auto" not in body_block
+    assert "overflow: hidden" in app_block
+    assert "height: 100%" in app_block
+    assert "align-items: stretch" in stylesheet
+    cases_start = stylesheet.find("html.v3-embed .system-regression-categories,\nhtml.v3-embed .system-regression-cases {")
+    if cases_start < 0:
+        cases_start = stylesheet.find("html.v3-embed .system-regression-categories,\r\nhtml.v3-embed .system-regression-cases {")
+    assert cases_start >= 0
+    cases_block = stylesheet[cases_start:cases_start + 180]
+    assert "overflow: auto" in cases_block
+    assert "min-height: 0" in cases_block
 
 
 def test_parameter_drawer_overrides_v3_embed_overflow_hidden():
@@ -85,7 +115,9 @@ def test_parameter_drawer_overrides_v3_embed_overflow_hidden():
     assert start >= 0
     block = stylesheet[start:start + 220]
 
-    assert "overflow: auto" in block
+    assert "overflow: visible" in block
+    assert "height: auto" in block
+    assert "max-height: none" in block
     assert "min-height: 0" in block
     assert "flex: 1 1 auto" in stylesheet
 
@@ -173,6 +205,10 @@ def test_run_console_persists_batch_and_does_not_rerender_other_pages():
     assert "function isOnRegressionPage()" in script
     assert "if (isOnRegressionPage())" in script
     assert "function patchRunConsole()" in script
+    assert "function captureRunConsoleScroll()" in script
+    assert "function restoreRunConsoleScroll(saved)" in script
+    assert "runConsoleScrollBusy" in script
+    assert "overflow-anchor: none" in stylesheet
     assert "实时事件" in script
     assert "逐条结果" in script
     assert "失败重跑" in script
@@ -180,6 +216,24 @@ def test_run_console_persists_batch_and_does_not_rerender_other_pages():
     assert "/batches/${srState.batch.id}/stop" in script
     assert "system-regression-seq" in stylesheet
     assert "system-regression-run" in stylesheet
+
+
+def test_porder_bill_shows_cny_and_jpy_together():
+    script = (ROOT / "static" / "system-regression.js").read_text(encoding="utf-8")
+    stylesheet = (ROOT / "static" / "system-regression.css").read_text(encoding="utf-8")
+
+    assert "function dualCnyJpy" in script
+    assert "function cnyToJpyRate" in script
+    assert "preview_cny_to_jpy" in script
+    assert "<em>人民币</em>" in script
+    assert "<em>日元</em>" in script
+    assert "system-regression-money-dual" in stylesheet
+    assert "${dualCnyJpy(p.logistics)}" in script
+    assert "${dualCnyJpy(p.voucher, true)}" in script
+    assert "${dualCnyJpy(p.payable)}" in script
+    assert "${dualCnyJpy(t.goods)}" in script
+    assert "${dualCnyJpy(t.service)}" in script
+    assert "${dualCnyJpy(t.payable)}" in script
 
 
 def test_result_console_uses_plain_language_and_recent_batches():
@@ -199,3 +253,22 @@ def test_result_console_uses_plain_language_and_recent_batches():
     assert "system-regression-result-copy" in stylesheet
     assert "system-regression-result-tools" in stylesheet
     assert "source.items = Array.from({ length: count }" in (ROOT / "static" / "system-regression.js").read_text(encoding="utf-8")
+
+
+def test_edit_keeps_scroll_and_shows_membership_beside_service_fee():
+    script = (ROOT / "static" / "system-regression.js").read_text(encoding="utf-8")
+
+    assert "function capturePageScroll()" in script
+    assert "function restorePageScroll(saved, options = {})" in script
+    assert "renderPage({ resetDrawer: true })" in script
+    assert "function membershipCustomerAttr()" in script
+    assert 'id="srMembershipLevel"' in script
+    assert "客户属性：" in script
+    assert "普通用户" in script
+    assert "function membershipFeeNoteHtml()" in script
+    assert 'id="srBillMembership"' in script
+    assert "手续费比例" in script
+    assert "定额会员（VIP/SVIP）" not in script
+    bill_fee_at = script.find('<span>${t.couponOn ? "手续费（优惠券免）" : "手续费"}</span>')
+    bill_member_at = script.find("${membershipFeeNoteHtml()}")
+    assert 0 <= bill_fee_at < bill_member_at

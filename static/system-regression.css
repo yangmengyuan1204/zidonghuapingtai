@@ -10,7 +10,7 @@
   gap: 10px;
   flex-wrap: wrap;
   position: sticky;
-  top: 0;
+  top: 72px;
   z-index: 25;
   flex-shrink: 0;
   background: #ffffff;
@@ -164,43 +164,81 @@
 }
 
 html.v3-embed .system-regression-page {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   min-width: 0;
   flex: 1 1 auto;
   min-height: 0;
-}
-
-html.v3-embed:has(.system-regression-page) {
+  height: 0;
   overflow: hidden;
 }
 
+html.v3-embed:has(.system-regression-page),
 html.v3-embed:has(.system-regression-page) body {
-  overflow-x: hidden;
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden;
+}
+
+html.v3-embed:has(.system-regression-page) #app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 html.v3-embed:has(.system-regression-page) .shell,
 html.v3-embed:has(.system-regression-page) .main,
 html.v3-embed:has(.system-regression-page) .content,
 html.v3-embed:has(.system-regression-page) #content {
-  height: auto;
-  max-height: none;
-  overflow: visible;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+html.v3-embed:has(.system-regression-page) .shell {
+  flex: 1 1 auto;
+}
+
+html.v3-embed:has(.system-regression-page) .main,
+html.v3-embed:has(.system-regression-page) .content,
+html.v3-embed:has(.system-regression-page) #content {
+  display: flex;
+  flex-direction: column;
 }
 
 html.v3-embed .system-regression-toolbar {
-  position: sticky;
-  top: 0;
+  position: relative;
+  top: auto;
   z-index: 25;
   flex-shrink: 0;
+}
+
+html.v3-embed .system-regression-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 0;
+  overflow: auto;
+}
+
+html.v3-embed #srRunConsoleHost {
+  flex: 0 0 auto;
+  min-height: 0;
 }
 
 html.v3-embed .system-regression-layout {
   grid-template-columns: 190px minmax(430px, 0.95fr) minmax(420px, 1.1fr);
   gap: 10px;
   align-items: stretch;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
 }
 
 html.v3-embed .system-regression-categories,
@@ -213,12 +251,19 @@ html.v3-embed .system-regression-drawer {
   box-shadow: none;
 }
 
+html.v3-embed .system-regression-categories,
+html.v3-embed .system-regression-cases {
+  min-height: 0;
+  overflow: auto;
+}
+
 html.v3-embed .system-regression-drawer {
   position: static;
   top: auto;
+  height: auto;
   max-height: none;
   min-height: 0;
-  overflow: auto;
+  overflow: visible;
 }
 
 html.v3-embed .system-regression-case-table th,
@@ -416,6 +461,8 @@ html.v3-embed .system-regression-section {
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  overflow-anchor: none;
+  overscroll-behavior-x: contain;
   padding-bottom: 6px;
 }
 
@@ -508,6 +555,8 @@ html.v3-embed .system-regression-section {
 .system-regression-pane {
   max-height: 320px;
   overflow: auto;
+  overflow-anchor: none;
+  overscroll-behavior: contain;
   padding: 8px;
 }
 
@@ -656,7 +705,7 @@ html.v3-embed .system-regression-section {
 .system-regression-bill {
   margin-top: 10px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 8px;
 }
 
@@ -678,8 +727,68 @@ html.v3-embed .system-regression-section {
   font-size: 16px;
 }
 
+.system-regression-money-dual {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.system-regression-money-dual b {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.system-regression-money-dual em,
+.system-regression-money-dual i {
+  font-style: normal;
+}
+
+.system-regression-money-dual em {
+  flex: 0 0 auto;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+}
+
+.system-regression-money-dual i {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.system-regression-bill .system-regression-money-dual span {
+  display: inline;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
 .system-regression-bill .first {
   background: #fff7ed;
+}
+
+.system-regression-bill-member {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.system-regression-bill-member span {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.system-regression-bill-member strong {
+  color: #5d87ff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .system-regression-drawer-tabs {
