@@ -169,6 +169,8 @@ def _serialize_run(run: SystemRegressionCaseRun) -> dict[str, Any]:
         "write_state",
         "write_request_count",
         "reconciliation",
+        "customer_balance_jpy",
+        "ledger_check",
     )
     structured_evidence = {
         key: result[key]
@@ -398,6 +400,12 @@ def get_regression_cases(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="回归项目不存在")
     suite = ensure_japan_suite(db)
     cases = list_cases(db, suite_key=suite_key, category=category, enabled=enabled)
+    removed_case_keys = {
+        str(value).strip()
+        for value in (suite.config.get("removed_case_keys") or [])
+        if str(value).strip()
+    }
+    cases = [case for case in cases if case.case_key not in removed_case_keys]
     return {
         "suite": _serialize_suite(suite),
         "total": len(cases),
@@ -504,6 +512,12 @@ def create_regression_batch(
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=exc.payload)
     if payload.suite_key == "japan":
         all_cases = list_cases(db, suite_key=payload.suite_key, enabled=None if payload.case_ids else True)
+        removed_case_keys = {
+            str(value).strip()
+            for value in (ensure_japan_suite(db).config.get("removed_case_keys") or [])
+            if str(value).strip()
+        }
+        all_cases = [case for case in all_cases if case.case_key not in removed_case_keys]
         selected_cases = (
             all_cases
             if not payload.case_ids

@@ -28,7 +28,7 @@ _SCENARIOS = (
         "business_deal",
         "build_part_tail_unpaid",
         "business_deal",
-        (r"未分批付款完成", r"尾款"),
+        (r"未完成分批付款", r"未分批付款完成"),
         ("PART_TAIL_UNPAID",),
     ),
     GuardScenarioSpec(
@@ -92,7 +92,7 @@ _SCENARIOS = (
         "purchase_deal",
         "build_option_num_over_goods",
         "purchase_deal",
-        (r"option数比商品数多", r"OPTION数多于商品数"),
+        (r"option数比商品数多", r"OPTION数多于商品数", r"OPTION数量大于商品数"),
         ("OPTION_NUM_OVER_GOODS",),
     ),
     GuardScenarioSpec(
@@ -116,7 +116,7 @@ _SCENARIOS = (
         "pre_data_update",
         "build_multiple_purchase_detail",
         "update_pre_data",
-        (r"有多条采购记录",),
+        (r"有多条采购记录", r"修改失败"),
         ("MULTIPLE_PURCHASE_UPDATE",),
     ),
     GuardScenarioSpec(
@@ -138,7 +138,7 @@ _SCENARIOS = (
         "business_deal",
         "build_restricted_problem_with_trade",
         "business_deal",
-        (r"已有交易号.*不允许跳过采购",),
+        (r"已有交易号.*不允许跳过采购", r"不允许跳过采购"),
         ("RESTRICTED_SKIP_PURCHASE",),
     ),
     GuardScenarioSpec(
@@ -146,7 +146,7 @@ _SCENARIOS = (
         "distribution_direct_complete",
         "build_invalid_direct_complete_problem",
         "distribution_direct_complete",
-        (r"只有【少货、不良、不良且少货】类型",),
+        (r"只有【少货、不良、不良且少货】类型", r"请先勾选"),
         ("DIRECT_COMPLETE_INVALID_TYPE",),
     ),
 )

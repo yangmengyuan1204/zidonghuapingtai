@@ -6,6 +6,8 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import json
 from typing import Any, Iterable, Mapping, Sequence
 
+from app.system_regression.common.reconciliation import JAPAN_CNY_TO_JPY
+
 
 CNY_QUANTUM = Decimal("0.01")
 JPY_QUANTUM = Decimal("1")
@@ -41,9 +43,14 @@ def rate_option_amount(
     return amount.quantize(CNY_QUANTUM, rounding=ROUND_HALF_UP)
 
 
-def cny_components_to_jpy(components: Iterable[Decimal], exchange_rate: Decimal) -> int:
+def cny_components_to_jpy(components: Iterable[Decimal], exchange_rate: Decimal | None = None) -> int:
     total_cny = sum((_decimal(value, "人民币分项") for value in components), Decimal("0"))
-    total_jpy = total_cny * _decimal(exchange_rate, "报价汇率")
+    rate = JAPAN_CNY_TO_JPY
+    if exchange_rate not in (None, ""):
+        parsed = _decimal(exchange_rate, "汇率")
+        if parsed > 0:
+            rate = parsed
+    total_jpy = total_cny * rate
     return int(total_jpy.quantize(JPY_QUANTUM, rounding=ROUND_HALF_UP))
 
 
@@ -230,8 +237,12 @@ def reconcile_fee_components(
         sorting = "" if component.kind in OPTION_KINDS else component.sorting
         return component.kind, component.component_id, sorting
 
-    identities = [identity(component) for component in actual]
-    duplicates = [identity for identity, count in Counter(identities).items() if count > 1]
+    # 判重必须区分明细行：多条明细勾选同一个 OPTION 是合法场景，
+    # 只有同一明细上重复出现同一分项才算重复计费。
+    duplicate_identities = [
+        (component.kind, component.component_id, component.sorting) for component in actual
+    ]
+    duplicates = [identity for identity, count in Counter(duplicate_identities).items() if count > 1]
     if duplicates:
         return _failed(
             contract,
@@ -314,6 +325,7 @@ __all__ = [
     "FeeComponent",
     "FeeEvidenceContract",
     "FeeReconciliation",
+    "JAPAN_CNY_TO_JPY",
     "cny_components_to_jpy",
     "extract_order_fee_components",
     "rate_option_amount",

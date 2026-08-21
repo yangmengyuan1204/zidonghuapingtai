@@ -268,7 +268,7 @@ def test_payment_quote_returns_confirmed_written_evidence():
     executor._scripts = lambda: SimpleNamespace(run_full_flow_script=run_full_flow)
 
     order_sn, _variables = executor._quote_order(
-        ScenarioSpec("JP-PAY-008", "其他费用金额与名义", "order", "balance", "debit"),
+        ScenarioSpec("支付-006", "其他费用金额与名义", "order", "balance", "debit"),
         "BATCH-1",
     )
     evidence = executor._last_order_write_evidence

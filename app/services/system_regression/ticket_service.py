@@ -4,6 +4,7 @@ import re
 from typing import Any, Mapping
 
 from app.data_scripts.cart_support import _api_path, _api_success, _configure_client_api_paths
+from app.services.system_regression.membership_service import inspect_logged_in_membership, public_membership
 from app.vendor.piliangtianjiagouwuche import RakumartClient
 
 _TOKEN_RE = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")
@@ -121,10 +122,10 @@ def list_usable_tickets(env: Any, variables: Mapping[str, Any] | None = None) ->
     account = _text(values.get("account"))
     password = _text(values.get("password"))
     if not account or not password:
-        return {"coupons": [], "vouchers": [], "reason": "缺少前台账号，无法拉券"}
+        return {"coupons": [], "vouchers": [], "reason": "缺少前台账号，无法拉券", "membership": public_membership(None)}
     base_url = _text(getattr(env, "base_url", "") or values.get("base_url"))
     if not base_url:
-        return {"coupons": [], "vouchers": [], "reason": "执行环境没有站点地址，无法拉券"}
+        return {"coupons": [], "vouchers": [], "reason": "执行环境没有站点地址，无法拉券", "membership": public_membership(None)}
     timeout = _as_int(values.get("timeout"), _as_int(getattr(env, "timeout", None), 25)) or 25
     client = RakumartClient(base_url.rstrip("/"), timeout)
     _configure_client_api_paths(client, values)
@@ -135,7 +136,13 @@ def list_usable_tickets(env: Any, variables: Mapping[str, Any] | None = None) ->
             {"page": "1", "pageSize": "1000"},
         )
     except Exception as exc:
-        return {"coupons": [], "vouchers": [], "reason": _safe_reason(f"优惠券列表拉取失败：{exc}")}
+        return {
+            "coupons": [],
+            "vouchers": [],
+            "reason": _safe_reason(f"优惠券列表拉取失败：{exc}"),
+            "membership": public_membership(None),
+        }
+    membership = inspect_logged_in_membership(client, values)
     if not _discount_ok(payload):
         return {
             "coupons": [],
@@ -143,5 +150,8 @@ def list_usable_tickets(env: Any, variables: Mapping[str, Any] | None = None) ->
             "reason": _safe_reason(
                 (payload.get("msg") if isinstance(payload, Mapping) else "") or "优惠券列表拉取失败"
             ),
+            "membership": public_membership(membership),
         }
-    return normalize_usable_discounts(payload)
+    result = normalize_usable_discounts(payload)
+    result["membership"] = public_membership(membership)
+    return result

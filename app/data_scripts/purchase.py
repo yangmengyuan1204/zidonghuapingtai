@@ -160,19 +160,30 @@ def _impl_run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | Non
                 "selected_items": [_purchase_item_brief(item) for item in purchase_items[:20]],
             },
         )
+        skip_pending_start = False
+        ids: list = []
         if not _api_success(list_payload) or not purchase_items:
-            return _finish_named(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                False,
+            if _checkpoint_requested(variables, "pending_purchase"):
+                return _finish_named(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    False,
+                    {
+                        "order_sn": order_sn,
+                        "purchase_no": purchase_no,
+                        "selected_count": len(purchase_items),
+                        "reason": "\u672a\u67e5\u8be2\u5230\u53ef\u64cd\u4f5c\u7684\u5f85\u62cd\u4e0b\u5546\u54c1",
+                    },
+                )
+            skip_pending_start = True
+            log["steps"].append(
                 {
-                    "order_sn": order_sn,
-                    "purchase_no": purchase_no,
-                    "selected_count": len(purchase_items),
-                    "reason": "\u672a\u67e5\u8be2\u5230\u53ef\u64cd\u4f5c\u7684\u5f85\u62cd\u4e0b\u5546\u54c1",
-                },
+                    "name": "purchase_pending_start",
+                    "skipped": True,
+                    "reason": "purchase_list_empty_continue_follow",
+                }
             )
-        if _checkpoint_requested(variables, "pending_purchase"):
+        elif _checkpoint_requested(variables, "pending_purchase"):
             return _finish_paused(
                 PURCHASE_TO_SHELF_SCRIPT_NAME,
                 log,
@@ -185,214 +196,215 @@ def _impl_run_purchase_to_shelf_script(env: Env, variables: Dict[str, Any] | Non
                 },
             )
 
-        save_rows, ids = _purchase_save_rows(purchase_items, variables, purchase_no)
-        if not save_rows or not ids:
-            return _finish_named(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                False,
-                {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u5f85\u62cd\u4e0b\u5546\u54c1\u7f3a\u5c11\u53ef\u63d0\u4ea4\u7684\u91c7\u8d2dID"},
-            )
+        if not skip_pending_start:
+            save_rows, ids = _purchase_save_rows(purchase_items, variables, purchase_no)
+            if not save_rows or not ids:
+                return _finish_named(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    False,
+                    {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u5f85\u62cd\u4e0b\u5546\u54c1\u7f3a\u5c11\u53ef\u63d0\u4ea4\u7684\u91c7\u8d2dID"},
+                )
 
-        save_payload = _post_admin_urlencoded(
-            session,
-            base_url,
-            _api_path(variables, "admin_purchase_save_temp", "/purchase.saveTemp"),
-            {"data": save_rows},
-            timeout,
-        )
-        _step(log, "purchase_save_temp", save_payload, {"data_count": len(save_rows), "purchase_no": purchase_no})
-        if not _api_success(save_payload):
-            return _finish_named(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                False,
-                {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u4fdd\u5b58\u4ea4\u6613\u53f7\u5931\u8d25"},
-            )
-        if _checkpoint_requested(variables, "purchase_no_saved"):
-            return _finish_paused(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                "purchase_no_saved",
-                {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
-            )
-
-        modify_payload = _post_admin_urlencoded(
-            session,
-            base_url,
-            _api_path(variables, "admin_purchase_to_wait_modify_price", "/purchase.toWaitModifyPrice"),
-            {"ids": ids, "purchase_no": [purchase_no for _ in ids]},
-            timeout,
-        )
-        _step(log, "purchase_to_wait_modify_price", modify_payload, {"ids": ids, "purchase_no": purchase_no})
-        if not _api_success(modify_payload):
-            return _finish_named(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                False,
-                {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u6807\u8bb0\u5f85\u6539\u4ef7\u5931\u8d25"},
-            )
-        if _checkpoint_requested(variables, "purchase_wait_modify_price"):
-            return _finish_paused(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                "purchase_wait_modify_price",
-                {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
-            )
-
-        transition_delay = _as_float(variables.get("purchase_transition_delay"), 1.0)
-        if transition_delay > 0:
-            time.sleep(transition_delay)
-
-        relist_payload = _post_admin_form(
-            session,
-            base_url,
-            _api_path(variables, "admin_purchase_list", "/purchase.purchaseList"),
-            list_fields,
-            timeout,
-        )
-        relist_items_all = _flatten_purchase_items(_admin_rows_from_payload(relist_payload))
-        selected_id_set = {str(item_id) for item_id in ids}
-        relist_items = [item for item in relist_items_all if str(_purchase_item_id(item) or "") in selected_id_set]
-        if relist_items:
-            purchase_items = relist_items
-        _step(
-            log,
-            "purchase_relist_after_modify",
-            relist_payload,
-            list_fields,
-            {"selected_count": len(relist_items), "selected_items": [_purchase_item_brief(item) for item in relist_items[:20]]},
-        )
-
-        wait_save_rows, ids = _purchase_save_rows(purchase_items, variables, purchase_no)
-        wait_save_payload = _post_admin_urlencoded(
-            session,
-            base_url,
-            _api_path(variables, "admin_purchase_save_temp", "/purchase.saveTemp"),
-            {"data": wait_save_rows},
-            timeout,
-        )
-        _step(log, "purchase_save_temp_before_wait_pay", wait_save_payload, {"data_count": len(wait_save_rows), "purchase_no": purchase_no})
-        if not _api_success(wait_save_payload):
-            return _finish_named(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                False,
-                {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u5f85\u8d22\u52a1\u4ed8\u6b3e\u524d\u4fdd\u5b58\u5931\u8d25"},
-            )
-
-        wait_pay_rows = _purchase_wait_pay_rows(purchase_items, variables, purchase_no)
-        wait_pay_payload = _post_admin_urlencoded(
-            session,
-            base_url,
-            _api_path(variables, "admin_purchase_to_wait_pay", "/purchase.toWaitPay"),
-            {"data": wait_pay_rows, "ids": ids},
-            timeout,
-        )
-        _step(log, "purchase_to_wait_pay", wait_pay_payload, {"data_count": len(wait_pay_rows), "ids": ids, "purchase_no": purchase_no})
-        if not _api_success(wait_pay_payload):
-            return _finish_named(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                False,
-                {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u63d0\u4ea4\u5f85\u8d22\u52a1\u4ed8\u6b3e\u5931\u8d25"},
-            )
-        if _checkpoint_requested(variables, "purchase_wait_pay"):
-            return _finish_paused(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                "purchase_wait_pay",
-                {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
-            )
-
-        retry_delay = _as_float(variables.get("finance_confirm_delay"), 2.0)
-        retries = _as_int(variables.get("finance_confirm_retries"), 8)
-        finance_rows: list[Dict[str, Any]] = []
-        selected_finance: Dict[str, Any] | None = None
-        finance_payload: Dict[str, Any] = {}
-        finance_attempts = []
-        for attempt in range(retries):
-            finance_fields = _purchase_wait_pay_fields(variables, purchase_no, True)
-            finance_payload = _post_admin_form(
+            save_payload = _post_admin_urlencoded(
                 session,
                 base_url,
-                _api_path(variables, "admin_bill_purchase_wait_pay_list", "/bill.purchaseWaitPayList"),
-                finance_fields,
+                _api_path(variables, "admin_purchase_save_temp", "/purchase.saveTemp"),
+                {"data": save_rows},
                 timeout,
             )
-            finance_rows = _admin_rows_from_payload(finance_payload)
-            selected_finance = _select_purchase_wait_pay(finance_rows, purchase_no)
-            attempt_brief = {
-                **_payload_brief(finance_payload),
-                "attempt": attempt + 1,
-                "row_count": len(finance_rows),
-                "selected": _finance_purchase_brief(selected_finance),
-                "request": dict(finance_fields),
-            }
-            finance_attempts.append(attempt_brief)
-            if _api_success(finance_payload) and selected_finance:
-                break
-            if attempt == 0:
-                fallback_fields = _purchase_wait_pay_fields(variables, purchase_no, False)
-                fallback_payload = _post_admin_form(
+            _step(log, "purchase_save_temp", save_payload, {"data_count": len(save_rows), "purchase_no": purchase_no})
+            if not _api_success(save_payload):
+                return _finish_named(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    False,
+                    {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u4fdd\u5b58\u4ea4\u6613\u53f7\u5931\u8d25"},
+                )
+            if _checkpoint_requested(variables, "purchase_no_saved"):
+                return _finish_paused(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    "purchase_no_saved",
+                    {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
+                )
+
+            modify_payload = _post_admin_urlencoded(
+                session,
+                base_url,
+                _api_path(variables, "admin_purchase_to_wait_modify_price", "/purchase.toWaitModifyPrice"),
+                {"ids": ids, "purchase_no": [purchase_no for _ in ids]},
+                timeout,
+            )
+            _step(log, "purchase_to_wait_modify_price", modify_payload, {"ids": ids, "purchase_no": purchase_no})
+            if not _api_success(modify_payload):
+                return _finish_named(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    False,
+                    {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u6807\u8bb0\u5f85\u6539\u4ef7\u5931\u8d25"},
+                )
+            if _checkpoint_requested(variables, "purchase_wait_modify_price"):
+                return _finish_paused(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    "purchase_wait_modify_price",
+                    {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
+                )
+
+            transition_delay = _as_float(variables.get("purchase_transition_delay"), 1.0)
+            if transition_delay > 0:
+                time.sleep(transition_delay)
+
+            relist_payload = _post_admin_form(
+                session,
+                base_url,
+                _api_path(variables, "admin_purchase_list", "/purchase.purchaseList"),
+                list_fields,
+                timeout,
+            )
+            relist_items_all = _flatten_purchase_items(_admin_rows_from_payload(relist_payload))
+            selected_id_set = {str(item_id) for item_id in ids}
+            relist_items = [item for item in relist_items_all if str(_purchase_item_id(item) or "") in selected_id_set]
+            if relist_items:
+                purchase_items = relist_items
+            _step(
+                log,
+                "purchase_relist_after_modify",
+                relist_payload,
+                list_fields,
+                {"selected_count": len(relist_items), "selected_items": [_purchase_item_brief(item) for item in relist_items[:20]]},
+            )
+
+            wait_save_rows, ids = _purchase_save_rows(purchase_items, variables, purchase_no)
+            wait_save_payload = _post_admin_urlencoded(
+                session,
+                base_url,
+                _api_path(variables, "admin_purchase_save_temp", "/purchase.saveTemp"),
+                {"data": wait_save_rows},
+                timeout,
+            )
+            _step(log, "purchase_save_temp_before_wait_pay", wait_save_payload, {"data_count": len(wait_save_rows), "purchase_no": purchase_no})
+            if not _api_success(wait_save_payload):
+                return _finish_named(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    False,
+                    {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u5f85\u8d22\u52a1\u4ed8\u6b3e\u524d\u4fdd\u5b58\u5931\u8d25"},
+                )
+
+            wait_pay_rows = _purchase_wait_pay_rows(purchase_items, variables, purchase_no)
+            wait_pay_payload = _post_admin_urlencoded(
+                session,
+                base_url,
+                _api_path(variables, "admin_purchase_to_wait_pay", "/purchase.toWaitPay"),
+                {"data": wait_pay_rows, "ids": ids},
+                timeout,
+            )
+            _step(log, "purchase_to_wait_pay", wait_pay_payload, {"data_count": len(wait_pay_rows), "ids": ids, "purchase_no": purchase_no})
+            if not _api_success(wait_pay_payload):
+                return _finish_named(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    False,
+                    {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u63d0\u4ea4\u5f85\u8d22\u52a1\u4ed8\u6b3e\u5931\u8d25"},
+                )
+            if _checkpoint_requested(variables, "purchase_wait_pay"):
+                return _finish_paused(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    "purchase_wait_pay",
+                    {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
+                )
+
+            retry_delay = _as_float(variables.get("finance_confirm_delay"), 2.0)
+            retries = _as_int(variables.get("finance_confirm_retries"), 8)
+            finance_rows: list[Dict[str, Any]] = []
+            selected_finance: Dict[str, Any] | None = None
+            finance_payload: Dict[str, Any] = {}
+            finance_attempts = []
+            for attempt in range(retries):
+                finance_fields = _purchase_wait_pay_fields(variables, purchase_no, True)
+                finance_payload = _post_admin_form(
                     session,
                     base_url,
                     _api_path(variables, "admin_bill_purchase_wait_pay_list", "/bill.purchaseWaitPayList"),
-                    fallback_fields,
+                    finance_fields,
                     timeout,
                 )
-                fallback_rows = _admin_rows_from_payload(fallback_payload)
-                selected_finance = _select_purchase_wait_pay(fallback_rows, purchase_no)
-                finance_attempts.append(
-                    {
-                        **_payload_brief(fallback_payload),
-                        "attempt": "fallback-no-status",
-                        "row_count": len(fallback_rows),
-                        "selected": _finance_purchase_brief(selected_finance),
-                        "request": dict(fallback_fields),
-                    }
-                )
-                if _api_success(fallback_payload) and selected_finance:
-                    finance_payload = fallback_payload
-                    finance_rows = fallback_rows
+                finance_rows = _admin_rows_from_payload(finance_payload)
+                selected_finance = _select_purchase_wait_pay(finance_rows, purchase_no)
+                attempt_brief = {
+                    **_payload_brief(finance_payload),
+                    "attempt": attempt + 1,
+                    "row_count": len(finance_rows),
+                    "selected": _finance_purchase_brief(selected_finance),
+                    "request": dict(finance_fields),
+                }
+                finance_attempts.append(attempt_brief)
+                if _api_success(finance_payload) and selected_finance:
                     break
-            if attempt < retries - 1:
-                time.sleep(retry_delay)
-        log["finance_wait_pay_attempts"] = finance_attempts
-        if not selected_finance:
-            return _finish_named(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                False,
-                {
-                    "order_sn": order_sn,
-                    "purchase_no": purchase_no,
-                    "reason": "\u4ea4\u6613\u53f7\u4ed8\u6b3e\u5217\u8868\u672a\u627e\u5230\u5f85\u4ed8\u6b3e\u8bb0\u5f55",
-                },
-            )
+                if attempt == 0:
+                    fallback_fields = _purchase_wait_pay_fields(variables, purchase_no, False)
+                    fallback_payload = _post_admin_form(
+                        session,
+                        base_url,
+                        _api_path(variables, "admin_bill_purchase_wait_pay_list", "/bill.purchaseWaitPayList"),
+                        fallback_fields,
+                        timeout,
+                    )
+                    fallback_rows = _admin_rows_from_payload(fallback_payload)
+                    selected_finance = _select_purchase_wait_pay(fallback_rows, purchase_no)
+                    finance_attempts.append(
+                        {
+                            **_payload_brief(fallback_payload),
+                            "attempt": "fallback-no-status",
+                            "row_count": len(fallback_rows),
+                            "selected": _finance_purchase_brief(selected_finance),
+                            "request": dict(fallback_fields),
+                        }
+                    )
+                    if _api_success(fallback_payload) and selected_finance:
+                        finance_payload = fallback_payload
+                        finance_rows = fallback_rows
+                        break
+                if attempt < retries - 1:
+                    time.sleep(retry_delay)
+            log["finance_wait_pay_attempts"] = finance_attempts
+            if not selected_finance:
+                return _finish_named(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    False,
+                    {
+                        "order_sn": order_sn,
+                        "purchase_no": purchase_no,
+                        "reason": "\u4ea4\u6613\u53f7\u4ed8\u6b3e\u5217\u8868\u672a\u627e\u5230\u5f85\u4ed8\u6b3e\u8bb0\u5f55",
+                    },
+                )
 
-        pay_confirm_payload = _post_admin_urlencoded(
-            session,
-            base_url,
-            _api_path(variables, "admin_bill_purchase_wait_pay_confirm", "/bill.purchaseWaitPayConfirm"),
-            {"purchaseNoSet": [purchase_no]},
-            timeout,
-        )
-        _step(log, "bill_purchase_wait_pay_confirm", pay_confirm_payload, {"purchaseNoSet": [purchase_no]})
-        if not _api_success(pay_confirm_payload):
-            return _finish_named(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                False,
-                {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u4ea4\u6613\u53f7\u4ed8\u6b3e\u786e\u8ba4\u5931\u8d25"},
+            pay_confirm_payload = _post_admin_urlencoded(
+                session,
+                base_url,
+                _api_path(variables, "admin_bill_purchase_wait_pay_confirm", "/bill.purchaseWaitPayConfirm"),
+                {"purchaseNoSet": [purchase_no]},
+                timeout,
             )
-        if _checkpoint_requested(variables, "purchase_paid"):
-            return _finish_paused(
-                PURCHASE_TO_SHELF_SCRIPT_NAME,
-                log,
-                "purchase_paid",
-                {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
-            )
+            _step(log, "bill_purchase_wait_pay_confirm", pay_confirm_payload, {"purchaseNoSet": [purchase_no]})
+            if not _api_success(pay_confirm_payload):
+                return _finish_named(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    False,
+                    {"order_sn": order_sn, "purchase_no": purchase_no, "reason": "\u4ea4\u6613\u53f7\u4ed8\u6b3e\u786e\u8ba4\u5931\u8d25"},
+                )
+            if _checkpoint_requested(variables, "purchase_paid"):
+                return _finish_paused(
+                    PURCHASE_TO_SHELF_SCRIPT_NAME,
+                    log,
+                    "purchase_paid",
+                    {"order_sn": order_sn, "purchase_no": purchase_no, "purchase_ids": ids, "selected_count": len(purchase_items)},
+                )
 
         follow_delay = _as_float(variables.get("follow_delay"), 2.0)
         follow_retries = _as_int(variables.get("follow_retries"), 8)

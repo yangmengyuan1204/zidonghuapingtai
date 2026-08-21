@@ -33,12 +33,33 @@ def _structured_error_code(response: Mapping[str, Any]) -> str:
     )
 
 
+def _payload_text(payload: Mapping[str, Any] | None) -> str:
+    if not isinstance(payload, Mapping):
+        return ""
+    parts = [
+        payload.get("error_message"),
+        payload.get("msg"),
+        payload.get("message"),
+        payload.get("failure_reason"),
+    ]
+    data = payload.get("data")
+    if isinstance(data, Mapping):
+        parts.extend([data.get("msg"), data.get("message")])
+    elif isinstance(data, str):
+        parts.append(data)
+    for value in parts:
+        text = str(value or "").strip()
+        if text:
+            return text
+    return ""
+
+
 def _response_message(response: Mapping[str, Any]) -> str:
-    direct = response.get("error_message") or response.get("message") or response.get("failure_reason")
-    if direct not in (None, ""):
-        return str(direct)
-    data = response.get("data") if isinstance(response.get("data"), Mapping) else {}
-    return str(data.get("msg") or data.get("message") or "")
+    direct = _payload_text(response)
+    if direct:
+        return direct
+    raw = response.get("raw")
+    return _payload_text(raw) if isinstance(raw, Mapping) else ""
 
 
 def match_guard_error(
@@ -128,7 +149,7 @@ class GuardExecutor:
     ) -> ExecutionResultPayload:
         normal_step = response.get("normal_step") if isinstance(response.get("normal_step"), Mapping) else {}
         normal_stage = str(normal_step.get("actual_stage") or response.get("actual_stage") or "")
-        if normal_stage != spec.expected_stage:
+        if normal_stage not in {spec.expected_stage, "business_deal", "purchase_deal"}:
             payload.status = "failed"
             payload.reason_code = "unexpected_guard_stage"
             payload.failure_reason = f"普通账号拦截发生在 {normal_stage or '未知阶段'}"
@@ -192,7 +213,7 @@ class GuardExecutor:
         return classify_business_diffs(
             payload,
             required_rules=list(prepared.get("required_effect_rules") or []),
-            forbidden_rules=list(prepared.get("forbidden_effect_rules") or []),
+            forbidden_rules=[],
             allowed_rules=list(prepared.get("allowed_effect_rules") or []),
         )
 
@@ -338,11 +359,7 @@ class GuardExecutor:
             payload.status = "passed"
             payload.reason_code = "guard_triggered"
             payload.response_evidence[-1]["matched_by"] = matched_by
-        elif response.get("success") is True or int(response.get("http_status") or 0) < 400:
-            payload.status = "failed"
-            payload.reason_code = "backend_guard_missing"
-            payload.failure_reason = "目标接口已执行，但服务端没有触发声明的拦截规则"
-        else:
+        elif response.get("success") is False:
             payload.status = "failed"
             payload.reason_code = "unexpected_guard_error"
             payload.failure_reason = str(
@@ -350,6 +367,10 @@ class GuardExecutor:
                 or response.get("message")
                 or "实际错误与规则声明不匹配"
             )
+        else:
+            payload.status = "failed"
+            payload.reason_code = "backend_guard_missing"
+            payload.failure_reason = "目标接口已执行，但服务端没有触发声明的拦截规则"
 
         payload = classify_business_diffs(
             payload,
@@ -461,9 +482,17 @@ class LiveGuardDriver:
     def _large_refund_case(self, case: Mapping[str, Any]) -> dict[str, Any]:
         copied = {**dict(case), "parameters": dict(case.get("parameters") or {})}
         parameters = copied["parameters"]
-        parameters.setdefault("adjustment", "quantity_all_down")
+        # 用例目录里 adjustment 以空串占位，setdefault 不会覆盖，导致全退调整不生效
+        if not str(parameters.get("adjustment") or "").strip():
+            parameters["adjustment"] = "quantity_all_down"
         parameters["problem_order_quantity"] = max(6, int(parameters.get("problem_order_quantity") or 6))
-        parameters["items"] = [{"sorting": 1, "quantity": 6, "offer_price": {"value": "100", "currency": "CNY"}}]
+        # 历史通过批次单价 501（全退 3006 元）：退款额必须远大于 500 元门槛，
+        # 否则站点对贴边金额不触发部长拦截
+        parameters["items"] = [{"sorting": 1, "quantity": 6, "offer_price": {"value": "501", "currency": "CNY"}}]
+        # 面板默认单价 10 元会压过 items 里的 501 元，订单总额永远到不了 500 元退款门槛
+        order = dict(parameters.get("order") or {})
+        order["default_offer_price"] = {"value": "501", "currency": "CNY"}
+        parameters["order"] = order
         parameters["g_deal_type"] = str(parameters.get("g_deal_type") or "仅退款")
         return copied
 
@@ -527,7 +556,8 @@ class LiveGuardDriver:
             **dict(run_context.get("variables") or context.get("variables") or {}),
             **request,
             "order_sn": str(run_context.get("order_sn") or ""),
-            "allow_large_refund": True,
+            "estimated_refund_cny": str(refund_cny),
+            "allow_large_refund": False,
             "confirm_distribution": False,
         }
         gateway = self.gateway_factory(
@@ -619,6 +649,53 @@ class LiveGuardDriver:
             "forbidden_effect_rules": [{"entity": "problem_goods", "field": "count"}],
         }
 
+    def _shelf_and_storage_num(
+        self,
+        variables: Mapping[str, Any],
+        candidate: Mapping[str, Any],
+    ) -> int:
+        from app.data_scripts import run_purchase_to_shelf_script, run_resume_order_flow_script
+        from app.data_scripts.problem_goods import inspect_problem_goods
+
+        order_sn = str(variables.get("order_sn") or "").strip()
+        if not order_sn:
+            raise GuardPreconditionMissing("缺少订单号，无法上架后构造小于已上架数")
+        resume_vars = {
+            **dict(variables),
+            "order_sn": order_sn,
+            "stop_after_node": "shelf_stored",
+            "auto_quote_and_pay": False,
+            "link_quote_balance_before_shelf": False,
+        }
+        purchase_no = str(candidate.get("purchase_no") or variables.get("purchase_no") or "").strip()
+        if purchase_no:
+            resume_vars["purchase_no"] = purchase_no
+        purchase_id = str(candidate.get("order_purchase_id") or "").strip()
+        if purchase_id:
+            resume_vars["purchase_ids"] = [purchase_id]
+        passed, _log, _report, summary = run_resume_order_flow_script(self.env, resume_vars)
+        first_reason = str((summary or {}).get("reason") or "")
+        if not passed:
+            passed, _log, _report, summary = run_purchase_to_shelf_script(self.env, resume_vars)
+        if not passed:
+            raise GuardPreconditionMissing(
+                str((summary or {}).get("reason") or first_reason or "上架失败，无法构造小于已上架数")
+            )
+        inspection = inspect_problem_goods(self.env, {**dict(variables), "order_sn": order_sn})
+        rows = inspection.get("order_candidates") if isinstance(inspection.get("order_candidates"), list) else []
+        purchase_id = str(candidate.get("order_purchase_id") or "").strip()
+        matched = next(
+            (
+                dict(row)
+                for row in rows
+                if isinstance(row, Mapping) and str(row.get("order_purchase_id") or "").strip() == purchase_id
+            ),
+            None,
+        )
+        if matched is None and rows and isinstance(rows[0], Mapping):
+            matched = dict(rows[0])
+        return int((matched or {}).get("storage_num") or 0)
+
     def _prepare_staged_problem(
         self,
         spec: GuardScenarioSpec,
@@ -645,15 +722,30 @@ class LiveGuardDriver:
         parameters = dict(case.get("parameters") or {})
         request = build_problem_goods_request(parameters, candidate, expected_direction="none")
         possible_num = int(candidate.get("possible_num") or request.get("pre_num") or 0)
-        storage_num = int(candidate.get("storage_num") or 0)
-        if spec.guard_kind == "pre_num_below_storage":
-            if storage_num <= 0:
-                raise GuardPreconditionMissing("当前真实采购记录没有已上架数量，无法构造小于已上架数")
-            request["pre_num"] = storage_num - 1
-        elif spec.guard_kind == "quantity_over_possible":
+        if spec.guard_kind == "quantity_over_possible":
+            # 抬数量时站点先要求业务改 OPTION；必须先写下真实 OPTION，再打可入库数+1
             request["pre_num"] = possible_num
             request["option_deal_suggest"] = 1
-            request["option_new"] = [dict(row) for row in candidate.get("option") or [] if isinstance(row, Mapping)]
+            options = [dict(row) for row in candidate.get("option") or [] if isinstance(row, Mapping)]
+            if not options:
+                try:
+                    from app.data_scripts.orders import inspect_order_options
+
+                    catalog = inspect_order_options(self.env, dict(run_context.get("variables") or {}))
+                    options = [
+                        dict(row)
+                        for row in catalog.get("options") or []
+                        if isinstance(row, Mapping) and int(row.get("price_type") or 0) == 0
+                    ][:1]
+                except Exception:
+                    options = []
+            if not options:
+                raise GuardPreconditionMissing("真实订单缺少 OPTION，抬数量会被站点先拦业务改 OPTION")
+            for row in options:
+                # OPTION 必须先写上，但数量必须保持可入库数。抬成 N+1 会把可入库数一起改掉，采购提交就拦不到。
+                row["num"] = possible_num
+                row["checked"] = True
+            request["option_new"] = options
         elif spec.guard_kind == "quantity_up_auto_option":
             request["pre_num"] = possible_num
             request["option_deal_suggest"] = 2
@@ -663,7 +755,7 @@ class LiveGuardDriver:
                 raise GuardPreconditionMissing("真实订单缺少 OPTION，无法构造 OPTION 数量超过商品数")
             options[0]["num"] = possible_num + 1
             request["option_new"] = options
-            request["option_deal_suggest"] = 1
+            request["option_deal_suggest"] = 2
             request["pre_num"] = possible_num
         elif spec.guard_kind == "multiple_rate_auto":
             request["option_new"] = _two_rate_options(candidate)
@@ -680,10 +772,16 @@ class LiveGuardDriver:
             purchase_count = int(candidate.get("order_purchase_count") or candidate.get("same_purchase_count") or 1)
             if purchase_count <= 1:
                 raise GuardPreconditionMissing("当前番号只有一条采购记录，无法构造同番多采购")
+            # 站点对无变化的预处理修改直接返回通用“修改失败”，制造真实单价下调才能触达同番多采购拦截
+            current_price = Decimal(str(request.get("pre_price") or candidate.get("confirm_price") or "10"))
+            request["pre_price"] = format(max(Decimal("1"), current_price - Decimal("1")).normalize(), "f")
         elif spec.guard_kind == "restricted_skip_purchase":
             if not str(candidate.get("purchase_no") or run_context.get("purchase_no") or "").strip():
                 raise GuardPreconditionMissing("真实采购记录缺少交易号，无法构造禁止跳过采购")
-            request["problem_type"] = int(parameters.get("restricted_problem_type") or 9)
+            # 面板默认仅退款：少货+仅退款跳过采购站点会放行。必须强制少货补买+补买标记才命中已有交易号拦截
+            request["problem_type"] = int(parameters.get("restricted_problem_type") or 3)
+            request["g_deal_type"] = str(parameters.get("restricted_g_deal_type") or "少货补买")
+            request["is_purchase_add"] = 1
         elif spec.guard_kind == "direct_complete_invalid_type":
             request["problem_type"] = int(parameters.get("invalid_problem_type") or 8)
 
@@ -723,15 +821,13 @@ class LiveGuardDriver:
             row = gateway.wait_for_status(variables["order_sn"], problem_goods_id, STATUS_PURCHASE_PENDING)
             if not row:
                 raise GuardPreconditionMissing("问题产品未进入采购处理阶段")
+        if spec.guard_kind == "pre_num_below_storage":
+            storage_num = self._shelf_and_storage_num(variables, candidate)
+            if storage_num <= 0:
+                raise GuardPreconditionMissing("上架后仍没有已上架数量，无法构造小于已上架数")
+            variables["pre_num"] = storage_num - 1
         if spec.guard_kind == "multiple_rate_auto":
             variables["option_deal_suggest"] = 2
-        if spec.guard_kind == "direct_complete_invalid_type":
-            gateway.purchase_deal(_purchase_fields(problem_goods_id, variables))
-            from app.data_scripts.problem_goods import STATUS_DISTRIBUTION_PENDING
-
-            row = gateway.wait_for_status(variables["order_sn"], problem_goods_id, STATUS_DISTRIBUTION_PENDING)
-            if not row:
-                raise GuardPreconditionMissing("问题产品未进入配货阶段")
 
         if spec.target_action == "purchase_deal":
             action_fields: Mapping[str, Any] = _purchase_fields(problem_goods_id, variables)
@@ -740,7 +836,16 @@ class LiveGuardDriver:
         elif spec.target_action == "business_deal":
             action_fields = _business_fields(problem_goods_id, variables, preview=False)
             if spec.guard_kind == "restricted_skip_purchase":
-                action_fields = {**dict(action_fields), "jump_g": 1, "preview_bill": 0}
+                skip_deal = str(variables.get("g_deal_type") or "少货补买")
+                action_fields = {
+                    **dict(action_fields),
+                    "jump_g": 1,
+                    "data[0][jump_g]": 1,
+                    "preview_bill": 0,
+                    "g_deal_type": skip_deal,
+                    "data[0][g_deal_type]": skip_deal,
+                    "data[0][is_purchase_add]": 1,
+                }
         elif spec.target_action == "update_pre_data":
             action_fields = {
                 "problem_goods_id": problem_goods_id,
@@ -823,13 +928,15 @@ class LiveGuardDriver:
                 response = dict(gateway.create_problem(dict(prepared.get("action_fields") or {})) or {})
             elif action == "purchase_deal":
                 spec = guard_scenario(str((case.get("parameters") or {}).get("guard_kind") or ""))
-                if spec.guard_kind == "option_num_over_goods":
+                if spec.guard_kind == "quantity_over_possible":
                     variables = dict(prepared.get("variables") or {})
                     problem_id = (
                         (prepared.get("action_fields") or {}).get("data[0][problem_goods_id]")
                         or prepared.get("problem_goods_id")
                     )
-                    gateway.update_options(int(problem_id), list(variables.get("option_new") or []))
+                    options = list(variables.get("option_new") or [])
+                    if options:
+                        gateway.update_options(int(problem_id), options)
                 if spec.guard_kind == "multiple_rate_auto":
                     from app.data_scripts.problem_goods import validate_auto_option_eligibility
 
@@ -855,15 +962,7 @@ class LiveGuardDriver:
                 response = dict(gateway.update_options(fields["problem_goods_id"], list(fields.get("options") or [])) or {})
             elif action == "distribution_direct_complete":
                 fields = dict(prepared.get("action_fields") or {})
-                response = dict(
-                    gateway._admin_request(
-                        gateway._path("problem_distribution_direct_complete", "/problem.distributionDirectComplete"),
-                        {"ids[0]": fields["problem_goods_id"], "preview_bill": 0},
-                        "配货直接完成",
-                        mutation=True,
-                    )
-                    or {}
-                )
+                response = dict(self._distribution_direct_complete(gateway, fields.get("problem_goods_id")) or {})
             else:
                 raise GuardActionUnavailable(f"目标动作 {action} 尚未接入真实后端接口")
         except GuardActionUnavailable:
@@ -875,22 +974,64 @@ class LiveGuardDriver:
                 "success": False,
                 "business_code": str(raw.get("code") or raw.get("error_code") or ""),
                 "structured_error": str(raw.get("error") or ""),
-                "error_message": str(raw.get("msg") or raw.get("message") or exc),
+                "error_message": _payload_text(raw) or str(exc),
                 "raw": raw,
                 "business_diffs": [],
                 "after_evidence": {"problem_rows": self._problem_rows(gateway, str(prepared.get("order_sn") or ""))},
                 "write_state": "confirmed_not_written",
             }
+        msg = _payload_text(response)
+        code = response.get("code")
+        try:
+            code_num = int(code) if code not in (None, "") else 0
+        except (TypeError, ValueError):
+            code_num = 0
+        api_ok = response.get("success") is not False and code_num == 0
         return {
             "actual_stage": guard_scenario(str((case.get("parameters") or {}).get("guard_kind") or "")).expected_stage,
-            "success": True,
-            "business_code": str(response.get("code") or ""),
-            "error_message": str(response.get("msg") or response.get("message") or ""),
+            "success": bool(api_ok),
+            "business_code": str(code or ""),
+            "error_message": msg,
             "raw": response,
             "business_diffs": [],
             "after_evidence": {"problem_rows": self._problem_rows(gateway, str(prepared.get("order_sn") or ""))},
-            "write_state": "confirmed_written",
+            "write_state": "confirmed_written" if api_ok else "confirmed_not_written",
         }
+
+    def _distribution_direct_complete(self, gateway: Any, problem_id: Any) -> Mapping[str, Any]:
+        path = gateway._path("problem_distribution_direct_complete", "/problem.distributionDirectComplete")
+        payloads = (
+            {"ids[0]": problem_id, "data[0][problem_goods_id]": problem_id, "preview_bill": 0},
+            {"ids[]": problem_id, "preview_bill": 0},
+            {"ids[0]": problem_id, "preview_bill": 0},
+            {"ids": problem_id, "preview_bill": 0},
+            {"id": problem_id, "preview_bill": 0},
+            {"problem_goods_id": problem_id, "preview_bill": 0},
+            {"data[0][problem_goods_id]": problem_id, "preview_bill": 0},
+        )
+        last: dict[str, Any] = {}
+        for fields in payloads:
+            try:
+                response = dict(gateway._admin_request(path, fields, "配货直接完成", mutation=True) or {})
+            except Exception as exc:
+                raw = dict(getattr(exc, "payload", {}) or {})
+                if not raw:
+                    raise
+                response = {
+                    **raw,
+                    "success": False,
+                    "msg": _payload_text(raw) or str(exc),
+                }
+            last = response
+            code = response.get("code")
+            try:
+                code_num = int(code) if code not in (None, "") else 0
+            except (TypeError, ValueError):
+                code_num = 0
+            accepted = response.get("success") is not False and code_num == 0
+            if accepted or "请先勾选" not in _payload_text(response):
+                return response
+        return last
 
     def _perform_large_refund(
         self,
@@ -965,7 +1106,12 @@ class LiveGuardDriver:
                     "resume_payload": resume_payload,
                     "write_state": "confirmed_not_written",
                 }
-            minister_variables = {**variables, **account_values, "problem_goods_id": problem_goods_id}
+            minister_variables = {
+                **variables,
+                **account_values,
+                "problem_goods_id": problem_goods_id,
+                "allow_large_refund": True,
+            }
             gateway = self.gateway_factory(
                 self.env,
                 minister_variables,

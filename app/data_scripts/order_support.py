@@ -1019,6 +1019,8 @@ def _impl__detect_resume_order_state(
         detected_start_node = "pending_purchase"
     elif _order_ready_for_warehouse_delivery(order_status, order_data):
         detected_start_node = "shelf_stored"
+    elif order_status == 60:
+        detected_start_node = "checking_started"
     else:
         detected_start_node = _resume_node_for_order_status(order_status)
     summary: Dict[str, Any] = {

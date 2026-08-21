@@ -100,7 +100,7 @@ def test_data_factory_stays_on_v3_with_legacy_embed():
     migration = json.loads((root / "static" / "migration-config.json").read_text(encoding="utf-8"))
     route_start = router_source.index("path: '/dataScripts'")
     route_block = router_source[route_start : router_source.index("  },", route_start) + 4]
-    assert "../views/LegacyEmbedView.vue" in route_block
+    assert "component: LegacyEmbedView" in route_block
     assert "../views/DataScriptsView.vue" not in route_block
     assert "dataScripts" in migration["migrated"]
 
@@ -111,7 +111,7 @@ def test_requirement_verification_stays_on_v3_with_legacy_embed():
     migration = json.loads((root / "static" / "migration-config.json").read_text(encoding="utf-8"))
     route_start = router_source.index("path: '/requirementVerification'")
     route_block = router_source[route_start : router_source.index("  },", route_start) + 4]
-    assert "../views/LegacyEmbedView.vue" in route_block
+    assert "component: LegacyEmbedView" in route_block
     assert "../views/RequirementVerificationView.vue" not in route_block
     assert "requirementVerification" in migration["migrated"]
 
@@ -152,9 +152,28 @@ def test_system_regression_stays_on_v3_with_legacy_embed():
     migration = json.loads((root / "static" / "migration-config.json").read_text(encoding="utf-8"))
     route_start = router_source.index("path: '/systemRegression'")
     route_block = router_source[route_start : router_source.index("  },", route_start) + 4]
-    assert "../views/LegacyEmbedView.vue" in route_block
+    assert "component: LegacyEmbedView" in route_block
     assert "../views/SystemRegressionView.vue" not in route_block
     assert "systemRegression" in migration["migrated"]
+
+
+def test_legacy_embed_routes_use_sync_component_to_avoid_previous_page_flash():
+    root = Path(__file__).resolve().parents[1]
+    router_source = (root / "frontend" / "src" / "router" / "index.js").read_text(encoding="utf-8")
+
+    assert "import LegacyEmbedView from '../views/LegacyEmbedView.vue'" in router_source
+    for path in ["path: '/dataScripts'", "path: '/requirementVerification'", "path: '/systemRegression'"]:
+        route_start = router_source.index(path)
+        route_block = router_source[route_start : router_source.index("  },", route_start) + 4]
+        assert "component: LegacyEmbedView" in route_block
+        assert "() => import('../views/LegacyEmbedView.vue')" not in route_block
+
+    dist_assets = root / "frontend" / "dist" / "assets"
+    if dist_assets.exists():
+        entries = list(dist_assets.glob("index-*.js"))
+        assert entries
+        production_entry = entries[0].read_text(encoding="utf-8")
+        assert 'import("./LegacyEmbedView-' not in production_entry
 
 
 def test_vue_legacy_agent_integration_assets_are_pinned_and_harvester_is_retired():

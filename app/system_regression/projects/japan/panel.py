@@ -5,6 +5,9 @@ from typing import Any, Mapping
 
 
 SERVICE_COUPON_ID = "__service_discount__"
+ACCOUNT_COUPON_ID = "__account_coupon__"
+ACCOUNT_VOUCHER_ID = "__account_voucher__"
+UNBOUND_COUPON_IDS = frozenset({"", SERVICE_COUPON_ID, ACCOUNT_COUPON_ID})
 
 PACK_OPTION = {"name": "加固包装", "price_type": 0, "price": "2.5", "num": 1, "checked": True}
 INSPECT_OPTION = {"name": "检品", "price_type": 1, "price": "5", "num": 1, "checked": True}
@@ -117,7 +120,7 @@ def order_panel(
         "part_pay": part or _part_pay(enabled=payment_plan == "part"),
         "coupon": {"selectedId": selected},
         "service_discount": bool(flags.get("service_discount") or selected),
-        "discounts_id": "" if selected in {"", SERVICE_COUPON_ID} else selected,
+        "discounts_id": "" if selected in UNBOUND_COUPON_IDS else selected,
         "porder": _empty_porder(),
         "ledger_wait_seconds": 30,
         "amount_step": "1",
@@ -143,6 +146,7 @@ def porder_panel(
     logistics: str = "25",
     price_manual: bool = False,
     logistics_price: Any = "0",
+    voucher_id: str = "",
     **flags: Any,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
@@ -159,6 +163,7 @@ def porder_panel(
             logistics=logistics,
             price_manual=price_manual,
             logistics_price=_money(logistics_price),
+            voucher={"selectedId": str(voucher_id or "")},
         ),
         "ledger_wait_seconds": 30,
         "amount_step": "1",
@@ -243,6 +248,8 @@ def problem_panel(
     service_discount: bool = False,
     items: list[dict[str, Any]] | None = None,
     quantity: int = 2,
+    completed_inspect_num: int | None = None,
+    non_auto_option: bool = False,
     **flags: Any,
 ) -> dict[str, Any]:
     change = option_adjustment or adjustment
@@ -254,6 +261,14 @@ def problem_panel(
     )
     options = [dict(PACK_OPTION), dict(INSPECT_OPTION)] if need_options else []
     rows = list(items or [_item(1, quantity=quantity, options=options)])
+    if non_auto_option:
+        rows = [
+            {
+                **row,
+                "options": [{**option, "auto_calculate": False} for option in row.get("options") or []],
+            }
+            for row in rows
+        ]
     price = str((rows[0].get("offer_price") or {}).get("value") or "10")
     freight = str((rows[0].get("offer_freight") or {}).get("value") or "3")
     qty = int(rows[0].get("quantity") or quantity)
@@ -298,6 +313,8 @@ def problem_panel(
         "confirm_distribution": True,
         "service_discount": service_discount,
     }
+    if completed_inspect_num is not None:
+        payload["problem_goods"]["complete_inspect_num"] = int(completed_inspect_num)
     return payload
 
 
@@ -305,7 +322,7 @@ def guard_panel(name: str, *, guard_kind: str, part_pay: bool = False) -> dict[s
     payload = problem_panel(
         name=name,
         problem_type=1,
-        items=[_item(1, quantity=2, options=[dict(PACK_OPTION), dict(INSPECT_OPTION)] if any(token in guard_kind for token in ("option", "rate", "quantity")) else [])],
+        items=[_item(1, quantity=2, options=[dict(PACK_OPTION), dict(INSPECT_OPTION)] if any(token in guard_kind for token in ("option", "rate")) else [])],
         part=_part_pay(True, percent=50) if part_pay else None,
         payment_plan="part" if part_pay else "full",
     )
@@ -319,7 +336,10 @@ def guard_panel(name: str, *, guard_kind: str, part_pay: bool = False) -> dict[s
 __all__ = [
     "INSPECT_OPTION",
     "PACK_OPTION",
+    "ACCOUNT_COUPON_ID",
+    "ACCOUNT_VOUCHER_ID",
     "SERVICE_COUPON_ID",
+    "UNBOUND_COUPON_IDS",
     "guard_panel",
     "order_panel",
     "porder_panel",

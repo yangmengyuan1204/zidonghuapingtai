@@ -7,13 +7,14 @@ from app.system_regression.projects.japan.guard_scenarios import (
 )
 
 
-def test_all_catalog_guards_have_executable_specs():
+def test_retired_catalog_guards_keep_executable_specs():
     guards = [case for case in japan_case_definitions() if case.runner_kind == "problem_guard"]
 
-    assert len(guards) == 15
-    assert len(guard_scenarios()) == 15
-    for case in guards:
-        spec = guard_scenario(case.parameters["guard_kind"])
+    assert guards == []
+    scenarios = guard_scenarios()
+    assert len(scenarios) == 15
+    for scenario in scenarios:
+        spec = guard_scenario(scenario.guard_kind)
         assert spec.expected_stage
         assert spec.precondition_builder
         assert spec.target_action

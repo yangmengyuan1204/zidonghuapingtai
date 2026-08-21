@@ -445,6 +445,25 @@ def _impl_run_resume_order_flow_script(
                 ["order_translated", "order_confirmed", "order_offered", "order_paid"],
                 "\u8ba2\u5355\u5df2\u5728\u5f85\u62cd\u4e0b\uff0c\u8df3\u8fc7\u8ba2\u5355\u540e\u53f0\u62a5\u4ef7\u548c\u8ba2\u5355\u652f\u4ed8",
             )
+        elif detected_start_node == "checking_started":
+            _resume_record_skipped(
+                log,
+                [
+                    "order_translated",
+                    "order_confirmed",
+                    "order_offered",
+                    "order_paid",
+                    "pending_purchase",
+                    "purchase_no_saved",
+                    "purchase_wait_modify_price",
+                    "purchase_wait_pay",
+                    "purchase_paid",
+                    "checking_started",
+                ],
+                "订单已在核查中，跳过采购前置步骤",
+            )
+            if _full_flow_stop_reached(variables, "checking_started"):
+                return _resume_flow_finish(log, True, "checking_started", paused=True)
         elif detected_start_node == "shelf_stored":
             skip_shelf = True
             _resume_record_skipped(

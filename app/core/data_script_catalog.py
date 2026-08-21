@@ -28,6 +28,12 @@ DATA_SCRIPT_API_CASES = [
         "body": {"page": "{{page}}", "pageSize": "{{page_size}}"},
     },
     {
+        "key": "client_user_info",
+        "case_name": "数据脚本-前台用户信息",
+        "url": "/client/user.info",
+        "body": {},
+    },
+    {
         "key": "client_order_option_list",
         "case_name": "数据脚本-前台订单OPTION",
         "url": "/client/order.optionList",
@@ -162,6 +168,12 @@ DATA_SCRIPT_API_CASES = [
         "body": {"porder_sn": "{{porder_sn}}"},
     },
     {
+        "key": "admin_porder_logistics_list",
+        "case_name": "数据脚本-配送单客户可用物流列表",
+        "url": "/config.logistics.list",
+        "body": {"user_id": "{{customer_id}}"},
+    },
+    {
         "key": "admin_spot_porder_detail",
         "case_name": "\u6570\u636e\u811a\u672c-\u914d\u9001\u5355\u88c5\u7bb1\u540e\u62bd\u68c0\u8be6\u60c5",
         "url": "/spot/spot/check/getSpotPorderDetail",
@@ -178,6 +190,21 @@ DATA_SCRIPT_API_CASES = [
         "case_name": "数据脚本-配送单预估国际运费",
         "url": "/porder.predictLogisticsPrice",
         "body": {"list[0][weight]": "{{box_weight}}", "list[0][volume]": "{{box_volume}}", "list[0][height]": "{{box_height}}", "list[0][width]": "{{box_width}}", "list[0][length]": "{{box_length}}", "list[0][freight_id]": "{{freight_id}}"},
+    },
+    {
+        "key": "client_balance_change",
+        "case_name": "数据脚本-客户出入金记录",
+        "url": "/client/user.balanceChange",
+        "body": {
+            "start_time": "{{start_time}}",
+            "end_time": "{{end_time}}",
+            "keywords": "{{keywords}}",
+            "bill_type": "{{bill_type}}",
+            "bill_method": "{{bill_method}}",
+            "order_by": "desc",
+            "page": "{{page}}",
+            "pageSize": "{{page_size}}",
+        },
     },
     {
         "key": "client_balance_pay",

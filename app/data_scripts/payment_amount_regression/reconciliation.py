@@ -56,6 +56,14 @@ def _decimal_text(value: Decimal) -> str:
     return "0" if text == "-0" else text
 
 
+MAX_JPY_TOLERANCE = Decimal("1")
+
+
+def _jpy_tolerance(tolerance_jpy: Any) -> Decimal:
+    parsed = abs(_decimal(tolerance_jpy, "容差"))
+    return MAX_JPY_TOLERANCE if parsed > MAX_JPY_TOLERANCE else parsed
+
+
 def to_jpy(amount: Decimal, currency: str, exchange_rate: Decimal | None = None) -> Decimal:
     number = _decimal(amount, "金额")
     normalized_currency = str(currency or "").strip().upper()
@@ -88,7 +96,8 @@ def reconcile_amount(
         expected_jpy = Decimal("0")
     difference = abs(actual_jpy - expected_jpy)
     direction_matches = expected.direction == actual.direction
-    passed = direction_matches and difference <= abs(_decimal(tolerance_jpy, "容差"))
+    tolerance = _jpy_tolerance(tolerance_jpy)
+    passed = direction_matches and difference <= tolerance
     reason_code = ""
     reason = ""
     if not direction_matches:
@@ -96,7 +105,7 @@ def reconcile_amount(
         reason = f"实际方向 {actual.direction} 与预期方向 {expected.direction} 不一致"
     elif not passed:
         reason_code = "amount_mismatch"
-        reason = f"金额相差 {_decimal_text(difference)} 日元"
+        reason = f"金额相差 {_decimal_text(difference)} 日元，超过允许的 {_decimal_text(tolerance)} 日元"
     return {
         "key": key,
         "passed": passed,
@@ -113,7 +122,7 @@ def reconcile_amount(
         "expected_jpy": _decimal_text(expected_jpy),
         "actual_jpy": _decimal_text(actual_jpy),
         "difference_jpy": _decimal_text(difference),
-        "tolerance_jpy": _decimal_text(abs(_decimal(tolerance_jpy, "容差"))),
+        "tolerance_jpy": _decimal_text(tolerance),
         "discount_amount": _decimal_text(discount),
         "voucher_amount": _decimal_text(voucher),
         "expected_direction": expected.direction,

@@ -46,6 +46,7 @@
     runConsoleScrollBusy: false,
     pendingRunConsolePatch: false,
     runConsoleScrollGuardBound: false,
+    casePaneHeightBound: false,
   };
 
   const BATCH_STORAGE_KEY = "systemRegressionActiveBatch";
@@ -56,7 +57,7 @@
     waiting_account: "等待账号",
     passed: "通过",
     failed: "失败",
-    blocked: "拦截",
+    blocked: "缺前置",
     stopped: "已停止",
   };
 
@@ -88,6 +89,8 @@
   const CLIENT_DEALS = [["accept", "接受"], ["exchange", "换货"], ["cancel", "取消/退货"], ["discard", "已收不退"], ["other", "其他"]];
   const PURCHASE_DEALS = ["仅退款", "退货退款", "换货", "丢货重拍", "少货补买", "其他"];
   const SERVICE_COUPON_ID = "__service_discount__";
+  const ACCOUNT_COUPON_ID = "__account_coupon__";
+  const ACCOUNT_VOUCHER_ID = "__account_voucher__";
   const TICKETS_API = "/api/system-regression/tickets";
   const OPTIONS_API = "/api/system-regression/options";
   const TICKET_LIST_PATH = "/client/user.usableDiscount";
@@ -169,7 +172,7 @@
       if (run.status === "running") pushEvent(run.case_key, `开始执行 ${caseName(run)}`);
       else if (run.status === "passed") pushEvent(run.case_key, "通过");
       else if (run.status === "failed") pushEvent(run.case_key, `失败${run.reason_code ? ` · ${run.reason_code}` : ""}`);
-      else if (run.status === "blocked") pushEvent(run.case_key, `拦截${run.reason_code ? ` · ${run.reason_code}` : ""}`);
+      else if (run.status === "blocked") pushEvent(run.case_key, `缺前置${run.reason_code ? ` · ${run.reason_code}` : ""}`);
       else if (run.status === "waiting_account") pushEvent(run.case_key, "退款达到 500 元，需要部长账号");
       else if (run.status === "stopped") pushEvent(run.case_key, "已停止");
     });
@@ -226,6 +229,30 @@
     if (host) host.scrollTop = saved.hostTop;
     if (drawer) drawer.scrollTop = options.resetDrawer ? 0 : saved.drawerTop;
     restoreRunConsoleScroll(saved.run);
+  }
+
+  function syncCasePaneHeights() {
+    const drawer = document.querySelector(".system-regression-drawer");
+    const cases = document.querySelector(".system-regression-cases");
+    const cats = document.querySelector(".system-regression-categories");
+    if (!drawer || !cases) return;
+    [cases, cats].forEach((el) => {
+      if (!el) return;
+      el.style.height = "auto";
+    });
+    const height = Math.ceil(drawer.getBoundingClientRect().height);
+    if (height <= 0) return;
+    cases.style.height = `${height}px`;
+    if (cats) cats.style.height = `${height}px`;
+  }
+
+  function bindCasePaneHeightSync() {
+    if (srState.casePaneHeightBound) return;
+    srState.casePaneHeightBound = true;
+    window.addEventListener("resize", () => {
+      if (!isOnRegressionPage()) return;
+      syncCasePaneHeights();
+    });
   }
 
   function restoreRunConsoleScroll(saved) {
@@ -515,7 +542,10 @@
 
   function couponOptions(selectedId) {
     const real = srState.tickets.coupons || [];
-    const rows = [["", "不使用优惠券"]];
+    const rows = [
+      ["", "不使用优惠券"],
+      [ACCOUNT_COUPON_ID, "使用账号当前优惠券（执行时自动选第一张）"],
+    ];
     if (!real.length) rows.push([SERVICE_COUPON_ID, "手续费减免券（账号没有真券时用）"]);
     real.forEach((row) => rows.push([row.id, `${row.title}${row.left != null ? `（剩 ${row.left} 张）` : ""}`]));
     let selected = selectedId || "";
@@ -525,7 +555,10 @@
   }
 
   function voucherOptions(selectedId) {
-    const rows = [["", "不使用代金券"]];
+    const rows = [
+      ["", "不使用代金券"],
+      [ACCOUNT_VOUCHER_ID, "使用账号当前代金券（执行时自动选第一张）"],
+    ];
     (srState.tickets.vouchers || []).forEach((row) => {
       const extra = row.kind === "all" ? "（全部抵扣）" : (row.amount != null && row.amount !== "" ? `（按物流抵 ${row.amount} 日元）` : "（按物流抵）");
       rows.push([row.id, `${row.title}${extra}`]);
@@ -733,7 +766,7 @@
       ? porderPaneHtml(item, parameters)
       : (showProblem && tab === "process" ? problemProcessHtml(item, parameters) : orderPaneHtml(item, parameters));
     return `<aside class="system-regression-drawer">
-      <div class="panel-title"><h3>参数设置</h3><span>${escapeHtml(item.case_key)}</span></div>
+      <div class="panel-title"><h3>参数设置</h3><span>${escapeHtml(item.case_key)}</span><button class="btn danger" type="button" data-sr-delete="${item.id}">删除用例</button></div>
       <div class="field wide"><label>用例名称</label><input id="srCaseName" value="${escapeHtml(item.name)}" /></div>
       ${billHtml(item, parameters)}
       ${showProblem ? `<div class="system-regression-drawer-tabs">
@@ -744,7 +777,7 @@
       <div class="system-regression-actions system-regression-section">
         <button class="btn" id="srSaveCase" type="button">保存参数</button>
         <button class="btn secondary" id="srCopyCase" type="button">复制用例</button>
-        ${item.is_system ? `<button class="btn secondary" id="srResetCase" type="button">恢复默认</button>` : `<button class="btn danger" id="srDeleteCase" type="button">删除用例</button>`}
+        ${item.is_system ? `<button class="btn secondary" id="srResetCase" type="button">恢复默认</button>` : ""}
         <button class="btn" id="srRunOne" type="button">单条执行</button>
       </div>
     </aside>`;
@@ -757,10 +790,10 @@
 
   function caseTableTags() {
     const rows = visibleCases();
-    return `<div class="system-regression-case-tools"><div class="panel-title"><h3>用例</h3></div><button class="btn secondary" id="srNewCase" type="button">新建用例</button></div><table class="system-regression-case-table"><thead><tr><th><input id="srSelectAll" type="checkbox" /></th><th>编号</th><th>用例名称</th><th>状态</th><th>操作</th></tr></thead><tbody>${rows.map((item) => {
+    return `<div class="system-regression-case-tools"><div class="panel-title"><h3>用例</h3></div><div class="system-regression-actions"><button class="btn secondary" id="srNewCase" type="button">新建用例</button><button class="btn danger" id="srDeleteVisible" type="button">删除用例</button></div></div><table class="system-regression-case-table"><thead><tr><th><input id="srSelectAll" type="checkbox" /></th><th>编号</th><th>用例名称</th><th>状态</th><th>操作</th></tr></thead><tbody>${rows.map((item) => {
       const run = (srState.batch?.runs || []).find((row) => row.case_id === item.id);
       const statusText = run ? (STATUS_LABELS[run.status] || run.status) : `${item.enabled ? "启用" : "停用"}${item.user_modified ? " · 已修改" : ""}`;
-      return `<tr class="${item.id === srState.activeId ? "active" : ""}"><td><input type="checkbox" data-sr-select="${item.id}" ${srState.selected.has(item.id) ? "checked" : ""} /></td><td>${escapeHtml(item.case_key)}</td><td><button class="link-button" data-sr-open="${item.id}" type="button">${escapeHtml(item.name)}</button></td><td data-sr-run-status="${item.id}">${escapeHtml(statusText)}</td><td><button class="btn secondary" data-sr-open="${item.id}" type="button">编辑</button></td></tr>`;
+      return `<tr class="${item.id === srState.activeId ? "active" : ""}"><td><input type="checkbox" data-sr-select="${item.id}" ${srState.selected.has(item.id) ? "checked" : ""} /></td><td>${escapeHtml(item.case_key)}</td><td><button class="link-button" data-sr-open="${item.id}" type="button">${escapeHtml(item.name)}</button></td><td data-sr-run-status="${item.id}">${escapeHtml(statusText)}</td><td class="system-regression-row-ops"><button class="link-button" data-sr-open="${item.id}" type="button">编辑</button> <button class="link-button system-regression-delete" data-sr-delete="${item.id}" type="button">删除</button></td></tr>`;
     }).join("")}</tbody></table>`;
   }
 
@@ -863,7 +896,7 @@
     const filter = srState.resultFilter || "all";
     return (batch?.runs || []).filter((run) => {
       if (filter === "passed" && run.status !== "passed") return false;
-      if (filter === "failed" && !["failed", "blocked", "stopped"].includes(run.status)) return false;
+      if (filter === "failed" && !["failed", "stopped"].includes(run.status)) return false;
       if (!query) return true;
       return `${run.case_key || ""} ${caseName(run)}`.toLowerCase().includes(query);
     });
@@ -889,7 +922,7 @@
     if (run.status === "running") return "正在执行。";
     if (run.status === "pending") return "还没开始。";
     if (run.status === "stopped") return note ? `已停止。${note}` : "已停止。";
-    if (run.status === "blocked") return note ? `拦截。${note}` : "拦截。";
+    if (run.status === "blocked") return note ? `缺前置。${note}` : "缺前置。";
     return note ? `失败。${note}` : "失败。";
   }
 
@@ -980,7 +1013,13 @@
     </section>`;
     bindPage();
     startClock();
+    bindCasePaneHeightSync();
+    syncCasePaneHeights();
     restorePageScroll(saved, options);
+    requestAnimationFrame(() => {
+      syncCasePaneHeights();
+      restorePageScroll(saved, options);
+    });
   }
 
   function newCaseModalTags() {
@@ -1003,12 +1042,40 @@
           </div>
           <p class="system-regression-hint wide" id="srPorderKindExtra" ${kind === "porder" ? "" : "hidden"}>配送单没有商品货款，也没有优惠券。建完只填国际运费和代金券。</p>
           <div class="field wide"><label>用例名称</label><input id="srNewName" placeholder="例如 两番分批付款" /></div>
-          <div class="field wide"><label>将得到的编号</label><input id="srNewKeyPreview" readonly /><small class="system-regression-hint">自定义编号是 CUSTOM-PAY / CUSTOM-PG / CUSTOM-PORDER。系统预置仍是 JP-PAY / JP-PG。</small></div>
+          <div class="field wide"><label>将得到的编号</label><input id="srNewKeyPreview" readonly /><small class="system-regression-hint">编号按类型自动生成：支付 / 配送 / 流程，后面跟 001、002…</small></div>
         </div>
         <p class="system-regression-hint">编号只增不挤。删掉 002 后，003 还是 003，新建用下一个最大号，不会填回 002。</p>
         <div class="system-regression-actions"><button class="btn secondary" id="srCancelNew" type="button">取消</button><button class="btn" id="srConfirmNew" type="button">新建</button></div>
       </div>
     </div>`;
+  }
+
+  async function deleteRegressionCases(items) {
+    const rows = [...new Map((items || []).filter(Boolean).map((item) => [item.id, item])).values()];
+    if (!rows.length) {
+      showToast("先勾选或点开要删的用例");
+      return;
+    }
+    const label = rows.length === 1
+      ? `${rows[0].case_key || ""} ${rows[0].name || ""}`.trim()
+      : `${rows.length} 条：${rows.map((item) => item.case_key).filter(Boolean).slice(0, 8).join("、")}${rows.length > 8 ? ` 等` : ""}`;
+    if (!window.confirm(`确定删除用例 ${label}？`)) return;
+    for (const item of rows) {
+      await api(`/api/system-regression/cases/${item.id}`, { method: "DELETE" });
+      srState.cases = srState.cases.filter((row) => row.id !== item.id);
+      srState.selected.delete(item.id);
+    }
+    srState.categories = [...new Set(srState.cases.map((row) => row.category))];
+    if (!srState.cases.some((row) => row.id === srState.activeId)) {
+      srState.activeId = visibleCases()[0]?.id || srState.cases[0]?.id || 0;
+      srState.drawerTab = isProblemCase(currentCase()) ? "process" : "order";
+    }
+    showToast("已删除");
+    renderPage();
+  }
+
+  async function deleteRegressionCase(item) {
+    return deleteRegressionCases(item ? [item] : []);
   }
 
   function nextCustomKey(prefix) {
@@ -1023,6 +1090,13 @@
     return `${prefix}-${String(max + 1).padStart(3, "0")}`;
   }
 
+  const CREATE_KIND_PREFIX = {
+    payment: "支付",
+    part: "支付",
+    problem: "流程",
+    porder: "配送",
+  };
+
   function selectedNewType() {
     if ((document.querySelector("#srNewCaseModal [data-sr-new-kind].active")?.dataset.srNewKind || srState.newKind) === "porder") return "porder";
     return document.querySelector("#srNewType")?.value || "payment";
@@ -1030,7 +1104,7 @@
 
   function previewNewKey() {
     const type = selectedNewType();
-    const prefix = type === "problem" ? "CUSTOM-PG" : type === "porder" ? "CUSTOM-PORDER" : "CUSTOM-PAY";
+    const prefix = CREATE_KIND_PREFIX[type] || "支付";
     const el = document.querySelector("#srNewKeyPreview");
     if (el) el.value = nextCustomKey(prefix);
   }
@@ -1376,7 +1450,7 @@
   }
 
   async function rerunFailedRuns() {
-    const failed = (srState.batch?.runs || []).filter((run) => ["failed", "blocked", "stopped"].includes(run.status));
+    const failed = (srState.batch?.runs || []).filter((run) => ["failed", "stopped"].includes(run.status));
     if (!failed.length) return showToast("没有可重跑的失败/停止用例");
     await Promise.all(failed.map((run) => api(`/api/system-regression/runs/${run.id}/rerun`, { method: "POST" })));
     srState.resultTab = "events";
@@ -1534,6 +1608,12 @@
       srState.drawerTab = isProblemCase(currentCase()) ? "process" : "order";
       renderPage({ resetDrawer: true });
     }));
+    document.querySelectorAll("[data-sr-delete]").forEach((button) => button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      persistDrawer();
+      deleteRegressionCase(srState.cases.find((row) => row.id === Number(button.dataset.srDelete)));
+    }));
     document.querySelectorAll("[data-sr-drawer-tab]").forEach((button) => button.addEventListener("click", () => {
       persistDrawer();
       srState.drawerTab = button.dataset.srDrawerTab;
@@ -1603,17 +1683,10 @@
       Object.assign(currentCase(), reset);
       renderPage();
     });
-    document.querySelector("#srDeleteCase")?.addEventListener("click", async () => {
-      const item = currentCase();
-      if (!item || item.is_system) return;
-      if (!window.confirm(`删除自定义用例 ${item.case_key}？系统预置不会动。`)) return;
-      await api(`/api/system-regression/cases/${item.id}`, { method: "DELETE" });
-      srState.cases = srState.cases.filter((row) => row.id !== item.id);
-      srState.selected.delete(item.id);
-      srState.categories = [...new Set(srState.cases.map((row) => row.category))];
-      srState.activeId = visibleCases()[0]?.id || srState.cases[0]?.id || 0;
-      showToast("已删除");
-      renderPage();
+    document.querySelector("#srDeleteVisible")?.addEventListener("click", () => {
+      persistDrawer();
+      const selected = visibleCases().filter((item) => srState.selected.has(item.id));
+      deleteRegressionCases(selected.length ? selected : [currentCase()]);
     });
     document.querySelector("#srNewCase")?.addEventListener("click", () => {
       persistDrawer();

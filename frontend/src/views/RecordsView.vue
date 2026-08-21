@@ -20,8 +20,9 @@
         <label>类型</label>
         <select :value="filterType" @change="onTypeChange">
           <option value="">全部</option>
-          <option value="api">api</option>
-          <option value="ui">ui</option>
+          <option value="api">接口</option>
+          <option value="ui">界面</option>
+          <option value="data_script">数据脚本</option>
         </select>
       </div>
     </div>

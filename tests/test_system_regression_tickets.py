@@ -18,6 +18,24 @@ from app.security import require_admin
 from app.services.system_regression.ticket_service import list_usable_tickets, normalize_usable_discounts
 
 
+FIXED_USER_INFO_PAYLOAD = {
+    "success": True,
+    "code": 0,
+    "msg": "success",
+    "data": {
+        "current_service_rate": 0,
+        "level": {
+            "currentLevel": {
+                "id": 7,
+                "level_type": 1,
+                "level_name": "定額会員",
+                "service_rate": "0",
+            }
+        },
+    },
+}
+
+
 USABLE_DISCOUNT_PAYLOAD = {
     "success": True,
     "code": 0,
@@ -157,6 +175,11 @@ def test_normalize_usable_discounts_skips_used_and_empty_ids():
     assert result["vouchers"] == [{"id": "9", "title": "全部抵扣券", "kind": "all"}]
 
 
+def test_catalog_registers_user_info_path():
+    item = next(row for row in DATA_SCRIPT_API_CASES if row["key"] == "client_user_info")
+    assert item["url"] == "/client/user.info"
+
+
 def test_list_usable_tickets_uses_catalog_path_and_does_not_leak_token(monkeypatch):
     calls = []
 
@@ -168,10 +191,13 @@ def test_list_usable_tickets_uses_catalog_path_and_does_not_leak_token(monkeypat
 
         def login(self, account, password, client_tool):
             calls.append(("login", account, client_tool))
+            self.session.headers["clienttoken"] = "token"
             return "token"
 
         def post_form(self, path, fields):
             calls.append(("post", path, dict(fields)))
+            if str(path).endswith("user.info"):
+                return FIXED_USER_INFO_PAYLOAD
             return USABLE_DISCOUNT_PAYLOAD
 
     monkeypatch.setattr("app.services.system_regression.ticket_service.RakumartClient", FakeClient)
@@ -186,8 +212,11 @@ def test_list_usable_tickets_uses_catalog_path_and_does_not_leak_token(monkeypat
     assert calls[0][0] == "login"
     assert calls[1][1] == "/client/user.usableDiscount"
     assert calls[1][2] == {"page": "1", "pageSize": "1000"}
+    assert calls[2][1] == "/client/user.info"
     assert result["coupons"][0]["id"] == "180895"
     assert result["vouchers"][0]["kind"] == "logistics"
+    assert result["membership"]["kind"] == "fixed"
+    assert result["membership"]["service_rate"] == "0"
     assert "secret" not in str(result)
 
 
@@ -208,6 +237,7 @@ def test_list_usable_tickets_redacts_jwt_from_failure_reason(monkeypatch):
     )
 
     assert result["coupons"] == []
+    assert result["membership"]["kind"] == ""
     assert "[token]" in result["reason"] or "clienttoken=[hidden]" in result["reason"]
     assert "eyJaaaaaaaaaa" not in result["reason"]
     assert "secret" not in result["reason"]

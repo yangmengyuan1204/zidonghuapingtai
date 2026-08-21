@@ -100,6 +100,7 @@ def _impl__run_backend_porder_flow_resume(
     porder_detail_id = porder_detail_ids[0]
     stock_item: Dict[str, Any] = {"stock_id": "", "box_num": 1}
     freight_id = ""
+    freight_before_box_payload: Dict[str, Any] = {}
     logistics_id = str(variables.get("delivery_quote_logistics_id") or variables.get("quote_logistics_id") or "25")
     logistics_price = str(variables.get("logistics_price_artificial") or "775")
     skip_remaining = False
@@ -372,19 +373,35 @@ def _impl__run_backend_porder_flow_resume(
 
     # ── Step 4: logistics selection + submitOffer ──
     if detected_start_node in ("warehouse_delivery_created", "porder_translated", "porder_confirmed", "porder_wait_offer"):
-        logistics_payload = _post_admin_urlencoded(
-            session, base_url,
-            _api_path(variables, "admin_porder_batch_update_freight_logistics", "/porder.batchUpdateFreightLogistics"),
-            {"logistics_id": logistics_id, "freight_id_set": [freight_id]}, timeout,
+        from app.data_scripts.porder_flow_support import _select_porder_logistics
+
+        selected_id, logistics_payload = _select_porder_logistics(
+            session,
+            base_url,
+            variables,
+            porder_sn,
+            freight_id,
+            logistics_id,
+            [freight_before_box_payload],
+            timeout,
+            backend_log,
         )
-        backend_log["batch_update_freight_logistics"] = {
-            **_payload_brief(logistics_payload), "logistics_id": logistics_id, "freight_id": freight_id,
-        }
-        if not _api_success(logistics_payload):
+        if not selected_id:
+            brief = _payload_brief(logistics_payload)
+            msg = str(brief.get("msg") or "").strip()
+            tried = [
+                str(item.get("logistics_id") or "")
+                for item in backend_log.get("batch_update_freight_logistics_attempts") or []
+                if isinstance(item, dict)
+            ]
+            tried_text = ",".join(item for item in tried if item) or logistics_id
             return False, {
-                "backend_passed": False, "reason": "配送单选择国际物流失败",
-                "batch_update_freight_logistics": _payload_brief(logistics_payload),
+                "backend_passed": False,
+                "reason": f"配送单选择国际物流失败：{msg}（尝试 {tried_text}）" if msg else f"配送单选择国际物流失败（尝试 {tried_text}）",
+                "batch_update_freight_logistics": brief,
+                "logistics_candidates": backend_log.get("batch_update_freight_logistics_attempts"),
             }
+        logistics_id = selected_id
 
         freight_list_payload = _post_admin_urlencoded(
             session, base_url,

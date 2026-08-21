@@ -2681,6 +2681,65 @@ def test_detect_resume_order_flow_shelf_stored_from_order_status(monkeypatch):
     assert summary["order_detail_ids"] == ["DETAIL-STORED"]
 
 
+def test_detect_resume_order_flow_checking_started_from_status_60(monkeypatch):
+    monkeypatch.setattr(data_scripts, "_admin_session_from", lambda variables: SimpleNamespace(headers={}))
+    monkeypatch.setattr(data_scripts, "_admin_login", lambda session, base_url, variables, timeout: ({"success": True, "code": 0}, "TOKEN"))
+    monkeypatch.setattr(
+        data_scripts,
+        "_order_detail_data",
+        lambda session, base_url, variables, order_sn, timeout: (
+            {"success": True, "code": 0},
+            {"order_sn": order_sn, "status": 60, "order_detail": [{"id": "DETAIL-CHECKING", "status": 4, "statusName": "核查中"}]},
+        ),
+    )
+    monkeypatch.setattr(data_scripts, "_post_admin_form", lambda *args, **kwargs: {"success": True, "code": 0, "data": []})
+
+    passed, summary = data_scripts._detect_resume_order_state(full_flow_env(), {}, "ORDER-CHECKING", {})
+
+    assert passed is True
+    assert summary["detected_start_node"] == "checking_started"
+    assert summary["order_status"] == 60
+
+
+def test_resume_order_flow_checking_started_skips_quote_and_runs_shelf(monkeypatch):
+    patch_full_flow_report(monkeypatch)
+    calls = []
+
+    def detect(env, variables, order_sn, log):
+        return True, {
+            "order_sn": order_sn,
+            "order_status": 60,
+            "detected_start_node": "checking_started",
+            "order_detail_id": "DETAIL-CHECKING",
+            "order_detail_ids": ["DETAIL-CHECKING"],
+        }
+
+    def shelf(env, variables):
+        calls.append("shelf")
+        assert variables["order_sn"] == "ORDER-CHECKING"
+        return True, "", "shelf-report", data_scripts._paused_summary(
+            "shelf_stored",
+            {"order_sn": "ORDER-CHECKING", "order_detail_id": "DETAIL-CHECKING"},
+        )
+
+    monkeypatch.setattr(data_scripts, "_detect_resume_order_state", detect)
+    monkeypatch.setattr(data_scripts, "_run_backend_order_flow_resume", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("backend quote should be skipped")))
+    monkeypatch.setattr(data_scripts, "_payment_with_bank_fallback", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("order payment should be skipped")))
+    monkeypatch.setattr(data_scripts, "run_purchase_to_shelf_script", shelf)
+    monkeypatch.setattr(data_scripts, "run_warehouse_delivery_script", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("delivery should be skipped")))
+
+    passed, _, _, summary = data_scripts.run_resume_order_flow_script(
+        full_flow_env(),
+        {"order_sn": "ORDER-CHECKING", "stop_after_node": "shelf_stored"},
+    )
+
+    assert passed is True
+    assert calls == ["shelf"]
+    assert summary["paused"] is True
+    assert summary["current_node"] == "shelf_stored"
+    assert summary["detected_start_node"] == "checking_started"
+
+
 def test_detect_resume_order_flow_completed_from_order_status_80(monkeypatch):
     monkeypatch.setattr(data_scripts, "_admin_session_from", lambda variables: SimpleNamespace(headers={}))
     monkeypatch.setattr(data_scripts, "_admin_login", lambda session, base_url, variables, timeout: ({"success": True, "code": 0}, "TOKEN"))

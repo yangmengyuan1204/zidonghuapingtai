@@ -21,10 +21,10 @@ def evidence(amount, *, direction="credit", currency="JPY", exchange_rate=None, 
     )
 
 
-def test_cny_to_jpy_uses_half_up_rounding_and_requires_rate():
-    assert to_jpy(evidence("1.5", currency="CNY", exchange_rate="3")) == Decimal("5")
-    with pytest.raises(ValueError, match="汇率"):
-        to_jpy(evidence("1", currency="CNY"))
+def test_cny_to_jpy_uses_evidence_rate_then_japan_fallback():
+    assert to_jpy(evidence("1.5", currency="CNY", exchange_rate="3", source="order_quote")) == Decimal("5")
+    assert to_jpy(evidence("10", currency="CNY", source="order_quote")) == Decimal("212")
+    assert to_jpy(evidence("212", currency="CNY", source="customer_balance", exchange_rate="15")) == Decimal("212")
 
 
 @pytest.mark.parametrize(("preview", "actual", "passed"), [(100, 100, True), (101, 100, True), (102, 100, False)])
@@ -38,6 +38,19 @@ def test_three_way_tolerance_boundary(preview, actual, passed):
     )
 
     assert result.passed is passed
+
+
+def test_three_way_tolerance_cannot_exceed_one_jpy():
+    result = reconcile_three_way(
+        "case",
+        evidence(100),
+        evidence(102),
+        evidence(100),
+        tolerance_jpy=10,
+    )
+
+    assert result.passed is False
+    assert result.reason_code == "amount_mismatch"
 
 
 def test_three_way_rejects_wrong_direction_and_problem_bank_source():

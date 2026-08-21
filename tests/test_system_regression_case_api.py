@@ -48,9 +48,9 @@ def test_list_japan_cases_seeds_catalog_and_returns_field_values(api_client):
     assert response.status_code == 200
     data = response.json()
     assert data["suite"]["suite_key"] == "japan"
-    assert data["total"] == 15
-    assert len(data["cases"]) == 15
-    assert data["cases"][0]["case_key"] == "JP-PAY-001"
+    assert data["total"] == 18
+    assert len(data["cases"]) == 18
+    assert data["cases"][0]["case_key"] == "支付-001"
     assert isinstance(data["cases"][0]["parameters"], dict)
     assert "parameters_json" not in data["cases"][0]
     assert data["problem_types"] == [
@@ -88,7 +88,7 @@ def test_admin_can_update_copy_and_reset_case(api_client):
     assert copied_response.status_code == 201
     copied = copied_response.json()
     assert copied["is_system"] is False
-    assert copied["case_key"].startswith("CUSTOM-")
+    assert copied["case_key"].startswith("支付-")
 
     reset_response = api_client.post(f"/api/system-regression/cases/{case['id']}/reset")
     assert reset_response.status_code == 200
@@ -97,34 +97,35 @@ def test_admin_can_update_copy_and_reset_case(api_client):
     assert reset["user_modified"] is False
 
 
-def test_admin_can_create_custom_cases_and_cannot_delete_system_cases(api_client):
+def test_admin_can_create_custom_cases_and_delete_system_cases(api_client):
     created = api_client.post("/api/system-regression/cases", json={"kind": "part", "name": "我的分批"})
     assert created.status_code == 201
     first = created.json()
-    assert first["case_key"] == "CUSTOM-PAY-001"
+    assert first["case_key"] == "支付-019"
     assert first["runner_kind"] == "order_part_payment"
     assert first["is_system"] is False
     assert first["parameters"]["part_pay"]["enabled"] is True
 
     second = api_client.post("/api/system-regression/cases", json={"kind": "part"}).json()
-    assert second["case_key"] == "CUSTOM-PAY-002"
+    assert second["case_key"] == "支付-020"
 
     deleted = api_client.delete(f"/api/system-regression/cases/{first['id']}")
     assert deleted.status_code == 204
 
     third = api_client.post("/api/system-regression/cases", json={"kind": "part"}).json()
-    assert third["case_key"] == "CUSTOM-PAY-003"
+    assert third["case_key"] == "支付-021"
 
     porder = api_client.post("/api/system-regression/cases", json={"kind": "porder", "name": "海运"}).json()
-    assert porder["case_key"] == "CUSTOM-PORDER-001"
+    assert porder["case_key"] == "配送-008"
     assert porder["runner_kind"] == "porder_payment"
     assert porder["category"] == "porder"
 
     listed = api_client.get("/api/system-regression/suites/japan/cases?category=payment").json()
-    system_case = next(row for row in listed["cases"] if row["case_key"] == "JP-PAY-001")
-    blocked = api_client.delete(f"/api/system-regression/cases/{system_case['id']}")
-    assert blocked.status_code == 400
-    assert blocked.json()["detail"] == "系统预置用例不能删除"
+    system_case = next(row for row in listed["cases"] if row["case_key"] == "支付-001")
+    deleted_system = api_client.delete(f"/api/system-regression/cases/{system_case['id']}")
+    assert deleted_system.status_code == 204
+    relisted = api_client.get("/api/system-regression/suites/japan/cases?category=payment").json()
+    assert all(row["case_key"] != "支付-001" for row in relisted["cases"])
 
     invalid = api_client.post("/api/system-regression/cases", json={"kind": "unknown"})
     assert invalid.status_code == 400

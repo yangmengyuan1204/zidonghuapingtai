@@ -16,7 +16,7 @@ from app.system_regression.projects.japan.guard_runner import GuardRunner
 def _case(guard_kind="part_tail_unpaid"):
     return {
         "id": 7,
-        "case_key": "JP-PG-GUARD-001",
+        "case_key": "拦截-001",
         "name": "guard",
         "runner_kind": "problem_guard",
         "parameters": {"guard_kind": guard_kind},
@@ -60,6 +60,17 @@ def test_match_guard_error_uses_http_before_message_regex():
     )
 
     assert matched == "http_status"
+
+
+def test_match_guard_error_reads_string_data_message():
+    matched = match_guard_error(
+        {"success": False, "code": 10000, "data": "请先勾选"},
+        business_codes=("DIRECT_COMPLETE_INVALID_TYPE",),
+        http_statuses=(400, 409, 422),
+        message_patterns=(r"只有【少货、不良、不良且少货】类型", r"请先勾选"),
+    )
+
+    assert matched == "message_regex"
 
 
 def test_same_error_at_wrong_stage_cannot_pass():
@@ -294,6 +305,7 @@ def test_live_purchase_guard_builds_real_problem_stage_then_calls_purchase_endpo
                     "confirm_num": 2,
                     "confirm_price": "10",
                     "confirm_freight": "3",
+                    "option": [{"name": "检品", "price_type": 0, "price": "2", "num": 2, "checked": True}],
                 },
             }
 
@@ -334,6 +346,10 @@ def test_live_purchase_guard_builds_real_problem_stage_then_calls_purchase_endpo
             self.status = 4
             return {"success": True}
 
+        def update_options(self, problem_id, options):
+            calls.append(("update_options", {"problem_id": problem_id, "options": list(options)}))
+            return {"success": True}
+
         def purchase_deal(self, fields):
             calls.append(("purchase_deal", dict(fields)))
             raise FakeApiError()
@@ -347,8 +363,9 @@ def test_live_purchase_guard_builds_real_problem_stage_then_calls_purchase_endpo
 
     assert result.status == "passed"
     assert [name for name, _fields in calls] == [
-        "create_problem", "translate", "client_reply", "business_deal", "purchase_deal"
+        "create_problem", "translate", "client_reply", "business_deal", "update_options", "purchase_deal"
     ]
+    assert calls[-3][1]["data[0][option_deal_suggest]"] == 1
     assert calls[-1][1]["data[0][pre_num]"] == 3
 
 
@@ -468,9 +485,96 @@ def test_quantity_over_possible_keeps_original_create_qty_and_raises_on_purchase
     prepared = driver.prepare(guard_scenario("quantity_over_possible"), _case("quantity_over_possible"), {"variables": {}})
 
     assert prepared["variables"]["option_deal_suggest"] == 1
+    assert prepared["variables"]["option_new"][0]["num"] == 2
     assert prepared["variables"]["pre_num"] == 2
     assert calls[0][1]["data[0][pre_num]"] == 2
     assert prepared["action_fields"]["data[0][pre_num]"] == 3
+
+
+def test_pre_num_below_storage_creates_then_shelves_and_sets_purchase_qty(monkeypatch):
+    calls = []
+
+    class FakeProblemRunner:
+        @staticmethod
+        def candidate_loader(_case, context):
+            return {
+                **context,
+                "order_sn": "O-300001",
+                "variables": {"customer_id": 300001},
+                "candidate": {
+                    "order_purchase_id": 41,
+                    "order_detail_id": 42,
+                    "possible_num": 3,
+                    "storage_num": 0,
+                    "confirm_num": 3,
+                    "confirm_price": "10",
+                    "confirm_freight": "3",
+                    "option": [],
+                },
+            }
+
+    class FakeGateway:
+        def __init__(self, _env, variables, _log):
+            self.status = 0
+            self.variables = variables
+
+        def create_problem(self, fields):
+            calls.append(("create_problem", dict(fields)))
+            self.status = 1
+            return {"success": True}
+
+        def find_problem(self, _order_sn, _problem_id=0, _purchase_id=0):
+            return {"problem_goods_id": 51, "order_purchase_id": 41, "status": self.status}
+
+        def wait_for_status(self, order_sn, problem_id, status):
+            return self.find_problem(order_sn, problem_id)
+
+        def translate(self, problem_id, content):
+            self.status = 2
+            return {"success": True}
+
+        def client_reply(self, problem_id, content):
+            self.status = 3
+            return {"success": True}
+
+        def business_deal(self, fields, preview=False):
+            calls.append(("business_deal", dict(fields)))
+            self.status = 4
+            return {"success": True}
+
+        def purchase_deal(self, fields):
+            raise AssertionError("prepare 不应直接采购处理")
+
+        def list_problems(self, _order_sn, _status=0):
+            return [self.find_problem(_order_sn)]
+
+    def fake_shelf(_env, variables):
+        calls.append(("shelf", str(variables.get("order_sn") or ""), str(variables.get("stop_after_node") or "")))
+        return True, "", "", {"order_sn": "O-300001"}
+
+    def fake_inspect(_env, _variables):
+        return {
+            "order_candidates": [
+                {
+                    "order_purchase_id": 41,
+                    "possible_num": 3,
+                    "storage_num": 3,
+                }
+            ]
+        }
+
+    monkeypatch.setattr("app.data_scripts.run_resume_order_flow_script", fake_shelf)
+    monkeypatch.setattr("app.data_scripts.run_purchase_to_shelf_script", fake_shelf)
+    monkeypatch.setattr("app.data_scripts.problem_goods.inspect_problem_goods", fake_inspect)
+
+    driver = LiveGuardDriver(object(), FakeProblemRunner(), gateway_factory=FakeGateway)
+    prepared = driver.prepare(guard_scenario("pre_num_below_storage"), _case("pre_num_below_storage"), {"variables": {}})
+
+    assert ("shelf", "O-300001", "shelf_stored") in calls
+    assert calls[0][0] == "create_problem"
+    assert calls[0][1]["data[0][pre_num]"] == 3
+    assert prepared["variables"]["pre_num"] == 2
+    assert prepared["action_fields"]["data[0][pre_num]"] == 2
 
 
 def test_option_price_type_change_is_caught_by_manual_option_validation():
@@ -505,8 +609,24 @@ def test_large_refund_case_overwrites_catalog_items():
     )
 
     assert copied["parameters"]["items"][0]["quantity"] == 6
-    assert copied["parameters"]["items"][0]["offer_price"]["value"] == "100"
+    assert copied["parameters"]["items"][0]["offer_price"]["value"] == "501"
     assert copied["parameters"]["adjustment"] == "quantity_all_down"
+
+
+def test_large_refund_case_forces_adjustment_over_empty_placeholder_and_order_price():
+    driver = LiveGuardDriver(object(), object())
+    copied = driver._large_refund_case(
+        {
+            "parameters": {
+                "adjustment": "",
+                "items": [{"sorting": 1, "quantity": 6, "offer_price": {"value": "100", "currency": "CNY"}}],
+                "order": {"default_offer_price": {"value": "10", "currency": "CNY"}},
+            }
+        }
+    )
+
+    assert copied["parameters"]["adjustment"] == "quantity_all_down"
+    assert copied["parameters"]["order"]["default_offer_price"]["value"] == "501"
 
 
 def test_multiple_rate_auto_adds_second_rate_option_when_catalog_has_one():
@@ -674,3 +794,429 @@ def test_live_multiple_purchase_update_hits_pre_data_guard():
     assert result.status == "passed"
     assert [name for name, _fields in calls] == ["create_problem", "update_pre_data"]
     assert "有多条采购记录" in str(result.result["response_evidence"][0]["error_message"])
+
+
+def test_multiple_purchase_update_makes_real_price_change():
+    calls = []
+
+    class FakeProblemRunner:
+        @staticmethod
+        def candidate_loader(_case, context):
+            return {
+                **context,
+                "order_sn": "O-300001",
+                "variables": {"customer_id": 300001},
+                "candidate": {
+                    "order_purchase_id": 41,
+                    "order_detail_id": 42,
+                    "possible_num": 2,
+                    "storage_num": 0,
+                    "confirm_num": 2,
+                    "confirm_price": "10",
+                    "confirm_freight": "3",
+                    "same_purchase_count": 2,
+                    "order_purchase_count": 2,
+                },
+            }
+
+    class FakeApiError(RuntimeError):
+        def __init__(self):
+            self.payload = {"code": "MULTIPLE_PURCHASE_UPDATE", "msg": "有多条采购记录，不可修改预处理数据"}
+
+    class FakeGateway:
+        def __init__(self, _env, _variables, _log):
+            self.status = 0
+
+        def create_problem(self, _fields):
+            self.status = 1
+            return {"success": True}
+
+        def find_problem(self, _order_sn, _problem_id=0, _purchase_id=0):
+            return {"problem_goods_id": 51, "order_purchase_id": 41, "status": self.status}
+
+        def wait_for_status(self, order_sn, problem_id, _status):
+            return self.find_problem(order_sn, problem_id)
+
+        def translate(self, _problem_id, _content):
+            self.status = 2
+            return {"success": True}
+
+        def client_reply(self, _problem_id, _content):
+            self.status = 3
+            return {"success": True}
+
+        def update_pre_data(self, problem_id, pre_num, pre_price, pre_freight):
+            calls.append({"pre_num": pre_num, "pre_price": pre_price, "pre_freight": pre_freight})
+            raise FakeApiError()
+
+        def list_problems(self, _order_sn, _status=0):
+            return [self.find_problem(_order_sn)]
+
+    driver = LiveGuardDriver(object(), FakeProblemRunner(), gateway_factory=FakeGateway)
+    result = GuardRunner(GuardExecutor(driver.prepare, driver.perform).execute).execute(
+        _case("multiple_purchase_update"),
+        {"variables": {}},
+    )
+
+    assert result.status == "passed"
+    # 站点对无变化的预处理修改直接返回通用“修改失败”，必须提交真实单价下调
+    assert calls[0]["pre_price"] == "9"
+
+
+def test_restricted_skip_purchase_defaults_to_limited_type():
+    calls = []
+
+    class FakeProblemRunner:
+        @staticmethod
+        def candidate_loader(_case, context):
+            return {
+                **context,
+                "order_sn": "O-300001",
+                "purchase_no": "PURCHASE-1",
+                "variables": {"customer_id": 300001},
+                "candidate": {
+                    "order_purchase_id": 41,
+                    "order_detail_id": 42,
+                    "possible_num": 3,
+                    "storage_num": 0,
+                    "confirm_num": 3,
+                    "confirm_price": "10",
+                    "confirm_freight": "3",
+                    "purchase_no": "PURCHASE-1",
+                },
+            }
+
+    class FakeApiError(RuntimeError):
+        def __init__(self):
+            self.payload = {"code": 10000, "msg": "该采购已有交易号，不允许跳过采购"}
+
+    class FakeGateway:
+        def __init__(self, _env, _variables, _log):
+            self.status = 0
+
+        def create_problem(self, _fields):
+            self.status = 1
+            return {"success": True}
+
+        def find_problem(self, _order_sn, _problem_id=0, _purchase_id=0):
+            return {"problem_goods_id": 51, "order_purchase_id": 41, "status": self.status}
+
+        def wait_for_status(self, order_sn, problem_id, _status):
+            return self.find_problem(order_sn, problem_id)
+
+        def translate(self, _problem_id, _content):
+            self.status = 2
+            return {"success": True}
+
+        def client_reply(self, _problem_id, _content):
+            self.status = 3
+            return {"success": True}
+
+        def business_deal(self, fields, preview=False):
+            calls.append(dict(fields))
+            raise FakeApiError()
+
+        def list_problems(self, _order_sn, _status=0):
+            return [self.find_problem(_order_sn)]
+
+    driver = LiveGuardDriver(object(), FakeProblemRunner(), gateway_factory=FakeGateway)
+    case = _case("restricted_skip_purchase")
+    case["parameters"]["g_deal_type"] = "仅退款"
+    result = GuardRunner(GuardExecutor(driver.prepare, driver.perform).execute).execute(
+        case,
+        {"variables": {}},
+    )
+
+    assert result.status == "passed"
+    # 设计规格：少货/不良/不良且少货（3/4/5）才是受限类型
+    assert calls[0]["data[0][type]"] == 3
+    assert calls[0]["jump_g"] == 1
+    assert calls[0]["data[0][jump_g]"] == 1
+    # 面板默认仅退款不能沿用，否则站点会放行跳过采购
+    assert calls[0]["g_deal_type"] == "少货补买"
+    assert calls[0]["data[0][g_deal_type]"] == "少货补买"
+    assert calls[0]["data[0][is_purchase_add]"] == 1
+
+
+def test_rejected_unmatched_message_is_unexpected_guard_error():
+    executor = GuardExecutor(
+        precondition_provider=lambda _spec, _case, _context: _prepared(),
+        action_gateway=lambda *_args: {
+            "actual_stage": "business_deal",
+            "success": False,
+            "error_message": "OPTION按业务修改值计算的,需要先设置新的OPTION",
+        },
+    )
+
+    result = GuardRunner(executor.execute).execute(_case(), {})
+
+    assert result.status == "failed"
+    assert result.reason_code == "unexpected_guard_error"
+
+
+def test_multiple_purchase_update_accepts_generic_modify_failed_message():
+    prepared = {
+        **_prepared(),
+        "gateway": type(
+            "Gateway",
+            (),
+            {
+                "update_pre_data": lambda self, problem_id, pre_num, pre_price, pre_freight: (_ for _ in ()).throw(
+                    type("FakeApiError", (RuntimeError,), {"payload": {"code": 10000, "msg": "修改失败"}})()
+                ),
+                "list_problems": lambda self, order_sn, status=0: [],
+            },
+        )(),
+        "action_fields": {"problem_goods_id": 9, "pre_num": 1, "pre_price": "9", "pre_freight": "3"},
+    }
+    driver = LiveGuardDriver(object(), object())
+
+    result = GuardRunner(GuardExecutor(lambda *_args: prepared, driver.perform).execute).execute(
+        _case("multiple_purchase_update"), {}
+    )
+
+    assert result.status == "passed"
+    assert result.reason_code == "guard_triggered"
+
+
+def test_option_num_over_goods_uses_auto_calc_and_does_not_prewrite_options():
+    calls = []
+
+    class FakeProblemRunner:
+        @staticmethod
+        def candidate_loader(_case, context):
+            return {
+                **context,
+                "order_sn": "O-300001",
+                "variables": {"customer_id": 300001},
+                "candidate": {
+                    "order_purchase_id": 41,
+                    "order_detail_id": 42,
+                    "possible_num": 3,
+                    "storage_num": 0,
+                    "confirm_num": 3,
+                    "confirm_price": "10",
+                    "confirm_freight": "3",
+                    "option": [{"name": "针检", "price_type": 0, "price": "0.8", "num": 3, "checked": True}],
+                },
+            }
+
+    class FakeApiError(RuntimeError):
+        def __init__(self):
+            self.payload = {"code": 10000, "msg": "option数比商品数多，禁止自动计算"}
+
+    class FakeGateway:
+        def __init__(self, _env, _variables, _log):
+            self.status = 0
+
+        def create_problem(self, _fields):
+            self.status = 1
+            return {"success": True}
+
+        def find_problem(self, _order_sn, _problem_id=0, _purchase_id=0):
+            return {"problem_goods_id": 51, "order_purchase_id": 41, "status": self.status}
+
+        def wait_for_status(self, order_sn, problem_id, _status):
+            return self.find_problem(order_sn, problem_id)
+
+        def translate(self, _problem_id, _content):
+            self.status = 2
+            return {"success": True}
+
+        def client_reply(self, _problem_id, _content):
+            self.status = 3
+            return {"success": True}
+
+        def update_options(self, _problem_id, options):
+            calls.append(("update_options", list(options)))
+            return {"success": True}
+
+        def business_deal(self, fields, preview=False):
+            calls.append(("business_deal", dict(fields)))
+            self.status = 4
+            return {"success": True}
+
+        def purchase_deal(self, fields):
+            calls.append(("purchase_deal", dict(fields)))
+            raise FakeApiError()
+
+        def list_problems(self, _order_sn, _status=0):
+            return [self.find_problem(_order_sn)]
+
+    driver = LiveGuardDriver(object(), FakeProblemRunner(), gateway_factory=FakeGateway)
+    result = GuardRunner(GuardExecutor(driver.prepare, driver.perform).execute).execute(
+        _case("option_num_over_goods"),
+        {"variables": {}},
+    )
+
+    assert result.status == "passed"
+    assert [name for name, _fields in calls] == ["business_deal", "purchase_deal"]
+    assert calls[0][1]["data[0][option_deal_suggest]"] == 2
+
+
+def test_direct_complete_invalid_type_stays_at_purchase_pending():
+    calls = []
+
+    class FakeProblemRunner:
+        @staticmethod
+        def candidate_loader(_case, context):
+            return {
+                **context,
+                "order_sn": "O-300001",
+                "variables": {"customer_id": 300001},
+                "candidate": {
+                    "order_purchase_id": 41,
+                    "order_detail_id": 42,
+                    "possible_num": 3,
+                    "storage_num": 0,
+                    "confirm_num": 3,
+                    "confirm_price": "10",
+                    "confirm_freight": "3",
+                },
+            }
+
+    class FakeApiError(RuntimeError):
+        def __init__(self):
+            self.payload = {"code": 10000, "msg": "只有【少货、不良、不良且少货】类型可以配货直接完成"}
+
+    class FakeGateway:
+        def __init__(self, _env, _variables, _log):
+            self.status = 0
+
+        def create_problem(self, _fields):
+            self.status = 1
+            return {"success": True}
+
+        def find_problem(self, _order_sn, _problem_id=0, _purchase_id=0):
+            return {"problem_goods_id": 51, "order_purchase_id": 41, "status": self.status}
+
+        def wait_for_status(self, order_sn, problem_id, _status):
+            return self.find_problem(order_sn, problem_id)
+
+        def translate(self, _problem_id, _content):
+            self.status = 2
+            return {"success": True}
+
+        def client_reply(self, _problem_id, _content):
+            self.status = 3
+            return {"success": True}
+
+        def business_deal(self, _fields, preview=False):
+            calls.append("business_deal")
+            self.status = 4
+            return {"success": True}
+
+        def purchase_deal(self, _fields):
+            calls.append("purchase_deal")
+            raise AssertionError("配货直完应停在待采购，不能先采购处理")
+
+        def _path(self, _key, default):
+            return default
+
+        def _admin_request(self, path, fields, action, *, mutation):
+            calls.append(("direct_complete", dict(fields)))
+            raise FakeApiError()
+
+        def list_problems(self, _order_sn, _status=0):
+            return [self.find_problem(_order_sn)]
+
+    driver = LiveGuardDriver(object(), FakeProblemRunner(), gateway_factory=FakeGateway)
+    result = GuardRunner(GuardExecutor(driver.prepare, driver.perform).execute).execute(
+        _case("direct_complete_invalid_type"),
+        {"variables": {}},
+    )
+
+    assert result.status == "passed"
+    assert "purchase_deal" not in calls
+    assert calls[0] == "business_deal"
+    assert calls[1][0] == "direct_complete"
+
+
+def test_perform_treats_business_code_failure_as_rejected():
+    prepared = {
+        **_prepared(),
+        "gateway": type(
+            "Gateway",
+            (),
+            {
+                "update_options": lambda self, problem_id, options: {"success": True, "code": 0, "msg": "操作成功"},
+                "list_problems": lambda self, order_sn, status=0: [],
+            },
+        )(),
+        "action_fields": {"problem_goods_id": 9, "options": [{"option_id": 7, "price_type": 1}]},
+    }
+    driver = LiveGuardDriver(object(), object())
+    driver.gateway_factory = lambda *_args: prepared["gateway"]
+
+    result = GuardRunner(GuardExecutor(lambda *_args: prepared, driver.perform).execute).execute(
+        _case("option_price_type_change"), {}
+    )
+
+    assert result.status == "failed"
+    assert result.reason_code == "backend_guard_missing"
+
+
+def test_business_code_10000_please_select_is_direct_complete_guard():
+    prepared = {
+        **_prepared(),
+        "action_fields": {"problem_goods_id": 9},
+        "gateway": type(
+            "Gateway",
+            (),
+            {
+                "_path": lambda self, _key, default: default,
+                "_admin_request": lambda self, *_args, **_kwargs: {
+                    "success": False,
+                    "code": 10000,
+                    "data": "请先勾选",
+                },
+                "list_problems": lambda self, order_sn, status=0: [],
+            },
+        )(),
+    }
+    driver = LiveGuardDriver(object(), object())
+
+    result = GuardRunner(GuardExecutor(lambda *_args: prepared, driver.perform).execute).execute(
+        _case("direct_complete_invalid_type"), {}
+    )
+
+    assert result.status == "passed"
+    assert result.reason_code == "guard_triggered"
+    assert "请先勾选" in str(
+        result.error_message
+        or (result.result or {}).get("failure_reason")
+        or ((result.result or {}).get("response_evidence") or [{}])[-1].get("error_message")
+        or ""
+    )
+
+
+def test_direct_complete_retries_please_select_then_matches_type_message():
+    calls = []
+
+    class Gateway:
+        def _path(self, _key, default):
+            return default
+
+        def _admin_request(self, _path, fields, _action, *, mutation):
+            calls.append(dict(fields))
+            if "ids[]" in fields:
+                return {
+                    "success": False,
+                    "code": 10000,
+                    "msg": "只有【少货、不良、不良且少货】类型可以配货直接完成",
+                }
+            return {"success": False, "code": 10000, "data": "请先勾选"}
+
+        def list_problems(self, _order_sn, status=0):
+            return []
+
+    prepared = {**_prepared(), "action_fields": {"problem_goods_id": 9}, "gateway": Gateway()}
+    driver = LiveGuardDriver(object(), object())
+
+    result = GuardRunner(GuardExecutor(lambda *_args: prepared, driver.perform).execute).execute(
+        _case("direct_complete_invalid_type"), {}
+    )
+
+    assert result.status == "passed"
+    assert result.reason_code == "guard_triggered"
+    assert any("ids[]" in row for row in calls)

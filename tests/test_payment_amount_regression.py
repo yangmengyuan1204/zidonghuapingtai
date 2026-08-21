@@ -10,6 +10,7 @@ from app.data_scripts.payment_amount_regression.runner import (
     ScenarioBlocked,
     LivePaymentRegressionExecutor,
     _aggregate_evidence,
+    _ledger_coupon_discount_jpy,
     _sum_evidence_jpy,
     collect_selected_bills,
     money_evidence_from_record,
@@ -230,6 +231,69 @@ def test_porder_balance_payment_uses_business_debit_direction(monkeypatch):
     assert result["checks"][0]["actual_direction"] == "debit"
 
 
+def test_porder_voucher_is_not_sent_during_order_flow(monkeypatch):
+    calls = []
+    executor = LivePaymentRegressionExecutor(object(), {})
+    scenario = next(item for item in SCENARIO_CATALOG if item.key == "porder_balance")
+    scripts = type(
+        "Scripts",
+        (),
+        {
+            "run_full_flow_script": object(),
+            "run_porder_balance_payment_script": object(),
+            "run_porder_bank_payment_script": object(),
+        },
+    )()
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+    monkeypatch.setattr(
+        executor,
+        "_variables",
+        lambda *args, **kwargs: {"porder_discounts_id": "V25", "discounts_id": "V25"},
+    )
+    monkeypatch.setattr(executor, "_porder_expected_amount", lambda variables, porder_sn: "775")
+    monkeypatch.setattr(executor, "_balance_rows", lambda variables: [])
+
+    def run_script(runner, env, variables, name):
+        calls.append((runner, dict(variables)))
+        return ({"porder_sn": "PORDER-1"}, {}, "")
+
+    monkeypatch.setattr(executor, "_run_script", run_script)
+    monkeypatch.setattr(
+        executor,
+        "_wait_new_balance_rows",
+        lambda before, variables, references: [{"id": 2, "amount": "775", "porder_sn": "PORDER-1"}],
+    )
+
+    result = executor._execute_porder(scenario, "BATCH-VOUCHER")
+
+    assert result["status"] == "passed"
+    assert calls[0][0] is scripts.run_full_flow_script
+    assert "discounts_id" not in calls[0][1]
+    assert calls[1][0] is scripts.run_porder_balance_payment_script
+    assert calls[1][1]["discounts_id"] == "V25"
+
+
+def test_run_script_retries_transient_deadlock(monkeypatch):
+    calls = []
+    monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
+
+    def flaky_script(_env, _variables):
+        calls.append(1)
+        if len(calls) == 1:
+            return False, "{}", "", {"reason": "SQLSTATE[40001]: Deadlock found when trying to get lock"}
+        return True, "{}", "", {"order_sn": "ORDER-RETRY"}
+
+    summary, _log, _report = LivePaymentRegressionExecutor._run_script(
+        flaky_script,
+        object(),
+        {},
+        "订单报价",
+    )
+
+    assert calls == [1, 1]
+    assert summary["order_sn"] == "ORDER-RETRY"
+
+
 def test_collect_selected_bills_follows_nested_report_attachments(tmp_path: Path):
     log_path = tmp_path / "child-log.txt"
     log_path.write_text(
@@ -435,9 +499,451 @@ def test_porder_bank_actual_infers_cny_from_porder_evidence_when_bill_omits_curr
     assert actual.exchange_rate == Decimal("21.10")
 
 
+def test_japan_order_compares_integer_jpy_quote_to_balance_change(monkeypatch):
+    executor = LivePaymentRegressionExecutor(
+        object(),
+        {"japan_fixed_cny_to_jpy": "21.2", "compare_actual_from_balance_change": True},
+    )
+    scenario = next(item for item in SCENARIO_CATALOG if item.key == "order_balance")
+    scripts = type(
+        "Scripts",
+        (),
+        {
+            "run_full_flow_script": object(),
+            "run_balance_payment_script": object(),
+            "run_bank_payment_script": object(),
+        },
+    )()
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+    monkeypatch.setattr(executor, "_quote_order", lambda scenario, batch_id: ("ORDER-1", {}))
+    monkeypatch.setattr(executor, "_order_expected_amount", lambda variables, order_sn: "1055")
+    monkeypatch.setattr(executor, "_balance_rows", lambda variables: [])
+    monkeypatch.setattr(
+        executor,
+        "_run_script",
+        lambda runner, env, variables, name: ({"order_sn": "ORDER-1", "pay_amount": "1055"}, {}, ""),
+    )
+    monkeypatch.setattr(
+        executor,
+        "_wait_new_balance_rows",
+        lambda before, variables, references, **kwargs: [
+            {"id": 1, "change_amount": "-1055", "order_sn": "ORDER-1", "bill_type_group": "出金"}
+        ],
+    )
+
+    result = executor._execute_order(scenario, "BATCH-JP")
+
+    assert result["status"] == "passed"
+    assert result["checks"][0]["expected_jpy"] == "1055"
+    assert result["checks"][0]["actual_jpy"] == "1055"
+    assert result["checks"][0]["actual_source"] == "payment_api"
+    assert result["customer_balance_jpy"] == "1055"
+    assert result["checks"][1]["key"] == "customer_balance"
+    assert result["checks"][1]["passed"] is True
+
+
+def test_japan_bank_order_keeps_finance_bill_then_checks_balance_change(monkeypatch):
+    executor = LivePaymentRegressionExecutor(
+        object(),
+        {"japan_fixed_cny_to_jpy": "21.2", "compare_actual_from_balance_change": True},
+    )
+    scenario = next(item for item in SCENARIO_CATALOG if item.key == "order_bank")
+    scripts = type(
+        "Scripts",
+        (),
+        {
+            "run_full_flow_script": object(),
+            "run_balance_payment_script": object(),
+            "run_bank_payment_script": object(),
+        },
+    )()
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+    monkeypatch.setattr(executor, "_quote_order", lambda scenario, batch_id: ("ORDER-1", {}))
+    monkeypatch.setattr(executor, "_order_expected_amount", lambda variables, order_sn: "1055")
+    monkeypatch.setattr(executor, "_balance_rows", lambda variables: [])
+    monkeypatch.setattr(
+        executor,
+        "_run_script",
+        lambda runner, env, variables, name: ({"order_sn": "ORDER-1", "serial_number": "BANK-1"}, {}, ""),
+    )
+    monkeypatch.setattr(
+        executor,
+        "_porder_bank_actual",
+        lambda log, report, reference, expected: MoneyEvidence(
+            "finance_confirmed_bill",
+            Decimal("1055"),
+            "JPY",
+            "debit",
+            reference=reference,
+        ),
+    )
+    monkeypatch.setattr(
+        executor,
+        "_wait_new_balance_rows",
+        lambda before, variables, references, **kwargs: [
+            {"id": 1, "change_amount": "-1055", "order_sn": "ORDER-1", "bill_type_group": "出金"}
+        ],
+    )
+
+    result = executor._execute_order(scenario, "BATCH-JP-BANK")
+
+    assert result["status"] == "passed"
+    assert result["checks"][0]["actual_source"] == "finance_confirmed_bill"
+    assert result["customer_balance_jpy"] == "1055"
+    assert result["checks"][1]["key"] == "customer_balance"
+
+
+def test_japan_ledger_mismatch_fails_after_payment_api_passes(monkeypatch):
+    executor = LivePaymentRegressionExecutor(
+        object(),
+        {"japan_fixed_cny_to_jpy": "21.2", "compare_actual_from_balance_change": True},
+    )
+    scenario = next(item for item in SCENARIO_CATALOG if item.key == "order_balance")
+    scripts = type(
+        "Scripts",
+        (),
+        {
+            "run_full_flow_script": object(),
+            "run_balance_payment_script": object(),
+            "run_bank_payment_script": object(),
+        },
+    )()
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+    monkeypatch.setattr(executor, "_quote_order", lambda scenario, batch_id: ("ORDER-1", {}))
+    monkeypatch.setattr(executor, "_order_expected_amount", lambda variables, order_sn: "10")
+    monkeypatch.setattr(executor, "_balance_rows", lambda variables: [])
+    monkeypatch.setattr(
+        executor,
+        "_run_script",
+        lambda runner, env, variables, name: ({"order_sn": "ORDER-1", "pay_amount": "10"}, {}, ""),
+    )
+    monkeypatch.setattr(
+        executor,
+        "_wait_new_balance_rows",
+        lambda before, variables, references, **kwargs: [
+            {"id": 1, "change_amount": "-200", "order_sn": "ORDER-1", "bill_type_group": "出金"}
+        ],
+    )
+
+    result = executor._execute_order(scenario, "BATCH-JP-LEDGER")
+
+    assert result["status"] == "failed"
+    assert result["checks"][0]["passed"] is True
+    assert result["checks"][1]["passed"] is False
+    assert result["checks"][1]["reason_code"] == "ledger_mismatch"
+    assert result["customer_balance_jpy"] == "200"
+
+
+def test_japan_ledger_one_jpy_difference_is_allowed(monkeypatch):
+    executor = LivePaymentRegressionExecutor(
+        object(),
+        {"japan_fixed_cny_to_jpy": "21.2", "compare_actual_from_balance_change": True},
+    )
+    scenario = next(item for item in SCENARIO_CATALOG if item.key == "order_balance")
+    scripts = type(
+        "Scripts",
+        (),
+        {
+            "run_full_flow_script": object(),
+            "run_balance_payment_script": object(),
+            "run_bank_payment_script": object(),
+        },
+    )()
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+    monkeypatch.setattr(executor, "_quote_order", lambda scenario, batch_id: ("ORDER-1", {}))
+    monkeypatch.setattr(executor, "_order_expected_amount", lambda variables, order_sn: "10")
+    monkeypatch.setattr(executor, "_balance_rows", lambda variables: [])
+    monkeypatch.setattr(
+        executor,
+        "_run_script",
+        lambda runner, env, variables, name: ({"order_sn": "ORDER-1", "pay_amount": "10"}, {}, ""),
+    )
+    monkeypatch.setattr(
+        executor,
+        "_wait_new_balance_rows",
+        lambda before, variables, references, **kwargs: [
+            {"id": 1, "change_amount": "-11", "order_sn": "ORDER-1", "bill_type_group": "出金"}
+        ],
+    )
+
+    result = executor._execute_order(scenario, "BATCH-JP-LEDGER-1")
+
+    assert result["status"] == "passed"
+    assert result["checks"][1]["passed"] is True
+    assert result["customer_balance_jpy"] == "11"
+
+
+def test_japan_ledger_ignores_credit_inflow_on_same_order(monkeypatch):
+    executor = LivePaymentRegressionExecutor(
+        object(),
+        {"japan_fixed_cny_to_jpy": "21.2", "compare_actual_from_balance_change": True},
+    )
+    scenario = next(item for item in SCENARIO_CATALOG if item.key == "order_balance")
+    scripts = type(
+        "Scripts",
+        (),
+        {
+            "run_full_flow_script": object(),
+            "run_balance_payment_script": object(),
+            "run_bank_payment_script": object(),
+        },
+    )()
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+    monkeypatch.setattr(executor, "_quote_order", lambda scenario, batch_id: ("ORDER-1", {}))
+    monkeypatch.setattr(executor, "_order_expected_amount", lambda variables, order_sn: "1055")
+    monkeypatch.setattr(executor, "_balance_rows", lambda variables: [])
+    monkeypatch.setattr(
+        executor,
+        "_run_script",
+        lambda runner, env, variables, name: ({"order_sn": "ORDER-1", "pay_amount": "1055"}, {}, ""),
+    )
+    monkeypatch.setattr(
+        executor,
+        "_wait_new_balance_rows",
+        lambda before, variables, references, **kwargs: [
+            {"id": 1, "change_amount": "-1055", "order_sn": "ORDER-1", "bill_type_group": "出金"},
+            {"id": 2, "change_amount": "1055", "order_sn": "ORDER-1", "bill_type_group": "入金"},
+        ],
+    )
+
+    result = executor._execute_order(scenario, "BATCH-JP-DEBIT-ONLY")
+
+    assert result["status"] == "passed"
+    assert result["customer_balance_jpy"] == "1055"
+
+
+def test_japan_porder_uses_fixed_rate_not_live_rate(monkeypatch):
+    payload = {
+        "code": 0,
+        "data": {
+            "porder_amount": {
+                "pay_amount": "10",
+                "pay_amount_jpy": "211",
+                "exchange_rate": "21.10",
+            }
+        },
+    }
+
+    class Client:
+        def post_form(self, path, fields):
+            return payload
+
+    scripts = type(
+        "Scripts",
+        (),
+        {
+            "_api_path": staticmethod(lambda variables, key, default: default),
+            "_api_success": staticmethod(lambda response: response.get("code") == 0),
+        },
+    )()
+    executor = LivePaymentRegressionExecutor(object(), {"japan_fixed_cny_to_jpy": "21.2"})
+    monkeypatch.setattr(executor, "_client", lambda variables: Client())
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+
+    evidence = executor._porder_expected_amount({}, "PORDER-1")
+
+    assert evidence.exchange_rate == Decimal("21.2")
+    from app.data_scripts.payment_amount_regression.reconciliation import to_jpy
+
+    assert to_jpy(evidence.amount, evidence.currency, evidence.exchange_rate) == Decimal("212")
+
+
+def test_porder_payment_actual_uses_live_expected_rate_without_fixed_override(monkeypatch):
+    expected = MoneyEvidence(
+        source="porder_pay_detail",
+        amount=Decimal("10"),
+        currency="CNY",
+        direction="debit",
+        exchange_rate=Decimal("21.10"),
+        reference="PORDER-1",
+    )
+    executor = LivePaymentRegressionExecutor(
+        object(),
+        {"compare_actual_from_balance_change": True, "compare_ledger_after_payment": True},
+    )
+    scenario = next(item for item in SCENARIO_CATALOG if item.key == "porder_balance")
+    scripts = type(
+        "Scripts",
+        (),
+        {
+            "run_full_flow_script": object(),
+            "run_porder_balance_payment_script": object(),
+            "run_porder_bank_payment_script": object(),
+        },
+    )()
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+    monkeypatch.setattr(executor, "_variables", lambda *args, **kwargs: {})
+    monkeypatch.setattr(executor, "_porder_expected_amount", lambda variables, porder_sn: expected)
+    monkeypatch.setattr(executor, "_balance_rows", lambda variables: [])
+    monkeypatch.setattr(
+        executor,
+        "_run_script",
+        lambda runner, env, variables, name: (
+            ({"porder_sn": "PORDER-1"}, {}, "")
+            if runner is scripts.run_full_flow_script
+            else ({"porder_sn": "PORDER-1", "pay_amount": "10"}, {}, "")
+        ),
+    )
+    monkeypatch.setattr(
+        executor,
+        "_wait_new_balance_rows",
+        lambda before, variables, references, **kwargs: [
+            {"id": 2, "change_amount": "-211", "porder_sn": "PORDER-1", "bill_type_group": "出金"}
+        ],
+    )
+
+    result = executor._execute_porder(scenario, "BATCH-LIVE-RATE")
+
+    assert result["status"] == "passed"
+    assert Decimal(result["checks"][0]["exchange_rate"]) == Decimal("21.10")
+    assert result["checks"][0]["expected_jpy"] == "211"
+    assert result["checks"][0]["actual_jpy"] == "211"
+    assert result["checks"][0]["actual_source"] == "payment_api"
+
+
+def test_balance_rows_query_keywords_and_normalize_sign(monkeypatch):
+    captured = {}
+
+    class Client:
+        def post_form(self, path, fields):
+            captured["path"] = path
+            captured["fields"] = dict(fields)
+            return {
+                "code": 0,
+                "data": [{"id": 1, "amount": 212, "bill_type_group": "出金", "order_sn": "ORDER-1"}],
+            }
+
+    scripts = type(
+        "Scripts",
+        (),
+        {
+            "_api_path": staticmethod(lambda variables, key, default: default),
+            "_api_success": staticmethod(lambda response: True),
+        },
+    )()
+    executor = LivePaymentRegressionExecutor(object(), {"japan_fixed_cny_to_jpy": "21.2"})
+    monkeypatch.setattr(executor, "_client", lambda variables: Client())
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+
+    rows = executor._balance_rows({"order_sn": "ORDER-1"})
+
+    assert captured["path"] == "/client/user.balanceChange"
+    assert captured["fields"]["keywords"] == "ORDER-1"
+    assert rows[0]["change_amount"] == "-212"
+
+
+def test_client_balance_change_catalog_points_to_japan_ledger():
+    from app.core.data_script_catalog import DATA_SCRIPT_API_CASES
+
+    item = next(row for row in DATA_SCRIPT_API_CASES if row["key"] == "client_balance_change")
+    assert item["url"] == "/client/user.balanceChange"
+
+
 def test_fastapi_exposes_payment_amount_regression_route():
     from app.main import app
 
     routes = {(route.path, method) for route in app.routes for method in getattr(route, "methods", set())}
 
     assert ("/api/data-scripts/payment-amount-regression", "POST") in routes
+
+
+def test_ledger_coupon_discount_reads_discount_use_and_adjust_detail():
+    assert _ledger_coupon_discount_jpy(
+        [{"discount_use": [{"discount_amount": 38, "name_chinese": "手数料無料"}]}]
+    ) == Decimal("38")
+    assert _ledger_coupon_discount_jpy(
+        [{"adjust_detail": [["注文の総額：1098JPY", "クーポンの割引金額 ：38JPY", "割引後の総額：1060JPY"]]}]
+    ) == Decimal("38")
+
+
+def test_japan_ledger_subtracts_account_coupon_when_ticket_has_no_amount(monkeypatch):
+    executor = LivePaymentRegressionExecutor(
+        object(),
+        {"japan_fixed_cny_to_jpy": "21.2", "compare_actual_from_balance_change": True},
+    )
+    scenario = next(item for item in SCENARIO_CATALOG if item.key == "order_balance")
+    scripts = type(
+        "Scripts",
+        (),
+        {
+            "run_full_flow_script": object(),
+            "run_balance_payment_script": object(),
+            "run_bank_payment_script": object(),
+        },
+    )()
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+    monkeypatch.setattr(
+        executor,
+        "_quote_order",
+        lambda scenario, batch_id: ("ORDER-1", {"discounts_id": "COUPON-1"}),
+    )
+    monkeypatch.setattr(executor, "_order_expected_amount", lambda variables, order_sn: "1098")
+    monkeypatch.setattr(executor, "_balance_rows", lambda variables: [])
+    monkeypatch.setattr(
+        executor,
+        "_run_script",
+        lambda runner, env, variables, name: ({"order_sn": "ORDER-1", "pay_amount": "1098"}, {}, ""),
+    )
+    monkeypatch.setattr(
+        executor,
+        "_wait_new_balance_rows",
+        lambda before, variables, references, **kwargs: [
+            {
+                "id": 1,
+                "change_amount": "-1060",
+                "order_sn": "ORDER-1",
+                "bill_type_group": "出金",
+                "discount_use": [{"discount_amount": 38, "name_chinese": "手数料無料"}],
+            }
+        ],
+    )
+
+    result = executor._execute_order(scenario, "BATCH-JP-COUPON")
+
+    assert result["status"] == "passed"
+    assert result["checks"][0]["passed"] is True
+    assert result["checks"][1]["passed"] is True
+    assert result["checks"][1]["expected_jpy"] == "1060"
+    assert result["customer_balance_jpy"] == "1060"
+
+
+def test_japan_ledger_fails_when_account_coupon_missing_from_balance(monkeypatch):
+    executor = LivePaymentRegressionExecutor(
+        object(),
+        {"japan_fixed_cny_to_jpy": "21.2", "compare_actual_from_balance_change": True},
+    )
+    scenario = next(item for item in SCENARIO_CATALOG if item.key == "order_balance")
+    scripts = type(
+        "Scripts",
+        (),
+        {
+            "run_full_flow_script": object(),
+            "run_balance_payment_script": object(),
+            "run_bank_payment_script": object(),
+        },
+    )()
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+    monkeypatch.setattr(
+        executor,
+        "_quote_order",
+        lambda scenario, batch_id: ("ORDER-1", {"discounts_id": "COUPON-1"}),
+    )
+    monkeypatch.setattr(executor, "_order_expected_amount", lambda variables, order_sn: "1098")
+    monkeypatch.setattr(executor, "_balance_rows", lambda variables: [])
+    monkeypatch.setattr(
+        executor,
+        "_run_script",
+        lambda runner, env, variables, name: ({"order_sn": "ORDER-1", "pay_amount": "1098"}, {}, ""),
+    )
+    monkeypatch.setattr(
+        executor,
+        "_wait_new_balance_rows",
+        lambda before, variables, references, **kwargs: [
+            {"id": 1, "change_amount": "-1098", "order_sn": "ORDER-1", "bill_type_group": "出金"}
+        ],
+    )
+
+    result = executor._execute_order(scenario, "BATCH-JP-COUPON-MISSING")
+
+    assert result["status"] == "failed"
+    assert result["checks"][1]["reason_code"] == "coupon_not_applied"

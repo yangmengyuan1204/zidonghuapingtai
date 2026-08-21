@@ -8,8 +8,8 @@ def test_legacy_index_loads_independent_system_regression_assets():
     html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
 
     assert "/static/system-regression.css" in html
-    assert "/static/system-regression.css?v=20260819-attr-simple" in html
-    assert "/static/system-regression.js?v=20260819-attr-simple" in html
+    assert "/static/system-regression.css?v=20260820-case-delete-2" in html
+    assert "/static/system-regression.js?v=20260820-case-delete-2" in html
 
 
 def test_system_regression_menu_and_execution_controls_are_present():
@@ -19,6 +19,10 @@ def test_system_regression_menu_and_execution_controls_are_present():
     assert "window.renderSystemRegression" in script
     assert "单条执行" in script
     assert "批量执行" in script
+    assert "data-sr-delete" in script
+    assert 'id="srDeleteVisible"' in script
+    assert "function deleteRegressionCases(items)" in script
+    assert "确定删除用例" in script
     assert 'type="checkbox"' in script
     assert "/api/system-regression/batches" in script
 
@@ -97,14 +101,22 @@ def test_regression_toolbar_stays_at_top_when_scrolling():
     assert "overflow-y: auto" not in body_block
     assert "overflow: hidden" in app_block
     assert "height: 100%" in app_block
-    assert "align-items: stretch" in stylesheet
+    assert "align-items: start" in stylesheet
+    assert "function syncCasePaneHeights()" in script
     cases_start = stylesheet.find("html.v3-embed .system-regression-categories,\nhtml.v3-embed .system-regression-cases {")
     if cases_start < 0:
         cases_start = stylesheet.find("html.v3-embed .system-regression-categories,\r\nhtml.v3-embed .system-regression-cases {")
     assert cases_start >= 0
-    cases_block = stylesheet[cases_start:cases_start + 180]
-    assert "overflow: auto" in cases_block
+    cases_block = stylesheet[cases_start:cases_start + 220]
+    assert "overflow-y: auto" in cases_block
     assert "min-height: 0" in cases_block
+    drawer_start = stylesheet.find("html.v3-embed .system-regression-drawer {\n  position: static")
+    if drawer_start < 0:
+        drawer_start = stylesheet.find("html.v3-embed .system-regression-drawer {\r\n  position: static")
+    assert drawer_start >= 0
+    drawer_block = stylesheet[drawer_start:drawer_start + 220]
+    assert "overflow: visible" in drawer_block
+    assert "height: auto" in drawer_block
 
 
 def test_parameter_drawer_overrides_v3_embed_overflow_hidden():
@@ -156,14 +168,18 @@ def test_money_panel_exposes_order_porder_coupon_and_new_case_controls():
 
     assert "手续费减免券" in script
     assert "账号没有真券时用" in script
+    assert "使用账号当前优惠券" in script
+    assert "使用账号当前代金券" in script
+    assert "__account_coupon__" in script
+    assert "__account_voucher__" in script
     assert "preferRealServiceCoupon" in script
     assert 'id="srCouponId"' in script
     assert 'id="srVoucherId"' in script
     assert "porder.predictLogisticsPrice" in script
     assert "付钱后等多久再对数" in script
     assert "新建用例" in script
-    assert "CUSTOM-PAY" in script
-    assert "CUSTOM-PORDER" in script
+    assert "支付" in script
+    assert "配送" in script
     assert "/api/system-regression/cases" in script
     assert "/api/system-regression/tickets" in script
     assert "/api/system-regression/options" in script

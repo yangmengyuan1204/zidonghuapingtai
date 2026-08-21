@@ -4,6 +4,8 @@ from typing import Any, Iterable
 
 from ...common.catalog import CaseExpectation, RegressionCaseDefinition
 from .panel import (
+    ACCOUNT_COUPON_ID,
+    ACCOUNT_VOUCHER_ID,
     INSPECT_OPTION,
     PACK_OPTION,
     SERVICE_COUPON_ID,
@@ -16,6 +18,12 @@ from .panel import (
 )
 
 JAPAN_REQUIRED_IDENTITIES = ("admin", "client")
+
+
+def _case_key(category: str, index: int) -> str:
+    from .case_keys import case_key_for_category
+
+    return case_key_for_category(category, index)
 
 
 def _direction_deals(direction: str) -> dict[str, Any]:
@@ -83,10 +91,23 @@ def _guard(
 
 def _raw_definitions():
     mixed_options = [dict(PACK_OPTION), dict(INSPECT_OPTION)]
+    pay_index = 0
+    porder_index = 0
+
+    def _pay_key() -> str:
+        nonlocal pay_index
+        pay_index += 1
+        return _case_key("payment", pay_index)
+
+    def _porder_key() -> str:
+        nonlocal porder_index
+        porder_index += 1
+        return _case_key("porder", porder_index)
+
     payment = (
         _success(
-            "JP-PAY-001",
-            "单番余额全额支付",
+            _pay_key(),
+            "单个订单余额一次付清",
             "payment",
             "debit",
             runner_kind="order_payment",
@@ -94,8 +115,8 @@ def _raw_definitions():
             tags=("支付", "余额"),
         ),
         _success(
-            "JP-PAY-002",
-            "单番银行全额支付",
+            _pay_key(),
+            "单个订单银行一次付清",
             "payment",
             "debit",
             runner_kind="order_payment",
@@ -103,7 +124,7 @@ def _raw_definitions():
             tags=("支付", "银行"),
         ),
         _success(
-            "JP-PAY-003",
+            _pay_key(),
             "余额分批付款",
             "payment",
             "debit",
@@ -117,7 +138,7 @@ def _raw_definitions():
             tags=("支付", "分批"),
         ),
         _success(
-            "JP-PAY-004",
+            _pay_key(),
             "银行分批付款",
             "payment",
             "debit",
@@ -132,7 +153,7 @@ def _raw_definitions():
             tags=("支付", "分批", "银行"),
         ),
         _success(
-            "JP-PAY-005",
+            _porder_key(),
             "配送单余额支付",
             "porder",
             "debit",
@@ -141,7 +162,7 @@ def _raw_definitions():
             tags=("支付", "配送单"),
         ),
         _success(
-            "JP-PAY-006",
+            _porder_key(),
             "配送单银行支付",
             "porder",
             "debit",
@@ -150,8 +171,8 @@ def _raw_definitions():
             tags=("支付", "配送单", "银行"),
         ),
         _success(
-            "JP-PAY-007",
-            "多单番独立国内运费",
+            _pay_key(),
+            "多个商品分别计算国内运费",
             "payment",
             "debit",
             runner_kind="order_payment",
@@ -164,8 +185,8 @@ def _raw_definitions():
             tags=("支付", "多番", "国内运费"),
         ),
         _success(
-            "JP-PAY-008",
-            "其他费用金额与名义",
+            _pay_key(),
+            "订单增加5元包装材料费",
             "payment",
             "debit",
             runner_kind="order_payment",
@@ -177,8 +198,8 @@ def _raw_definitions():
             tags=("支付", "其他费用"),
         ),
         _success(
-            "JP-PAY-009",
-            "固定金额和百分比 OPTION 一起买",
+            _pay_key(),
+            "同一商品同时收固定额和百分比 OPTION",
             "payment",
             "debit",
             runner_kind="order_payment",
@@ -191,8 +212,8 @@ def _raw_definitions():
             tags=("支付", "OPTION"),
         ),
         _success(
-            "JP-PAY-010",
-            "全费用混合订单",
+            _pay_key(),
+            "商品、运费、OPTION、其他费和手续费综合订单",
             "payment",
             "debit",
             runner_kind="order_payment",
@@ -212,8 +233,8 @@ def _raw_definitions():
             tags=("支付", "综合费用"),
         ),
         _success(
-            "JP-PAY-011",
-            "订单优惠券免手续费",
+            _pay_key(),
+            "手续费减免后应付金额",
             "payment",
             "debit",
             runner_kind="order_payment",
@@ -225,8 +246,8 @@ def _raw_definitions():
             tags=("支付", "优惠券"),
         ),
         _success(
-            "JP-PAY-012",
-            "配送单其他费用",
+            _porder_key(),
+            "配送单增加8元加固包装费",
             "porder",
             "debit",
             runner_kind="porder_payment",
@@ -234,8 +255,8 @@ def _raw_definitions():
             tags=("支付", "配送单", "其他费用"),
         ),
         _success(
-            "JP-PAY-013",
-            "分批付款国内运费跟尾款",
+            _pay_key(),
+            "国内运费在尾款收取",
             "payment",
             "debit",
             runner_kind="order_part_payment",
@@ -253,22 +274,22 @@ def _raw_definitions():
             tags=("支付", "分批", "国内运费"),
         ),
         _success(
-            "JP-PAY-014",
-            "分批付款尾款在提出配送单前",
+            _pay_key(),
+            "尾款在上架前收取",
             "payment",
             "debit",
             runner_kind="order_part_payment",
             parameters=order_panel(
                 payment_mode="balance",
                 payment_plan="part",
-                part=_part_pay(True, percent=50, tail_node="before_porder_create"),
+                part=_part_pay(True, percent=50, tail_node="before_shelf"),
                 first_payment_rate="0.5",
             ),
             tags=("支付", "分批", "尾款节点"),
         ),
         _success(
-            "JP-PAY-015",
-            "分批付款按番付尾款",
+            _pay_key(),
+            "指定番号单独结算尾款",
             "payment",
             "debit",
             runner_kind="order_part_payment",
@@ -283,8 +304,8 @@ def _raw_definitions():
             tags=("支付", "分批", "按番尾款"),
         ),
         _success(
-            "JP-PAY-016",
-            "分批付款手续费跟尾款",
+            _pay_key(),
+            "手续费在尾款收取",
             "payment",
             "debit",
             runner_kind="order_part_payment",
@@ -302,8 +323,8 @@ def _raw_definitions():
             tags=("支付", "分批", "手续费"),
         ),
         _success(
-            "JP-PAY-017",
-            "分批付款 OPTION 跟尾款",
+            _pay_key(),
+            "OPTION费用在尾款收取",
             "payment",
             "debit",
             runner_kind="order_part_payment",
@@ -324,8 +345,8 @@ def _raw_definitions():
             tags=("支付", "分批", "OPTION"),
         ),
         _success(
-            "JP-PAY-018",
-            "分批付款其他费用跟尾款",
+            _pay_key(),
+            "其他费用在尾款收取",
             "payment",
             "debit",
             runner_kind="order_part_payment",
@@ -345,8 +366,8 @@ def _raw_definitions():
             tags=("支付", "分批", "其他费用"),
         ),
         _success(
-            "JP-PAY-019",
-            "配送单人工钉死物流价",
+            _porder_key(),
+            "配送单国际运费固定为88",
             "porder",
             "debit",
             runner_kind="porder_payment",
@@ -354,23 +375,81 @@ def _raw_definitions():
             tags=("支付", "配送单", "人工运费"),
         ),
         _success(
-            "JP-PAY-020",
-            "配送单船便计费",
+            _porder_key(),
+            "配送单按RW船便计算国际运费",
             "porder",
             "debit",
             runner_kind="porder_payment",
             parameters=porder_panel(payment_mode="balance", logistics="20"),
             tags=("支付", "配送单", "船便"),
         ),
+        _success(
+            _pay_key(),
+            "订单余额支付使用账号优惠券后金额比对",
+            "payment",
+            "debit",
+            runner_kind="order_payment",
+            parameters=order_panel(payment_mode="balance", coupon_id=ACCOUNT_COUPON_ID),
+            tags=("支付", "优惠券", "金额比对"),
+        ),
+        _success(
+            _pay_key(),
+            "订单银行支付使用账号优惠券后金额比对",
+            "payment",
+            "debit",
+            runner_kind="order_payment",
+            parameters=order_panel(
+                payment_mode="bank",
+                coupon_id=ACCOUNT_COUPON_ID,
+                finance_confirm=True,
+            ),
+            tags=("支付", "优惠券", "银行", "金额比对"),
+        ),
+        _success(
+            _pay_key(),
+            "尾款在创建配送单前收取",
+            "payment",
+            "debit",
+            runner_kind="order_part_payment",
+            parameters=order_panel(
+                payment_mode="balance",
+                payment_plan="part",
+                part=_part_pay(True, percent=50, tail_node="before_porder_create"),
+                first_payment_rate="0.5",
+            ),
+            tags=("支付", "分批", "尾款节点", "金额对照"),
+        ),
+        _success(
+            _porder_key(),
+            "配送单余额支付使用账号代金券后金额比对",
+            "porder",
+            "debit",
+            runner_kind="porder_payment",
+            parameters=porder_panel(payment_mode="balance", voucher_id=ACCOUNT_VOUCHER_ID),
+            tags=("支付", "配送单", "代金券", "金额比对"),
+        ),
+        _success(
+            _porder_key(),
+            "配送单银行支付使用账号代金券后金额比对",
+            "porder",
+            "debit",
+            runner_kind="porder_payment",
+            parameters=porder_panel(
+                payment_mode="bank",
+                voucher_id=ACCOUNT_VOUCHER_ID,
+                finance_confirm=True,
+            ),
+            tags=("支付", "配送单", "代金券", "银行", "金额比对"),
+        ),
     )
 
     amount_rows = (
-        ("客户原因零金额对照", 9, "unchanged", "none"),
-        ("少货数量部分减少", 3, "quantity_partial_down", "credit"),
+        ("客户原因：金额不变、不退款", 9, "unchanged", "none"),
+        ("商品数量减少1件并退款", 3, "quantity_partial_down", "credit"),
         ("少货数量全部减少至零", 3, "quantity_all_down", "credit"),
         ("单价下调退款", 1, "price_down", "credit"),
         ("单价上调补款", 1, "price_up", "debit"),
-        ("单条采购运费下调退款", 2, "freight_down", "credit"),
+        ("单个商品国内运费下调退款", 2, "freight_down", "credit"),
         ("单条采购运费上调补款", 2, "freight_up", "debit"),
         ("不良且少货数量减少", 5, "quantity_down", "credit"),
         ("不良且少货数量和单价下调", 5, "quantity_and_price_down", "credit"),
@@ -380,7 +459,7 @@ def _raw_definitions():
     )
     amounts = tuple(
         _success(
-            f"JP-PG-AMT-{index:03d}",
+            _case_key("problem_amount", index),
             name,
             "problem_amount",
             direction,
@@ -392,16 +471,16 @@ def _raw_definitions():
     )
 
     service_rows = (
-        ("商品减少手续费多退少补", "goods_down_refund_service", 2, False, "credit"),
-        ("商品减少手续费已收不退", "goods_down_keep_service", 1, False, "credit"),
+        ("商品金额减少，手续费按差额退回", "goods_down_refund_service", 2, False, "credit"),
+        ("商品金额减少，但已收手续费不退", "goods_down_keep_service", 1, False, "credit"),
         ("商品增加补收手续费", "goods_up_charge_service", 2, False, "debit"),
         ("手续费减免券下商品减少", "goods_down_discount_service", 2, True, "credit"),
         ("手续费减免券下商品增加", "goods_up_discount_service", 2, True, "debit"),
-        ("单番手续费率为零", "zero_service_rate", 2, False, "credit"),
+        ("手续费率变为0后退款", "zero_service_rate", 2, False, "credit"),
     )
     services = tuple(
         _success(
-            f"JP-PG-SVC-{index:03d}",
+            _case_key("problem_service_fee", index),
             name,
             "problem_service_fee",
             direction,
@@ -432,13 +511,13 @@ def _raw_definitions():
         ("百分比 OPTION 数量减少", "rate_num_down", "credit"),
         ("OPTION 百分比提高", "rate_price_up", "debit"),
         ("OPTION 百分比降低", "rate_price_down", "credit"),
-        ("商品单价下调联动百分比 OPTION", "rate_goods_price_down", "credit"),
+        ("商品单价下调后百分比 OPTION金额联动", "rate_goods_price_down", "credit"),
         ("全部取消 OPTION", "all_delete", "credit"),
         ("多个 OPTION 同时增减净退款", "mixed_net_refund", "credit"),
     )
     manual_options = tuple(
         _success(
-            f"JP-PG-OPT-M-{index:03d}",
+            _case_key("problem_option_manual", index),
             name,
             "problem_option_manual",
             direction,
@@ -458,14 +537,14 @@ def _raw_definitions():
     auto_option_rows = (
         ("数量减少固定 OPTION 自动计算", "fixed_quantity_down", "credit"),
         ("数量减少百分比 OPTION 自动计算", "rate_quantity_down", "credit"),
-        ("商品单价下调百分比 OPTION 联动", "rate_price_down", "credit"),
-        ("检品 OPTION 已完成数量保护", "inspection_completed", "credit"),
-        ("非自动 OPTION 保持不变", "non_auto_unchanged", "credit"),
-        ("商品和 OPTION 均不变", "unchanged", "none"),
+        ("商品单价下调后百分比 OPTION金额联动", "rate_price_down", "credit"),
+        ("已完成检品数量不重复退款", "inspection_completed", "credit"),
+        ("非自动 OPTION不参与自动金额调整", "non_auto_unchanged", "credit"),
+        ("商品和OPTION均不变零金额对照", "unchanged", "none"),
     )
     auto_options = tuple(
         _success(
-            f"JP-PG-OPT-A-{index:03d}",
+            _case_key("problem_option_auto", index),
             name,
             "problem_option_auto",
             direction,
@@ -475,6 +554,8 @@ def _raw_definitions():
                 problem_type=6,
                 option_adjustment=adjustment,
                 option_deal_suggest=2,
+                completed_inspect_num=1 if adjustment == "inspection_completed" else None,
+                non_auto_option=adjustment == "non_auto_unchanged",
                 **_direction_deals(direction),
             ),
             tags=("问题产品", "OPTION", "系统自动"),
@@ -483,13 +564,13 @@ def _raw_definitions():
     )
 
     mixed_rows = (
-        ("全费用综合净退款", "net_refund", "credit"),
-        ("全费用综合净补款", "net_topup", "debit"),
-        ("全费用正负相抵为零", "net_zero", "none"),
+        ("商品数量、单价、运费及手续费综合退款", "net_refund", "credit"),
+        ("商品单价上涨、运费下降后的综合补款", "net_topup", "debit"),
+        ("全部金额不变零金额对照", "net_zero", "none"),
     )
     mixed = tuple(
         _success(
-            f"JP-PG-MIX-{index:03d}",
+            _case_key("problem_mixed", index),
             name,
             "problem_mixed",
             direction,
@@ -513,20 +594,11 @@ def _raw_definitions():
     )
 
     flow_rows = (
-        ("单价变动完整流程", 1, "accept", "仅退款", "credit"),
-        ("运费变动完整流程", 2, "accept", "仅退款", "credit"),
-        ("少货补买完整流程", 3, "accept", "少货补买", "credit"),
-        ("不良换货完整流程", 4, "exchange", "换货", "credit"),
-        ("不良且少货退货退款流程", 5, "cancel", "退货退款", "credit"),
-        ("OPTION 变动完整流程", 6, "accept", "其他", "debit"),
-        ("数量多了补款流程", 7, "accept", "其他", "debit"),
-        ("其他问题自定义回复流程", 8, "other", "其他", "none"),
-        ("客户原因已收不退流程", 9, "discard", "其他", "none"),
-        ("不良直接上架标准流程", 10, "accept", "其他", "none"),
+        (7, "商品数量增加后的补款金额", 7, "accept", "其他", "debit"),
     )
     flows = tuple(
         _success(
-            f"JP-PG-FLOW-{index:03d}",
+            _case_key("problem_flow", flow_index),
             name,
             "problem_flow",
             direction,
@@ -540,37 +612,9 @@ def _raw_definitions():
             ),
             tags=("问题产品", "完整流程"),
         )
-        for index, (name, problem_type, client_choice, purchase_type, direction) in enumerate(flow_rows, 1)
+        for flow_index, name, problem_type, client_choice, purchase_type, direction in flow_rows
     )
-
-    guard_rows = (
-        ("分批付款尾款未完成禁止决策", "part_tail_unpaid", ("未分批付款完成", "尾款"), True),
-        ("转寄订单禁止提出问题产品", "resend_order", ("转寄订单",), False),
-        ("待财务付款采购禁止提出", "purchase_wait_pay", ("待财务付款",), False),
-        ("处理中问题产品禁止重复提出", "duplicate_open_problem", ("不可以重复提出", "进行中的问题产品"), False),
-        ("问题数量超过未上架数量", "problem_num_over_unstored", ("超过未上架数",), False),
-        ("修改后数量小于已上架数量", "pre_num_below_storage", ("不能小于仓库已上架",), False),
-        ("普通账号数量超过可入库数", "quantity_over_possible", ("修改后数量应该 <=",), False),
-        ("数量增加禁止 OPTION 自动计算", "quantity_up_auto_option", ("商品数量增加", "业务修改OPTION"), False),
-        ("OPTION 数量超过商品数禁止自动计算", "option_num_over_goods", ("OPTION数量大于商品数", "option数比商品数多"), False),
-        ("多个百分比 OPTION 禁止自动计算", "multiple_rate_auto", ("多个百分比OPTION",), False),
-        ("已有 OPTION 禁止修改计价类型", "option_price_type_change", ("不允许修改OPTION计价类型",), False),
-        ("同番多采购禁止修改预处理数据", "multiple_purchase_update", ("有多条采购记录",), False),
-        ("大额退款切换部长账号", "large_refund_account", ("大于500人民币", "部长账号"), False),
-        ("受限类型已有交易号禁止跳过采购", "restricted_skip_purchase", ("不允许跳过采购",), False),
-        ("非允许类型禁止配货直接完成", "direct_complete_invalid_type", ("只有【少货、不良、不良且少货】",), False),
-    )
-    guards = tuple(
-        _guard(
-            f"JP-PG-GUARD-{index:03d}",
-            name,
-            guard_kind=guard_kind,
-            error_keywords=keywords,
-            parameters=guard_panel(name, guard_kind=guard_kind, part_pay=part_pay),
-        )
-        for index, (name, guard_kind, keywords, part_pay) in enumerate(guard_rows, 1)
-    )
-    return payment + amounts + services + manual_options + auto_options + mixed + flows + guards
+    return payment + amounts + services + manual_options + auto_options + mixed + flows
 
 
 _RAW_DEFINITIONS = _raw_definitions()

@@ -4,14 +4,18 @@ import json
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Mapping
-from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
 from app.database import safe_commit
 from app.system_regression.common.catalog import CaseExpectation
-from app.system_regression.models import SystemRegressionCase, SystemRegressionSuite
+from app.system_regression.models import SystemRegressionCase, SystemRegressionCaseRun, SystemRegressionSuite
 from app.system_regression.projects.japan.catalog import japan_case_definitions
+from app.system_regression.projects.japan.case_keys import (
+    LEGACY_CUSTOM_PREFIX,
+    REMOVED_DEFAULT_CASE_KEYS,
+    case_key_prefix,
+)
 
 
 class CaseServiceError(ValueError):
@@ -20,6 +24,23 @@ class CaseServiceError(ValueError):
 
 def _dump_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _removed_case_keys(suite: SystemRegressionSuite) -> set[str]:
+    config = suite.config if isinstance(suite.config, dict) else {}
+    return {str(item).strip() for item in (config.get("removed_case_keys") or []) if str(item).strip()}
+
+
+def _remember_removed_case_key(suite: SystemRegressionSuite, case_key: str) -> None:
+    key = str(case_key or "").strip()
+    if not key:
+        return
+    config = dict(suite.config or {})
+    removed = [str(item).strip() for item in (config.get("removed_case_keys") or []) if str(item).strip()]
+    if key not in removed:
+        removed.append(key)
+    config["removed_case_keys"] = removed
+    suite.config_json = _dump_json(config)
 
 
 def _definition_snapshot(case: SystemRegressionCase) -> dict[str, Any]:
@@ -33,6 +54,90 @@ def _definition_snapshot(case: SystemRegressionCase) -> dict[str, Any]:
         "enabled": bool(case.enabled),
         "sort_order": case.sort_order,
     }
+
+
+def _rename_case_key(db: Session, case: SystemRegressionCase, new_key: str) -> None:
+    old_key = str(case.case_key or "")
+    new_key = str(new_key or "").strip()
+    if not new_key or old_key == new_key:
+        return
+    conflict = (
+        db.query(SystemRegressionCase)
+        .filter(
+            SystemRegressionCase.suite_id == case.suite_id,
+            SystemRegressionCase.case_key == new_key,
+            SystemRegressionCase.id != case.id,
+        )
+        .first()
+    )
+    if conflict is not None:
+        raise CaseServiceError(f"编号 {new_key} 已被用例 {conflict.id} 占用，无法从 {old_key} 迁移")
+    db.query(SystemRegressionCaseRun).filter(SystemRegressionCaseRun.case_key == old_key).update(
+        {"case_key": new_key},
+        synchronize_session=False,
+    )
+    case.case_key = new_key
+
+
+def _migrate_system_case_keys(db: Session, suite: SystemRegressionSuite) -> None:
+    definitions = list(japan_case_definitions())
+    system_cases = (
+        db.query(SystemRegressionCase)
+        .filter(SystemRegressionCase.suite_id == suite.id, SystemRegressionCase.is_system.is_(True))
+        .order_by(SystemRegressionCase.sort_order, SystemRegressionCase.id)
+        .all()
+    )
+    if len(system_cases) != len(definitions):
+        return
+    for case, definition in zip(system_cases, definitions):
+        if case.case_key != definition.key:
+            _rename_case_key(db, case, definition.key)
+
+
+def _custom_case_target_prefix(case: SystemRegressionCase) -> str | None:
+    key = str(case.case_key or "")
+    for legacy_prefix, prefix in LEGACY_CUSTOM_PREFIX.items():
+        if key.startswith(f"{legacy_prefix}-"):
+            return prefix
+    if key.startswith("CUSTOM-"):
+        try:
+            return case_key_prefix(str(case.category or ""))
+        except KeyError:
+            return None
+    return None
+
+
+def _migrate_custom_case_keys(db: Session, suite: SystemRegressionSuite) -> None:
+    custom_cases = (
+        db.query(SystemRegressionCase)
+        .filter(SystemRegressionCase.suite_id == suite.id, SystemRegressionCase.is_system.is_(False))
+        .order_by(SystemRegressionCase.id)
+        .all()
+    )
+    for case in custom_cases:
+        prefix = _custom_case_target_prefix(case)
+        if prefix is None:
+            continue
+        current_prefix = f"{prefix}-"
+        key = str(case.case_key or "")
+        if key.startswith(current_prefix):
+            continue
+        _rename_case_key(db, case, _next_custom_key(db, suite.id, prefix))
+
+
+def _retire_removed_default_cases(db: Session, suite: SystemRegressionSuite) -> None:
+    for case in (
+        db.query(SystemRegressionCase)
+        .filter(
+            SystemRegressionCase.suite_id == suite.id,
+            SystemRegressionCase.is_system.is_(True),
+            SystemRegressionCase.case_key.in_(REMOVED_DEFAULT_CASE_KEYS),
+        )
+        .all()
+    ):
+        if case.enabled:
+            case.enabled = False
+        _remember_removed_case_key(suite, str(case.case_key or ""))
 
 
 def ensure_japan_suite(
@@ -51,6 +156,12 @@ def ensure_japan_suite(
         db.add(suite)
         db.flush()
 
+    _migrate_system_case_keys(db, suite)
+    _migrate_custom_case_keys(db, suite)
+    _retire_removed_default_cases(db, suite)
+    db.flush()
+
+    removed_keys = _removed_case_keys(suite)
     existing_keys = {
         row[0]
         for row in db.query(SystemRegressionCase.case_key)
@@ -58,6 +169,8 @@ def ensure_japan_suite(
         .all()
     }
     for definition in japan_case_definitions():
+        if definition.key in removed_keys:
+            continue
         if definition.key in existing_keys:
             existing = (
                 db.query(SystemRegressionCase)
@@ -275,10 +388,10 @@ def create_case(
 ) -> SystemRegressionCase:
     kind = str(kind or "").strip()
     specs = {
-        "payment": ("CUSTOM-PAY", "payment", "order_payment", "新建支付用例", ("支付", "自定义"), "debit", ""),
-        "part": ("CUSTOM-PAY", "payment", "order_part_payment", "新建分批付款", ("支付", "分批", "自定义"), "debit", ""),
-        "problem": ("CUSTOM-PG", "problem_flow", "problem_flow", "新建问题产品", ("问题产品", "自定义"), "credit", "problem_goods_completed"),
-        "porder": ("CUSTOM-PORDER", "porder", "porder_payment", "新建配送单", ("配送单", "自定义"), "debit", ""),
+        "payment": ("支付", "payment", "order_payment", "新建支付用例", ("支付", "自定义"), "debit", ""),
+        "part": ("支付", "payment", "order_part_payment", "新建分批付款", ("支付", "分批", "自定义"), "debit", ""),
+        "problem": ("流程", "problem_flow", "problem_flow", "新建问题产品", ("问题产品", "自定义"), "credit", "problem_goods_completed"),
+        "porder": ("配送", "porder", "porder_payment", "新建配送单", ("配送单", "自定义"), "debit", ""),
     }
     if kind not in specs:
         raise CaseServiceError("不支持的用例类型")
@@ -319,17 +432,21 @@ def create_case(
 
 def delete_case(db: Session, case_id: int) -> None:
     case = _get_case(db, case_id)
+    suite = db.query(SystemRegressionSuite).filter(SystemRegressionSuite.id == case.suite_id).first()
+    if suite is None:
+        raise CaseServiceError("回归项目不存在")
     if case.is_system:
-        raise CaseServiceError("系统预置用例不能删除")
+        _remember_removed_case_key(suite, str(case.case_key or ""))
     db.delete(case)
     safe_commit(db)
 
 
 def copy_case(db: Session, case_id: int, *, actor_id: int | None) -> SystemRegressionCase:
     source = _get_case(db, case_id)
+    prefix = case_key_prefix(str(source.category or ""))
     copied = SystemRegressionCase(
         suite_id=source.suite_id,
-        case_key=f"CUSTOM-{uuid4().hex[:12].upper()}",
+        case_key=_next_custom_key(db, source.suite_id, prefix),
         name=f"{source.name}（副本）",
         category=source.category,
         runner_kind=source.runner_kind,

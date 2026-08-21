@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from app.services.system_regression.account_service import AccountLoginRequired
 from app.system_regression.projects.japan.guard_executor import GuardExecutor, LiveGuardDriver
 from app.system_regression.projects.japan.guard_scenarios import guard_scenario
@@ -9,7 +11,7 @@ from app.system_regression.projects.japan.guard_runner import GuardRunner
 def _case():
     return {
         "id": 13,
-        "case_key": "JP-PG-GUARD-013",
+        "case_key": "拦截-013",
         "name": "大额退款切换部长账号",
         "runner_kind": "problem_guard",
         "parameters": {"guard_kind": "large_refund_account"},
@@ -223,3 +225,76 @@ def test_large_refund_live_driver_rejects_below_threshold_precondition():
         assert "500" in str(exc)
     else:
         raise AssertionError("below-threshold large refund must be blocked")
+
+
+def test_large_refund_normal_prepare_does_not_skip_500_gate():
+    runner = _LargeRefundRunner(lambda *_args: {"backend_account": "minister", "backend_password": "secret"})
+    driver = LiveGuardDriver(
+        object(), runner, gateway_factory=_LargeRefundGateway, flow_factory=_LargeRefundFlow
+    )
+    prepared = driver.prepare(guard_scenario("large_refund_account"), _large_live_case(), {})
+
+    assert prepared["variables"]["allow_large_refund"] is False
+    assert Decimal(str(prepared["precondition_evidence"]["estimated_refund_cny"])) >= Decimal("500")
+
+
+def test_large_refund_accepts_pause_at_business_preview():
+    response = {
+        "actual_stage": "purchase_deal",
+        "composite_state": "completed",
+        "normal_step": {
+            "actual_stage": "business_deal",
+            "business_code": "MINISTER_ACCOUNT_REQUIRED",
+            "error_message": "预计退款超过500元，请切换部长后台账号后继续",
+            "business_diffs": [],
+        },
+        "minister_step": {
+            "actor": {"role": "department_leader", "username": "shenwenni"},
+            "problem_goods_id": "P-500",
+            "balance_credit": {"record_id": "B-1", "amount_cny": "500.00", "direction": "credit"},
+        },
+        "business_diffs": [{"entity": "customer_balance", "field": "credit", "before": "0", "after": "500.00"}],
+    }
+    prepared = {
+        **_prepared(),
+        "required_effect_rules": [{"entity": "customer_balance", "field": "credit"}],
+    }
+    result = GuardRunner(GuardExecutor(lambda *_args: prepared, lambda *_args: response).execute).execute(_case(), {})
+
+    assert result.status == "passed"
+    assert result.reason_code == "large_refund_composite_completed"
+
+
+class _FlagAwareLargeRefundFlow:
+    def __init__(self, gateway, variables, _log):
+        self.gateway = gateway
+        self.variables = dict(variables)
+
+    def run(self):
+        if not self.variables.get("allow_large_refund"):
+            return {
+                "problem_goods_id": 500,
+                "permission_required": True,
+                "resume_stage": "business_deal",
+                "reason": "预计退款超过500元，请切换部长后台账号后继续",
+                "status": 3,
+            }
+        self.gateway.written = True
+        return {"problem_goods_id": 500, "status": 5}
+
+
+def test_live_large_refund_switches_to_minister_after_500_gate():
+    runner = _LargeRefundRunner(lambda *_args: {"backend_account": "minister", "backend_password": "secret"})
+    driver = LiveGuardDriver(
+        object(),
+        runner,
+        gateway_factory=_LargeRefundGateway,
+        flow_factory=_FlagAwareLargeRefundFlow,
+    )
+    result = GuardRunner(GuardExecutor(driver.prepare, driver.perform).execute).execute(
+        _large_live_case(),
+        {"execution_id": "E-500", "variables": {}},
+    )
+
+    assert result.status == "passed"
+    assert result.reason_code == "large_refund_composite_completed"

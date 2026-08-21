@@ -5,6 +5,8 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from .evidence import MoneyEvidence
 
+JAPAN_CNY_TO_JPY = Decimal("21.2")
+
 
 @dataclass(frozen=True)
 class ReconciliationResult:
@@ -20,11 +22,10 @@ class ReconciliationResult:
 
 
 def to_jpy(evidence: MoneyEvidence) -> Decimal:
-    if evidence.currency == "JPY":
+    if evidence.source == "customer_balance" or evidence.currency == "JPY":
         return abs(evidence.amount).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-    if evidence.exchange_rate is None or evidence.exchange_rate <= 0:
-        raise ValueError("人民币证据缺少有效汇率")
-    return (abs(evidence.amount) * evidence.exchange_rate).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    rate = evidence.exchange_rate if evidence.exchange_rate is not None and evidence.exchange_rate > 0 else JAPAN_CNY_TO_JPY
+    return (abs(evidence.amount) * rate).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
 
 def _result(
@@ -113,7 +114,7 @@ def reconcile_three_way(
             preview_jpy=preview_jpy,
             actual_jpy=actual_jpy,
         )
-    tolerance = Decimal(tolerance_jpy)
+    tolerance = Decimal(min(int(tolerance_jpy), 1))
     expected_preview_diff = abs(expected_jpy - preview_jpy)
     preview_actual_diff = abs(preview_jpy - actual_jpy)
     passed = expected_preview_diff <= tolerance and preview_actual_diff <= tolerance
@@ -121,11 +122,11 @@ def reconcile_three_way(
         case_key,
         passed=passed,
         reason_code="ok" if passed else "amount_mismatch",
-        reason="金额和方向一致" if passed else "三方金额差值超过允许范围",
+        reason="金额和方向一致" if passed else "三方金额差值超过允许的 1 日元",
         expected_jpy=expected_jpy,
         preview_jpy=preview_jpy,
         actual_jpy=actual_jpy,
     )
 
 
-__all__ = ["ReconciliationResult", "reconcile_three_way", "to_jpy"]
+__all__ = ["JAPAN_CNY_TO_JPY", "ReconciliationResult", "reconcile_three_way", "to_jpy"]

@@ -5,6 +5,12 @@ from typing import Any, Callable, Mapping
 
 from app.data_scripts.payment_amount_regression.runner import LivePaymentRegressionExecutor, ScenarioBlocked
 from app.data_scripts.payment_amount_regression.scenarios import ScenarioSpec
+from app.services.system_regression.membership_service import (
+    apply_membership_to_variables,
+    inspect_membership_from_env,
+    public_membership,
+)
+from app.services.system_regression.ticket_service import list_usable_tickets
 
 from .fee_evidence import (
     FeeComponent,
@@ -13,6 +19,7 @@ from .fee_evidence import (
     rate_option_amount,
     reconcile_fee_components,
 )
+from .panel import ACCOUNT_COUPON_ID, ACCOUNT_VOUCHER_ID, SERVICE_COUPON_ID
 from .runner import CaseRunResult
 
 
@@ -35,6 +42,105 @@ def _voucher_selected_id(parameters: Mapping[str, Any]) -> str:
     porder = _mapping(parameters.get("porder"))
     voucher = _mapping(porder.get("voucher"))
     return str(voucher.get("selectedId") or voucher.get("selected_id") or "").strip()
+
+
+def _ticket_amount(row: Mapping[str, Any]) -> str:
+    amount = row.get("amount")
+    if amount in (None, ""):
+        return ""
+    text = str(amount).strip()
+    return "" if text in {"", "0", "0.0"} else text
+
+
+def _copy_payment_parameters(parameters: Mapping[str, Any]) -> dict[str, Any]:
+    values = dict(parameters)
+    coupon = _mapping(values.get("coupon"))
+    if coupon:
+        values["coupon"] = dict(coupon)
+    porder = _mapping(values.get("porder"))
+    if porder:
+        copied = dict(porder)
+        voucher = _mapping(copied.get("voucher"))
+        if voucher:
+            copied["voucher"] = dict(voucher)
+        values["porder"] = copied
+    return values
+
+
+def _pick_account_coupon(tickets: Mapping[str, Any]) -> dict[str, Any] | None:
+    rows = [dict(row) for row in tickets.get("coupons") or [] if isinstance(row, Mapping) and row.get("id")]
+    return rows[0] if rows else None
+
+
+def _pick_account_voucher(tickets: Mapping[str, Any], logistics_id: str = "") -> dict[str, Any] | None:
+    rows = [dict(row) for row in tickets.get("vouchers") or [] if isinstance(row, Mapping) and row.get("id")]
+    if not rows:
+        return None
+    wanted = str(logistics_id or "").strip()
+    if wanted:
+        matched = [row for row in rows if str(row.get("logistics_id") or "").strip() == wanted]
+        if matched:
+            with_amount = [row for row in matched if _ticket_amount(row)]
+            return with_amount[0] if with_amount else matched[0]
+    all_kind = [row for row in rows if str(row.get("kind") or "") == "all"]
+    if all_kind:
+        return all_kind[0]
+    with_amount = [row for row in rows if _ticket_amount(row)]
+    return with_amount[0] if with_amount else rows[0]
+
+
+def bind_account_tickets(
+    env: Any,
+    parameters: Mapping[str, Any],
+    variables: Mapping[str, Any] | None = None,
+    *,
+    runner_kind: str = "",
+) -> dict[str, Any]:
+    values = _copy_payment_parameters(parameters)
+    need_coupon = _coupon_selected_id(values) == ACCOUNT_COUPON_ID
+    need_voucher = runner_kind == "porder_payment" and _voucher_selected_id(values) == ACCOUNT_VOUCHER_ID
+    if not need_coupon and not need_voucher:
+        return values
+    tickets = list_usable_tickets(env, variables)
+    if need_coupon:
+        coupon = _pick_account_coupon(tickets)
+        if coupon is None:
+            raise ScenarioBlocked(
+                str(tickets.get("reason") or "账号没有可用订单优惠券，无法做用券后金额比对"),
+                reason_code="missing_coupon",
+                evidence={"tickets_reason": str(tickets.get("reason") or "")},
+            )
+        coupon_block = dict(_mapping(values.get("coupon")))
+        coupon_block["selectedId"] = str(coupon["id"])
+        values["coupon"] = coupon_block
+        values["discounts_id"] = str(coupon["id"])
+        values["service_discount"] = True
+        amount = _ticket_amount(coupon)
+        if amount:
+            values["payment_regression_discount_jpy"] = amount
+    if need_voucher:
+        porder = dict(_mapping(values.get("porder")))
+        voucher = _pick_account_voucher(tickets, str(porder.get("logistics") or ""))
+        if voucher is None:
+            raise ScenarioBlocked(
+                str(tickets.get("reason") or "账号没有可用配送单代金券，无法做用券后金额比对"),
+                reason_code="missing_voucher",
+                evidence={"tickets_reason": str(tickets.get("reason") or "")},
+            )
+        voucher_block = dict(_mapping(porder.get("voucher")))
+        voucher_block["selectedId"] = str(voucher["id"])
+        porder["voucher"] = voucher_block
+        logistics_id = str(voucher.get("logistics_id") or "").strip()
+        if logistics_id:
+            porder["logistics"] = logistics_id
+        values["porder"] = porder
+        # 代金券只能打在配送单支付上；写进 discounts_id 会在造订单时被当成优惠券提交
+        values.pop("discounts_id", None)
+        values["porder_discounts_id"] = str(voucher["id"])
+        amount = _ticket_amount(voucher)
+        if amount:
+            values["payment_regression_voucher_jpy"] = amount
+    return values
 
 
 def build_payment_variables(parameters: Mapping[str, Any], *, runner_kind: str = "") -> dict[str, Any]:
@@ -105,17 +211,17 @@ def build_payment_variables(parameters: Mapping[str, Any], *, runner_kind: str =
         }
 
     coupon_id = _coupon_selected_id(parameters)
-    synthetic_coupon = coupon_id in {"", "__service_discount__"}
     values["service_discount"] = bool(parameters.get("service_discount")) or bool(coupon_id)
-    if coupon_id and not synthetic_coupon:
-        values["discounts_id"] = coupon_id
-    elif parameters.get("discounts_id"):
-        values["discounts_id"] = str(parameters.get("discounts_id") or "")
-
     porder = _mapping(parameters.get("porder"))
     apply_porder = runner_kind == "porder_payment" or (
         runner_kind == "" and isinstance(parameters.get("porder"), Mapping) and bool(porder)
     )
+    if not apply_porder:
+        if coupon_id and coupon_id not in {SERVICE_COUPON_ID, ACCOUNT_COUPON_ID}:
+            values["discounts_id"] = coupon_id
+        elif parameters.get("discounts_id"):
+            values["discounts_id"] = str(parameters.get("discounts_id") or "")
+
     if apply_porder:
         values["warehouse_sku_count"] = int(porder.get("sku_count") or 1)
         values["send_num"] = int(porder.get("send_num") or 1)
@@ -126,7 +232,13 @@ def build_payment_variables(parameters: Mapping[str, Any], *, runner_kind: str =
         values["box_weight"] = str(porder.get("box_weight") or "10")
         values["delivery_quote_logistics_id"] = str(porder.get("logistics") or "25")
         voucher_id = _voucher_selected_id(parameters)
-        if voucher_id:
+        if runner_kind == "porder_payment":
+            if voucher_id and voucher_id != ACCOUNT_VOUCHER_ID:
+                values["porder_discounts_id"] = voucher_id
+            elif parameters.get("porder_discounts_id"):
+                values["porder_discounts_id"] = str(parameters.get("porder_discounts_id") or "")
+            values.pop("discounts_id", None)
+        elif voucher_id and voucher_id != ACCOUNT_VOUCHER_ID:
             values["discounts_id"] = voucher_id
         if porder.get("price_manual"):
             values["logistics_price_artificial"] = _money_value(porder.get("logistics_price"))
@@ -141,6 +253,8 @@ def build_payment_variables(parameters: Mapping[str, Any], *, runner_kind: str =
     values["payment_regression_evidence_delay"] = evidence_delay
     values["payment_regression_evidence_retries"] = max(1, int(wait_seconds / evidence_delay))
     values["finance_confirm"] = bool(parameters.get("finance_confirm", True))
+    values["compare_actual_from_balance_change"] = True
+    values["compare_ledger_after_payment"] = True
     return values
 
 
@@ -245,16 +359,17 @@ class PaymentRunner:
                 str(value)
                 for value in parameters.get("offer_unit_prices") or ["10"] * item_count
             ][:item_count]
-            freights = [
-                str(value)
-                for value in parameters.get("offer_freights") or [str(index + 3) for index in range(item_count)]
-            ][:item_count]
+            # 下单流程只消费单数 offer_freight（缺省 5），逐番 offer_freights 不会入单；
+            # 合同期望必须与实际提交口径一致，各番运费都按单数值计
+            freight_each = _money_value(parameters.get("offer_freight") or variables.get("offer_freight") or 5)
+            freights = [freight_each] * item_count
             if len(unit_prices) != item_count or len(freights) != item_count:
                 raise ValueError("全费用场景的商品单价和单番国内运费数量必须与番号数一致")
             variables["cart_item_count"] = item_count
             variables["order_item_num"] = item_quantity
             variables["offer_unit_prices"] = unit_prices
             variables["offer_freights"] = freights
+            variables["offer_freight"] = freight_each
             variables["other_price"] = str(parameters.get("other_fee_amount") or "5")
             variables["other_price_remark"] = str(parameters.get("other_fee_name") or "系统回归包装费")
             for index in range(item_count):
@@ -322,11 +437,32 @@ class PaymentRunner:
                 category = "order"
         else:
             category = category_by_runner[runner_kind]
+        context_variables = dict(context.get("variables") or {})
+        try:
+            parameters = bind_account_tickets(
+                self.env,
+                parameters,
+                {**self.base_variables, **context_variables},
+                runner_kind=runner_kind,
+            )
+        except ScenarioBlocked as exc:
+            if not exc.reason_code:
+                raise
+            evidence = dict(exc.evidence)
+            return CaseRunResult(
+                status="blocked",
+                order_sn=str(evidence.get("order_sn") or ""),
+                result=evidence,
+                reason_code=exc.reason_code,
+                error_message=str(exc),
+            )
         variables = {
             **self.base_variables,
-            **dict(context.get("variables") or {}),
+            **context_variables,
             **build_payment_variables(parameters, runner_kind=runner_kind),
         }
+        membership = inspect_membership_from_env(self.env, variables)
+        apply_membership_to_variables(variables, membership)
         fee_contract = self._apply_fee_profile(parameters, variables)
         scenario = ScenarioSpec(
             key=str(case.get("case_key") or ""),
@@ -384,6 +520,14 @@ class PaymentRunner:
             )
             payload["checks"] = checks
             payload["fee_contract"] = variables["system_regression_fee_contract"]
+        payload["membership"] = public_membership(membership)
+        ticket_id = str(variables.get("discounts_id") or variables.get("porder_discounts_id") or "")
+        if ticket_id:
+            payload["used_ticket"] = {
+                "discounts_id": ticket_id,
+                "discount_jpy": str(variables.get("payment_regression_discount_jpy") or ""),
+                "voucher_jpy": str(variables.get("payment_regression_voucher_jpy") or ""),
+            }
         passed = payload.get("status") == "passed" and all(row.get("passed") is not False for row in checks)
         reason = next((str(row.get("reason") or "") for row in checks if row.get("passed") is False), "")
         reason_code = next((str(row.get("reason_code") or "") for row in checks if row.get("passed") is False), "")
@@ -397,4 +541,4 @@ class PaymentRunner:
         )
 
 
-__all__ = ["PaymentRunner", "build_payment_variables"]
+__all__ = ["PaymentRunner", "bind_account_tickets", "build_payment_variables"]

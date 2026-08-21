@@ -225,10 +225,18 @@ class JapanCaseParameters(BaseModel):
     tolerance_jpy: int = 1
     ledger_wait_seconds: int = 30
 
-    @field_validator("tolerance_jpy", "ledger_wait_seconds", mode="before")
+    @field_validator("tolerance_jpy", mode="before")
     @classmethod
-    def validate_runtime_integer(cls, value: Any) -> int:
-        return _non_negative_integer(value, "运行参数")
+    def validate_tolerance_jpy(cls, value: Any) -> int:
+        number = _non_negative_integer(value, "日元容差")
+        if number > 1:
+            raise ValueError("日元金额容差不能超过1日元")
+        return number
+
+    @field_validator("ledger_wait_seconds", mode="before")
+    @classmethod
+    def validate_ledger_wait_seconds(cls, value: Any) -> int:
+        return _non_negative_integer(value, "出入金等待秒数")
 
 
 def validate_option_changes(original: Any, updated: Any) -> list[OptionInput]:

@@ -1157,8 +1157,15 @@ class ProblemGoodsFlow:
             preview_payload = self.gateway.business_deal(_business_fields(problem_goods_id, self.variables, preview=True), preview=True)
             preview_bills = parse_preview_bills(preview_payload)
             refund_cny = refund_cny_from_preview(preview_bills)
+            estimated = Decimal("0")
+            raw_estimated = self.variables.get("estimated_refund_cny")
+            if raw_estimated not in (None, ""):
+                try:
+                    estimated = Decimal(str(raw_estimated))
+                except (InvalidOperation, TypeError, ValueError):
+                    estimated = Decimal("0")
             self._record_step("bill_previewed", refund_cny=str(refund_cny), bill_count=len(preview_bills))
-            if refund_cny > Decimal("500") and not _bool_value(self.variables.get("allow_large_refund"), False):
+            if max(refund_cny, estimated) > Decimal("500") and not _bool_value(self.variables.get("allow_large_refund"), False):
                 return self._permission_summary(row, preview_bills, "预计退款超过500元，请切换部长后台账号后继续")
 
             try:

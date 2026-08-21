@@ -147,3 +147,10 @@ def test_negative_money_and_fractional_quantity_are_rejected():
     fractional = valid_problem_payload(pre_num="1.5")
     with pytest.raises(ParameterValidationError, match="整数"):
         validate_case_parameters("problem_goods", fractional, current_num=3)
+
+
+def test_tolerance_jpy_cannot_exceed_one():
+    payload = valid_problem_payload()
+    payload["tolerance_jpy"] = 2
+    with pytest.raises(ParameterValidationError, match="不能超过1"):
+        validate_case_parameters("problem_goods", payload, current_num=3)

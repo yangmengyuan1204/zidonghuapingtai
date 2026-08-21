@@ -27,7 +27,12 @@ def test_rate_option_uses_rate_times_option_quantity_times_goods_unit_price():
 
 
 def test_jpy_rounding_happens_after_cny_components_are_summed():
-    assert cny_components_to_jpy([Decimal("0.03"), Decimal("0.03")], Decimal("21.10")) == 1
+    assert cny_components_to_jpy([Decimal("0.03"), Decimal("0.03")]) == 1
+
+
+def test_cny_components_to_jpy_uses_passed_rate():
+    assert cny_components_to_jpy([Decimal("10")], Decimal("99")) == 990
+    assert cny_components_to_jpy([Decimal("10")], Decimal("21.10")) == 211
 
 
 def test_duplicate_option_id_fails_even_when_total_matches():
@@ -41,6 +46,20 @@ def test_duplicate_option_id_fails_even_when_total_matches():
 
     assert result.passed is False
     assert result.reason_code == "duplicate_fee_component"
+
+
+def test_same_option_on_different_sorting_rows_is_not_a_duplicate():
+    contract = FeeEvidenceContract(
+        required_components=(_component("option_fixed", "option:79", "1.60", option_id="79"),),
+    )
+    actual = [
+        _component("option_fixed", "option:79", "1.60", option_id="79", sorting="1"),
+        _component("option_fixed", "option:79", "1.60", option_id="79", sorting="2"),
+    ]
+
+    result = reconcile_fee_components(contract, actual)
+
+    assert result.passed is True
 
 
 def test_same_total_with_offsetting_wrong_components_fails():

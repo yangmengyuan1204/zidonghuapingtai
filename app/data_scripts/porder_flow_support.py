@@ -100,9 +100,63 @@ def _freight_mappings(payload):
     return expanded
 
 
+def _is_sea_logistics_hint(requested: str) -> bool:
+    requested = str(requested or "").strip()
+    return requested in {"20", "sea", "ship"} or "船" in requested or requested in {"8", "19"}
+
+
+def _is_sea_logistics_name(name: str) -> bool:
+    text = str(name or "")
+    lower = text.lower()
+    if "船" in text or "コンテナ" in text or "container" in lower:
+        return True
+    return "sea" in lower or "ship" in lower
+
+
+def _customer_user_id(variables, porder_sn: str = "") -> str:
+    for key in ("customer_id", "user_id", "client_id"):
+        text = str((variables or {}).get(key) or "").strip()
+        if text:
+            return text
+    tail = str(porder_sn or "").rsplit("-", 1)[-1].strip()
+    return tail if tail.isdigit() else ""
+
+
+def _fetch_user_logistics_list(session, base_url, variables, porder_sn, timeout, backend_log):
+    user_id = _customer_user_id(variables, porder_sn)
+    paths: list[str] = []
+    primary = _api_path(variables, "admin_porder_logistics_list", "/config.logistics.list")
+    for path in (primary, "/config.logistics.list", "/porder.logisticsList", "/porder/logisticsList"):
+        if path and path not in paths:
+            paths.append(path)
+    last_payload: dict = {}
+    fields = {"user_id": user_id} if user_id else {}
+    for path in paths:
+        last_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            path,
+            fields,
+            timeout,
+        )
+        backend_log.setdefault("logistics_list_attempts", []).append(
+            {**_payload_brief(last_payload), "path": path, "user_id": user_id}
+        )
+        if _api_success(last_payload):
+            backend_log["logistics_list"] = {
+                **_payload_brief(last_payload),
+                "path": path,
+                "user_id": user_id,
+                "sample": _payload_structure_sample(last_payload, limit=8),
+            }
+            return last_payload
+    backend_log["logistics_list"] = {**_payload_brief(last_payload), "user_id": user_id}
+    return last_payload
+
+
 def _logistics_ids_from_freight(payload, requested: str):
     requested = str(requested or "").strip()
-    sea_hint = requested in {"20", "sea", "ship"} or "船" in requested or "海" in requested
+    sea_hint = _is_sea_logistics_hint(requested)
     seen: set[str] = set()
     ordered: list[str] = []
 
@@ -116,12 +170,97 @@ def _logistics_ids_from_freight(payload, requested: str):
         for row in _freight_mappings(payload):
             name = str(row.get("name") or row.get("logistics_name") or row.get("express_name") or row.get("title") or "")
             lid = str(row.get("logistics_id") or row.get("id") or "")
-            if lid and ("船" in name or "海" in name or "sea" in name.lower() or "ship" in name.lower()):
+            if lid and _is_sea_logistics_name(name):
                 add(lid)
+        add(requested)
+        return ordered
     add(requested)
     for row in _freight_mappings(payload):
         add(str(row.get("logistics_id") or ""))
     return ordered
+
+
+def _select_porder_logistics(
+    session,
+    base_url,
+    variables,
+    porder_sn,
+    freight_id,
+    requested_id,
+    freight_payloads,
+    timeout,
+    backend_log,
+):
+    _sync_compat_globals()
+    requested_id = str(requested_id or "").strip() or "25"
+    candidate_ids: list[str] = []
+    seen: set[str] = set()
+
+    def extend(payload) -> None:
+        for cid in _logistics_ids_from_freight(payload, requested_id):
+            if cid not in seen:
+                seen.add(cid)
+                candidate_ids.append(cid)
+
+    for payload in freight_payloads or []:
+        extend(payload)
+    if len(candidate_ids) <= 1:
+        fresh_freight_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_porder_freight_list", "/porder.freightList"),
+            {"porder_sn": porder_sn, "filterByFreightNum": "false"},
+            timeout,
+        )
+        backend_log["freight_list_for_logistics"] = {
+            **_payload_brief(fresh_freight_payload),
+            "sample": _payload_structure_sample(fresh_freight_payload, limit=4),
+        }
+        fresh_ids = _logistics_ids_from_freight(fresh_freight_payload, requested_id)
+        merged: list[str] = []
+        merged_seen: set[str] = set()
+        for cid in fresh_ids + candidate_ids:
+            if cid and cid not in merged_seen:
+                merged_seen.add(cid)
+                merged.append(cid)
+        candidate_ids = merged
+
+    if _is_sea_logistics_hint(requested_id):
+        list_payload = _fetch_user_logistics_list(
+            session, base_url, variables, porder_sn, timeout, backend_log
+        )
+        if _api_success(list_payload):
+            list_ids = _logistics_ids_from_freight(list_payload, requested_id)
+            merged: list[str] = []
+            merged_seen: set[str] = set()
+            for cid in list_ids + candidate_ids:
+                if cid and cid not in merged_seen:
+                    merged_seen.add(cid)
+                    merged.append(cid)
+            candidate_ids = merged
+
+    last_payload: dict = {}
+    selected_id = ""
+    for candidate_id in candidate_ids or [requested_id]:
+        last_payload = _post_admin_urlencoded(
+            session,
+            base_url,
+            _api_path(variables, "admin_porder_batch_update_freight_logistics", "/porder.batchUpdateFreightLogistics"),
+            {"logistics_id": candidate_id, "freight_id_set": [freight_id]},
+            timeout,
+        )
+        backend_log.setdefault("batch_update_freight_logistics_attempts", []).append(
+            {**_payload_brief(last_payload), "logistics_id": candidate_id, "freight_id": freight_id}
+        )
+        if _api_success(last_payload):
+            selected_id = candidate_id
+            break
+    backend_log["batch_update_freight_logistics"] = {
+        **_payload_brief(last_payload),
+        "logistics_id": selected_id or requested_id,
+        "freight_id": freight_id,
+    }
+    return selected_id, last_payload
 
 
 def _predict_porder_logistics_price(session, base_url, variables, freight_id, timeout):
@@ -493,32 +632,31 @@ def _impl__run_backend_porder_flow(
         from_api = from_api.strip().lower() in {"1", "true", "yes"}
     manual_price = str(variables.get("logistics_price_artificial") or "").strip()
     logistics_price = manual_price or "775"
-    logistics_payload = {}
-    selected_id = ""
-    for candidate_id in _logistics_ids_from_freight(freight_before_box_payload, logistics_id) or [logistics_id]:
-        logistics_payload = _post_admin_urlencoded(
-            session,
-            base_url,
-            _api_path(variables, "admin_porder_batch_update_freight_logistics", "/porder.batchUpdateFreightLogistics"),
-            {"logistics_id": candidate_id, "freight_id_set": [freight_id]},
-            timeout,
-        )
-        backend_log.setdefault("batch_update_freight_logistics_attempts", []).append(
-            {**_payload_brief(logistics_payload), "logistics_id": candidate_id, "freight_id": freight_id}
-        )
-        if _api_success(logistics_payload):
-            selected_id = candidate_id
-            break
-    backend_log["batch_update_freight_logistics"] = {
-        **_payload_brief(logistics_payload),
-        "logistics_id": selected_id or logistics_id,
-        "freight_id": freight_id,
-    }
+    selected_id, logistics_payload = _select_porder_logistics(
+        session,
+        base_url,
+        variables,
+        porder_sn,
+        freight_id,
+        logistics_id,
+        [freight_before_box_payload],
+        timeout,
+        backend_log,
+    )
     if not selected_id:
+        brief = _payload_brief(logistics_payload)
+        msg = str(brief.get("msg") or "").strip()
+        tried = [
+            str(item.get("logistics_id") or "")
+            for item in backend_log.get("batch_update_freight_logistics_attempts") or []
+            if isinstance(item, dict)
+        ]
+        tried_text = ",".join(item for item in tried if item) or logistics_id
         return False, {
             "backend_passed": False,
-            "reason": "配送单选择国际物流失败",
-            "batch_update_freight_logistics": _payload_brief(logistics_payload),
+            "reason": f"配送单选择国际物流失败：{msg}（尝试 {tried_text}）" if msg else f"配送单选择国际物流失败（尝试 {tried_text}）",
+            "batch_update_freight_logistics": brief,
+            "logistics_candidates": backend_log.get("batch_update_freight_logistics_attempts"),
         }
     logistics_id = selected_id
 

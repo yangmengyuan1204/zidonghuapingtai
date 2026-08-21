@@ -235,7 +235,7 @@ html.v3-embed #srRunConsoleHost {
 html.v3-embed .system-regression-layout {
   grid-template-columns: 190px minmax(430px, 0.95fr) minmax(420px, 1.1fr);
   gap: 10px;
-  align-items: stretch;
+  align-items: start;
   flex: 0 0 auto;
   min-height: auto;
   overflow: visible;
@@ -251,10 +251,13 @@ html.v3-embed .system-regression-drawer {
   box-shadow: none;
 }
 
+/* 左侧高度由 JS 按右侧参数栏同步；只有左侧滚动 */
 html.v3-embed .system-regression-categories,
 html.v3-embed .system-regression-cases {
+  box-sizing: border-box;
   min-height: 0;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 html.v3-embed .system-regression-drawer {
@@ -279,7 +282,8 @@ html.v3-embed .system-regression-case-table th {
 }
 
 html.v3-embed .system-regression-case-table td {
-  height: 44px;
+  height: auto;
+  min-height: 44px;
 }
 
 html.v3-embed .system-regression-categories button {
@@ -511,10 +515,14 @@ html.v3-embed .system-regression-section {
   background: #ecfdf3;
 }
 
-.system-regression-seq-cell.is-failed,
-.system-regression-seq-cell.is-blocked {
+.system-regression-seq-cell.is-failed {
   border-color: #f5c2c0;
   background: #fef0f0;
+}
+
+.system-regression-seq-cell.is-blocked {
+  border-color: #fde68a;
+  background: #fffbeb;
 }
 
 .system-regression-seq-cell.is-waiting_account {
@@ -937,6 +945,19 @@ html.v3-embed .system-regression-section {
 
 .system-regression-case-tools .panel-title {
   margin: 0;
+}
+
+.system-regression-row-ops {
+  white-space: nowrap;
+}
+
+.system-regression-delete {
+  color: #d92d20;
+  font-weight: 600;
+}
+
+.system-regression-drawer > .panel-title .btn {
+  margin-left: auto;
 }
 
 .system-regression-modal {

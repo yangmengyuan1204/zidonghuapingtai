@@ -43,6 +43,14 @@ def test_reconciliation_allows_one_jpy_difference(actual, passed):
     assert result["difference_jpy"] == str(abs(Decimal(actual) - Decimal("100")))
 
 
+def test_reconciliation_caps_tolerance_at_one_jpy():
+    result = reconcile_amount("order_balance", evidence("100"), evidence("102"), tolerance_jpy=Decimal("5"))
+
+    assert result["passed"] is False
+    assert result["tolerance_jpy"] == "1"
+    assert "超过允许的 1 日元" in result["reason"]
+
+
 def test_reconciliation_rejects_wrong_cashflow_direction():
     result = reconcile_amount(
         "problem_refund",

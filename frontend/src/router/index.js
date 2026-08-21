@@ -15,6 +15,7 @@ import { useAuthStore } from '../stores/auth.js'
 import { hardResetOverlayStack, getOverlayCount } from '../components/v2/overlay/overlayStack.js'
 import { forceUnlockAllBodyScroll, getBodyScrollLockCount } from '../components/v2/overlay/scrollLock.js'
 import { forceReleaseAllV2Portals, getV2PortalOwnerCount } from '../components/v2/overlay/portal.js'
+import LegacyEmbedView from '../views/LegacyEmbedView.vue'
 
 // 菜单配置（与 Static 运行时菜单对齐：需求验证中心已合并 AI用例生成 + 功能验证中心）
 // adminOnly 的页面（users）非 admin 不可见
@@ -85,21 +86,21 @@ const routes = [
     path: '/dataScripts',
     alias: '/data-scripts',
     name: 'dataScripts',
-    component: () => import('../views/LegacyEmbedView.vue'),
+    component: LegacyEmbedView,
     meta: { viewKey: 'dataScripts' },
   },
   {
     path: '/requirementVerification',
     alias: '/requirement-verification',
     name: 'requirementVerification',
-    component: () => import('../views/LegacyEmbedView.vue'),
+    component: LegacyEmbedView,
     meta: { viewKey: 'requirementVerification' },
   },
   {
     path: '/systemRegression',
     alias: '/system-regression',
     name: 'systemRegression',
-    component: () => import('../views/LegacyEmbedView.vue'),
+    component: LegacyEmbedView,
     meta: { viewKey: 'systemRegression', adminOnly: true },
   },
   {

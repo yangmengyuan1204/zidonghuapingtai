@@ -10,7 +10,7 @@ from typing import Any, Iterable, Mapping
 from ..data_script_shared import _finish_named
 from ..orders import inspect_order_options
 from ..problem_goods import inspect_problem_goods
-from .reconciliation import MoneyEvidence, new_records, reconcile_amount, to_jpy
+from .reconciliation import MoneyEvidence, new_records, reconcile_amount, to_jpy, MAX_JPY_TOLERANCE
 from .scenarios import (
     SCENARIO_CATALOG,
     ScenarioConfigurationError,
@@ -20,6 +20,13 @@ from .scenarios import (
 
 
 PAYMENT_AMOUNT_REGRESSION_SCRIPT_NAME = "支付金额自动回归"
+_TRANSIENT_SCRIPT_RETRY_DELAY_SECONDS = 0.5
+_TRANSIENT_DB_CONFLICT_MARKERS = (
+    "sqlstate[40001]",
+    "deadlock found",
+    "serialization failure",
+    "error 1213",
+)
 AMOUNT_KEYS = (
     "change_amount",
     "pay_amount",
@@ -43,6 +50,82 @@ class ScenarioBlocked(RuntimeError):
         self.evidence = dict(evidence or {})
 
 
+def _ticket_jpy(variables: Mapping[str, Any], key: str) -> Decimal:
+    raw = variables.get(key)
+    if raw in (None, ""):
+        return Decimal("0")
+    try:
+        number = Decimal(str(raw))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal("0")
+    return abs(number) if number.is_finite() else Decimal("0")
+
+
+def _adjust_detail_lines(row: Mapping[str, Any]) -> list[str]:
+    raw = row.get("adjust_detail")
+    if isinstance(raw, str):
+        return [raw]
+    lines: list[str] = []
+    if isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, str):
+                lines.append(item)
+            elif isinstance(item, list):
+                lines.extend(str(part) for part in item)
+            elif isinstance(item, Mapping):
+                lines.extend(str(value) for value in item.values())
+    return lines
+
+
+def _first_jpy_number(text: str) -> Decimal | None:
+    digits: list[str] = []
+    started = False
+    for char in text:
+        if char.isdigit() or char == ".":
+            digits.append(char)
+            started = True
+            continue
+        if started:
+            break
+    if not digits:
+        return None
+    try:
+        number = Decimal("".join(digits))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    return abs(number) if number.is_finite() else None
+
+
+def _ledger_coupon_discount_jpy(rows: Iterable[Mapping[str, Any]]) -> Decimal:
+    total = Decimal("0")
+    for row in rows or []:
+        if not isinstance(row, Mapping):
+            continue
+        used = row.get("discount_use")
+        items = [used] if isinstance(used, Mapping) else used if isinstance(used, list) else []
+        for item in items:
+            if not isinstance(item, Mapping):
+                continue
+            raw = item.get("discount_amount")
+            if raw in (None, ""):
+                continue
+            try:
+                number = Decimal(str(raw))
+            except (InvalidOperation, TypeError, ValueError):
+                continue
+            if number.is_finite():
+                total += abs(number)
+        if total > 0:
+            continue
+        for line in _adjust_detail_lines(row):
+            if "クーポンの割引金額" not in line and "优惠券" not in line:
+                continue
+            parsed = _first_jpy_number(line)
+            if parsed is not None:
+                total += parsed
+    return total
+
+
 def _decimal(value: Any, label: str) -> Decimal:
     try:
         number = Decimal(str(value))
@@ -63,12 +146,63 @@ def _bool_value(value: Any, default: bool = True) -> bool:
     return str(value).strip().lower() not in {"0", "false", "no", "off", "否"}
 
 
+def _is_transient_db_conflict(message: Any) -> bool:
+    text = str(message or "").strip().lower()
+    return bool(text) and any(marker in text for marker in _TRANSIENT_DB_CONFLICT_MARKERS)
+
+
 def _amount_from_record(row: Mapping[str, Any]) -> Decimal:
     for key in AMOUNT_KEYS:
         value = row.get(key)
         if value not in (None, ""):
             return _decimal(value, f"流水字段 {key}")
     raise ScenarioBlocked("实际流水缺少金额字段")
+
+
+def normalize_balance_change_rows(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        item = dict(row)
+        label = f"{item.get('bill_type_group') or ''}{item.get('bill_type_name') or ''}"
+        raw_amount = item.get("change_amount")
+        if raw_amount in (None, ""):
+            raw_amount = item.get("amount") if item.get("amount") not in (None, "") else item.get("pay_amount")
+        if raw_amount in (None, ""):
+            normalized.append(item)
+            continue
+        amount = _decimal(raw_amount, "出入金金额")
+        if "出金" in label:
+            amount = -abs(amount)
+        elif "入金" in label:
+            amount = abs(amount)
+        item["change_amount"] = format(amount, "f")
+        normalized.append(item)
+    return normalized
+
+
+def _ledger_rows_for_direction(rows: Iterable[Mapping[str, Any]], expected_direction: str) -> list[dict[str, Any]]:
+    if expected_direction not in {"debit", "credit"}:
+        return [dict(row) for row in rows]
+    token = "出金" if expected_direction == "debit" else "入金"
+    opposite = "入金" if expected_direction == "debit" else "出金"
+    matched: list[dict[str, Any]] = []
+    for row in rows:
+        item = dict(row)
+        label = f"{item.get('bill_type_group') or ''}{item.get('bill_type_name') or ''}"
+        if token in label:
+            matched.append(item)
+            continue
+        if opposite in label:
+            continue
+        try:
+            amount = _amount_from_record(item)
+        except ScenarioBlocked:
+            continue
+        if expected_direction == "debit" and amount < 0:
+            matched.append(item)
+        elif expected_direction == "credit" and amount > 0:
+            matched.append(item)
+    return matched
 
 
 def _record_id(row: Mapping[str, Any]) -> str:
@@ -84,11 +218,16 @@ def money_evidence_from_record(
     source: str,
     reference: str,
     direction: str | None = None,
+    force_jpy: bool = False,
 ) -> MoneyEvidence:
     amount = _amount_from_record(row)
     actual_direction = direction or ("debit" if amount < 0 else "credit" if amount > 0 else "none")
-    currency = str(row.get("currency") or row.get("currency_code") or "JPY").upper()
-    rate_value = row.get("exchange_rate") or row.get("rate")
+    if force_jpy:
+        currency = "JPY"
+        rate_value = None
+    else:
+        currency = str(row.get("currency") or row.get("currency_code") or "JPY").upper()
+        rate_value = row.get("exchange_rate") or row.get("rate")
     return MoneyEvidence(
         source=source,
         amount=amount,
@@ -178,23 +317,55 @@ def _row_matches(row: Mapping[str, Any], references: Iterable[str]) -> bool:
         "p_order_sn",
         "problem_goods_id",
         "serial_number",
+        "relation_sn",
+        "related_sn",
+        "order_no",
+        "porder_no",
+        "business_sn",
     )
     text_keys = (
         "remark",
         "pay_remark",
         "description",
+        "note",
+        "content",
+        "title",
+        "bill_remark",
     )
-    return any(needle == str(row.get(key) or "").strip() for needle in needles for key in exact_keys) or any(
+    if any(needle == str(row.get(key) or "").strip() for needle in needles for key in exact_keys) or any(
         needle in str(row.get(key) or "") for needle in needles for key in text_keys
-    )
+    ):
+        return True
+    for needle in needles:
+        if len(needle) < 8:
+            continue
+        for value in row.values():
+            if value not in (None, "") and needle in str(value):
+                return True
+    return False
 
 
 def _matching_rows(rows: Iterable[Mapping[str, Any]], references: Iterable[str]) -> list[dict[str, Any]]:
     return [dict(row) for row in rows if _row_matches(row, references)]
 
 
-def _expected_evidence(amount: Any, source: str, reference: str, direction: str) -> MoneyEvidence:
-    return MoneyEvidence(source, _decimal(amount, source), "JPY", direction, reference=reference)
+def _expected_evidence(
+    amount: Any,
+    source: str,
+    reference: str,
+    direction: str,
+    *,
+    currency: str = "JPY",
+    exchange_rate: Decimal | None = None,
+) -> MoneyEvidence:
+    return MoneyEvidence(
+        source,
+        _decimal(amount, source),
+        currency,
+        direction,
+        exchange_rate=exchange_rate,
+        reference=reference,
+    )
 
 
 def _aggregate_evidence(
@@ -203,12 +374,19 @@ def _aggregate_evidence(
     source: str,
     reference: str,
     direction: str | None = None,
+    force_jpy: bool = False,
 ) -> MoneyEvidence:
     if not rows:
         raise ScenarioBlocked(f"未找到 {reference} 的实际流水")
     if len(rows) != 1:
         raise ScenarioBlocked(f"{reference} 匹配到 {len(rows)} 条实际流水，无法唯一取证")
-    return money_evidence_from_record(rows[0], source=source, reference=reference, direction=direction)
+    return money_evidence_from_record(
+        rows[0],
+        source=source,
+        reference=reference,
+        direction=direction,
+        force_jpy=force_jpy,
+    )
 
 
 def _sum_evidence_jpy(evidences: Iterable[MoneyEvidence]) -> Decimal:
@@ -233,6 +411,209 @@ class LivePaymentRegressionExecutor:
             for key, value in dict(variables or {}).items()
             if key != "_scenario_executor"
         }
+
+    def _japan_cny_to_jpy(self) -> Decimal | None:
+        raw = self.variables.get("japan_fixed_cny_to_jpy")
+        if raw in (None, ""):
+            return None
+        rate = _decimal(raw, "日本站人民币兑日元汇率")
+        if rate <= 0:
+            raise ScenarioBlocked("日本站人民币兑日元汇率必须为正数")
+        return rate
+
+    def _use_ledger_cross_check(self) -> bool:
+        for key in ("compare_ledger_after_payment", "compare_actual_from_balance_change"):
+            raw = self.variables.get(key)
+            if raw not in (None, ""):
+                return _bool_value(raw, True)
+        return self._japan_cny_to_jpy() is not None
+
+    def _ledger_variables(self, variables: Mapping[str, Any], **references: Any) -> dict[str, Any]:
+        values = dict(variables)
+        for key, value in references.items():
+            text = str(value or "").strip()
+            if text:
+                values[key] = text
+        return values
+
+    def _expected_money(
+        self,
+        amount: Any,
+        source: str,
+        reference: str,
+        direction: str,
+        *,
+        currency: str | None = None,
+        exchange_rate: Decimal | None = None,
+    ) -> MoneyEvidence:
+        rate = exchange_rate if exchange_rate is not None else self._japan_cny_to_jpy()
+        if currency is None:
+            currency = "JPY"
+        normalized = str(currency or "").strip().upper()
+        return _expected_evidence(
+            amount,
+            source,
+            reference,
+            direction,
+            currency=normalized,
+            exchange_rate=rate if normalized == "CNY" else None,
+        )
+
+    def _payment_api_actual(
+        self,
+        summary: Mapping[str, Any],
+        reference: str,
+        direction: str = "debit",
+        *,
+        currency: str | None = None,
+        exchange_rate: Decimal | None = None,
+    ) -> MoneyEvidence:
+        amount = str(summary.get("pay_amount") or summary.get("porder_pay_amount") or "").strip()
+        if not amount:
+            raise ScenarioBlocked("支付接口未返回实付金额")
+        return self._expected_money(
+            amount,
+            "payment_api",
+            reference,
+            direction,
+            currency=currency,
+            exchange_rate=exchange_rate,
+        )
+
+    def _customer_balance_check(
+        self,
+        before: list[Mapping[str, Any]],
+        variables: dict[str, Any],
+        references: list[str],
+        *,
+        expected_jpy: Decimal,
+        expected_direction: str,
+        allow_empty: bool = False,
+    ) -> dict[str, Any]:
+        try:
+            rows = self._wait_new_balance_rows(
+                before,
+                variables,
+                references,
+                allow_empty=allow_empty or expected_direction == "none",
+                expected_direction=expected_direction,
+            )
+        except ScenarioBlocked as exc:
+            return {
+                "passed": False,
+                "reason_code": "ledger_missing",
+                "reason": str(exc),
+                "customer_balance_jpy": "",
+                "expected_jpy": str(abs(expected_jpy)),
+                "difference_jpy": "",
+                "customer_balance_records": [],
+            }
+        if expected_direction in {"debit", "credit"}:
+            rows = _ledger_rows_for_direction(rows, expected_direction)
+        evidences = [
+            money_evidence_from_record(
+                row,
+                source="customer_balance",
+                reference=references[0] if references else "",
+                force_jpy=True,
+            )
+            for row in rows
+        ]
+        ledger_jpy = _sum_evidence_jpy(evidences) if evidences else Decimal("0")
+        directions = {item.direction for item in evidences}
+        actual_direction = (
+            "none"
+            if not evidences
+            else (directions.pop() if len(directions) == 1 else expected_direction)
+        )
+        compared_expected = abs(expected_jpy)
+        coupon_missing = False
+        if (
+            expected_direction != "none"
+            and str(variables.get("discounts_id") or "").strip()
+            and _ticket_jpy(variables, "payment_regression_discount_jpy") == 0
+        ):
+            coupon_jpy = _ledger_coupon_discount_jpy(rows)
+            if coupon_jpy <= 0:
+                coupon_missing = True
+            else:
+                compared_expected = max(Decimal("0"), compared_expected - coupon_jpy)
+        difference = abs(ledger_jpy - compared_expected)
+        direction_ok = expected_direction == "none" or actual_direction == expected_direction
+        if coupon_missing:
+            passed = False
+            reason_code = "coupon_not_applied"
+            reason = "提交了订单优惠券，但出入金没有券减免金额"
+        elif expected_direction == "none":
+            passed = not rows
+            reason_code = "" if passed else "unexpected_ledger"
+            reason = "" if passed else f"零金额场景出现 {len(rows)} 条客户出入金记录"
+        else:
+            passed = direction_ok and difference <= MAX_JPY_TOLERANCE
+            reason_code = "" if passed else ("direction_mismatch" if not direction_ok else "ledger_mismatch")
+            reason = (
+                ""
+                if passed
+                else (
+                    f"出入金方向 {actual_direction} 与预期 {expected_direction} 不一致"
+                    if not direction_ok
+                    else f"出入金 {ledger_jpy} 日元与支付比对 {compared_expected} 日元相差 {difference} 日元，超过允许的 {MAX_JPY_TOLERANCE} 日元"
+                )
+            )
+        record_id = ",".join(item.record_id for item in evidences if item.record_id)
+        return {
+            "passed": passed,
+            "reason_code": reason_code,
+            "reason": reason,
+            "customer_balance_jpy": format(ledger_jpy, "f"),
+            "customer_balance_direction": actual_direction,
+            "customer_balance_record_id": record_id,
+            "expected_jpy": format(compared_expected, "f"),
+            "difference_jpy": format(difference, "f"),
+            "customer_balance_records": [dict(row) for row in rows],
+        }
+
+    def _apply_ledger_cross_check(
+        self,
+        payload: dict[str, Any],
+        *,
+        before: list[Mapping[str, Any]],
+        variables: dict[str, Any],
+        references: list[str],
+        expected_jpy: Decimal,
+        expected_direction: str,
+        allow_empty: bool = False,
+    ) -> dict[str, Any]:
+        ledger = self._customer_balance_check(
+            before,
+            variables,
+            references,
+            expected_jpy=expected_jpy,
+            expected_direction=expected_direction,
+            allow_empty=allow_empty,
+        )
+        payload["customer_balance_jpy"] = ledger.get("customer_balance_jpy") or ""
+        payload["ledger_check"] = ledger
+        after = dict(payload.get("after_evidence") or {})
+        after["customer_balance_jpy"] = payload["customer_balance_jpy"]
+        payload["after_evidence"] = after
+        primary_passed = payload.get("status") == "passed"
+        if primary_passed:
+            payload.setdefault("checks", []).append(
+                {
+                    "key": "customer_balance",
+                    "passed": ledger["passed"],
+                    "reason_code": ledger.get("reason_code") or "",
+                    "reason": ledger.get("reason") or "",
+                    "actual_source": "customer_balance",
+                    "actual_jpy": ledger.get("customer_balance_jpy") or "0",
+                    "expected_jpy": ledger.get("expected_jpy") or "",
+                    "difference_jpy": ledger.get("difference_jpy") or "",
+                }
+            )
+            if not ledger["passed"]:
+                payload["status"] = "failed"
+        return payload
 
     @staticmethod
     def _scripts():
@@ -265,6 +646,11 @@ class LivePaymentRegressionExecutor:
     @staticmethod
     def _run_script(runner: Any, env: Any, variables: dict[str, Any], label: str) -> tuple[dict[str, Any], dict[str, Any], str]:
         passed, log_text, report_path, summary = runner(env, variables)
+        if not passed:
+            reason = str((summary or {}).get("reason") or (summary or {}).get("error") or "")
+            if _is_transient_db_conflict(reason):
+                time.sleep(_TRANSIENT_SCRIPT_RETRY_DELAY_SECONDS)
+                passed, log_text, report_path, summary = runner(env, variables)
         try:
             log = json.loads(log_text) if log_text else {}
         except ValueError:
@@ -328,10 +714,17 @@ class LivePaymentRegressionExecutor:
     def _balance_rows(self, variables: dict[str, Any]) -> list[dict[str, Any]]:
         scripts = self._scripts()
         client = self._client(variables)
+        keywords = str(
+            variables.get("balance_change_keywords")
+            or variables.get("order_sn")
+            or variables.get("porder_sn")
+            or variables.get("problem_goods_id")
+            or ""
+        )
         fields = {
             "start_time": "",
             "end_time": "",
-            "keywords": "",
+            "keywords": keywords,
             "bill_type": "",
             "bill_method": "",
             "order_by": "desc",
@@ -341,8 +734,8 @@ class LivePaymentRegressionExecutor:
         path = scripts._api_path(variables, "client_balance_change", "/client/user.balanceChange")
         payload = client.post_form(path, fields)
         if not scripts._api_success(payload):
-            raise ScenarioBlocked(str(payload.get("msg") or "客户账单查询失败"))
-        return _payload_rows(payload)
+            raise ScenarioBlocked(str(payload.get("msg") or "客户出入金记录查询失败"))
+        return normalize_balance_change_rows(_payload_rows(payload))
 
     def _wait_new_balance_rows(
         self,
@@ -351,19 +744,26 @@ class LivePaymentRegressionExecutor:
         references: list[str],
         *,
         allow_empty: bool = False,
+        expected_direction: str | None = None,
     ) -> list[dict[str, Any]]:
         retries = int(variables.get("payment_regression_evidence_retries") or 6)
         delay = float(variables.get("payment_regression_evidence_delay") or 2)
         matches: list[dict[str, Any]] = []
+        fresh: list[dict[str, Any]] = []
         for attempt in range(max(1, retries)):
-            matches = _matching_rows(new_records(before, self._balance_rows(variables)), references)
+            fresh = new_records(before, self._balance_rows(variables))
+            matches = _matching_rows(fresh, references)
+            if not matches and self._use_ledger_cross_check() and fresh:
+                matches = [dict(row) for row in fresh]
+            if expected_direction in {"debit", "credit"}:
+                matches = _ledger_rows_for_direction(matches, expected_direction)
             if matches:
                 return matches
             if attempt < retries - 1 and delay > 0:
                 time.sleep(delay)
         if allow_empty:
             return []
-        raise ScenarioBlocked(f"结算等待结束后未找到实际流水：{'、'.join(references)}")
+        raise ScenarioBlocked(f"结算等待结束后未找到出入金记录：{'、'.join(references)}")
 
     def _quote_order(
         self,
@@ -429,9 +829,22 @@ class LivePaymentRegressionExecutor:
         data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
         amount_data = data.get("porder_amount") if isinstance(data.get("porder_amount"), dict) else {}
         amount = _decimal(amount_data.get("pay_amount"), "配送单人民币应付金额")
+        if amount <= 0:
+            raise ScenarioBlocked("未获取到有效的配送单应付金额")
+        japan_rate = self._japan_cny_to_jpy()
+        if japan_rate is not None:
+            return MoneyEvidence(
+                source="porder_pay_detail",
+                amount=amount,
+                currency="CNY",
+                direction="debit",
+                exchange_rate=japan_rate,
+                reference=porder_sn,
+                raw=dict(amount_data),
+            )
         exchange_rate = _decimal(amount_data.get("exchange_rate"), "配送单汇率")
         expected_jpy = _decimal(amount_data.get("pay_amount_jpy"), "配送单日元应付金额")
-        if amount <= 0 or exchange_rate <= 0 or expected_jpy <= 0:
+        if exchange_rate <= 0 or expected_jpy <= 0:
             raise ScenarioBlocked("未获取到有效的配送单应付金额或汇率")
         if to_jpy(amount, "CNY", exchange_rate) != expected_jpy:
             raise ScenarioBlocked("配送单人民币金额、汇率与日元应付金额不一致")
@@ -468,7 +881,7 @@ class LivePaymentRegressionExecutor:
         return MoneyEvidence(
             source=actual.source,
             amount=actual.amount,
-            currency="CNY",
+            currency=expected.currency,
             direction=actual.direction,
             exchange_rate=expected.exchange_rate,
             reference=actual.reference,
@@ -481,24 +894,56 @@ class LivePaymentRegressionExecutor:
         order_sn, variables = self._quote_order(scenario, batch_id)
         write_evidence = dict(getattr(self, "_last_order_write_evidence", {}) or {})
         expected_amount = self._order_expected_amount(variables, order_sn)
-        before = self._balance_rows(variables) if scenario.payment_mode == "balance" else []
-        payment_vars = dict(variables, order_sn=order_sn, finance_confirm=True)
+        ledger_vars = self._ledger_variables(variables, order_sn=order_sn)
+        cross = self._use_ledger_cross_check()
+        before = self._balance_rows(ledger_vars) if (cross or scenario.payment_mode == "balance") else []
+        payment_vars = dict(ledger_vars, finance_confirm=True)
         runner = scripts.run_balance_payment_script if scenario.payment_mode == "balance" else scripts.run_bank_payment_script
         payment_summary, payment_log, payment_report = self._run_script(runner, self.env, payment_vars, scenario.name)
-        if scenario.payment_mode == "balance":
-            rows = self._wait_new_balance_rows(before, variables, [order_sn])
+        expected = self._expected_money(expected_amount, "order_quote", order_sn, "debit")
+        if cross:
+            if scenario.payment_mode == "bank":
+                actual = self._porder_bank_actual(
+                    payment_log,
+                    payment_report,
+                    str(payment_summary.get("serial_number") or order_sn),
+                    expected,
+                )
+            else:
+                actual = self._payment_api_actual(
+                    payment_summary,
+                    order_sn,
+                    exchange_rate=expected.exchange_rate,
+                )
+        elif scenario.payment_mode == "balance":
+            rows = self._wait_new_balance_rows(before, ledger_vars, [order_sn])
             actual = _aggregate_evidence(rows, source="customer_balance", reference=order_sn, direction="debit")
         else:
             actual = self._bank_actual(payment_log, payment_report, str(payment_summary.get("serial_number") or order_sn))
-        expected = _expected_evidence(expected_amount, "order_quote", order_sn, "debit")
-        check = reconcile_amount(scenario.key, expected, actual)
-        return {
+        check = reconcile_amount(
+            scenario.key,
+            expected,
+            actual,
+            discount_jpy=_ticket_jpy(variables, "payment_regression_discount_jpy"),
+            voucher_jpy=_ticket_jpy(variables, "payment_regression_voucher_jpy"),
+        )
+        payload = {
             "status": "passed" if check["passed"] else "failed",
             "order_sn": order_sn,
             "payment_type": scenario.payment_mode,
             "checks": [check],
             **write_evidence,
         }
+        if cross:
+            self._apply_ledger_cross_check(
+                payload,
+                before=before,
+                variables=ledger_vars,
+                references=[order_sn],
+                expected_jpy=_decimal(check["expected_jpy"], "支付比对日元"),
+                expected_direction="debit",
+            )
+        return payload
 
     def _order_pay_data(self, variables: dict[str, Any], order_sn: str) -> dict[str, Any]:
         scripts = self._scripts()
@@ -510,12 +955,23 @@ class LivePaymentRegressionExecutor:
         return payload
 
     @staticmethod
-    def _part_payment_expected_amounts(first_due_amount: str, pay_data: Any) -> tuple[str, str]:
+    def _part_payment_expected_amounts(first_due_amount: str, pay_data: Any, *, prefer_cny: bool = False) -> tuple[str, str]:
         first = str(first_due_amount or "").strip()
-        total = LivePaymentRegressionExecutor._recursive_amount(
-            pay_data,
-            ("pay_amount_jpy", "total_amount", "pay_amount"),
-        )
+        if prefer_cny:
+            data = pay_data.get("data") if isinstance(pay_data, dict) else {}
+            part_pay_amount = data.get("part_pay_amount") if isinstance(data, dict) else {}
+            rmb = part_pay_amount.get("RMB") if isinstance(part_pay_amount, dict) else {}
+            total = str(rmb.get("total_amount") or rmb.get("pay_amount") or "").strip()
+            if not total:
+                total = LivePaymentRegressionExecutor._recursive_amount(
+                    pay_data,
+                    ("pay_amount", "total_amount"),
+                )
+        else:
+            total = LivePaymentRegressionExecutor._recursive_amount(
+                pay_data,
+                ("pay_amount_jpy", "total_amount", "pay_amount"),
+            )
         if not first:
             raise ScenarioBlocked("分批付款未返回首款预期金额")
         if not total:
@@ -570,10 +1026,27 @@ class LivePaymentRegressionExecutor:
         )
 
     @staticmethod
-    def _split_stage_actuals(rows: list[Mapping[str, Any]], first_amount: str, reference: str, source: str, direction: str | None = None) -> tuple[MoneyEvidence, MoneyEvidence]:
+    def _split_stage_actuals(
+        rows: list[Mapping[str, Any]],
+        first_amount: str,
+        reference: str,
+        source: str,
+        direction: str | None = None,
+        *,
+        force_jpy: bool = False,
+    ) -> tuple[MoneyEvidence, MoneyEvidence]:
         if len(rows) != 2:
             raise ScenarioBlocked(f"分批付款需要唯一的首款、尾款两条实际流水，当前匹配到 {len(rows)} 条")
-        evidences = [money_evidence_from_record(row, source=source, reference=reference, direction=direction) for row in rows]
+        evidences = [
+            money_evidence_from_record(
+                row,
+                source=source,
+                reference=reference,
+                direction=direction,
+                force_jpy=force_jpy,
+            )
+            for row in rows
+        ]
         target = abs(_decimal(first_amount, "首款金额"))
         evidences.sort(
             key=lambda item: abs(abs(to_jpy(item.amount, item.currency, item.exchange_rate)) - target)
@@ -589,20 +1062,44 @@ class LivePaymentRegressionExecutor:
         first_expected_amount, quote_total = self._part_payment_expected_amounts(
             first_due_amount,
             first_payload,
+            prefer_cny=False,
         )
-        before = self._balance_rows(variables) if scenario.payment_mode == "balance" else []
-        resume_vars = dict(variables, order_sn=order_sn, stop_after_node="shelf_stored")
+        ledger_vars = self._ledger_variables(variables, order_sn=order_sn)
+        cross = self._use_ledger_cross_check()
+        before = self._balance_rows(ledger_vars) if (cross or scenario.payment_mode == "balance") else []
+        resume_vars = dict(ledger_vars, stop_after_node="shelf_stored")
         summary, log, report_path = self._run_script(scripts.run_resume_order_flow_script, self.env, resume_vars, scenario.name)
         tail_expected_amount = self._tail_expected_amount(
             {"summary": summary, "log": log, "report_path": report_path}
         )
         if not tail_expected_amount:
             raise ScenarioBlocked("分批付款未返回尾款预期金额")
-        if scenario.payment_mode == "balance":
-            rows = self._wait_new_balance_rows(before, variables, [order_sn])
+        pairing_first = first_expected_amount
+        if cross:
+            if scenario.payment_mode == "bank":
+                bills = collect_selected_bills({"log": log, "report_path": report_path})
+                rows = _matching_rows(bills, [order_sn])
+                first_actual, tail_actual = self._split_stage_actuals(
+                    rows,
+                    pairing_first,
+                    order_sn,
+                    "finance_confirmed_bill",
+                    "debit",
+                )
+            else:
+                first_actual = self._expected_money(first_expected_amount, "payment_api", order_sn, "debit")
+                tail_actual = self._expected_money(
+                    tail_expected_amount,
+                    "payment_api",
+                    order_sn,
+                    "debit",
+                    currency="JPY",
+                )
+        elif scenario.payment_mode == "balance":
+            rows = self._wait_new_balance_rows(before, ledger_vars, [order_sn])
             first_actual, tail_actual = self._split_stage_actuals(
                 rows,
-                first_expected_amount,
+                pairing_first,
                 order_sn,
                 "customer_balance",
                 "debit",
@@ -610,9 +1107,15 @@ class LivePaymentRegressionExecutor:
         else:
             bills = collect_selected_bills({"log": log, "report_path": report_path})
             rows = _matching_rows(bills, [order_sn])
-            first_actual, tail_actual = self._split_stage_actuals(rows, first_expected_amount, order_sn, "finance_confirmed_bill", "debit")
-        first_expected = _expected_evidence(first_expected_amount, "order_part_pay_preview", order_sn, "debit")
-        tail_expected = _expected_evidence(tail_expected_amount, "order_tail_pay_preview", order_sn, "debit")
+            first_actual, tail_actual = self._split_stage_actuals(rows, pairing_first, order_sn, "finance_confirmed_bill", "debit")
+        first_expected = self._expected_money(first_expected_amount, "order_part_pay_preview", order_sn, "debit")
+        tail_expected = self._expected_money(
+            tail_expected_amount,
+            "order_tail_pay_preview",
+            order_sn,
+            "debit",
+            currency="JPY",
+        )
         first_check = reconcile_amount(f"{scenario.key}_first", first_expected, first_actual)
         tail_check = reconcile_amount(f"{scenario.key}_tail", tail_expected, tail_actual)
         total_actual = MoneyEvidence(
@@ -633,7 +1136,7 @@ class LivePaymentRegressionExecutor:
                 reference=order_sn,
             )
             if partial_tail
-            else _expected_evidence(quote_total, "order_quote", order_sn, "debit")
+            else self._expected_money(quote_total, "order_quote", order_sn, "debit")
         )
         total_check = reconcile_amount(
             f"{scenario.key}_total",
@@ -641,18 +1144,30 @@ class LivePaymentRegressionExecutor:
             total_actual,
         )
         checks = [first_check, tail_check, total_check]
-        return {
+        payload = {
             "status": "passed" if all(item["passed"] for item in checks) else "failed",
             "order_sn": order_sn,
             "payment_type": scenario.payment_mode,
             "checks": checks,
             **write_evidence,
         }
+        if cross:
+            self._apply_ledger_cross_check(
+                payload,
+                before=before,
+                variables=ledger_vars,
+                references=[order_sn],
+                expected_jpy=_decimal(total_check["expected_jpy"], "支付比对日元"),
+                expected_direction="debit",
+            )
+        return payload
 
     def _execute_porder(self, scenario: ScenarioSpec, batch_id: str) -> dict[str, Any]:
         scripts = self._scripts()
         variables = self._variables(batch_id, scenario, stop_after_node="porder_offered", order_item_num=2)
-        summary, _log, _report = self._run_script(scripts.run_full_flow_script, self.env, variables, "配送单报价")
+        flow_vars = dict(variables)
+        flow_vars.pop("discounts_id", None)
+        summary, _log, _report = self._run_script(scripts.run_full_flow_script, self.env, flow_vars, "配送单报价")
         porder_sn = str(summary.get("porder_sn") or "")
         if not porder_sn:
             raise ScenarioBlocked("配送流程未返回配送单号")
@@ -660,16 +1175,38 @@ class LivePaymentRegressionExecutor:
         expected = (
             expected_value
             if isinstance(expected_value, MoneyEvidence)
-            else _expected_evidence(str(expected_value), "porder_pay_detail", porder_sn, "debit")
+            else self._expected_money(str(expected_value), "porder_pay_detail", porder_sn, "debit")
         )
-        before = self._balance_rows(variables) if scenario.payment_mode == "balance" else []
-        pay_vars = dict(variables, porder_sn=porder_sn, run_backend_porder_flow=False, finance_confirm=True)
+        ledger_vars = self._ledger_variables(variables, porder_sn=porder_sn)
+        cross = self._use_ledger_cross_check()
+        before = self._balance_rows(ledger_vars) if (cross or scenario.payment_mode == "balance") else []
+        pay_vars = dict(ledger_vars, run_backend_porder_flow=False, finance_confirm=True)
+        voucher_id = str(variables.get("porder_discounts_id") or "").strip()
+        if voucher_id:
+            pay_vars["discounts_id"] = voucher_id
+        else:
+            pay_vars.pop("discounts_id", None)
         if scenario.payment_mode == "bank":
             pay_vars = self._bounded_porder_payment_variables(pay_vars)
         runner = scripts.run_porder_balance_payment_script if scenario.payment_mode == "balance" else scripts.run_porder_bank_payment_script
         pay_summary, pay_log, pay_report = self._run_script(runner, self.env, pay_vars, scenario.name)
-        if scenario.payment_mode == "balance":
-            rows = self._wait_new_balance_rows(before, variables, [porder_sn])
+        if cross:
+            if scenario.payment_mode == "bank":
+                actual = self._porder_bank_actual(
+                    pay_log,
+                    pay_report,
+                    str(pay_summary.get("serial_number") or porder_sn),
+                    expected,
+                )
+            else:
+                actual = self._payment_api_actual(
+                    pay_summary,
+                    porder_sn,
+                    currency=expected.currency,
+                    exchange_rate=expected.exchange_rate,
+                )
+        elif scenario.payment_mode == "balance":
+            rows = self._wait_new_balance_rows(before, ledger_vars, [porder_sn])
             actual = _aggregate_evidence(rows, source="customer_balance", reference=porder_sn, direction="debit")
         else:
             actual = self._porder_bank_actual(
@@ -682,8 +1219,25 @@ class LivePaymentRegressionExecutor:
             scenario.key,
             expected,
             actual,
+            discount_jpy=_ticket_jpy(variables, "payment_regression_discount_jpy"),
+            voucher_jpy=_ticket_jpy(variables, "payment_regression_voucher_jpy"),
         )
-        return {"status": "passed" if check["passed"] else "failed", "porder_sn": porder_sn, "payment_type": scenario.payment_mode, "checks": [check]}
+        payload = {
+            "status": "passed" if check["passed"] else "failed",
+            "porder_sn": porder_sn,
+            "payment_type": scenario.payment_mode,
+            "checks": [check],
+        }
+        if cross:
+            self._apply_ledger_cross_check(
+                payload,
+                before=before,
+                variables=ledger_vars,
+                references=[porder_sn],
+                expected_jpy=_decimal(check["expected_jpy"], "支付比对日元"),
+                expected_direction="debit",
+            )
+        return payload
 
     @staticmethod
     def _bounded_porder_payment_variables(variables: dict[str, Any]) -> dict[str, Any]:
@@ -748,13 +1302,20 @@ class LivePaymentRegressionExecutor:
             problem_vars.update(build_problem_goods_variables(scenario, candidate))
         except ScenarioConfigurationError as exc:
             raise ScenarioBlocked(str(exc)) from exc
-        before = self._balance_rows(problem_vars)
+        ledger_vars = self._ledger_variables(problem_vars, order_sn=order_sn)
+        before = self._balance_rows(ledger_vars)
         problem_summary, _problem_log, _problem_report = self._run_script(scripts.run_problem_goods_script, self.env, problem_vars, scenario.name)
         problem_id = str(problem_summary.get("problem_goods_id") or "")
         preview_bills = problem_summary.get("preview_bills") if isinstance(problem_summary.get("preview_bills"), list) else []
         expected = self._preview_evidence(preview_bills, scenario, problem_id or order_sn)
         references = [value for value in [problem_id, order_sn] if value]
-        rows = self._wait_new_balance_rows(before, problem_vars, references, allow_empty=scenario.expected_direction == "none")
+        rows = self._wait_new_balance_rows(
+            before,
+            self._ledger_variables(ledger_vars, problem_goods_id=problem_id),
+            references,
+            allow_empty=scenario.expected_direction == "none",
+            expected_direction=scenario.expected_direction,
+        )
         if scenario.expected_direction == "none":
             if rows:
                 evidences = [
@@ -762,6 +1323,7 @@ class LivePaymentRegressionExecutor:
                         row,
                         source="customer_balance",
                         reference=problem_id or order_sn,
+                        force_jpy=self._use_ledger_cross_check(),
                     )
                     for row in rows
                 ]
@@ -778,7 +1340,12 @@ class LivePaymentRegressionExecutor:
             else:
                 actual = MoneyEvidence("customer_balance", Decimal("0"), "JPY", "none", reference=problem_id or order_sn)
         else:
-            actual = _aggregate_evidence(rows, source="customer_balance", reference=problem_id or order_sn)
+            actual = _aggregate_evidence(
+                rows,
+                source="customer_balance",
+                reference=problem_id or order_sn,
+                force_jpy=self._use_ledger_cross_check(),
+            )
         check = reconcile_amount(scenario.key, expected, actual)
         if scenario.expected_direction == "none" and rows:
             check.update(
@@ -790,6 +1357,7 @@ class LivePaymentRegressionExecutor:
             "status": "passed" if check["passed"] else "failed",
             "order_sn": order_sn,
             "problem_goods_id": problem_id,
+            "customer_balance_jpy": str(check.get("actual_jpy") or "0"),
             "checks": [check],
         }
 

@@ -91,6 +91,7 @@
         </div>
 
         <div class="v2-shell__topbar-actions">
+          <SystemRegressionRunCapsule />
           <BaseButton
             v-if="auth.isAdmin"
             class="v2-shell__topbar-action"
@@ -119,6 +120,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { BaseBadge, BaseButton, BaseSelect } from './v2/base/index.js'
 import AiConfigDialog from './AiConfigDialog.vue'
+import SystemRegressionRunCapsule from './SystemRegressionRunCapsule.vue'
 import { useAppStore } from '../stores/app.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useThemeStore } from '../stores/theme.js'

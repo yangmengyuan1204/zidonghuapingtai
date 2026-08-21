@@ -257,7 +257,7 @@ def test_system_regression_routes_are_identity_specific():
 
 def test_batch_result_persists_identity_type_from_case_snapshot(dual_identity_db):
     db, _factory, _admin, _client = dual_identity_db
-    case = db.query(regression_router.SystemRegressionCase).filter_by(case_key="JP-PAY-001").one()
+    case = db.query(regression_router.SystemRegressionCase).filter_by(case_key="支付-001").one()
     batch = create_batch(
         db,
         suite_key="japan",
@@ -275,7 +275,7 @@ def test_batch_result_persists_identity_type_from_case_snapshot(dual_identity_db
 def test_case_catalog_declares_all_japan_cases_as_both(dual_identity_db):
     db, _factory, _admin, _client = dual_identity_db
     cases = regression_router.list_cases(db, suite_key="japan")
-    assert len(cases) == 87
+    assert len(cases) == 68
     assert {tuple(case.expectation.get("required_identities") or []) for case in cases} == {
         (ADMIN_IDENTITY, CLIENT_IDENTITY)
     }
@@ -312,7 +312,7 @@ def test_batch_preflight_rejects_missing_client_without_creating_runs(dual_ident
     app.dependency_overrides[require_admin] = lambda: type("User", (), {"id": 99})()
     queued: list[int] = []
     monkeypatch.setattr(regression_router, "queue_batch_execution", queued.append)
-    case = db.query(regression_router.SystemRegressionCase).filter_by(case_key="JP-PAY-001").one()
+    case = db.query(regression_router.SystemRegressionCase).filter_by(case_key="支付-001").one()
 
     with TestClient(app) as client:
         response = client.post(

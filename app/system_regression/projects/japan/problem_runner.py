@@ -9,6 +9,7 @@ import requests
 from app.data_scripts.problem_goods import ProblemGoodsGateway, ProblemGoodsMutationUncertain, _api_success
 from app.system_regression.common.execution import sanitize_secrets
 from app.system_regression.common.evidence import MoneyEvidence
+from app.system_regression.common.amount_oracle import expected_problem_amount
 from app.system_regression.common.reconciliation import reconcile_three_way, to_jpy
 
 from .calculators import calculate_problem_amount
@@ -207,9 +208,11 @@ def build_problem_goods_request(
             or parameters.get("translation_content")
             or "システム回帰テスト"
         ).strip(),
-        "pre_num": int(structured.get("pre_num") if structured.get("pre_num") is not None else quantity),
-        "pre_price": str((structured.get("pre_price") or {}).get("value", price)) if isinstance(structured.get("pre_price"), Mapping) else _text(price),
-        "pre_freight": str((structured.get("pre_freight") or {}).get("value", freight)) if isinstance(structured.get("pre_freight"), Mapping) else _text(freight),
+        # pre_* 基线必须取候选采购明细的运行时实际值；面板里的 pre_* 只是按默认
+        # 数量/单价生成的展示值，直接采用会让站点误判为数量/金额被修改（如 3→2 退款）。
+        "pre_num": quantity,
+        "pre_price": _text(price),
+        "pre_freight": _text(freight),
         "client_deal_choice": str(structured.get("client_deal_choice") or parameters.get("client_deal_choice") or "accept"),
         "client_deal_other": str(structured.get("client_deal_other") or parameters.get("client_deal_other") or ""),
         "service_deal_suggest": int(parameters.get("service_deal_suggest") or structured.get("service_deal_suggest") or 2),
@@ -237,6 +240,11 @@ def build_problem_goods_request(
                 if isinstance(parameters.get("coupon"), Mapping)
                 else ""
             )
+        ),
+        "complete_inspect_num": int(
+            structured.get("complete_inspect_num")
+            if structured.get("complete_inspect_num") is not None
+            else (candidate.get("complete_inspect_num") or 0)
         ),
     }
     if not request["order_purchase_id"] or not request["order_detail_id"]:
@@ -279,7 +287,9 @@ def build_problem_goods_request(
 
     original_options = _active_options(candidate)
     option_adjustment = str(parameters.get("option_adjustment") or "")
-    if option_adjustment:
+    if option_adjustment and not (
+        option_adjustment == "rate_price_down" and request["option_deal_suggest"] == 2
+    ):
         request["option_new"] = _adjust_options(original_options, option_adjustment, step)
     elif structured.get("option_new"):
         request["option_new"] = list(structured.get("option_new") or [])
@@ -310,7 +320,7 @@ def estimate_refund_cny(candidate: Mapping[str, Any], request: Mapping[str, Any]
         "option_deal_suggest": request.get("option_deal_suggest") or 0,
         "option_old": _active_options(candidate),
         "option_new": request.get("option_new") or _active_options(candidate),
-        "complete_inspect_num": candidate.get("complete_inspect_num") or 0,
+        "complete_inspect_num": request.get("complete_inspect_num", candidate.get("complete_inspect_num") or 0),
     }
     total = calculate_problem_amount(payload).total_cny
     return abs(total) if total < 0 else Decimal("0.00")
@@ -381,21 +391,9 @@ class ProblemGoodsRunner:
 
     @staticmethod
     def _normalize_balance_rows(rows: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
-        normalized: list[dict[str, Any]] = []
-        for row in rows:
-            item = dict(row)
-            label = f"{item.get('bill_type_group') or ''}{item.get('bill_type_name') or ''}"
-            raw_amount = item.get("change_amount")
-            if raw_amount in (None, ""):
-                raw_amount = item.get("amount") or 0
-            amount = Decimal(str(raw_amount))
-            if "出金" in label:
-                amount = -abs(amount)
-            elif "入金" in label:
-                amount = abs(amount)
-            item["change_amount"] = str(amount)
-            normalized.append(item)
-        return normalized
+        from app.data_scripts.payment_amount_regression.runner import normalize_balance_change_rows
+
+        return normalize_balance_change_rows(rows)
 
     def _load_h5_purchase_candidates(
         self,
@@ -429,6 +427,11 @@ class ProblemGoodsRunner:
         from app.data_scripts.orders import inspect_order_options
         from app.data_scripts.problem_goods import inspect_problem_goods
 
+        from app.services.system_regression.membership_service import (
+            apply_membership_to_variables,
+            inspect_membership_from_env,
+        )
+
         from .payment_runner import build_payment_variables
 
         parameters = dict(case.get("parameters") or {})
@@ -436,8 +439,6 @@ class ProblemGoodsRunner:
         stop_after = "checking_started"
         if guard_kind == "purchase_wait_pay":
             stop_after = "purchase_wait_pay"
-        elif guard_kind == "pre_num_below_storage":
-            stop_after = "shelf_stored"
         elif guard_kind == "multiple_purchase_update":
             stop_after = "purchase_paid"
         variables = {
@@ -447,6 +448,7 @@ class ProblemGoodsRunner:
             "order_item_num": max(3, int(parameters.get("problem_order_quantity") or 3)),
             "purchase_freight": str(parameters.get("purchase_freight") or "3"),
         }
+        apply_membership_to_variables(variables, inspect_membership_from_env(self.env, variables))
         if guard_kind == "purchase_wait_pay":
             variables["finance_confirm"] = False
         if guard_kind == "large_refund_account":
@@ -475,13 +477,21 @@ class ProblemGoodsRunner:
                     candidates,
                 )
             return {**dict(context), "candidate": candidate, "order_sn": existing_order_sn, "variables": variables}
-        if parameters.get("option_adjustment") or int(parameters.get("option_deal_suggest") or 0) in {1, 2} or guard_kind in {
+        if guard_kind == "quantity_over_possible":
+            # 先丢掉面板占位 OPTION 名，再按下单目录选真实 OPTION
+            variables.pop("order_option_counts", None)
+        option_guard_kinds = {
             "multiple_rate_auto",
             "option_num_over_goods",
             "option_price_type_change",
-            "quantity_over_possible",
             "quantity_up_auto_option",
-        }:
+            "quantity_over_possible",
+        }
+        # guard 用例面板默认 option_deal_suggest=2，不能据此给所有拦截场景挂 OPTION：
+        # 检品类 OPTION 会改变采购/配货链路状态，只有真正校验 OPTION 的拦截才允许下单带 OPTION
+        if parameters.get("option_adjustment") or guard_kind in option_guard_kinds or (
+            not guard_kind and int(parameters.get("option_deal_suggest") or 0) in {1, 2}
+        ):
             option_catalog = inspect_order_options(self.env, variables)
             options = [row for row in option_catalog.get("options", []) if isinstance(row, Mapping)]
             adjustment = str(parameters.get("option_adjustment") or "")
@@ -498,7 +508,6 @@ class ProblemGoodsRunner:
                 if adjustment in {"mixed_net_refund", "all_delete"} or guard_kind in {
                     "option_num_over_goods",
                     "option_price_type_change",
-                    "quantity_over_possible",
                     "quantity_up_auto_option",
                 }:
                     required_types = {0, 1} if adjustment in {"mixed_net_refund", "all_delete"} else required_types or {0}
@@ -514,7 +523,12 @@ class ProblemGoodsRunner:
                         if guard_kind:
                             continue
                         raise ValueError("可用OPTION缺少唯一标识")
-                    selected[key] = max(1, int(parameters.get("problem_order_quantity") or 3))
+                    if guard_kind == "option_num_over_goods":
+                        # 下单时就让 OPTION 数超过商品数（历史通过形态），
+                        # 采购处理时服务端才会稳定拒绝而不是放行
+                        selected[key] = int(variables.get("order_item_num") or 3) + 1
+                    else:
+                        selected[key] = max(1, int(parameters.get("problem_order_quantity") or 3))
                 if selected:
                     variables["order_option_counts"] = selected
 
@@ -540,9 +554,12 @@ class ProblemGoodsRunner:
         if not order_sn:
             raise RuntimeError("问题产品前置订单未返回订单号")
         purchase_no = str((summary or {}).get("purchase_no") or "").strip()
+        candidates: list[dict[str, Any]] = []
         if purchase_no:
             candidates = self._load_h5_purchase_candidates(variables, purchase_no)
-        else:
+        if not candidates:
+            # H5 提交前列表在中间节点（待财务付款/已上架）可能查不到记录，
+            # 回退到订单详情链路再取一次候选
             inspection = inspect_problem_goods(self.env, {**variables, "order_sn": order_sn})
             candidates = inspection.get("order_candidates") if isinstance(inspection.get("order_candidates"), list) else []
         candidate = next(
@@ -644,6 +661,14 @@ class ProblemGoodsRunner:
             **dict(request),
             "order_sn": str(context.get("order_sn") or ""),
         }
+        if not variables.get("membership_kind"):
+            from app.services.system_regression.membership_service import (
+                apply_membership_to_variables,
+                inspect_membership_from_env,
+            )
+
+            apply_membership_to_variables(variables, inspect_membership_from_env(self.env, variables))
+        variables.setdefault("compare_actual_from_balance_change", True)
         evidence_gateway = LivePaymentRegressionExecutor(self.env, variables)
         before = evidence_gateway._balance_rows(variables)
         passed, log_text, _report, summary = run_problem_goods_script(
@@ -669,25 +694,45 @@ class ProblemGoodsRunner:
             adjustment=str((case.get("parameters") or {}).get("adjustment") or "unchanged"),
         )
         preview = evidence_gateway._preview_evidence(preview_bills, scenario, reference)
+        oracle = expected_problem_amount(
+            context.get("candidate") if isinstance(context.get("candidate"), Mapping) else {},
+            request,
+        )
+        expected = MoneyEvidence(
+            source="problem_goods_oracle",
+            amount=abs(oracle.total_cny),
+            currency="CNY",
+            direction=direction,
+            reference=reference,
+            raw={
+                "goods_cny": str(oracle.goods_cny),
+                "freight_cny": str(oracle.freight_cny),
+                "service_cny": str(oracle.service_cny),
+                "option_cny": str(oracle.option_cny),
+                "oracle_direction": oracle.direction,
+            },
+        )
         references = [value for value in (reference, str(context.get("order_sn") or "")) if value]
         rows = evidence_gateway._wait_new_balance_rows(
             before,
             variables,
             references,
             allow_empty=direction == "none",
+            expected_direction=direction,
         )
         rows = self._normalize_balance_rows(rows)
         actual = None if direction == "none" and not rows else _aggregate_evidence(
             rows,
             source="customer_balance",
             reference=reference,
+            force_jpy=True,
         )
         reconciliation = reconcile_three_way(
             str(case.get("case_key") or ""),
-            preview,
+            expected,
             preview,
             actual,
-            tolerance_jpy=int((case.get("parameters") or {}).get("tolerance_jpy") or context.get("tolerance_jpy") or 1),
+            tolerance_jpy=1,
             actual_source="problem_goods",
         )
 
@@ -742,6 +787,7 @@ class ProblemGoodsRunner:
             "expected_amount_jpy": int(expected_jpy),
             "preview_amount_jpy": int(expected_jpy),
             "actual_amount_jpy": int(actual_jpy),
+            "customer_balance_jpy": int(actual_jpy),
             "preview_bills": preview_bills,
             "balance_delta_jpy": int(actual_jpy),
             "matched_bill_count": len(rows),
@@ -817,7 +863,7 @@ class ProblemGoodsRunner:
             status="passed" if reconciliation.passed else "failed",
             reason_code=reconciliation.reason_code,
             order_sn=str(context.get("order_sn") or ""),
-            expected=public_evidence(preview),
+            expected=public_evidence(expected),
             preview=public_evidence(preview),
             actual=public_evidence(actual),
             parameter_snapshot=parameter_snapshot,
@@ -842,9 +888,14 @@ class ProblemGoodsRunner:
             unclassified_effects=[],
             business_diffs=business_diffs,
             reconciliation=reconciliation.__dict__,
+            amount_oracle=expected.raw,
         )
+        if oracle.direction != direction:
+            result["status"] = "failed"
+            result["reason_code"] = "oracle_direction_mismatch"
+            result["failure_reason"] = f"独立金额预期方向 {oracle.direction} 与用例方向 {direction} 不一致"
         missing = _problem_evidence_missing(result)
-        if str(case.get("case_key") or "") == "JP-PG-AMT-001" and missing:
+        if str(case.get("case_key") or "") == "金额-001" and missing:
             result["status"] = "failed"
             result["reason_code"] = "evidence_incomplete"
             result["error_code"] = "evidence_incomplete"
@@ -952,7 +1003,7 @@ class ProblemGoodsRunner:
                 expected,
                 preview,
                 actual,
-                tolerance_jpy=int(parameters.get("tolerance_jpy") or run_context.get("tolerance_jpy") or 1),
+                tolerance_jpy=1,
                 actual_source="problem_goods",
             )
             status = "passed" if check.passed else "failed"
