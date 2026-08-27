@@ -27,13 +27,16 @@
     <template #project_id="{ row }">{{ projectName(row.project_id) }}</template>
     <template #account_profile_name="{ row }">{{ row.account_profile_name || '跟随项目' }}</template>
     <template #status="{ row }">
-      <span class="badge" :class="badgeClass(row.status)">{{ badgeText(row.status) }}</span>
+      <span class="badge" :class="badgeClass(row.status)">{{ row.status === 'draft' ? '待修复草稿' : badgeText(row.status) }}</span>
     </template>
     <template #actions="{ row }">
       <div class="actions">
-        <button v-if="auth.isAdmin" class="btn" @click="onRun(row)">执行</button>
+        <template v-if="row.status === 'active'">
+          <button v-if="auth.isAdmin" class="btn" @click="onRun(row)">执行</button>
+        </template>
         <template v-if="auth.isAdmin">
           <button class="btn secondary" @click="openForm(row)">编辑</button>
+          <button class="btn secondary" @click="showRevisionHistory(row)">版本</button>
           <button class="btn danger" @click="onDelete(row)">删除</button>
         </template>
       </div>
@@ -110,7 +113,7 @@
           <table>
             <thead>
               <tr>
-                <th>#</th><th>步骤</th><th>动作</th><th>定位器</th><th>值</th>
+                <th>#</th><th>步骤</th><th>动作</th><th>定位质量</th><th>定位器</th><th>值</th>
               </tr>
             </thead>
             <tbody>
@@ -118,16 +121,24 @@
                 <td>{{ idx + 1 }}</td>
                 <td>{{ step.name || step.action || '-' }}</td>
                 <td><span class="badge">{{ step.action || '-' }}</span></td>
+                <td><span class="badge" :class="recordQualityClass(step)">{{ recordQualityText(step) }}</span></td>
                 <td>{{ recordShort(step.locator) }}</td>
                 <td>{{ recordShort(step.value) }}</td>
               </tr>
             </tbody>
           </table>
         </div>
+        <UiRecordingPreflightPanel
+          v-if="recordPreflight"
+          :preflight="recordPreflight"
+          @retry="startRecordPreflight"
+          @save-draft="saveRecordDraft"
+          @adopt="adoptRecordLocator"
+        />
       </div>
       <div class="modal-foot">
-        <span>保存后会生成草稿 UI 用例，可直接点执行复跑</span>
-        <button class="btn" type="submit" :disabled="recordSaving">{{ recordSaving ? '保存中...' : '保存用例' }}</button>
+        <span>检查通过后直接启用；失败时可保存为待修复草稿</span>
+        <button v-if="!recordPreflight" class="btn" type="submit" :disabled="recordSaving">{{ recordSaving ? '启动中...' : '开始自动检查' }}</button>
       </div>
     </form>
   </dialog>
@@ -260,6 +271,7 @@ import AppFormDialog from '../components/AppFormDialog.vue'
 import UiCaseForm from '../components/ui-cases/UiCaseForm.vue'
 import UiExecutionPanel from '../components/ui-cases/UiExecutionPanel.vue'
 import UiRecordingPanel from '../components/ui-cases/UiRecordingPanel.vue'
+import UiRecordingPreflightPanel from '../components/ui-cases/UiRecordingPreflightPanel.vue'
 import { WorkbenchPageHeader, WorkbenchPanel } from '../components/v2/workbench/index.js'
 import { badgeText, badgeClass } from '../utils/badge.js'
 import { accountLabel } from '../utils/account.js'
@@ -336,6 +348,7 @@ const accountOptions = computed(() => [
 
 const statusOptions = [
   { value: 'active', label: '启用' },
+  { value: 'draft', label: '待修复草稿' },
   { value: 'inactive', label: '停用' },
 ]
 
@@ -391,6 +404,23 @@ async function onDelete(item) {
     await loadUiCases()
   } catch (error) {
     toast.show(error.message)
+  }
+}
+
+async function showRevisionHistory(item) {
+  try {
+    const revisions = await uiCasesApi.listUiCaseRevisions(item.id)
+    if (!revisions.length) {
+      toast.show('该用例暂无自动写回版本')
+      return
+    }
+    const latest = revisions[0]
+    if (!confirm(`最近版本 #${latest.id}（${latest.source}，${latest.create_time || '-'}）。是否回滚到此版本？`)) return
+    await uiCasesApi.rollbackUiCaseRevision(item.id, latest.id)
+    toast.show('用例步骤已回滚')
+    await loadUiCases()
+  } catch (error) {
+    toast.show(error.message || '读取版本失败')
   }
 }
 
@@ -651,6 +681,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   stopPolling()
   stopRecordPolling()
+  stopRecordPreflightPolling()
   ;[executeDialogEl, visualDialogEl, recordDialogEl, recordSaveDialogEl].forEach((dialogRef) => {
     try {
       if (dialogRef.value?.open) dialogRef.value.close()
@@ -678,7 +709,11 @@ const recordSession = ref({})
 const recordPreviewRows = ref([])
 const recordSaveForm = ref({ assertion_text: '' })
 const recordSaving = ref(false)
+const recordPreflight = ref(null)
 let recordPollTimer = null
+let recordPreflightPollTimer = null
+let recordPreflightGeneration = 0
+let recordPreflightPollInFlight = false
 let recordSessionId = ''
 
 // 启动表单字段（对齐旧应用 openUiRecordStartDialog → openForm 字段定义）
@@ -701,6 +736,18 @@ const recordStartFields = computed(() => [
 function recordShort(value, max = 120) {
   const text = typeof value === 'string' ? value : JSON.stringify(value ?? '')
   return text.length > max ? `${text.slice(0, max)}...` : text
+}
+
+function recordQualityValue(step) {
+  return step?.locator_profile?.quality || (step?.locator ? 'weak' : '')
+}
+
+function recordQualityText(step) {
+  return { stable: '稳定', weak: '偏弱', risk: '高风险' }[recordQualityValue(step)] || '-'
+}
+
+function recordQualityClass(step) {
+  return { stable: 'ok', weak: 'warn', risk: 'fail' }[recordQualityValue(step)] || ''
 }
 
 function openRecordStartDialog() {
@@ -771,7 +818,9 @@ function stopRecordPolling() {
 async function cancelRecordSession() {
   const sessionId = recordSessionId
   stopRecordPolling()
+  stopRecordPreflightPolling()
   recordSessionId = ''
+  recordPreflight.value = null
   recordVisible.value = false
   if (recordDialogEl.value && recordDialogEl.value.open) {
     recordDialogEl.value.close()
@@ -797,6 +846,7 @@ function onRecordDialogClose() {
 function openRecordSaveDialog() {
   stopRecordPolling()
   recordSaveForm.value = { assertion_text: '' }
+  recordPreflight.value = null
   recordSaveVisible.value = true
   if (recordSaveDialogEl.value && !recordSaveDialogEl.value.open) {
     recordSaveDialogEl.value.showModal()
@@ -812,6 +862,7 @@ function closeRecordSaveDialog() {
 
 function onRecordSaveDialogClose() {
   recordSaveVisible.value = false
+  stopRecordPreflightPolling()
 }
 
 // 返回录制（对齐旧应用 line 3402-3404）
@@ -827,16 +878,94 @@ function backToRecord() {
   }
 }
 
-// 提交保存（对齐旧应用 line 3405-3422）
+function stopRecordPreflightPolling(invalidate = true) {
+  if (recordPreflightPollTimer) {
+    window.clearInterval(recordPreflightPollTimer)
+    recordPreflightPollTimer = null
+  }
+  if (invalidate) recordPreflightGeneration += 1
+}
+
+async function startRecordPreflight() {
+  if (recordSaving.value) return
+  const generation = ++recordPreflightGeneration
+  recordSaving.value = true
+  try {
+    const result = await uiCasesApi.startUiRecordPreflight(recordSessionId, {
+      assertion_text: recordSaveForm.value.assertion_text || '',
+    })
+    if (generation !== recordPreflightGeneration) return
+    recordPreflight.value = result
+    stopRecordPreflightPolling(false)
+    recordSaving.value = false
+    await pollRecordPreflight(generation)
+    if (recordPreflight.value?.run_id === result.run_id && !['passed', 'failed'].includes(recordPreflight.value?.status)) {
+      recordPreflightPollTimer = window.setInterval(() => pollRecordPreflight(generation), 1000)
+    }
+  } catch (error) {
+    toast.show(error.message || '启动自动检查失败')
+  } finally {
+    recordSaving.value = false
+  }
+}
+
+async function pollRecordPreflight(generation = recordPreflightGeneration) {
+  if (generation !== recordPreflightGeneration || recordPreflightPollInFlight) return
+  const runId = recordPreflight.value?.run_id
+  if (!runId) return
+  recordPreflightPollInFlight = true
+  try {
+    const result = await uiCasesApi.getUiRecordPreflight(runId)
+    if (generation !== recordPreflightGeneration || result.run_id !== recordPreflight.value?.run_id) return
+    recordPreflight.value = result
+    if (['passed', 'failed'].includes(result.status)) {
+      stopRecordPreflightPolling(false)
+      if (result.status === 'passed') await finalizeRecordSave(runId)
+    }
+  } catch (error) {
+    if (generation !== recordPreflightGeneration) return
+    stopRecordPreflightPolling()
+    toast.show(error.message || '自动检查状态查询失败')
+  } finally {
+    recordPreflightPollInFlight = false
+  }
+}
+
 async function submitRecordSave() {
+  return startRecordPreflight()
+}
+
+async function saveRecordDraft() {
+  return finalizeRecordSave('')
+}
+
+async function adoptRecordLocator(candidate) {
+  if (!candidate?.index || !candidate?.locator) return
+  try {
+    const state = await uiCasesApi.applyUiRecordLocator(recordSessionId, candidate.index, candidate.locator)
+    recordSession.value = { ...recordSession.value, ...state }
+    recordPreviewRows.value = state.preview_steps || []
+    recordPreflight.value = null
+    await startRecordPreflight()
+  } catch (error) {
+    toast.show(error.message || '采用定位器失败')
+  }
+}
+
+async function finalizeRecordSave(preflightRunId) {
   if (recordSaving.value) return
   recordSaving.value = true
   try {
-    const result = await uiCasesApi.saveUiRecordSession(recordSessionId, recordSaveForm.value)
+    const result = await uiCasesApi.saveUiRecordSession(recordSessionId, {
+      assertion_text: recordSaveForm.value.assertion_text || '',
+      preflight_run_id: preflightRunId || '',
+    })
     recordSessionId = ''
     recordSession.value = {}
     recordPreviewRows.value = []
-    toast.show(`已保存UI用例 #${result.case?.id || ''}`)
+    recordPreflight.value = null
+    stopRecordPreflightPolling()
+    toast.show(`已保存UI用例 #${result.case?.id || ''}（${result.quality_status === 'executable' ? '已启用' : '待修复'}）`)
     closeRecordSaveDialog()
     if (recordDialogEl.value && recordDialogEl.value.open) {
       recordDialogEl.value.close()

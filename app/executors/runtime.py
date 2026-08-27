@@ -57,6 +57,14 @@ def _sync_compat_globals() -> None:
         globals()[name] = getattr(package, name)
 
 
+def _browser_context_options(execution_context: Dict[str, Any] | None) -> Dict[str, Any]:
+    options: Dict[str, Any] = {}
+    storage_state = (execution_context or {}).get("storage_state")
+    if isinstance(storage_state, dict) and isinstance(storage_state.get("cookies"), list):
+        options["storage_state"] = storage_state
+    return options
+
+
 def _impl_execute_ui_case_in_page(
     case: UiCase,
     page: Any,
@@ -380,12 +388,14 @@ def _impl_execute_ui_case(
         return False, log_text, "", report_path
 
     browser = None
+    context = None
     page = None
     try:
         with sync_playwright() as p:
             headed = bool(execution_context.get("headed") or execution_context.get("visual_browser"))
             browser = launch_chromium_browser(p, headless=not headed)
-            page = browser.new_page()
+            context = browser.new_context(**_browser_context_options(execution_context))
+            page = context.new_page()
             try:
                 passed, log_text, screenshot_path, report_path = execute_ui_case_in_page(case, page, runtime_vars, execution_context, db_session=db_session, progress_callback=progress_callback)
             except Exception as inner_exc:
@@ -430,15 +440,37 @@ def _impl_execute_ui_case(
             # 执行成功且发生过自愈时，更新历史 success_count
             if passed and db_session:
                 try:
-                    from .services.locator_heal import update_heal_history_on_success
+                    from ..services.locator_heal import update_heal_history_on_success
+                    from ..services.ui_locator_learning import confirm_locator_updates
                     # 从 log_text 中解析 healed 信息
                     import json as _json
                     log_data = _json.loads(log_text) if log_text else {}
+                    locator_updates = []
                     for step_log in (log_data.get("step_logs") or []):
-                        if step_log.get("healed") and step_log.get("original_locator") and step_log.get("healed_locator"):
-                            update_heal_history_on_success(db_session, step_log["original_locator"], step_log["healed_locator"])
+                        new_locator = step_log.get("healed_locator") or step_log.get("suggested_locator")
+                        if step_log.get("healed") and step_log.get("original_locator") and new_locator:
+                            locator_updates.append(
+                                {
+                                    "step_index": step_log.get("index"),
+                                    "old_locator": step_log["original_locator"],
+                                    "new_locator": new_locator,
+                                    "strategy": "ai" if step_log.get("ai_healed") else "runtime",
+                                }
+                            )
+                            update_heal_history_on_success(db_session, step_log["original_locator"], new_locator)
+                    if locator_updates and getattr(case, "id", 0):
+                        confirm_locator_updates(
+                            db_session,
+                            int(case.id),
+                            locator_updates,
+                            run_id=str(execution_context.get("run_id") or ""),
+                        )
                 except Exception:
-                    pass
+                    try:
+                        db_session.rollback()
+                    except Exception:
+                        pass
+                    logger.warning("UI locator 安全写回失败，已保留建议并回滚事务", exc_info=True)
             return passed, log_text, screenshot_path, report_path
     except Exception as exc:
         # 这里的异常只可能来自 sync_playwright() 或 launch 阶段（在 with 块外）

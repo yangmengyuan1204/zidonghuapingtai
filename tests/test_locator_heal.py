@@ -452,14 +452,15 @@ class TestAutoHeal:
         assert result["confidence"] == 1.0
         assert result["reason"] == "历史学习命中"
 
-        # 验证用例已更新
+        # 仅返回候选；完整用例通过后才安全写回
         db.refresh(ui_case)
         steps = json.loads(ui_case.steps)
-        assert steps[0]["locator"] == new
+        assert steps[0]["locator"] == old
+        assert result["pending_writeback"] is True
 
         # 验证日志已记录
         log = db.query(LocatorHealLog).filter_by(case_id=ui_case.id).one()
-        assert log.auto_applied == 1
+        assert log.auto_applied == 0
         assert log.old_locator == old
         assert log.new_locator == new
 
@@ -479,10 +480,11 @@ class TestAutoHeal:
         assert result["locator"] == new
         assert result["confidence"] == 0.95
 
-        # 验证用例已更新
+        # 仅返回候选；完整用例通过后才安全写回
         db.refresh(ui_case)
         steps = json.loads(ui_case.steps)
-        assert steps[0]["locator"] == new
+        assert steps[0]["locator"] == old
+        assert result["pending_writeback"] is True
 
         # 验证历史映射已记录（success_count=0，待成功后更新）
         history = db.query(LocatorHealHistory).filter_by(old_locator=old, new_locator=new).one()
@@ -491,7 +493,7 @@ class TestAutoHeal:
 
         # 验证日志已记录
         log = db.query(LocatorHealLog).filter_by(case_id=ui_case.id).one()
-        assert log.auto_applied == 1
+        assert log.auto_applied == 0
         assert "new_locator" in (log.ai_response or "")
 
     def test_ai_confidence_below_threshold_not_applied(self, db, ui_case, ai_config, monkeypatch):

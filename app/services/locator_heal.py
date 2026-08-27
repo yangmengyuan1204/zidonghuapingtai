@@ -409,14 +409,13 @@ def auto_heal(
     # 历史学习：先查已验证的映射，命中则跳过 AI（<10ms）
     cached = _lookup_heal_history(db, project_id, failed_locator)
     if cached and _validate_new_locator(page, cached, action, quick=True):
-        _apply_heal_to_case(db, case_id, failed_locator, cached)
         _record_heal_history(db, project_id, failed_locator, cached)
         _persist_heal_log(
             db, case_id, failed_locator, cached, page_url, screenshot_path,
-            action, "历史学习命中", "历史映射", 1,
+            action, "历史学习命中", "历史映射", 0,
         )
         logger.info("Locator 历史学习命中: %s -> %s", failed_locator, cached)
-        return {"locator": cached, "confidence": 1.0, "reason": "历史学习命中"}
+        return {"locator": cached, "confidence": 1.0, "reason": "历史学习命中", "pending_writeback": True}
 
     threshold = getattr(config, "heal_confidence_threshold", 0.7) or 0.7
 
@@ -481,16 +480,15 @@ def auto_heal(
             )
             return None
 
-        # 验证通过 + confidence 达标：写回用例
-        _apply_heal_to_case(db, case_id, failed_locator, new_locator)
+        # 验证通过 + confidence 达标：仅记录候选，完整用例成功后再安全写回
         _record_heal_history(db, project_id, failed_locator, new_locator)
 
         _persist_heal_log(
             db, case_id, failed_locator, new_locator, page_url, screenshot_path,
-            action, prompt, ai_raw, 1,
+            action, prompt, ai_raw, 0,
         )
         logger.info("Locator 自愈成功(第%d次): %s -> %s (confidence=%.2f)", attempt_idx + 1, failed_locator, new_locator, confidence)
-        return {"locator": new_locator, "confidence": confidence, "reason": reason}
+        return {"locator": new_locator, "confidence": confidence, "reason": reason, "pending_writeback": True}
 
     # 两次尝试均失败
     _fail(db, case_id, failed_locator, "", page_url, screenshot_path, action, prompts[0], last_ai_raw)

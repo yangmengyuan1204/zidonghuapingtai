@@ -21,10 +21,11 @@ from ..database import SessionLocal, get_db
 from ..executors import execute_ui_case, parse_json_value, to_json_text
 from ..models import (
     UiCase, TestAccountBinding, TestAccountProfile, TestRecord,
-    LocatorHealLog, User,
+    LocatorHealLog, UiCaseRevision, UiRecordPreflight, User,
 )
 from ..schemas import UiCaseCreate, UiCaseUpdate, FunctionalExecuteRequest
 from ..security import get_current_user, require_admin
+from ..services.ui_locator_learning import rollback_case_revision
 
 router = APIRouter(tags=["ui-cases"])
 
@@ -352,6 +353,8 @@ def delete_ui_case(case_id: int, db: Session = Depends(get_db), current_user: Us
     # 清理关联记录
     db.query(TestRecord).filter(TestRecord.case_type == "ui", TestRecord.case_id == case.id).delete(synchronize_session=False)
     db.query(LocatorHealLog).filter(LocatorHealLog.case_id == case.id).delete(synchronize_session=False)
+    db.query(UiCaseRevision).filter(UiCaseRevision.case_id == case.id).delete(synchronize_session=False)
+    db.query(UiRecordPreflight).filter(UiRecordPreflight.case_id == case.id).delete(synchronize_session=False)
     db.query(TestAccountBinding).filter(TestAccountBinding.target_type == "ui_case", TestAccountBinding.target_id == case.id).delete(synchronize_session=False)
     db.delete(case)
     db.commit()
@@ -390,6 +393,54 @@ def heal_ui_case_steps(
     return {"updated_count": updated_count, "case": serialize(case)}
 
 
+@router.get("/api/ui-cases/{case_id}/revisions")
+def list_ui_case_revisions(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> list[Dict[str, Any]]:
+    get_or_404(db, UiCase, case_id)
+    rows = (
+        db.query(UiCaseRevision)
+        .filter(UiCaseRevision.case_id == case_id)
+        .order_by(UiCaseRevision.id.desc())
+        .all()
+    )
+    return [
+        {
+            "id": row.id,
+            "case_id": row.case_id,
+            "source": row.source,
+            "run_id": row.run_id or "",
+            "create_time": row.create_time.isoformat() if row.create_time else "",
+        }
+        for row in rows
+    ]
+
+
+@router.post("/api/ui-cases/{case_id}/revisions/{revision_id}/rollback")
+def rollback_ui_case_revision(
+    case_id: int,
+    revision_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    try:
+        audit = rollback_case_revision(db, case_id, revision_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    case = get_or_404(db, UiCase, case_id)
+    return {"case": serialize(case), "rollback_revision_id": audit.id}
+
+
+def _ensure_ui_case_executable(case: UiCase) -> None:
+    if str(case.status or "") == "active":
+        return
+    if str(case.status or "") == "draft":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="待修复草稿不可执行，请修复并启用后重试")
+    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="UI 用例未启用")
+
+
 @router.post("/api/ui-cases/{case_id}/execute")
 def run_ui_case(
     case_id: int,
@@ -398,6 +449,7 @@ def run_ui_case(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     case = get_or_404(db, UiCase, case_id)
+    _ensure_ui_case_executable(case)
     runtime_variables = dict(payload.variables if payload else {})
     variables, execution_context = resolve_execution_account(db, payload, "ui_case", case.id, case.project_id, case.page_url)
     passed, log_text, screenshot_path, report_path = execute_ui_case(case, variables, execution_context, db_session=db)
@@ -425,6 +477,7 @@ def start_visual_ui_case(
     current_user: User = Depends(require_admin),
 ) -> Dict[str, Any]:
     case = get_or_404(db, UiCase, case_id)
+    _ensure_ui_case_executable(case)
     payload_data = payload if isinstance(payload, dict) else {}
     execute_payload = FunctionalExecuteRequest(**payload_data)
     runtime_variables = dict(execute_payload.variables or {})

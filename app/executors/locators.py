@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sys
 
+from ..services.ui_locator_engine import ordered_locator_values
+
 
 _COMPAT_NAMES = (
     'Any',
@@ -72,8 +74,10 @@ def _impl__text_locator_value(locator: str) -> str:
 
 def _impl__locator_candidates(step: Dict[str, Any]) -> list[str]:
     primary = str(step.get("locator") or "").strip()
+    normalized_step = dict(step)
+    normalized_step["fallback_locators"] = _split_locator_values(step.get("fallback_locators"))
     candidates = []
-    for item in [primary, *_split_locator_values(step.get("fallback_locators"))]:
+    for item in ordered_locator_values(normalized_step):
         if item and item not in candidates:
             candidates.append(item)
     if primary:
@@ -154,10 +158,13 @@ def _impl__resolve_locator(page: Any, candidates: list[str], timeout_ms: int, st
     errors = []
     for locator in candidates:
         try:
-            target = page.locator(locator).first
-            target.wait_for(state=state, timeout=timeout_ms)
-            count = page.locator(locator).count()
-            return target, locator, count
+            collection = page.locator(locator)
+            collection.wait_for(state=state, timeout=timeout_ms)
+            count = collection.count()
+            if count != 1:
+                errors.append(f"{locator}: 匹配到 {count} 个元素，要求唯一")
+                continue
+            return collection, locator, count
         except Exception as exc:
             errors.append(f"{locator}: {exc}")
             continue

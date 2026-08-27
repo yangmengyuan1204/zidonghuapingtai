@@ -5,10 +5,12 @@ import { fileURLToPath } from 'node:url'
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const frontendDir = resolve(scriptDir, '..')
 const view = readFileSync(join(frontendDir, 'src', 'views', 'UiCasesView.vue'), 'utf8')
+const apiModule = readFileSync(join(frontendDir, 'src', 'api', 'modules', 'uiCases.js'), 'utf8')
+const recordingPanel = readFileSync(join(frontendDir, 'src', 'components', 'ui-cases', 'UiRecordingPanel.vue'), 'utf8')
 const failures = []
 const requirePattern = (pattern, message) => { if (!pattern.test(view)) failures.push(message) }
 
-for (const file of ['UiCaseForm.vue', 'UiExecutionPanel.vue', 'UiRecordingPanel.vue']) {
+for (const file of ['UiCaseForm.vue', 'UiExecutionPanel.vue', 'UiRecordingPanel.vue', 'UiRecordingPreflightPanel.vue']) {
   if (!existsSync(join(frontendDir, 'src', 'components', 'ui-cases', file))) failures.push(`missing ${file}`)
   requirePattern(new RegExp(file.replace('.vue', '')), `UiCasesView does not use ${file}`)
 }
@@ -22,6 +24,34 @@ for (const contract of [
   'stopPolling',
   'stopRecordPolling',
 ]) requirePattern(new RegExp(contract), `UiCasesView lost ${contract}`)
+for (const contract of ['startRecordPreflight', 'pollRecordPreflight', 'saveRecordDraft', 'preflight_run_id']) {
+  requirePattern(new RegExp(contract), `UiCasesView missing preflight contract ${contract}`)
+}
+const preflightStartIndex = view.indexOf('async function startRecordPreflight()')
+const preflightPollIndex = view.indexOf('async function pollRecordPreflight(', preflightStartIndex)
+const preflightStartBlock = view.slice(preflightStartIndex, preflightPollIndex)
+const releaseIndex = preflightStartBlock.indexOf('recordSaving.value = false')
+const immediatePollIndex = preflightStartBlock.indexOf('await pollRecordPreflight(generation)')
+const intervalPollIndex = preflightStartBlock.indexOf('recordPreflightPollTimer = window.setInterval(() => pollRecordPreflight(generation), 1000)')
+if (!(releaseIndex >= 0 && releaseIndex < immediatePollIndex && immediatePollIndex < intervalPollIndex)) {
+  failures.push('UiCasesView must finish immediate preflight polling before starting interval polling')
+}
+for (const contract of ['recordPreflightGeneration', 'recordPreflightPollInFlight', 'generation !== recordPreflightGeneration', 'result.run_id !== recordPreflight.value?.run_id']) {
+  requirePattern(new RegExp(contract.replace(/[?.]/g, '\\$&')), `UiCasesView missing stale preflight polling guard ${contract}`)
+}
+for (const contract of ['startUiRecordPreflight', 'getUiRecordPreflight', 'applyUiRecordLocator', 'listUiCaseRevisions', 'rollbackUiCaseRevision']) {
+  if (!apiModule.includes(contract)) failures.push(`uiCases API missing ${contract}`)
+}
+if (!recordingPanel.includes('定位质量')) failures.push('UiRecordingPanel missing locator quality column')
+if (!recordingPanel.includes('停止并检查')) failures.push('UiRecordingPanel missing preflight action copy')
+if (!view.includes("row.status === 'active'")) failures.push('UiCasesView must hide execution action for draft cases')
+if (!view.includes("{ value: 'draft', label: '待修复草稿' }")) failures.push('UiCasesView missing repair-draft status option')
+const preflightPanelPath = join(frontendDir, 'src', 'components', 'ui-cases', 'UiRecordingPreflightPanel.vue')
+if (existsSync(preflightPanelPath)) {
+  const preflightPanel = readFileSync(preflightPanelPath, 'utf8')
+  if (!preflightPanel.includes("emit('adopt'")) failures.push('UiRecordingPreflightPanel missing candidate adopt action')
+  if (!preflightPanel.includes('item.reasons')) failures.push('UiRecordingPreflightPanel missing locator score reasons')
+}
 requirePattern(/WorkbenchPageHeader/, 'UiCasesView missing WorkbenchPageHeader')
 requirePattern(/WorkbenchPanel/, 'UiCasesView missing WorkbenchPanel')
 requirePattern(/--v2-/, 'UiCasesView does not consume V2 tokens')

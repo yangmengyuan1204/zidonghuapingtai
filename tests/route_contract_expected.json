@@ -1363,5 +1363,30 @@
     "method": "POST",
     "path": "/api/system-regression/options",
     "name": "list_regression_options"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ui-record/sessions/{session_id}/preflight",
+    "name": "start_ui_record_preflight"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ui-record/preflights/{run_id}",
+    "name": "get_ui_record_preflight"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ui-record/sessions/{session_id}/steps/{step_index}/locator",
+    "name": "override_ui_record_step_locator"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ui-cases/{case_id}/revisions",
+    "name": "list_ui_case_revisions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ui-cases/{case_id}/revisions/{revision_id}/rollback",
+    "name": "rollback_ui_case_revision"
   }
 ]

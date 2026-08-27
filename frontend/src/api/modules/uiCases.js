@@ -69,3 +69,26 @@ export function cancelUiRecordSession(sessionId) {
 export function saveUiRecordSession(sessionId, data) {
   return api(`/api/ui-record/sessions/${sessionId}/save`, { method: 'POST', body: data })
 }
+
+export function startUiRecordPreflight(sessionId, data = {}) {
+  return api(`/api/ui-record/sessions/${sessionId}/preflight`, { method: 'POST', body: data })
+}
+
+export function getUiRecordPreflight(runId) {
+  return api(`/api/ui-record/preflights/${runId}`)
+}
+
+export function applyUiRecordLocator(sessionId, stepIndex, locator) {
+  return api(`/api/ui-record/sessions/${sessionId}/steps/${stepIndex}/locator`, {
+    method: 'POST',
+    body: { locator },
+  })
+}
+
+export function listUiCaseRevisions(caseId) {
+  return api(`/api/ui-cases/${caseId}/revisions`)
+}
+
+export function rollbackUiCaseRevision(caseId, revisionId) {
+  return api(`/api/ui-cases/${caseId}/revisions/${revisionId}/rollback`, { method: 'POST' })
+}

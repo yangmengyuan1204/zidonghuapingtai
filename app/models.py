@@ -395,6 +395,59 @@ class LocatorHealHistory(Base):
     create_time = Column(DateTime, nullable=False)
 
 
+class UiRecordPreflight(Base):
+    __tablename__ = "ui_record_preflight"
+
+    run_id = Column(String(64), primary_key=True)
+    session_id = Column(String(64), nullable=False, index=True)
+    project_id = Column(Integer, nullable=False, index=True)
+    case_id = Column(Integer, nullable=True, index=True)
+    status = Column(String(32), nullable=False, default="queued", index=True)
+    assertion_text = Column(Text, nullable=True)
+    steps_json = Column(Text, nullable=False)
+    report_json = Column(Text, nullable=True)
+    screenshot = Column(String(500), nullable=True)
+    error_category = Column(String(80), nullable=True)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class UiLocatorMemory(Base):
+    __tablename__ = "ui_locator_memory"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id",
+            "page_key",
+            "fingerprint_hash",
+            "locator",
+            name="uq_ui_locator_memory_identity",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=False, index=True)
+    page_key = Column(String(500), nullable=False, index=True)
+    fingerprint_hash = Column(String(64), nullable=False, index=True)
+    locator = Column(String(500), nullable=False)
+    strategy = Column(String(40), nullable=True)
+    success_count = Column(Integer, nullable=False, default=0)
+    failure_count = Column(Integer, nullable=False, default=0)
+    last_verified_at = Column(DateTime, nullable=True)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
+class UiCaseRevision(Base):
+    __tablename__ = "ui_case_revision"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    case_id = Column(Integer, nullable=False, index=True)
+    source = Column(String(40), nullable=False)
+    run_id = Column(String(64), nullable=True, index=True)
+    steps_json = Column(Text, nullable=False)
+    create_time = Column(DateTime, nullable=False)
+
+
 class RecordedFlow(Base):
     """录制流程：浏览器操作录制的接口序列（如样品单支付→后台处理）。"""
     __tablename__ = "recorded_flow"

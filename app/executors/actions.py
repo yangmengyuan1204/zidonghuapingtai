@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sys
 
+from ..services.ui_locator_engine import select_step_page, select_step_scope
+
 
 _COMPAT_NAMES = (
     'Any',
@@ -87,12 +89,25 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
     value = step.get("value")
     name = str(step.get("name") or UI_ACTION_LABELS.get(action) or action or "未命名步骤")
     timeout_ms = _step_timeout_ms(step, default_timeout)
+    page = select_step_page(page, step, timeout_ms=min(timeout_ms, 5000))
+    locator_scope = select_step_scope(page, step)
     candidates = _locator_candidates(step)
+    if case_id and db is not None:
+        try:
+            from ..services.ui_locator_learning import memory_candidates_for_step
+
+            for candidate in memory_candidates_for_step(db, case_id, step):
+                if candidate and candidate not in candidates:
+                    candidates.append(candidate)
+        except Exception:
+            pass
     detail: Dict[str, Any] = {
         "name": name,
         "action": action,
         "locator": locator,
         "fallback_locators": [item for item in candidates if item != locator],
+        "locator_quality": (step.get("locator_profile") or {}).get("quality") if isinstance(step.get("locator_profile"), dict) else "",
+        "locator_candidates": (step.get("locator_profile") or {}).get("candidates", []) if isinstance(step.get("locator_profile"), dict) else [],
         "value": "***" if "password" in name.lower() or "password" in locator.lower() else value,
         "started_at": datetime.now(),
         "status": "running",
@@ -129,7 +144,7 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
             last_error = None
             for attempt in range(1, 4):
                 try:
-                    target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
+                    target, used_locator, matched_count = _resolve_locator(locator_scope, candidates, timeout_ms=min(timeout_ms, 5000))
                     detail["used_locator"] = used_locator
                     detail["matched_count"] = matched_count
                     if locator and used_locator != locator:
@@ -197,7 +212,7 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
                                 detail["healed"] = True
                                 detail["original_locator"] = healed_locator
                                 detail["healed_locator"] = healed
-                                target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
+                                target, used_locator, matched_count = _resolve_locator(locator_scope, candidates, timeout_ms=min(timeout_ms, 5000))
                                 detail["used_locator"] = used_locator
                                 detail["matched_count"] = matched_count
                                 _perform_ui_action(page, target, action, value, used_locator, timeout_ms)
@@ -207,7 +222,7 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
                             # 规则自愈失败，尝试 AI 自愈
                             if case_id and db is not None:
                                 try:
-                                    from .services.locator_heal import auto_heal
+                                    from ..services.locator_heal import auto_heal
                                     heal_result = auto_heal(
                                         page, case_id,
                                         healed_locator,
@@ -224,7 +239,7 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
                                             detail["ai_healed"] = True
                                             detail["heal_confidence"] = heal_result.get("confidence", 0)
                                             detail["heal_reason"] = heal_result.get("reason", "")
-                                            target, used_locator, matched_count = _resolve_locator(page, candidates, timeout_ms=min(timeout_ms, 5000))
+                                            target, used_locator, matched_count = _resolve_locator(locator_scope, candidates, timeout_ms=min(timeout_ms, 5000))
                                             detail["used_locator"] = used_locator
                                             detail["matched_count"] = matched_count
                                             _perform_ui_action(page, target, action, value, used_locator, timeout_ms)

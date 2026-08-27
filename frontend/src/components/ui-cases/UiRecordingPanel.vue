@@ -10,23 +10,24 @@
 
     <div class="v2-ui-recording__table-wrap">
       <table class="v2-ui-recording__table">
-        <thead><tr><th>#</th><th>步骤</th><th>动作</th><th>定位器</th><th>值</th></tr></thead>
+        <thead><tr><th>#</th><th>步骤</th><th>动作</th><th>定位质量</th><th>定位器</th><th>值</th></tr></thead>
         <tbody>
           <tr v-for="(step, index) in rows" :key="index">
             <td>{{ index + 1 }}</td>
             <td>{{ step.name || step.action || '-' }}</td>
             <td>{{ step.action || '-' }}</td>
+            <td><span class="badge" :class="qualityTone(step)">{{ qualityText(step) }}</span></td>
             <td>{{ shortValue(step.locator) }}</td>
             <td>{{ shortValue(step.value) }}</td>
           </tr>
-          <tr v-if="!rows.length"><td colspan="5" class="v2-ui-recording__empty">等待操作事件…</td></tr>
+          <tr v-if="!rows.length"><td colspan="6" class="v2-ui-recording__empty">等待操作事件…</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="v2-ui-recording__actions">
       <BaseButton variant="secondary" type="button" @click="emit('cancel')">取消录制</BaseButton>
-      <BaseButton type="button" @click="emit('save')">停止并保存</BaseButton>
+      <BaseButton type="button" @click="emit('save')">停止并检查</BaseButton>
     </div>
   </div>
 </template>
@@ -45,6 +46,9 @@ const shortValue = (value) => {
   const text = String(value ?? '')
   return text.length > 72 ? `${text.slice(0, 72)}…` : (text || '-')
 }
+const qualityValue = (step) => step?.locator_profile?.quality || (step?.locator ? 'weak' : '-')
+const qualityText = (step) => ({ stable: '稳定', weak: '偏弱', risk: '高风险' }[qualityValue(step)] || '-')
+const qualityTone = (step) => ({ stable: 'ok', weak: 'warn', risk: 'fail' }[qualityValue(step)] || '')
 </script>
 
 <style scoped>

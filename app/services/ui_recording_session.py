@@ -11,6 +11,7 @@ from uuid import uuid4
 from playwright.async_api import async_playwright
 
 from .browser_session import _launch_chromium
+from .ui_locator_engine import build_locator_profile
 
 _SESSION_TIMEOUT = 30 * 60
 _CLEANUP_INTERVAL = 5 * 60
@@ -31,6 +32,36 @@ RECORDING_SCRIPT = r"""
   const pushUnique = (items, value) => {
     const text = String(value || "").trim();
     if (text && !items.includes(text)) items.push(text);
+  };
+  const isVisible = (el) => {
+    if (!el) return false;
+    try {
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return style.visibility !== "hidden" && style.display !== "none" && rect.width > 0 && rect.height > 0;
+    } catch (error) {
+      return false;
+    }
+  };
+  const inspectCandidate = (value, strategy) => {
+    let count = null;
+    let visible = null;
+    try {
+      if (!value.startsWith("text=") && !value.includes(":has-text(")) {
+        const matches = Array.from(document.querySelectorAll(value));
+        count = matches.length;
+        visible = matches.some(isVisible);
+      }
+    } catch (error) {
+      count = null;
+      visible = null;
+    }
+    return { value, strategy, count, visible };
+  };
+  const pushCandidate = (items, value, strategy) => {
+    const text = String(value || "").trim();
+    if (!text || items.some((item) => item.value === text)) return;
+    items.push(inspectCandidate(text, strategy));
   };
   const targetElement = (raw) => {
     if (!raw) return null;
@@ -88,6 +119,18 @@ RECORDING_SCRIPT = r"""
     }
     return parts.length ? parts.join(" > ") : "";
   };
+  const framePath = () => {
+    try {
+      if (window === window.top || !window.frameElement) return [];
+      const frame = window.frameElement;
+      const id = frame.getAttribute("id") || "";
+      const name = frame.getAttribute("name") || "";
+      const selector = id ? `#${cssEscape(id)}` : (name ? `iframe[name="${quoteCss(name)}"]` : "iframe");
+      return [{ name, url: window.location.href, selector }];
+    } catch (error) {
+      return [{ name: "", url: window.location.href, selector: "iframe" }];
+    }
+  };
   const locatorInfo = (el) => {
     const candidates = [];
     const tag = (el.tagName || "").toLowerCase();
@@ -99,30 +142,46 @@ RECORDING_SCRIPT = r"""
     const ariaLabel = el.getAttribute("aria-label");
     const role = el.getAttribute("role");
     const text = elementText(el);
-    if (dataTestId) pushUnique(candidates, `[data-testid="${quoteCss(dataTestId)}"]`);
-    if (dataTest) pushUnique(candidates, `[data-test="${quoteCss(dataTest)}"]`);
-    if (id) pushUnique(candidates, `#${cssEscape(id)}`);
-    if (name) pushUnique(candidates, `[name="${quoteCss(name)}"]`);
+    const label = trimText((el.labels && el.labels[0] && (el.labels[0].innerText || el.labels[0].textContent)) || "");
+    const accessibleName = trimText(ariaLabel || label || text || el.getAttribute("title") || "");
+    if (dataTestId) pushCandidate(candidates, `[data-testid="${quoteCss(dataTestId)}"]`, "test_id");
+    if (dataTest) pushCandidate(candidates, `[data-test="${quoteCss(dataTest)}"]`, "test_id");
+    if (id) pushCandidate(candidates, `#${cssEscape(id)}`, "id");
+    if (name) pushCandidate(candidates, `[name="${quoteCss(name)}"]`, "name");
     if (placeholder) {
       const base = tag === "textarea" ? "textarea" : "input";
-      pushUnique(candidates, `${base}[placeholder="${quoteCss(placeholder)}"]`);
-      pushUnique(candidates, `[placeholder="${quoteCss(placeholder)}"]`);
+      pushCandidate(candidates, `${base}[placeholder="${quoteCss(placeholder)}"]`, "placeholder");
+      pushCandidate(candidates, `[placeholder="${quoteCss(placeholder)}"]`, "placeholder");
     }
-    if (ariaLabel) pushUnique(candidates, `[aria-label="${quoteCss(ariaLabel)}"]`);
+    if (ariaLabel) pushCandidate(candidates, `[aria-label="${quoteCss(ariaLabel)}"]`, "aria");
     if (text) {
       const quoted = quoteCss(text);
-      if (tag === "button") pushUnique(candidates, `button:has-text("${quoted}")`);
-      if (tag === "a") pushUnique(candidates, `a:has-text("${quoted}")`);
-      if (role) pushUnique(candidates, `[role="${quoteCss(role)}"]:has-text("${quoted}")`);
-      pushUnique(candidates, `text="${quoted}"`);
+      if (tag === "button") pushCandidate(candidates, `button:has-text("${quoted}")`, "role_text");
+      if (tag === "a") pushCandidate(candidates, `a:has-text("${quoted}")`, "role_text");
+      if (role) pushCandidate(candidates, `[role="${quoteCss(role)}"]:has-text("${quoted}")`, "role_text");
+      pushCandidate(candidates, `text="${quoted}"`, "text");
     }
-    pushUnique(candidates, cssPath(el));
+    pushCandidate(candidates, cssPath(el), "css_path");
+    const locatorValues = candidates.map((item) => item.value);
     return {
-      locator: candidates[0] || "",
-      fallback_locators: candidates.slice(1),
+      locator: locatorValues[0] || "",
+      fallback_locators: locatorValues.slice(1),
+      locator_candidates: candidates,
       text,
       tag,
       input_type: (el.getAttribute("type") || "").toLowerCase(),
+      role: role || "",
+      aria_label: ariaLabel || "",
+      accessible_name: accessibleName,
+      label,
+      placeholder: placeholder || "",
+      stable_attrs: {
+        data_testid: dataTestId || "",
+        data_test: dataTest || "",
+        name: name || "",
+        type: (el.getAttribute("type") || "").toLowerCase(),
+      },
+      frame_path: framePath(),
     };
   };
   const send = (payload) => {
@@ -213,6 +272,7 @@ class _Session:
     learning_session_id: str = ""
     persistent: bool = False
     events: list[dict[str, Any]] = field(default_factory=list)
+    locator_overrides: dict[int, str] = field(default_factory=dict)
     current_url: str = ""
     last_activity: float = field(default_factory=time.time)
 
@@ -240,6 +300,51 @@ def _list_strings(value: Any, max_items: int = 8) -> list[str]:
     return result
 
 
+def _locator_candidates(value: Any, max_items: int = 12) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw in value:
+        if isinstance(raw, str):
+            item = {"value": _short_text(raw, 500).strip(), "strategy": "css"}
+        elif isinstance(raw, dict):
+            item = {
+                "value": _short_text(raw.get("value") or raw.get("locator"), 500).strip(),
+                "strategy": _short_text(raw.get("strategy") or "css", 40).strip(),
+                "count": raw.get("count") if isinstance(raw.get("count"), int) else None,
+                "visible": raw.get("visible") if isinstance(raw.get("visible"), bool) else None,
+            }
+        else:
+            continue
+        if not item["value"] or item["value"] in seen:
+            continue
+        seen.add(item["value"])
+        result.append(item)
+        if len(result) >= max_items:
+            break
+    return result
+
+
+def _frame_path(value: Any, max_items: int = 8) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+    result: list[dict[str, str]] = []
+    for raw in value:
+        if not isinstance(raw, dict):
+            continue
+        result.append(
+            {
+                "name": _short_text(raw.get("name"), 160).strip(),
+                "url": _short_text(raw.get("url"), 1000).strip(),
+                "selector": _short_text(raw.get("selector"), 500).strip(),
+            }
+        )
+        if len(result) >= max_items:
+            break
+    return result
+
+
 def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
     if not isinstance(payload, dict):
         return None
@@ -253,11 +358,20 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
         "action": action,
         "locator": _short_text(payload.get("locator"), 500).strip(),
         "fallback_locators": _list_strings(payload.get("fallback_locators")),
+        "locator_candidates": _locator_candidates(payload.get("locator_candidates")),
         "value": payload.get("value"),
         "url": _short_text(payload.get("url"), 1000).strip(),
         "text": _short_text(payload.get("text"), 300).strip(),
         "tag": _short_text(payload.get("tag"), 50).strip(),
         "input_type": _short_text(payload.get("input_type"), 50).strip(),
+        "role": _short_text(payload.get("role"), 80).strip(),
+        "aria_label": _short_text(payload.get("aria_label"), 300).strip(),
+        "accessible_name": _short_text(payload.get("accessible_name"), 300).strip(),
+        "label": _short_text(payload.get("label"), 300).strip(),
+        "placeholder": _short_text(payload.get("placeholder"), 300).strip(),
+        "stable_attrs": payload.get("stable_attrs") if isinstance(payload.get("stable_attrs"), dict) else {},
+        "frame_path": _frame_path(payload.get("frame_path")),
+        "page_index": int(payload.get("page_index") or 0),
         "checked": payload.get("checked"),
         "created_at": _short_text(payload.get("created_at") or datetime.now().isoformat(), 80),
     }
@@ -351,14 +465,29 @@ def _event_to_step(event: dict[str, Any]) -> dict[str, Any] | None:
     locator = str(event.get("locator") or "").strip()
     if not locator:
         return None
+    profile = build_locator_profile(event)
+    scored_candidates = profile.get("candidates") or []
+    primary = str(scored_candidates[0].get("value") or locator) if scored_candidates else locator
     step: dict[str, Any] = {
         "name": _step_label(action, event),
         "action": action,
-        "locator": locator,
+        "locator": primary,
+        "locator_profile": profile,
     }
-    fallbacks = _list_strings(event.get("fallback_locators"))
+    fallbacks = [
+        str(item.get("value") or "").strip()
+        for item in scored_candidates[1:]
+        if isinstance(item, dict) and str(item.get("value") or "").strip()
+    ]
+    for item in _list_strings(event.get("fallback_locators")):
+        if item != primary and item not in fallbacks:
+            fallbacks.append(item)
     if fallbacks:
         step["fallback_locators"] = fallbacks
+    if event.get("frame_path"):
+        step["frame_path"] = event.get("frame_path")
+    if int(event.get("page_index") or 0) > 0:
+        step["page_index"] = int(event.get("page_index") or 0)
     if action in {"input", "select"}:
         step["value"] = event.get("value", "")
     elif action in {"check", "uncheck"} and event.get("value") not in (None, ""):
@@ -388,14 +517,20 @@ def build_ui_steps(
     ]
     last_action_step: dict[str, Any] | None = None
     final_url = current_url or start_url
+    final_page_index = 0
     last_flow_url = start_url
     pending_goto_url = ""
     for event in events or []:
+        try:
+            event_page_index = max(0, int(event.get("page_index") or 0))
+        except (TypeError, ValueError):
+            event_page_index = 0
         if event.get("url"):
             final_url = str(event["url"])
+            final_page_index = event_page_index
         if str(event.get("action") or "").strip().lower() == "url_change":
             next_url = str(event.get("value") or event.get("url") or "").strip()
-            if _significant_url_change(last_flow_url, next_url):
+            if event_page_index == 0 and _significant_url_change(last_flow_url, next_url):
                 pending_goto_url = next_url
                 last_flow_url = next_url
             continue
@@ -420,9 +555,15 @@ def build_ui_steps(
         last_action_step = step
     text = str(assertion_text or "").strip()
     if text:
-        steps.append({"name": "检查页面文案", "action": "text_assert", "locator": "body", "value": text})
+        assertion_step = {"name": "检查页面文案", "action": "text_assert", "locator": "body", "value": text}
+        if final_page_index > 0:
+            assertion_step["page_index"] = final_page_index
+        steps.append(assertion_step)
     if final_url:
-        steps.append({"name": "检查最终地址", "action": "assert_url", "value": final_url, "exact": False})
+        url_step = {"name": "检查最终地址", "action": "assert_url", "value": final_url, "exact": False}
+        if final_page_index > 0:
+            url_step["page_index"] = final_page_index
+        steps.append(url_step)
     return steps
 
 
@@ -433,6 +574,20 @@ def _public_events(session: _Session) -> list[dict[str, Any]]:
 def _session_payload(session_id: str, session: _Session, assertion_text: str = "") -> dict[str, Any]:
     events = _public_events(session)
     current_url = session.current_url or getattr(session.page, "url", "") or session.start_url
+    preview_steps = build_ui_steps(session.start_url, current_url, events, assertion_text)
+    for step_index, new_locator in session.locator_overrides.items():
+        if not 1 <= step_index <= len(preview_steps):
+            continue
+        step = preview_steps[step_index - 1]
+        if not isinstance(step, dict) or not step.get("locator"):
+            continue
+        old_locator = str(step.get("locator") or "")
+        fallbacks = [str(item) for item in (step.get("fallback_locators") or []) if str(item) != new_locator]
+        if old_locator and old_locator not in fallbacks:
+            fallbacks.insert(0, old_locator)
+        step["locator"] = new_locator
+        step["fallback_locators"] = fallbacks
+        step["locator_override"] = True
     return {
         "session_id": session_id,
         "status": "recording",
@@ -443,20 +598,54 @@ def _session_payload(session_id: str, session: _Session, assertion_text: str = "
         "current_url": current_url,
         "count": len(events),
         "items": events,
-        "preview_steps": build_ui_steps(session.start_url, current_url, events, assertion_text),
+        "preview_steps": preview_steps,
     }
 
 
+def override_session_step_locator(session_id: str, step_index: int, locator: str) -> dict[str, Any]:
+    session = _SESSIONS.get(session_id)
+    if not session:
+        raise ValueError(f"录制会话不存在: {session_id}")
+    value = str(locator or "").strip()
+    if step_index <= 0 or not value:
+        raise ValueError("步骤序号和定位器不能为空")
+    session.locator_overrides[int(step_index)] = value[:500]
+    session.last_activity = time.time()
+    return _session_payload(session_id, session)
+
+
 async def _attach_page_recorder(session: _Session, page: Any) -> None:
-    async def record_binding(_source: Any, payload: Any) -> None:
-        _append_event(session, payload)
+    async def record_binding(source: Any, payload: Any) -> None:
+        enriched = dict(payload) if isinstance(payload, dict) else payload
+        if isinstance(enriched, dict):
+            source_page = source.get("page") if isinstance(source, dict) else getattr(source, "page", None)
+            source_frame = source.get("frame") if isinstance(source, dict) else getattr(source, "frame", None)
+            try:
+                pages = list(getattr(session.context, "pages", []) or [])
+                enriched["page_index"] = pages.index(source_page) if source_page in pages else 0
+            except Exception:
+                enriched["page_index"] = 0
+            if source_frame and not enriched.get("frame_path"):
+                try:
+                    frame_name = getattr(source_frame, "name", "")
+                    frame_name = frame_name() if callable(frame_name) else frame_name
+                    frame_url = getattr(source_frame, "url", "")
+                    frame_url = frame_url() if callable(frame_url) else frame_url
+                    main_frame = getattr(source_page, "main_frame", None)
+                    if source_frame != main_frame:
+                        enriched["frame_path"] = [{"name": frame_name or "", "url": frame_url or "", "selector": ""}]
+                except Exception:
+                    pass
+        _append_event(session, enriched)
 
     await page.expose_binding("__recordUiEvent", record_binding)
 
     def on_frame_navigated(frame: Any) -> None:
         try:
             if frame == page.main_frame:
-                _append_event(session, {"action": "url_change", "event_type": "url_change", "url": frame.url, "value": frame.url})
+                pages = list(getattr(session.context, "pages", []) or [])
+                page_index = pages.index(page) if page in pages else 0
+                _append_event(session, {"action": "url_change", "event_type": "url_change", "url": frame.url, "value": frame.url, "page_index": page_index})
         except Exception:
             return
 

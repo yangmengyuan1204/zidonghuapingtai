@@ -13,9 +13,16 @@ from ..core.utils import (
 )
 from ..database import get_db
 from ..executors import to_json_text
-from ..models import TestAccountProfile, UiCase, User
+from ..models import TestAccountProfile, UiCase, UiRecordPreflight, User
 from ..security import require_admin
 from ..services import ui_recording_session
+from ..services.ui_recording_preflight import (
+    create_preflight,
+    determine_recorded_case_status,
+    launch_preflight,
+    preflight_matches_steps,
+    serialize_preflight,
+)
 
 router = APIRouter(prefix="/api/ui-record", tags=["ui-record"])
 
@@ -92,6 +99,70 @@ def list_ui_record_events(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
+@router.post("/sessions/{session_id}/preflight")
+async def start_ui_record_preflight(
+    session_id: str,
+    payload: Dict[str, Any] | None = Body(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    data = payload if isinstance(payload, dict) else {}
+    assertion_text = str(data.get("assertion_text") or "").strip()
+    try:
+        session_state = ui_recording_session.get_session_state(session_id, assertion_text)
+        storage_state = await ui_recording_session.get_session_storage_state(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    steps = session_state.get("preview_steps") or []
+    row = create_preflight(
+        db,
+        session_id=session_id,
+        project_id=int(session_state["project_id"]),
+        steps=steps,
+        assertion_text=assertion_text,
+    )
+    launch_preflight(
+        row,
+        case_data={
+            "case_name": session_state["case_name"],
+            "page_url": session_state["start_url"],
+            "steps": steps,
+            "timeout": 30,
+        },
+        storage_state=storage_state,
+    )
+    return serialize_preflight(row)
+
+
+@router.get("/preflights/{run_id}")
+def get_ui_record_preflight(
+    run_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    row = db.get(UiRecordPreflight, run_id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="录制预检不存在")
+    return serialize_preflight(row)
+
+
+@router.post("/sessions/{session_id}/steps/{step_index}/locator")
+def override_ui_record_step_locator(
+    session_id: str,
+    step_index: int,
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    try:
+        return ui_recording_session.override_session_step_locator(
+            session_id,
+            step_index,
+            str(payload.get("locator") or ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
 @router.post("/sessions/{session_id}/save")
 async def save_ui_record_session(
     session_id: str,
@@ -101,6 +172,7 @@ async def save_ui_record_session(
 ) -> Dict[str, Any]:
     data = payload if isinstance(payload, dict) else {}
     assertion_text = str(data.get("assertion_text") or "").strip()
+    preflight_run_id = str(data.get("preflight_run_id") or "").strip()
     try:
         session_state = ui_recording_session.get_session_state(session_id, assertion_text)
     except ValueError as exc:
@@ -115,17 +187,31 @@ async def save_ui_record_session(
         profile.browser_session_validated_at = datetime.now()
         profile.update_time = datetime.now()
 
+    steps = session_state.get("preview_steps") or []
+    preflight = db.get(UiRecordPreflight, preflight_run_id) if preflight_run_id else None
+    if preflight_run_id and (
+        not preflight
+        or preflight.session_id != session_id
+        or int(preflight.project_id) != int(session_state["project_id"])
+        or not preflight_matches_steps(preflight, steps)
+    ):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="预检结果与当前录制会话不匹配")
+    case_status = determine_recorded_case_status(preflight.status if preflight else "", steps)
+
     ui_case = UiCase(
         project_id=int(session_state["project_id"]),
         case_name=str(session_state["case_name"]),
         page_url=str(session_state["start_url"]),
-        steps=to_json_text(session_state.get("preview_steps") or [], []),
+        steps=to_json_text(steps, []),
         timeout=30,
-        status="draft",
+        status=case_status,
         create_time=datetime.now(),
     )
     db.add(ui_case)
     db.flush()
+    if preflight:
+        preflight.case_id = ui_case.id
+        preflight.update_time = datetime.now()
     if profile:
         save_test_account_binding(db, "ui_case", ui_case.id, profile.id)
     db.commit()
@@ -135,6 +221,8 @@ async def save_ui_record_session(
         "case": serialize(ui_case),
         "steps": session_state.get("preview_steps") or [],
         "event_count": session_state.get("count") or 0,
+        "quality_status": "executable" if case_status == "active" else "needs_review",
+        "preflight": serialize_preflight(preflight) if preflight else None,
     }
 
 
