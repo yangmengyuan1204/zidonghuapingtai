@@ -55,9 +55,12 @@ def _impl__capture_evidence_screenshot(page: Any, prefix: str, screenshots: list
 
 def _impl__page_text_excerpt(page: Any, limit: int = 1200) -> str:
     try:
-        text = page.locator("body").inner_text(timeout=1200)
+        text = page.evaluate("() => document.body ? (document.body.innerText || document.body.textContent || '') : ''")
     except Exception:
-        return ""
+        try:
+            text = page.locator("body").inner_text(timeout=1200)
+        except Exception:
+            return ""
     text = _normalize_text(text)
     return text[:limit]
 

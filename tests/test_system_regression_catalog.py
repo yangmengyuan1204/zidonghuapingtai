@@ -81,10 +81,10 @@ def test_payment_panels_fill_order_rows_and_new_coverage_cases():
     assert cases["支付-013"].parameters["part_pay"]["fee_timing"]["service_fee"] == "tail"
     assert cases["支付-014"].parameters["part_pay"]["fee_timing"]["additional_service_fee"] == "tail"
     assert cases["支付-015"].parameters["part_pay"]["fee_timing"]["other_fee"] == "tail"
-    assert cases["配送-004"].parameters["porder"]["price_manual"] is True
-    assert cases["配送-004"].parameters["porder"]["logistics_price"]["value"] == "88"
+    assert cases["配送-004"].parameters["porder"]["price_manual"] is False
+    assert cases["配送-004"].parameters["porder"]["logistics"] == "25"
     assert cases["配送-005"].category == "porder"
-    assert cases["配送-005"].parameters["porder"]["logistics"] == "20"
+    assert cases["配送-005"].parameters["porder"]["logistics"] == "30"
     assert cases["支付-016"].parameters["coupon"]["selectedId"] == "__account_coupon__"
     assert cases["支付-016"].parameters["discounts_id"] == ""
     assert cases["支付-017"].parameters["payment_mode"] == "bank"

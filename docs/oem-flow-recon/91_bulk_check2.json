@@ -1,0 +1,25 @@
+{
+  "built": [
+    {
+      "order_detail_sku_id": 2428,
+      "check_num": 1000,
+      "good_num": 1000,
+      "bad_num": 0,
+      "weight": "1",
+      "size": "10*10*10",
+      "length": "10",
+      "width": "10",
+      "height": "10",
+      "sku": "ブルー",
+      "sku_tr": "blue",
+      "possible_num": 1000,
+      "purchase_num": 1000
+    }
+  ],
+  "resp": {
+    "code": 1000,
+    "msg": "请完善信息后提出",
+    "data": "",
+    "success": false
+  }
+}

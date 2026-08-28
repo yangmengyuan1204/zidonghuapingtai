@@ -1,0 +1,263 @@
+{
+  "steps": [
+    {
+      "name": "samplesExpressNo-keep",
+      "path": "/admin/samplesExpressNo",
+      "body": {
+        "express_id": 1121,
+        "express_no": "SF1786762885",
+        "express_remark": "auto"
+      },
+      "code": 0,
+      "msg": "操作成功",
+      "data_snip": "True"
+    },
+    {
+      "name": "tipShelves-S",
+      "path": "/admin/tipShelves",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "操作成功",
+      "data_snip": "True"
+    },
+    {
+      "name": "stockTipShelves-S",
+      "path": "/admin/stockTipShelves",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "操作成功",
+      "data_snip": "True"
+    },
+    {
+      "name": "samplesCheckRaise",
+      "path": "/admin/samplesCheckRaise",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "data_snip": ""
+    },
+    {
+      "name": "samplesCheckReturn",
+      "path": "/admin/samplesCheckReturn",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "data_snip": ""
+    },
+    {
+      "name": "samplesCheck",
+      "path": "/admin/samplesCheck",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesCheck",
+      "data_snip": ""
+    },
+    {
+      "name": "samplesCheckInspect",
+      "path": "/admin/samplesCheckInspect",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesCheckInspect",
+      "data_snip": ""
+    },
+    {
+      "name": "samplesComplete",
+      "path": "/admin/samplesComplete",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 1000,
+      "msg": "参数错误",
+      "data_snip": ""
+    },
+    {
+      "name": "stockDispatch-S",
+      "path": "/admin/stockDispatch",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 1000,
+      "msg": "参数错误",
+      "data_snip": ""
+    },
+    {
+      "name": "stockIsPurchaseEnd-S",
+      "path": "/admin/stockIsPurchaseEnd",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 1000,
+      "msg": "参数错误",
+      "data_snip": ""
+    },
+    {
+      "name": "stockReceive-S",
+      "path": "/admin/stockReceive",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/stockReceive",
+      "data_snip": ""
+    },
+    {
+      "name": "stockSign-S",
+      "path": "/admin/stockSign",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/stockSign",
+      "data_snip": ""
+    },
+    {
+      "name": "signFor-S",
+      "path": "/admin/signFor",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/signFor",
+      "data_snip": ""
+    },
+    {
+      "name": "receiveGoods-S",
+      "path": "/admin/receiveGoods",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/receiveGoods",
+      "data_snip": ""
+    },
+    {
+      "name": "warehouseSign-S",
+      "path": "/admin/warehouseSign",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/warehouseSign",
+      "data_snip": ""
+    },
+    {
+      "name": "samplesSign",
+      "path": "/admin/samplesSign",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesSign",
+      "data_snip": ""
+    },
+    {
+      "name": "samplesReceived",
+      "path": "/admin/samplesReceived",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesReceived",
+      "data_snip": ""
+    },
+    {
+      "name": "samplesShelves",
+      "path": "/admin/samplesShelves",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesShelves",
+      "data_snip": ""
+    },
+    {
+      "name": "samplesListing",
+      "path": "/admin/samplesListing",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesListing",
+      "data_snip": ""
+    },
+    {
+      "name": "samplesStartShelves",
+      "path": "/admin/samplesStartShelves",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesStartShelves",
+      "data_snip": ""
+    },
+    {
+      "name": "samplesCompShelves",
+      "path": "/admin/samplesCompShelves",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      },
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesCompShelves",
+      "data_snip": ""
+    }
+  ],
+  "S": 50,
+  "B": 48,
+  "P": 5,
+  "stock_apis": [
+    "samplesCheckReport",
+    "samplesCheckReturn",
+    "samplesCheckRaise",
+    "stockDetail",
+    "stockStartQuote",
+    "stockRaiseQuote",
+    "stockReQuote",
+    "stockStartPurchase",
+    "stockCompPurchase",
+    "stockDispatch",
+    "stockExpressEdit",
+    "stockTipShelves",
+    "stockPurchaseSave",
+    "stockOrderShelve",
+    "stockCheckDetail",
+    "stockUpdateWarehouse",
+    "stockExpressSave",
+    "stockSubmitPurchase",
+    "stockStartConfirmed",
+    "stockBackTranslation",
+    "stockSubmitY",
+    "stockStartQuote",
+    "stockReturnG",
+    "stockQuoteToClient",
+    "stockReQuote",
+    "stockStartPurchase",
+    "stockIsPurchaseEnd",
+    "stockUnPendingPayment",
+    "stockPendingPayment",
+    "stockDispatch",
+    "stockCancelPayment",
+    "stockUpdateRemark",
+    "keepSampleShelve",
+    "largeCheckReport",
+    "largeCheckRaise",
+    "largeCheckInspect",
+    "largeCheckReturn",
+    "tipShelves",
+    "changeCheckNum",
+    "directShelve",
+    "orderShelve",
+    "porderSign"
+  ]
+}

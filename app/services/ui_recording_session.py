@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlsplit
 from uuid import uuid4
 
 from playwright.async_api import async_playwright
@@ -37,20 +37,20 @@ RECORDING_SCRIPT = r"""
     if (raw.nodeType === Node.ELEMENT_NODE) return raw;
     return raw.parentElement || null;
   };
+  const cleanText = (value, max = 40) => String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
   const elementText = (el) => {
     if (!el) return "";
-    return trimText(el.innerText || el.textContent || el.value || el.getAttribute("title") || "");
+    return cleanText(el.innerText || el.textContent || el.value || el.getAttribute("title") || el.getAttribute("aria-label") || "");
   };
   const isLikelyClickable = (el) => {
     if (!el || el === document.body || el === document.documentElement) return false;
-    const text = elementText(el);
+    const tag = (el.tagName || "").toLowerCase();
+    if (["a", "button", "select", "summary", "input"].includes(tag)) return true;
+    if (el.getAttribute("role") === "button" || el.hasAttribute("onclick")) return true;
     const className = String(el.getAttribute("class") || "");
-    const dataAction = el.getAttribute("data-action") || el.getAttribute("data-click");
-    if (dataAction) return true;
-    if (el.getAttribute("aria-haspopup") || el.getAttribute("tabindex")) return true;
-    if (/\b(btn|button|link|login|search|cart|submit|open|trigger|action)\b/i.test(className)) return true;
+    if (/\b(btn|button|el-button|ant-btn|tab|item|menu-item|goods|card|cart)\b/i.test(className)) return true;
     try {
-      if (window.getComputedStyle(el).cursor === "pointer" && text && text.length <= 100) return true;
+      if (window.getComputedStyle(el).cursor === "pointer") return true;
     } catch (error) {
       return false;
     }
@@ -62,12 +62,12 @@ RECORDING_SCRIPT = r"""
     if (native) return native;
     let node = start;
     let depth = 0;
-    while (node && node.nodeType === Node.ELEMENT_NODE && depth < 6) {
+    while (node && node.nodeType === Node.ELEMENT_NODE && depth < 4) {
       if (isLikelyClickable(node)) return node;
       node = node.parentElement;
       depth += 1;
     }
-    return null;
+    return start;
   };
   const cssPath = (el) => {
     const parts = [];
@@ -91,17 +91,20 @@ RECORDING_SCRIPT = r"""
   const locatorInfo = (el) => {
     const candidates = [];
     const tag = (el.tagName || "").toLowerCase();
-    const dataTestId = el.getAttribute("data-testid");
-    const dataTest = el.getAttribute("data-test");
+    const dataTestId = el.getAttribute("data-testid") || el.getAttribute("data-test");
     const id = el.getAttribute("id");
     const name = el.getAttribute("name");
     const placeholder = el.getAttribute("placeholder");
     const ariaLabel = el.getAttribute("aria-label");
+    const title = el.getAttribute("title");
     const role = el.getAttribute("role");
-    const text = elementText(el);
+    const rawText = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+    const isGoodText = rawText && rawText.length <= 40 && !rawText.includes("\n");
+    const text = isGoodText ? rawText.slice(0, 40) : "";
+    const isDynamicId = (val) => !val || /(?:^|\b)(?:el-id|rc-tabs|input-\d+|select-\d+|uid-|guid-|__)/i.test(val) || /\d{4,}/.test(val);
+
     if (dataTestId) pushUnique(candidates, `[data-testid="${quoteCss(dataTestId)}"]`);
-    if (dataTest) pushUnique(candidates, `[data-test="${quoteCss(dataTest)}"]`);
-    if (id) pushUnique(candidates, `#${cssEscape(id)}`);
+    if (id && !isDynamicId(id)) pushUnique(candidates, `#${cssEscape(id)}`);
     if (name) pushUnique(candidates, `[name="${quoteCss(name)}"]`);
     if (placeholder) {
       const base = tag === "textarea" ? "textarea" : "input";
@@ -109,6 +112,7 @@ RECORDING_SCRIPT = r"""
       pushUnique(candidates, `[placeholder="${quoteCss(placeholder)}"]`);
     }
     if (ariaLabel) pushUnique(candidates, `[aria-label="${quoteCss(ariaLabel)}"]`);
+    if (title) pushUnique(candidates, `[title="${quoteCss(title)}"]`);
     if (text) {
       const quoted = quoteCss(text);
       if (tag === "button") pushUnique(candidates, `button:has-text("${quoted}")`);
@@ -116,11 +120,19 @@ RECORDING_SCRIPT = r"""
       if (role) pushUnique(candidates, `[role="${quoteCss(role)}"]:has-text("${quoted}")`);
       pushUnique(candidates, `text="${quoted}"`);
     }
+    const iconEl = el.querySelector("i,svg,[class*='icon']");
+    if (iconEl && tag === "button") {
+      const iconClass = String(iconEl.getAttribute("class") || "").trim();
+      if (iconClass) {
+        const firstCls = iconClass.split(/\s+/).find(c => /icon|search|close|btn|submit|cart/i.test(c));
+        if (firstCls) pushUnique(candidates, `button:has(.${cssEscape(firstCls)})`);
+      }
+    }
     pushUnique(candidates, cssPath(el));
     return {
-      locator: candidates[0] || "",
+      locator: candidates[0] || cssPath(el),
       fallback_locators: candidates.slice(1),
-      text,
+      text: text || cleanText(el.innerText || "", 40),
       tag,
       input_type: (el.getAttribute("type") || "").toLowerCase(),
     };
@@ -159,8 +171,7 @@ RECORDING_SCRIPT = r"""
 
   document.addEventListener("click", (event) => {
     const start = targetElement(event.target);
-    const startText = elementText(start);
-    const el = clickableElement(start) || (startText && startText.length <= 100 ? start : null);
+    const el = clickableElement(start) || start;
     if (!el) return;
     const tag = (el.tagName || "").toLowerCase();
     const type = (el.getAttribute("type") || "").toLowerCase();
@@ -274,20 +285,22 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
         )
     if isinstance(item["value"], str):
         item["value"] = _short_text(item["value"], 2000)
+    raw_val = item.get("value")
+    item["raw_value"] = raw_val
     sensitive_text = " ".join(
         str(item.get(key) or "") for key in ("locator", "text", "input_type")
     ).lower()
     sensitive = bool(
         item.get("input_type") == "password"
-        or any(word in sensitive_text for word in ("password", "passwd", "token", "cookie", "authorization", "验证码", "captcha", "密码"))
+        or any(word in sensitive_text for word in ("password", "passwd", "token", "cookie", "authorization", "密码"))
     )
-    if item.get("action") == "input" and any(word in sensitive_text for word in ("username", "account", "mobile", "phone", "email", "账号", "手机号", "邮箱")):
+    if item.get("action") == "input" and any(word in sensitive_text for word in ("username", "account", "账号", "登录名", "user_name")):
         item["value"] = "{{username}}"
+        item["default_value"] = raw_val
         sensitive = True
     elif item.get("action") == "input" and sensitive:
-        item["value"] = "{{password}}" if item.get("input_type") == "password" or "密码" in sensitive_text else "***"
-    elif isinstance(item.get("value"), str):
-        item["value"] = re.sub(r"(?<!\d)1[3-9]\d{9}(?!\d)", "***手机号***", item["value"])
+        item["value"] = "{{password}}" if item.get("input_type") == "password" or "密码" in sensitive_text else (raw_val or "***")
+        item["default_value"] = raw_val
     item["sensitive"] = sensitive
     return item
 
@@ -351,6 +364,14 @@ def _event_to_step(event: dict[str, Any]) -> dict[str, Any] | None:
     locator = str(event.get("locator") or "").strip()
     if not locator:
         return None
+    text = str(event.get("text") or "").strip()
+    if action == "click":
+        if len(text) > 40:
+            return None
+        if 'text="' in locator:
+            m = re.search(r'text="([^"]+)"', locator)
+            if m and len(m.group(1)) > 40:
+                return None
     step: dict[str, Any] = {
         "name": _step_label(action, event),
         "action": action,
@@ -361,6 +382,8 @@ def _event_to_step(event: dict[str, Any]) -> dict[str, Any] | None:
         step["fallback_locators"] = fallbacks
     if action in {"input", "select"}:
         step["value"] = event.get("value", "")
+        if event.get("default_value"):
+            step["default_value"] = event.get("default_value")
     elif action in {"check", "uncheck"} and event.get("value") not in (None, ""):
         step["value"] = event.get("value")
     return step
@@ -395,6 +418,8 @@ def build_ui_steps(
             final_url = str(event["url"])
         if str(event.get("action") or "").strip().lower() == "url_change":
             next_url = str(event.get("value") or event.get("url") or "").strip()
+            if next_url:
+                final_url = next_url
             if _significant_url_change(last_flow_url, next_url):
                 pending_goto_url = next_url
                 last_flow_url = next_url
@@ -422,7 +447,18 @@ def build_ui_steps(
     if text:
         steps.append({"name": "检查页面文案", "action": "text_assert", "locator": "body", "value": text})
     if final_url:
-        steps.append({"name": "检查最终地址", "action": "assert_url", "value": final_url, "exact": False})
+        parsed_final = urlsplit(final_url)
+        query_items = parse_qsl(parsed_final.query, keep_blank_values=True)
+        has_dynamic_query = any(
+            key.lower() == "id" or key.lower().endswith("_id") or re.fullmatch(r"\d{8,}", value or "")
+            for key, value in query_items
+        )
+        clean_url = (
+            f"{parsed_final.scheme}://{parsed_final.netloc}{parsed_final.path}"
+            if has_dynamic_query
+            else final_url
+        )
+        steps.append({"name": "检查最终地址", "action": "assert_url", "value": clean_url, "exact": False})
     return steps
 
 
@@ -447,20 +483,35 @@ def _session_payload(session_id: str, session: _Session, assertion_text: str = "
     }
 
 
-async def _attach_page_recorder(session: _Session, page: Any) -> None:
-    async def record_binding(_source: Any, payload: Any) -> None:
-        _append_event(session, payload)
-
-    await page.expose_binding("__recordUiEvent", record_binding)
-
+def _attach_page_recorder(session: _Session, page: Any) -> None:
     def on_frame_navigated(frame: Any) -> None:
         try:
             if frame == page.main_frame:
                 _append_event(session, {"action": "url_change", "event_type": "url_change", "url": frame.url, "value": frame.url})
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(_ensure_script(page))
+                except Exception:
+                    pass
         except Exception:
             return
 
+    async def _ensure_script(p: Any) -> None:
+        try:
+            await p.evaluate(RECORDING_SCRIPT)
+        except Exception:
+            pass
+
+    def on_dom_ready(*args: Any) -> None:
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_ensure_script(page))
+        except Exception:
+            pass
+
     page.on("framenavigated", on_frame_navigated)
+    page.on("domcontentloaded", on_dom_ready)
+    page.on("load", on_dom_ready)
 
 
 async def start_session(
@@ -481,13 +532,12 @@ async def start_session(
     if isinstance(storage_state, dict) and isinstance(storage_state.get("cookies"), list):
         context_options["storage_state"] = storage_state
     context = await browser.new_context(**context_options)
-    await context.add_init_script(RECORDING_SCRIPT)
-    page = await context.new_page()
+
     session = _Session(
         playwright=playwright,
         browser=browser,
         context=context,
-        page=page,
+        page=None,
         project_id=project_id,
         case_name=case_name,
         start_url=start_url,
@@ -498,12 +548,35 @@ async def start_session(
         persistent=bool(persistent),
     )
 
-    await _attach_page_recorder(session, page)
+    async def record_binding(_source: Any, payload: Any) -> None:
+        _append_event(session, payload)
+
+    # Expose binding at context level so ALL tabs/popups/iframes get it immediately
+    await context.expose_binding("__recordUiEvent", record_binding)
+    await context.add_init_script(RECORDING_SCRIPT)
 
     def on_new_page(new_page: Any) -> None:
-        asyncio.create_task(_attach_page_recorder(session, new_page))
+        session.page = new_page
+        _attach_page_recorder(session, new_page)
+        async def _inject_new_page(p: Any) -> None:
+            try:
+                await p.add_init_script(RECORDING_SCRIPT)
+            except Exception:
+                pass
+            try:
+                await p.evaluate(RECORDING_SCRIPT)
+            except Exception:
+                pass
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_inject_new_page(new_page))
+        except Exception:
+            pass
 
     context.on("page", on_new_page)
+    page = await context.new_page()
+    session.page = page
+    _attach_page_recorder(session, page)
 
     async with _LOCK:
         session_id = str(preferred_session_id or uuid4().hex)

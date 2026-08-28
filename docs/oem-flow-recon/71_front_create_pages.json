@@ -1,0 +1,321 @@
+{
+  "pages": {
+    "/user/creategoods": {
+      "url": "https://oem.rakumart.cn/user/creategoods",
+      "apis": [
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/common/common/getExchangeRate",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"rmb_to_jpy\":23.56,\"jpy_to_rmb\":0.0424},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/notice.unreadNotice",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[],\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/userInfo",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"id\":15,\"username\":\"小杨测试账号\",\"realname\":\"小杨测试账号\",\"email\":\"2232\",\"mobile\":\"12345678990\",\"create_at\":\"2024-03-05 03:11:46\",\"y_id\":44,\"p_id\":46,\"j_id\":47,\"g_id\":45,\"last_login_at\":\"2026-08-15 10:17:58\",\"portrait_url\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202601\\/6979dc4b67b53.png\",\"balance\":6190017,\"invoice_scope\":\"user\",\"show_amazon\":false},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/user.attentionInfo",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"samples_report\":24,\"large_report\":68,\"inspect\":14,\"problem_goods\":44,\"dispatched\":12,\"unread_notice\":92,\"samples_unpaid\":16,\"larges_unpaid\":7,\"larges_balance_unpaid\":8,\"porder_unpaid\":1,\"message_notice\":{\"report\":false,\"inspect\":false,\"problem\":true,\"dispatched\":true,\"samples_unpaid\":true,\"larges_unpaid\":true,\"balance_unpaid\":true,\"porder_unpaid\":true,\"samples_report\":true,\"large_report\":true}},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/user.attentionInfo",
+          "s": 200,
+          "post": "",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"samples_report\":24,\"large_report\":68,\"inspect\":14,\"problem_goods\":44,\"dispatched\":12,\"unread_notice\":92,\"samples_unpaid\":16,\"larges_unpaid\":7,\"larges_balance_unpaid\":8,\"porder_unpaid\":1,\"message_notice\":{\"report\":false,\"inspect\":false,\"problem\":true,\"dispatched\":true,\"samples_unpaid\":true,\"larges_unpaid\":true,\"balance_unpaid\":true,\"porder_unpaid\":true,\"samples_report\":true,\"large_report\":true}},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/quantitativeStatistics",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"order_info\":{\"inqiury_num\":372,\"samples_num\":281,\"large_num\":415,\"porder_num\":193,\"problem_num\":44},\"goods_info\":{\"goods_num\":290,\"accessory_num\":95,\"warehouse_num\":\"8383\",\"keep_sample_warehouse_num\":\"1461\",\"promote_num\":4}},\"success\":true}"
+        }
+      ],
+      "text": "楽々とオリジナル商品作り JP カレンダー 小杨测试账号 マイページ ログアウト 為替レート： 1 元 = 23.56 円 BLOG 工場探す 商品登録 商品作成 商品管理 マイ商品 (290) 資材 (95) 倉庫 (8383) サンプル倉庫 (1461) おすすめ商品 (4) Amazon在庫 店舗API接続 Amazon在庫 納品計画管理 注文管理 引合書 (372) サンプル注文 (281) 量産注文 (415) 配送依頼書 (193) 問題商品 (44) 入出金管理 新規入金 入出金履歴 工場管理 発注済み工場 お気に入り 個人情報 登録情報 住所管理 パスワード変更 クーポ"
+    },
+    "/user/createAccessoryGoods": {
+      "url": "https://oem.rakumart.cn/user/createAccessoryGoods",
+      "apis": [
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/common/common/getExchangeRate",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"rmb_to_jpy\":23.56,\"jpy_to_rmb\":0.0424},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/notice.unreadNotice",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[],\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/user.attentionInfo",
+          "s": 200,
+          "post": "",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"samples_report\":24,\"large_report\":68,\"inspect\":14,\"problem_goods\":44,\"dispatched\":12,\"unread_notice\":92,\"samples_unpaid\":16,\"larges_unpaid\":7,\"larges_balance_unpaid\":8,\"porder_unpaid\":1,\"message_notice\":{\"report\":false,\"inspect\":false,\"problem\":true,\"dispatched\":true,\"samples_unpaid\":true,\"larges_unpaid\":true,\"balance_unpaid\":true,\"porder_unpaid\":true,\"samples_report\":true,\"large_report\":true}},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/user.attentionInfo",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"samples_report\":24,\"large_report\":68,\"inspect\":14,\"problem_goods\":44,\"dispatched\":12,\"unread_notice\":92,\"samples_unpaid\":16,\"larges_unpaid\":7,\"larges_balance_unpaid\":8,\"porder_unpaid\":1,\"message_notice\":{\"report\":false,\"inspect\":false,\"problem\":true,\"dispatched\":true,\"samples_unpaid\":true,\"larges_unpaid\":true,\"balance_unpaid\":true,\"porder_unpaid\":true,\"samples_report\":true,\"large_report\":true}},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/userInfo",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"id\":15,\"username\":\"小杨测试账号\",\"realname\":\"小杨测试账号\",\"email\":\"2232\",\"mobile\":\"12345678990\",\"create_at\":\"2024-03-05 03:11:46\",\"y_id\":44,\"p_id\":46,\"j_id\":47,\"g_id\":45,\"last_login_at\":\"2026-08-15 10:17:58\",\"portrait_url\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202601\\/6979dc4b67b53.png\",\"balance\":6190017,\"invoice_scope\":\"user\",\"show_amazon\":false},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/getAccessoryType",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":13,\"accessory_type_c\":\"纸标\",\"accessory_type_t\":\"紙タグ\"},{\"id\":14,\"accessory_type_c\":\"包装盒\",\"accessory_type_t\":\"パッケージ\"},{\"id\":15,\"accessory_type_c\":\"印刷物\",\"accessory_type_t\":\"印刷物\"},{\"id\":16,\"accessory_type_c\":\"包装袋\",\"accessory_type_t\":\"OPP袋\"},{\"id\":17,\"accessory_type_c\":\"布标\",\"accessory_type_t\":\"布タグ\"}],\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/getGoodsList",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":132,\"goods_name\":\"衣服\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202403\\/65e6f98d5dc64.jpg\"},{\"id\":134,\"goods_name\":\"小杨测试\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202403\\/65e7c8fed7aae.jpg\"},{\"id\":135,\"goods_name\":\"鲁班手办\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202403\\/65e807cea4e81.jpg\"},{\"id\":136,\"goods_name\":\"小杨\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202403\\/65e80c75bccae.jpg\"},{\"id\":137,\"goods_name\":\"测试测试\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202403\\/65e80cb837a46.jpg\"},{\"id\":139,\"goods_name\":\"小杨测试\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202403\\/65e80dee2ad7a.jpg\"},{\"id\":140,\""
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/quantitativeStatistics",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"order_info\":{\"inqiury_num\":372,\"samples_num\":281,\"large_num\":415,\"porder_num\":193,\"problem_num\":44},\"goods_info\":{\"goods_num\":290,\"accessory_num\":95,\"warehouse_num\":\"8383\",\"keep_sample_warehouse_num\":\"1461\",\"promote_num\":4}},\"success\":true}"
+        }
+      ],
+      "text": "楽々とオリジナル商品作り JP カレンダー 小杨测试账号 マイページ ログアウト 為替レート： 1 元 = 23.56 円 BLOG 工場探す 商品登録 商品作成 商品管理 マイ商品 (290) 資材 (95) 倉庫 (8383) サンプル倉庫 (1461) おすすめ商品 (4) Amazon在庫 店舗API接続 Amazon在庫 納品計画管理 注文管理 引合書 (372) サンプル注文 (281) 量産注文 (415) 配送依頼書 (193) 問題商品 (44) 入出金管理 新規入金 入出金履歴 工場管理 発注済み工場 お気に入り 個人情報 登録情報 住所管理 パスワード変更 クーポ"
+    },
+    "/user/accessory": {
+      "url": "https://oem.rakumart.cn/user/accessory",
+      "apis": [
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/common/common/getExchangeRate",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"rmb_to_jpy\":23.56,\"jpy_to_rmb\":0.0424},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/notice.unreadNotice",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[],\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/userInfo",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"id\":15,\"username\":\"小杨测试账号\",\"realname\":\"小杨测试账号\",\"email\":\"2232\",\"mobile\":\"12345678990\",\"create_at\":\"2024-03-05 03:11:46\",\"y_id\":44,\"p_id\":46,\"j_id\":47,\"g_id\":45,\"last_login_at\":\"2026-08-15 10:17:58\",\"portrait_url\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202601\\/6979dc4b67b53.png\",\"balance\":6190017,\"invoice_scope\":\"user\",\"show_amazon\":false},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/user.attentionInfo",
+          "s": 200,
+          "post": "",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"samples_report\":24,\"large_report\":68,\"inspect\":14,\"problem_goods\":44,\"dispatched\":12,\"unread_notice\":92,\"samples_unpaid\":16,\"larges_unpaid\":7,\"larges_balance_unpaid\":8,\"porder_unpaid\":1,\"message_notice\":{\"report\":false,\"inspect\":false,\"problem\":true,\"dispatched\":true,\"samples_unpaid\":true,\"larges_unpaid\":true,\"balance_unpaid\":true,\"porder_unpaid\":true,\"samples_report\":true,\"large_report\":true}},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/user.attentionInfo",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"samples_report\":24,\"large_report\":68,\"inspect\":14,\"problem_goods\":44,\"dispatched\":12,\"unread_notice\":92,\"samples_unpaid\":16,\"larges_unpaid\":7,\"larges_balance_unpaid\":8,\"porder_unpaid\":1,\"message_notice\":{\"report\":false,\"inspect\":false,\"problem\":true,\"dispatched\":true,\"samples_unpaid\":true,\"larges_unpaid\":true,\"balance_unpaid\":true,\"porder_unpaid\":true,\"samples_report\":true,\"large_report\":true}},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/accessoryList",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"\",\"data\":[{\"id\":173,\"user_id\":15,\"accessory_name\":\"这个是抓取的辅料名\",\"num\":0,\"accessory_type\":\"パッケージ\",\"status\":30,\"master_image\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/337482\\/O1CN01sLVlVW25ABa5bQubA_!!1870557485.jpg\",\"inventory\":0,\"replenish_num\":0,\"replenishment\":0,\"accessory_detail\":[{\"accessory_id\":173,\"goods_id\":132,\"goods\":{\"id\":132,\"goods_name\":\"衣服\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202403\\/65e6f98d5dc64.jpg\"}},{\"accessory_id\":173,\"goods_id\":134,\"goods\":{\"id\":134,\"goods_name\":\"小杨测试\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202403\\/65e7c8fed7aae.jpg\"}},{\"accessory_id\":173,\"goods_id\":135,\"goods\":{\"id\":135,\"goods_name\":\"鲁班手办\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.al"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/quantitativeStatistics",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"order_info\":{\"inqiury_num\":372,\"samples_num\":281,\"large_num\":415,\"porder_num\":193,\"problem_num\":44},\"goods_info\":{\"goods_num\":290,\"accessory_num\":95,\"warehouse_num\":\"8383\",\"keep_sample_warehouse_num\":\"1461\",\"promote_num\":4}},\"success\":true}"
+        }
+      ],
+      "text": "楽々とオリジナル商品作り JP カレンダー 小杨测试账号 マイページ ログアウト 為替レート： 1 元 = 23.56 円 BLOG 工場探す 商品登録 商品作成 商品管理 マイ商品 (290) 資材 (95) 倉庫 (8383) サンプル倉庫 (1461) おすすめ商品 (4) Amazon在庫 店舗API接続 Amazon在庫 納品計画管理 注文管理 引合書 (372) サンプル注文 (281) 量産注文 (415) 配送依頼書 (193) 問題商品 (44) 入出金管理 新規入金 入出金履歴 工場管理 発注済み工場 お気に入り 個人情報 登録情報 住所管理 パスワード変更 クーポ"
+    },
+    "/user/Inquiryorders": {
+      "url": "https://oem.rakumart.cn/user/Inquiryorders",
+      "apis": [
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/common/common/getExchangeRate",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"rmb_to_jpy\":23.56,\"jpy_to_rmb\":0.0424},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/userInfo",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"id\":15,\"username\":\"小杨测试账号\",\"realname\":\"小杨测试账号\",\"email\":\"2232\",\"mobile\":\"12345678990\",\"create_at\":\"2024-03-05 03:11:46\",\"y_id\":44,\"p_id\":46,\"j_id\":47,\"g_id\":45,\"last_login_at\":\"2026-08-15 10:17:58\",\"portrait_url\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202601\\/6979dc4b67b53.png\",\"balance\":6190017,\"invoice_scope\":\"user\",\"show_amazon\":false},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/notice.unreadNotice",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[],\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/user.attentionInfo",
+          "s": 200,
+          "post": "",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"samples_report\":24,\"large_report\":68,\"inspect\":14,\"problem_goods\":44,\"dispatched\":12,\"unread_notice\":92,\"samples_unpaid\":16,\"larges_unpaid\":7,\"larges_balance_unpaid\":8,\"porder_unpaid\":1,\"message_notice\":{\"report\":false,\"inspect\":false,\"problem\":true,\"dispatched\":true,\"samples_unpaid\":true,\"larges_unpaid\":true,\"balance_unpaid\":true,\"porder_unpaid\":true,\"samples_report\":true,\"large_report\":true}},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/inquiryNum",
+          "s": 200,
+          "post": "{\"goods_type\":\"\"}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":372},{\"status\":\"临时保存\",\"num\":0},{\"status\":\"询价中\",\"num\":290},{\"status\":\"询价完成\",\"num\":81},{\"status\":\"无法报价\",\"num\":1}],\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/inquiryList",
+          "s": 200,
+          "post": "{\"page\":1,\"pageSize\":10,\"status\":100,\"order_sn\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"goods_name\":\"\",\"goods_type\":\"\"}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"order_sn\":\"X20260808134327-15-OEM\",\"goods_id\":\"985\",\"goods_no\":\"43843342\",\"create_at\":\"2026-08-08 13:43:27\",\"user_status\":1,\"user_remark\":\"\",\"goods_name\":\"11111\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/089069\\/rakumade-preview-support-person-transparent.png\",\"goods_type\":1,\"order_list\":[],\"rowNumber\":1,\"status_name\":\"未翻译\",\"inquiry_num\":0,\"inquiry_unread_num\":0,\"complete_num\":0,\"complete_unread_num\":0,\"has_order\":false,\"has_forward_order\":false},{\"order_sn\":\"X20260807093928-15-OEM\",\"goods_id\":\"984\",\"goods_no\":\"61771901\",\"create_at\":\"2026-08-07 09:39:28\",\"user_status\":2,\"user_remark\":\"\",\"goods_name\":\"111\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/804614\\/O1CN01sLVlVW25"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/user.attentionInfo",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"samples_report\":24,\"large_report\":68,\"inspect\":14,\"problem_goods\":44,\"dispatched\":12,\"unread_notice\":92,\"samples_unpaid\":16,\"larges_unpaid\":7,\"larges_balance_unpaid\":8,\"porder_unpaid\":1,\"message_notice\":{\"report\":false,\"inspect\":false,\"problem\":true,\"dispatched\":true,\"samples_unpaid\":true,\"larges_unpaid\":true,\"balance_unpaid\":true,\"porder_unpaid\":true,\"samples_report\":true,\"large_report\":true}},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/quantitativeStatistics",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"order_info\":{\"inqiury_num\":372,\"samples_num\":281,\"large_num\":415,\"porder_num\":193,\"problem_num\":44},\"goods_info\":{\"goods_num\":290,\"accessory_num\":95,\"warehouse_num\":\"8383\",\"keep_sample_warehouse_num\":\"1461\",\"promote_num\":4}},\"success\":true}"
+        }
+      ],
+      "text": "楽々とオリジナル商品作り JP カレンダー 小杨测试账号 マイページ ログアウト 為替レート： 1 元 = 23.56 円 BLOG 工場探す 商品登録 商品作成 商品管理 マイ商品 (290) 資材 (95) 倉庫 (8383) サンプル倉庫 (1461) おすすめ商品 (4) Amazon在庫 店舗API接続 Amazon在庫 納品計画管理 注文管理 引合書 (372) サンプル注文 (281) 量産注文 (415) 配送依頼書 (193) 問題商品 (44) 入出金管理 新規入金 入出金履歴 工場管理 発注済み工場 お気に入り 個人情報 登録情報 住所管理 パスワード変更 クーポ"
+    },
+    "/user/sampleorders": {
+      "url": "https://oem.rakumart.cn/user/sampleorders",
+      "apis": [
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/common/common/getExchangeRate",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"rmb_to_jpy\":23.56,\"jpy_to_rmb\":0.0424},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/userInfo",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"id\":15,\"username\":\"小杨测试账号\",\"realname\":\"小杨测试账号\",\"email\":\"2232\",\"mobile\":\"12345678990\",\"create_at\":\"2024-03-05 03:11:46\",\"y_id\":44,\"p_id\":46,\"j_id\":47,\"g_id\":45,\"last_login_at\":\"2026-08-15 10:17:58\",\"portrait_url\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202601\\/6979dc4b67b53.png\",\"balance\":6190017,\"invoice_scope\":\"user\",\"show_amazon\":false},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/user.attentionInfo",
+          "s": 200,
+          "post": "",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"samples_report\":24,\"large_report\":68,\"inspect\":14,\"problem_goods\":44,\"dispatched\":12,\"unread_notice\":92,\"samples_unpaid\":16,\"larges_unpaid\":7,\"larges_balance_unpaid\":8,\"porder_unpaid\":1,\"message_notice\":{\"report\":false,\"inspect\":false,\"problem\":true,\"dispatched\":true,\"samples_unpaid\":true,\"larges_unpaid\":true,\"balance_unpaid\":true,\"porder_unpaid\":true,\"samples_report\":true,\"large_report\":true}},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/user.attentionInfo",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"samples_report\":24,\"large_report\":68,\"inspect\":14,\"problem_goods\":44,\"dispatched\":12,\"unread_notice\":92,\"samples_unpaid\":16,\"larges_unpaid\":7,\"larges_balance_unpaid\":8,\"porder_unpaid\":1,\"message_notice\":{\"report\":false,\"inspect\":false,\"problem\":true,\"dispatched\":true,\"samples_unpaid\":true,\"larges_unpaid\":true,\"balance_unpaid\":true,\"porder_unpaid\":true,\"samples_report\":true,\"large_report\":true}},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/notice.unreadNotice",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[],\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/orderNum",
+          "s": 200,
+          "post": "{\"order_type\":1}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":281},{\"name\":\"报价中\",\"num\":85},{\"name\":\"等待入金\",\"num\":16},{\"name\":\"生产中\",\"num\":77},{\"name\":\"待发货\",\"num\":0},{\"name\":\"国内派送中\",\"num\":14},{\"name\":\"上架中\",\"num\":35},{\"name\":\"上架完成\",\"num\":47}],\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/quantitativeStatistics",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"order_info\":{\"inqiury_num\":372,\"samples_num\":281,\"large_num\":415,\"porder_num\":193,\"problem_num\":44},\"goods_info\":{\"goods_num\":290,\"accessory_num\":95,\"warehouse_num\":\"8383\",\"keep_sample_warehouse_num\":\"1461\",\"promote_num\":4}},\"success\":true}"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/api/orderList",
+          "s": 200,
+          "post": "{\"page\":1,\"pageSize\":10,\"status\":10000,\"goods_name\":\"\",\"order_type\":1,\"order_sn\":\"\",\"start_time\":\"\",\"end_time\":\"\"}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"order_sn\":\"Y20260805145106-15-OEM\",\"goods_name\":\"测试商品\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/029706\\/鲁班.jpg\"],\"goods_id\":981,\"goods_no\":\"61493876\",\"create_at\":\"2026-08-05 14:54:40\",\"user_status\":9,\"admin_status\":60,\"u_remark\":\"\",\"special_status\":0,\"goods_type\":1,\"order_detail\":{\"factory_name\":\"测试工厂\",\"order_sn\":\"Y20260805145106-15-OEM\",\"inquiry_detail_id\":1016,\"is_read_inspect\":1,\"exchange_rate\":\"23.55\",\"large_deposit_rate\":\"0.00\",\"inquiry_detail\":{\"id\":1016,\"status\":2}},\"order_time_node\":{\"datetime_pay_submit\":\"2026-08-05 14:56:49\",\"datetime_purchase_complete\":\"2026-08-05 14:58:51\",\"order_sn\":\"Y20260805145106-15-OEM\"},\"check_report\":{\"order_sn\":\"Y20260805145106-15-OEM\",\"is_read\":0,\"show_user\":1},\"sku_lis"
+        }
+      ],
+      "text": "楽々とオリジナル商品作り JP カレンダー 小杨测试账号 マイページ ログアウト 為替レート： 1 元 = 23.56 円 BLOG 工場探す 商品登録 商品作成 商品管理 マイ商品 (290) 資材 (95) 倉庫 (8383) サンプル倉庫 (1461) おすすめ商品 (4) Amazon在庫 店舗API接続 Amazon在庫 納品計画管理 注文管理 引合書 (372) サンプル注文 (281) 量産注文 (415) 配送依頼書 (193) 問題商品 (44) 入出金管理 新規入金 入出金履歴 工場管理 発注済み工場 お気に入り 個人情報 登録情報 住所管理 パスワード変更 クーポ"
+    }
+  },
+  "scripts": [
+    "https://oem.rakumart.cn/js/index-3243fb5b.js",
+    "https://oem.rakumart.cn/js/@vue-fe4d1a92.js",
+    "https://oem.rakumart.cn/js/lodash-es-0028b47d.js",
+    "https://oem.rakumart.cn/js/@element-plus-a233956d.js",
+    "https://oem.rakumart.cn/js/@ctrl-91de2ec7.js",
+    "https://oem.rakumart.cn/js/ali-oss-872edcbb.js",
+    "https://oem.rakumart.cn/js/dayjs-f4ef5aac.js",
+    "https://oem.rakumart.cn/js/async-validator-cf877c1f.js",
+    "https://oem.rakumart.cn/js/memoize-one-63ab667a.js",
+    "https://oem.rakumart.cn/js/normalize-wheel-es-3222b0a2.js",
+    "https://oem.rakumart.cn/js/@floating-ui-eb249795.js",
+    "https://oem.rakumart.cn/js/element-plus-ca31d65c.js",
+    "https://oem.rakumart.cn/js/vue-router-e0219696.js",
+    "https://oem.rakumart.cn/js/vue-demi-71ba0ef2.js",
+    "https://oem.rakumart.cn/js/pinia-aa934b6f.js",
+    "https://oem.rakumart.cn/js/@intlify-bc506b4e.js",
+    "https://oem.rakumart.cn/js/vue-i18n-2568066a.js",
+    "https://oem.rakumart.cn/js/axios-743c2fba.js",
+    "https://oem.rakumart.cn/js/pinia-plugin-persistedstate-a467b1a1.js",
+    "https://oem.rakumart.cn/js/index-65e3c1a5.js",
+    "https://oem.rakumart.cn/js/index-9e16c2a5.js",
+    "https://oem.rakumart.cn/js/new1-c9311da5.js",
+    "https://oem.rakumart.cn/js/index-da895e58.js",
+    "https://oem.rakumart.cn/js/index-109d58df.js",
+    "https://oem.rakumart.cn/js/_-b118f89c.js",
+    "https://oem.rakumart.cn/js/index-cd2d648b.js"
+  ]
+}

@@ -38,12 +38,6 @@
           </tbody>
         </table>
       </div>
-
-      <section class="v2-ui-execution__evidence">
-        <h3>最新截图</h3>
-        <img v-if="run.latest_screenshot_url" :src="run.latest_screenshot_url" alt="执行截图" />
-        <p v-else>等待截图生成…</p>
-      </section>
     </div>
 
     <details v-if="isFinished" class="v2-ui-execution__details" open>
@@ -115,7 +109,6 @@ const statusTone = (status) => ({ passed: 'success', failed: 'danger', running: 
 }
 
 .v2-ui-execution__summary div,
-.v2-ui-execution__evidence,
 .v2-ui-execution__details {
   padding: var(--v2-space-3);
   border: var(--v2-border-width) solid var(--v2-border-panel);
@@ -143,9 +136,7 @@ const statusTone = (status) => ({ passed: 'success', failed: 'danger', running: 
 }
 
 .v2-ui-execution__layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(280px, .7fr);
-  gap: var(--v2-space-3);
+  display: block;
 }
 
 .v2-ui-execution__table-wrap {
@@ -175,22 +166,10 @@ const statusTone = (status) => ({ passed: 'success', failed: 'danger', running: 
   font-size: var(--v2-font-size-tiny);
 }
 
-.v2-ui-execution__empty,
-.v2-ui-execution__evidence p {
+.v2-ui-execution__empty {
   padding: var(--v2-space-5);
   color: var(--v2-text-muted);
   text-align: center;
-}
-
-.v2-ui-execution__evidence h3 {
-  margin: 0 0 var(--v2-space-2);
-  font-size: var(--v2-font-size-body);
-}
-
-.v2-ui-execution__evidence img {
-  width: 100%;
-  max-height: calc(var(--v2-space-7) * 6.5);
-  object-fit: contain;
 }
 
 .v2-ui-execution__details summary {
@@ -211,8 +190,7 @@ const statusTone = (status) => ({ passed: 'success', failed: 'danger', running: 
 }
 
 @media (max-width: 900px) {
-  .v2-ui-execution__summary,
-  .v2-ui-execution__layout {
+  .v2-ui-execution__summary {
     grid-template-columns: minmax(0, 1fr);
   }
 }

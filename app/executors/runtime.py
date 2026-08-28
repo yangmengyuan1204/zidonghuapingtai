@@ -55,6 +55,23 @@ def _sync_compat_globals() -> None:
         sync_legacy()
     for name in _COMPAT_NAMES:
         globals()[name] = getattr(package, name)
+    from .auth import _strip_leading_login_steps
+    globals()["_strip_leading_login_steps"] = _strip_leading_login_steps
+
+def _active_page(page: Any) -> Any:
+    try:
+        pages = getattr(getattr(page, "context", None), "pages", [])
+        for p in reversed(pages):
+            if hasattr(p, "is_closed") and not p.is_closed():
+                try:
+                    if p.url == "about:blank" or not p.url:
+                        p.wait_for_load_state("domcontentloaded", timeout=5000)
+                except Exception:
+                    pass
+                return p
+    except Exception:
+        pass
+    return page
 
 
 def _impl_execute_ui_case_in_page(
@@ -144,7 +161,12 @@ def _impl_execute_ui_case_in_page(
         inferred_variables = _business_variables_from_text(_page_text_excerpt(page, limit=12000))
         applied_variables = _merge_inferred_business_variables(variables, inferred_variables)
         steps = render_template(raw_steps, variables)
-        if execution_context.get("login_required") or execution_context.get("strip_login_steps"):
+        for s in steps:
+            if isinstance(s, dict) and s.get("default_value"):
+                val = str(s.get("value") or "")
+                if not val or val.startswith("{{"):
+                    s["value"] = s["default_value"]
+        if execution_context.get("login_required") or execution_context.get("strip_login_steps") or execution_context.get("preauthenticated"):
             steps, removed_login_steps = _strip_leading_login_steps(steps)
         steps, runtime_replacements = _stabilize_runtime_steps(steps, variables)
         steps, validation_issues = _validate_ui_steps_for_execution(steps)
@@ -175,14 +197,15 @@ def _impl_execute_ui_case_in_page(
         for index, step in enumerate(steps, start=1):
             current_step_index = index
             current_step = step if isinstance(step, dict) else {"raw": step}
+            curr_page = _active_page(page)
             emit_progress("step_start", status="running", index=index, step=current_step)
             # 智能等待：操作前等待页面稳定
             action = (current_step or {}).get("action", "")
             if action in ("click", "input", "select", "check", "uncheck"):
-                _wait_page_stable(page, timeout=1500)
+                _wait_page_stable(curr_page, timeout=1500)
 
             try:
-                step_detail = _run_ui_step(page, current_step, screenshots, timeout, case_id=getattr(case, 'id', 0) or 0, db=db_session)
+                step_detail = _run_ui_step(curr_page, current_step, screenshots, timeout, case_id=getattr(case, 'id', 0) or 0, db=db_session)
                 step_detail["index"] = index
                 log_parts["step_logs"].append(step_detail)
                 if isinstance(step_detail.get("extracted"), dict):
@@ -191,16 +214,17 @@ def _impl_execute_ui_case_in_page(
                     log_parts["extracted_vars"] = extracted_vars
                 emit_progress("step_finish", status=step_detail.get("status", "passed"), index=index, step=current_step, detail=step_detail, extracted_vars=extracted_vars)
                 # 智能等待：操作后等待页面响应
-                _wait_after_action(page, action)
+                _wait_after_action(curr_page, action)
             except UiStepExecutionError as exc:
                 # 失败自动重试
                 if retry_count > 0 and action not in ("text_assert", "assert_url", "assert_value", "assert_visible"):
                     retried = False
                     for attempt in range(retry_count):
-                        page.wait_for_timeout(retry_interval_ms)
-                        _wait_page_stable(page)
+                        retry_page = _active_page(page)
+                        retry_page.wait_for_timeout(retry_interval_ms)
+                        _wait_page_stable(retry_page)
                         try:
-                            step_detail = _run_ui_step(page, current_step, screenshots, timeout, case_id=getattr(case, 'id', 0) or 0, db=db_session)
+                            step_detail = _run_ui_step(retry_page, current_step, screenshots, timeout, case_id=getattr(case, 'id', 0) or 0, db=db_session)
                             step_detail["index"] = index
                             step_detail["retry_attempt"] = attempt + 1
                             log_parts["step_logs"].append(step_detail)
@@ -211,7 +235,7 @@ def _impl_execute_ui_case_in_page(
                             # 重试成功后截一张确认图，作为"步骤恢复"的证据
                             confirm_shot = SCREENSHOT_DIR / f"retry-confirm-{uuid4()}.png"
                             try:
-                                page.screenshot(path=str(confirm_shot), full_page=True)
+                                retry_page.screenshot(path=str(confirm_shot), full_page=True)
                                 step_detail["retry_confirmation_screenshot"] = str(confirm_shot)
                                 screenshots.append(str(confirm_shot))
                             except Exception:
@@ -229,18 +253,19 @@ def _impl_execute_ui_case_in_page(
                 emit_progress("step_finish", status="failed", index=index, step=current_step, detail=failed_step_detail, extracted_vars=extracted_vars)
                 raise
         # 最终验证：强制截图 + URL + 截图质量检查
+        final_page = _active_page(page)
         final_screenshot = SCREENSHOT_DIR / f"{uuid4()}.png"
         try:
-            page.screenshot(path=str(final_screenshot), full_page=True)
+            final_page.screenshot(path=str(final_screenshot), full_page=True)
             screenshots.append(str(final_screenshot))
         except Exception as exc:
             final_screenshot = Path(screenshots[-1]) if screenshots else None
 
         # 三级验证
-        final_url = getattr(page, "url", "")
+        final_url = getattr(final_page, "url", "")
         screenshot_check = _quick_screenshot_check(str(final_screenshot)) if final_screenshot else {"ok": False, "reason": "无法获取截图"}
         url_ok = _url_looks_reasonable(final_url, _expected_origin(str(case.page_url or "")))
-        business_ok, business_issues, business_evidence = _final_business_verification(page, steps, timeout)
+        business_ok, business_issues, business_evidence = _final_business_verification(final_page, steps, timeout)
 
         verification_issues = []
         if not url_ok:
@@ -326,6 +351,13 @@ def _impl_execute_ui_case(
         if runtime_vars:
             variables.update(runtime_vars)
     steps = render_template(parse_json_value(case.steps, []), variables)
+    for s in steps:
+        if isinstance(s, dict) and s.get("default_value"):
+            val = str(s.get("value") or "")
+            if not val or val.startswith("{{"):
+                s["value"] = s["default_value"]
+    if execution_context.get("login_required") or execution_context.get("strip_login_steps") or execution_context.get("preauthenticated"):
+        steps, removed_login_steps = _strip_leading_login_steps(steps)
     steps, validation_issues = _validate_ui_steps_for_execution(steps)
 
     log_parts: Dict[str, Any] = {
@@ -385,7 +417,12 @@ def _impl_execute_ui_case(
         with sync_playwright() as p:
             headed = bool(execution_context.get("headed") or execution_context.get("visual_browser"))
             browser = launch_chromium_browser(p, headless=not headed)
-            page = browser.new_page()
+            context_options = {"ignore_https_errors": True}
+            storage_state = execution_context.get("storage_state")
+            if isinstance(storage_state, dict) and isinstance(storage_state.get("cookies"), list):
+                context_options["storage_state"] = storage_state
+            context = browser.new_context(**context_options)
+            page = context.new_page()
             try:
                 passed, log_text, screenshot_path, report_path = execute_ui_case_in_page(case, page, runtime_vars, execution_context, db_session=db_session, progress_callback=progress_callback)
             except Exception as inner_exc:

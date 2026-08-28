@@ -1,0 +1,372 @@
+{
+  "path_map_subset": {
+    "inquiryTranslate": "/admin/inquiryTranslate",
+    "inquiryTranslateAudit": "/admin/inquiryTranslateAudit",
+    "inquiryStartInquiry": "/admin/inquiryStartInquiry",
+    "factoryQuote": "/admin/factoryQuote",
+    "inquiryComplete": "/admin/inquiryComplete",
+    "inquiryStartQuote": "/admin/inquiryStartQuote",
+    "factoryQuoteToUser": "/admin/factoryQuoteToUser",
+    "inquiryQuoteComplate": "/admin/inquiryQuoteComplate",
+    "samplesStartConfirm": "/admin/samplesStartConfirm ",
+    "samplesConfirmed": "/admin/samplesConfirmed ",
+    "samplesStartQuote": "/admin/samplesStartQuote",
+    "samplesQuoteToUser": "/admin/samplesQuoteToUser ",
+    "samplesSubmitPurchase": "/admin/samplesSubmitPurchase",
+    "samplesStartPurchase": "/admin/samplesStartPurchase",
+    "samplesCompPurchase": "/admin/samplesCompPurchase",
+    "samplesDispatch": "/admin/samplesDispatch",
+    "largeStartConfirm": "/admin/largeStartConfirm",
+    "largeConfirmed": "/admin/largeConfirmed",
+    "largeStartQuote": "/admin/largeStartQuote",
+    "largeQuoteToUser": "/admin/largeQuoteToUser",
+    "largeSubmitPurchase": "/admin/largeSubmitPurchase",
+    "largeStartPurchase": "/admin/largeStartPurchase",
+    "largeCompPurchase": "/admin/largeCompPurchase",
+    "largeDispatch": "/admin/largeDispatch",
+    "porderStartTransalte": "/admin/porderStartTransalte",
+    "porderSubmitTranslate": "/admin/porderSubmitTranslate",
+    "porderPackingComp": "/admin/porderPackingComp",
+    "porderRaiseQuote": "/admin/porderRaiseQuote",
+    "porderShipGoods": "/admin/porderShipGoods",
+    "porderComplete": "/admin/porderComplete",
+    "accessoryStartInquiry": "/admin/accessoryStartInquiry",
+    "accessoryQuoteToUser": "/admin/accessoryQuoteToUser",
+    "submitTranslate": "/admin/submitTranslate"
+  },
+  "call_sites": {
+    "inquiryTranslate": [
+      {
+        "file": "router",
+        "snip": "ost\",adminApi$f+\"changeGoodsType\",e),assignInquiry:e=>apiAxios(\"post\",adminApi$f+\"assignInquiry\",e),translateInquiryList:e=>apiAxios(\"post\",adminApi$f+\"translateInquiryList\",e),translateAuditList:e=>apiAxios(\"post\",adminApi$f+\"translateAuditList\",e),inquiryTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryTranslate\",e),inquiryTranslateAudit:e=>apiAxios(\"post\",adminApi$f+\"inquiryTranslateAudit\",e),inquiryRemark:e=>apiAxios(\"post\",adminApi$f+\"inquiryRemark\",e),gInquirtList:e=>apiAxios(\"post\",adminApi$f+\"gInquirtList\",e),inquiryReturnTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryReturnTranslate\","
+      },
+      {
+        "file": "router",
+        "snip": "ry:e=>apiAxios(\"post\",adminApi$f+\"assignInquiry\",e),translateInquiryList:e=>apiAxios(\"post\",adminApi$f+\"translateInquiryList\",e),translateAuditList:e=>apiAxios(\"post\",adminApi$f+\"translateAuditList\",e),inquiryTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryTranslate\",e),inquiryTranslateAudit:e=>apiAxios(\"post\",adminApi$f+\"inquiryTranslateAudit\",e),inquiryRemark:e=>apiAxios(\"post\",adminApi$f+\"inquiryRemark\",e),gInquirtList:e=>apiAxios(\"post\",adminApi$f+\"gInquirtList\",e),inquiryReturnTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryReturnTranslate\",e),inquiryStartInquiry:e=>apiAxios(\"post\",adminA"
+      }
+    ],
+    "inquiryTranslateAudit": [
+      {
+        "file": "router",
+        "snip": ",adminApi$f+\"assignInquiry\",e),translateInquiryList:e=>apiAxios(\"post\",adminApi$f+\"translateInquiryList\",e),translateAuditList:e=>apiAxios(\"post\",adminApi$f+\"translateAuditList\",e),inquiryTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryTranslate\",e),inquiryTranslateAudit:e=>apiAxios(\"post\",adminApi$f+\"inquiryTranslateAudit\",e),inquiryRemark:e=>apiAxios(\"post\",adminApi$f+\"inquiryRemark\",e),gInquirtList:e=>apiAxios(\"post\",adminApi$f+\"gInquirtList\",e),inquiryReturnTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryReturnTranslate\",e),inquiryStartInquiry:e=>apiAxios(\"post\",adminApi$f+\"inquiryStartInq"
+      },
+      {
+        "file": "router",
+        "snip": "=>apiAxios(\"post\",adminApi$f+\"translateInquiryList\",e),translateAuditList:e=>apiAxios(\"post\",adminApi$f+\"translateAuditList\",e),inquiryTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryTranslate\",e),inquiryTranslateAudit:e=>apiAxios(\"post\",adminApi$f+\"inquiryTranslateAudit\",e),inquiryRemark:e=>apiAxios(\"post\",adminApi$f+\"inquiryRemark\",e),gInquirtList:e=>apiAxios(\"post\",adminApi$f+\"gInquirtList\",e),inquiryReturnTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryReturnTranslate\",e),inquiryStartInquiry:e=>apiAxios(\"post\",adminApi$f+\"inquiryStartInquiry\",e),inquiryComplete:e=>apiAxios(\"post\",adminApi$"
+      }
+    ],
+    "inquiryStartInquiry": [
+      {
+        "file": "router",
+        "snip": "\"post\",adminApi$f+\"inquiryTranslateAudit\",e),inquiryRemark:e=>apiAxios(\"post\",adminApi$f+\"inquiryRemark\",e),gInquirtList:e=>apiAxios(\"post\",adminApi$f+\"gInquirtList\",e),inquiryReturnTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryReturnTranslate\",e),inquiryStartInquiry:e=>apiAxios(\"post\",adminApi$f+\"inquiryStartInquiry\",e),inquiryComplete:e=>apiAxios(\"post\",adminApi$f+\"inquiryComplete\",e),inquiryInvalid:e=>apiAxios(\"post\",adminApi$f+\"inquiryInvalid\",e),inquiryRegression:e=>apiAxios(\"post\",adminApi$f+\"inquiryRegression\",e),reinquiry:e=>apiAxios(\"post\",adminApi$f+\"reinquiry\",e),factoryQuote:e=>a"
+      },
+      {
+        "file": "router",
+        "snip": "yRemark:e=>apiAxios(\"post\",adminApi$f+\"inquiryRemark\",e),gInquirtList:e=>apiAxios(\"post\",adminApi$f+\"gInquirtList\",e),inquiryReturnTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryReturnTranslate\",e),inquiryStartInquiry:e=>apiAxios(\"post\",adminApi$f+\"inquiryStartInquiry\",e),inquiryComplete:e=>apiAxios(\"post\",adminApi$f+\"inquiryComplete\",e),inquiryInvalid:e=>apiAxios(\"post\",adminApi$f+\"inquiryInvalid\",e),inquiryRegression:e=>apiAxios(\"post\",adminApi$f+\"inquiryRegression\",e),reinquiry:e=>apiAxios(\"post\",adminApi$f+\"reinquiry\",e),factoryQuote:e=>apiAxios(\"post\",adminApi$f+\"factoryQuote\",e),gAdminf"
+      }
+    ],
+    "factoryQuote": [
+      {
+        "file": "router",
+        "snip": "omplete:e=>apiAxios(\"post\",adminApi$f+\"inquiryComplete\",e),inquiryInvalid:e=>apiAxios(\"post\",adminApi$f+\"inquiryInvalid\",e),inquiryRegression:e=>apiAxios(\"post\",adminApi$f+\"inquiryRegression\",e),reinquiry:e=>apiAxios(\"post\",adminApi$f+\"reinquiry\",e),factoryQuote:e=>apiAxios(\"post\",adminApi$f+\"factoryQuote\",e),gAdminfactoryInvalid:e=>apiAxios(\"post\",adminApi$f+\"gAdminfactoryInvalid\",e),factoryDelete:e=>apiAxios(\"post\",adminApi$f+\"factoryDelete\",e),factoryAdd:e=>apiAxios(\"post\",adminApi$f+\"factoryAdd\",e),factoryEdit:e=>apiAxios(\"post\",adminApi$f+\"factoryEdit\",e),getFactoryByName:e=>apiAxios(\"pos"
+      },
+      {
+        "file": "router",
+        "snip": "ryComplete\",e),inquiryInvalid:e=>apiAxios(\"post\",adminApi$f+\"inquiryInvalid\",e),inquiryRegression:e=>apiAxios(\"post\",adminApi$f+\"inquiryRegression\",e),reinquiry:e=>apiAxios(\"post\",adminApi$f+\"reinquiry\",e),factoryQuote:e=>apiAxios(\"post\",adminApi$f+\"factoryQuote\",e),gAdminfactoryInvalid:e=>apiAxios(\"post\",adminApi$f+\"gAdminfactoryInvalid\",e),factoryDelete:e=>apiAxios(\"post\",adminApi$f+\"factoryDelete\",e),factoryAdd:e=>apiAxios(\"post\",adminApi$f+\"factoryAdd\",e),factoryEdit:e=>apiAxios(\"post\",adminApi$f+\"factoryEdit\",e),getFactoryByName:e=>apiAxios(\"post\",adminApi$f+\"getFactoryByName\",e),getFacto"
+      }
+    ],
+    "inquiryComplete": [
+      {
+        "file": "router",
+        "snip": "t\",adminApi$f+\"inquiryRemark\",e),gInquirtList:e=>apiAxios(\"post\",adminApi$f+\"gInquirtList\",e),inquiryReturnTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryReturnTranslate\",e),inquiryStartInquiry:e=>apiAxios(\"post\",adminApi$f+\"inquiryStartInquiry\",e),inquiryComplete:e=>apiAxios(\"post\",adminApi$f+\"inquiryComplete\",e),inquiryInvalid:e=>apiAxios(\"post\",adminApi$f+\"inquiryInvalid\",e),inquiryRegression:e=>apiAxios(\"post\",adminApi$f+\"inquiryRegression\",e),reinquiry:e=>apiAxios(\"post\",adminApi$f+\"reinquiry\",e),factoryQuote:e=>apiAxios(\"post\",adminApi$f+\"factoryQuote\",e),gAdminfactoryInvalid:e=>apiAxio"
+      },
+      {
+        "file": "router",
+        "snip": "=>apiAxios(\"post\",adminApi$f+\"gInquirtList\",e),inquiryReturnTranslate:e=>apiAxios(\"post\",adminApi$f+\"inquiryReturnTranslate\",e),inquiryStartInquiry:e=>apiAxios(\"post\",adminApi$f+\"inquiryStartInquiry\",e),inquiryComplete:e=>apiAxios(\"post\",adminApi$f+\"inquiryComplete\",e),inquiryInvalid:e=>apiAxios(\"post\",adminApi$f+\"inquiryInvalid\",e),inquiryRegression:e=>apiAxios(\"post\",adminApi$f+\"inquiryRegression\",e),reinquiry:e=>apiAxios(\"post\",adminApi$f+\"reinquiry\",e),factoryQuote:e=>apiAxios(\"post\",adminApi$f+\"factoryQuote\",e),gAdminfactoryInvalid:e=>apiAxios(\"post\",adminApi$f+\"gAdminfactoryInvalid\",e),f"
+      }
+    ],
+    "inquiryStartQuote": [
+      {
+        "file": "router",
+        "snip": "tFactorySalesman\",e),getFactoryNameById:e=>apiAxios(\"post\",adminApi$f+\"getFactoryNameById\",e),getInquiryAutoQuotePrice:e=>apiAxios(\"post\",adminApi$f+\"getInquiryAutoQuotePrice\",e),qouteInquirytList:e=>apiAxios(\"post\",adminApi$f+\"qouteInquirytList\",e),inquiryStartQuote:e=>apiAxios(\"post\",adminApi$f+\"inquiryStartQuote\",e),inquiryQuoteComplate:e=>apiAxios(\"post\",adminApi$f+\"inquiryQuoteComplate\",e),inquiryQuoteInvalid:e=>apiAxios(\"post\",adminApi$f+\"inquiryQuoteInvalid\",e),factoryInvalid:e=>apiAxios(\"post\",adminApi$f+\"factoryInvalid\",e),factoryCancelInvalid:e=>apiAxios(\"post\",adminApi$f+\"factoryCan"
+      },
+      {
+        "file": "router",
+        "snip": "os(\"post\",adminApi$f+\"getFactoryNameById\",e),getInquiryAutoQuotePrice:e=>apiAxios(\"post\",adminApi$f+\"getInquiryAutoQuotePrice\",e),qouteInquirytList:e=>apiAxios(\"post\",adminApi$f+\"qouteInquirytList\",e),inquiryStartQuote:e=>apiAxios(\"post\",adminApi$f+\"inquiryStartQuote\",e),inquiryQuoteComplate:e=>apiAxios(\"post\",adminApi$f+\"inquiryQuoteComplate\",e),inquiryQuoteInvalid:e=>apiAxios(\"post\",adminApi$f+\"inquiryQuoteInvalid\",e),factoryInvalid:e=>apiAxios(\"post\",adminApi$f+\"factoryInvalid\",e),factoryCancelInvalid:e=>apiAxios(\"post\",adminApi$f+\"factoryCancelInvalid\",e),gAdminfactoryInvalidCancel:e=>apiA"
+      }
+    ],
+    "factoryQuoteToUser": [
+      {
+        "file": "router",
+        "snip": "ryQuoteInvalid\",e),factoryInvalid:e=>apiAxios(\"post\",adminApi$f+\"factoryInvalid\",e),factoryCancelInvalid:e=>apiAxios(\"post\",adminApi$f+\"factoryCancelInvalid\",e),gAdminfactoryInvalidCancel:e=>apiAxios(\"post\",adminApi$f+\"gAdminfactoryInvalidCancel\",e),factoryQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"factoryQuoteToUser\",e),factoryBackToGadmin:e=>apiAxios(\"post\",adminApi$f+\"factoryBackToGadmin\",e),factoryUpdate:e=>apiAxios(\"post\",adminApi$f+\"factoryUpdate\",e),getInquiryMotion:e=>apiAxios(\"post\",adminApi$f+\"getInquiryMotion\",e),saveInquiryMotion:e=>apiAxios(\"post\",adminApi$f+\"saveInquiryMotion\",e)"
+      },
+      {
+        "file": "router",
+        "snip": "t\",adminApi$f+\"factoryInvalid\",e),factoryCancelInvalid:e=>apiAxios(\"post\",adminApi$f+\"factoryCancelInvalid\",e),gAdminfactoryInvalidCancel:e=>apiAxios(\"post\",adminApi$f+\"gAdminfactoryInvalidCancel\",e),factoryQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"factoryQuoteToUser\",e),factoryBackToGadmin:e=>apiAxios(\"post\",adminApi$f+\"factoryBackToGadmin\",e),factoryUpdate:e=>apiAxios(\"post\",adminApi$f+\"factoryUpdate\",e),getInquiryMotion:e=>apiAxios(\"post\",adminApi$f+\"getInquiryMotion\",e),saveInquiryMotion:e=>apiAxios(\"post\",adminApi$f+\"saveInquiryMotion\",e),submitInquiryMotion:e=>apiAxios(\"post\",adminApi$f"
+      }
+    ],
+    "inquiryQuoteComplate": [
+      {
+        "file": "router",
+        "snip": "getFactoryNameById\",e),getInquiryAutoQuotePrice:e=>apiAxios(\"post\",adminApi$f+\"getInquiryAutoQuotePrice\",e),qouteInquirytList:e=>apiAxios(\"post\",adminApi$f+\"qouteInquirytList\",e),inquiryStartQuote:e=>apiAxios(\"post\",adminApi$f+\"inquiryStartQuote\",e),inquiryQuoteComplate:e=>apiAxios(\"post\",adminApi$f+\"inquiryQuoteComplate\",e),inquiryQuoteInvalid:e=>apiAxios(\"post\",adminApi$f+\"inquiryQuoteInvalid\",e),factoryInvalid:e=>apiAxios(\"post\",adminApi$f+\"factoryInvalid\",e),factoryCancelInvalid:e=>apiAxios(\"post\",adminApi$f+\"factoryCancelInvalid\",e),gAdminfactoryInvalidCancel:e=>apiAxios(\"post\",adminApi$f"
+      },
+      {
+        "file": "router",
+        "snip": "piAxios(\"post\",adminApi$f+\"getInquiryAutoQuotePrice\",e),qouteInquirytList:e=>apiAxios(\"post\",adminApi$f+\"qouteInquirytList\",e),inquiryStartQuote:e=>apiAxios(\"post\",adminApi$f+\"inquiryStartQuote\",e),inquiryQuoteComplate:e=>apiAxios(\"post\",adminApi$f+\"inquiryQuoteComplate\",e),inquiryQuoteInvalid:e=>apiAxios(\"post\",adminApi$f+\"inquiryQuoteInvalid\",e),factoryInvalid:e=>apiAxios(\"post\",adminApi$f+\"factoryInvalid\",e),factoryCancelInvalid:e=>apiAxios(\"post\",adminApi$f+\"factoryCancelInvalid\",e),gAdminfactoryInvalidCancel:e=>apiAxios(\"post\",adminApi$f+\"gAdminfactoryInvalidCancel\",e),factoryQuoteToUser:"
+      }
+    ],
+    "samplesStartConfirm": [
+      {
+        "file": "router",
+        "snip": "pi$f+\"samplesSubmitPurchase\",e),samplesBackTranslation:e=>apiAxios(\"post\",adminApi$f+\"samplesBackTranslation \",e),samplesYResponse:e=>apiAxios(\"post\",adminApi$f+\"samplesYResponse \",e),samplesGRemark:e=>apiAxios(\"post\",adminApi$f+\"samplesGRemark \",e),samplesStartConfirm:e=>apiAxios(\"post\",adminApi$f+\"samplesStartConfirm \",e),samplesConfirmed:e=>apiAxios(\"post\",adminApi$f+\"samplesConfirmed \",e),samplesQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"samplesQuoteToUser \",e),samplesFinancialPayments:e=>apiAxios(\"post\",adminApi$f+\"samplesFinancialPayments \",e),samplesPurchaseCompleted:e=>apiAxios(\"post\","
+      },
+      {
+        "file": "router",
+        "snip": "ion:e=>apiAxios(\"post\",adminApi$f+\"samplesBackTranslation \",e),samplesYResponse:e=>apiAxios(\"post\",adminApi$f+\"samplesYResponse \",e),samplesGRemark:e=>apiAxios(\"post\",adminApi$f+\"samplesGRemark \",e),samplesStartConfirm:e=>apiAxios(\"post\",adminApi$f+\"samplesStartConfirm \",e),samplesConfirmed:e=>apiAxios(\"post\",adminApi$f+\"samplesConfirmed \",e),samplesQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"samplesQuoteToUser \",e),samplesFinancialPayments:e=>apiAxios(\"post\",adminApi$f+\"samplesFinancialPayments \",e),samplesPurchaseCompleted:e=>apiAxios(\"post\",adminApi$f+\"samplesPurchaseCompleted \",e),savePurch"
+      }
+    ],
+    "samplesConfirmed": [
+      {
+        "file": "router",
+        "snip": "dminApi$f+\"changeWarehouseCity\",e),samplesQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesQuote\",e),samplesInproduction:e=>apiAxios(\"post\",adminApi$f+\"samplesInproduction\",e),samplesTranslatedList:e=>apiAxios(\"post\",adminApi$f+\"samplesTranslatedList\",e),samplesConfirmedList:e=>apiAxios(\"post\",adminApi$f+\"samplesConfirmedList\",e),samplesDetail:e=>apiAxios(\"post\",adminApi$f+\"samplesDetail\",e),samplesCheckReport:e=>apiAxios(\"post\",adminApi$f+\"samplesCheckReport\",e),samplesCheckReturn:e=>apiAxios(\"post\",adminApi$f+\"samplesCheckReturn\",e),samplesCheckRaise:e=>apiAxios(\"post\",adminApi$f+\"samplesCheckRai"
+      },
+      {
+        "file": "router",
+        "snip": "piAxios(\"post\",adminApi$f+\"samplesQuote\",e),samplesInproduction:e=>apiAxios(\"post\",adminApi$f+\"samplesInproduction\",e),samplesTranslatedList:e=>apiAxios(\"post\",adminApi$f+\"samplesTranslatedList\",e),samplesConfirmedList:e=>apiAxios(\"post\",adminApi$f+\"samplesConfirmedList\",e),samplesDetail:e=>apiAxios(\"post\",adminApi$f+\"samplesDetail\",e),samplesCheckReport:e=>apiAxios(\"post\",adminApi$f+\"samplesCheckReport\",e),samplesCheckReturn:e=>apiAxios(\"post\",adminApi$f+\"samplesCheckReturn\",e),samplesCheckRaise:e=>apiAxios(\"post\",adminApi$f+\"samplesCheckRaise\",e),samplesWorking:e=>apiAxios(\"post\",adminApi$f+"
+      }
+    ],
+    "samplesStartQuote": [
+      {
+        "file": "router",
+        "snip": "e=>apiAxios(\"post\",adminApi$f+\"samplesCheckRaise\",e),samplesWorking:e=>apiAxios(\"post\",adminApi$f+\"samplesWorking\",e),samplesComplete:e=>apiAxios(\"post\",adminApi$f+\"samplesComplete\",e),samplesYremark:e=>apiAxios(\"post\",adminApi$f+\"samplesYremark\",e),samplesStartQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesStartQuote\",e),samplesRaiseQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesRaiseQuote\",e),samplesReQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesReQuote\",e),samplesStartPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesStartPurchase\",e),samplesCompPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesCompPurc"
+      },
+      {
+        "file": "router",
+        "snip": ",e),samplesWorking:e=>apiAxios(\"post\",adminApi$f+\"samplesWorking\",e),samplesComplete:e=>apiAxios(\"post\",adminApi$f+\"samplesComplete\",e),samplesYremark:e=>apiAxios(\"post\",adminApi$f+\"samplesYremark\",e),samplesStartQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesStartQuote\",e),samplesRaiseQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesRaiseQuote\",e),samplesReQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesReQuote\",e),samplesStartPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesStartPurchase\",e),samplesCompPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesCompPurchase\",e),samplesExpressNo:e=>apiAxios(\"post\",admi"
+      }
+    ],
+    "samplesQuoteToUser": [
+      {
+        "file": "router",
+        "snip": "st\",adminApi$f+\"samplesYResponse \",e),samplesGRemark:e=>apiAxios(\"post\",adminApi$f+\"samplesGRemark \",e),samplesStartConfirm:e=>apiAxios(\"post\",adminApi$f+\"samplesStartConfirm \",e),samplesConfirmed:e=>apiAxios(\"post\",adminApi$f+\"samplesConfirmed \",e),samplesQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"samplesQuoteToUser \",e),samplesFinancialPayments:e=>apiAxios(\"post\",adminApi$f+\"samplesFinancialPayments \",e),samplesPurchaseCompleted:e=>apiAxios(\"post\",adminApi$f+\"samplesPurchaseCompleted \",e),savePurchasePayment:e=>apiAxios(\"post\",adminApi$f+\"savePurchasePayment \",e),cancelPurchasePayment:e=>api"
+      },
+      {
+        "file": "router",
+        "snip": "rk:e=>apiAxios(\"post\",adminApi$f+\"samplesGRemark \",e),samplesStartConfirm:e=>apiAxios(\"post\",adminApi$f+\"samplesStartConfirm \",e),samplesConfirmed:e=>apiAxios(\"post\",adminApi$f+\"samplesConfirmed \",e),samplesQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"samplesQuoteToUser \",e),samplesFinancialPayments:e=>apiAxios(\"post\",adminApi$f+\"samplesFinancialPayments \",e),samplesPurchaseCompleted:e=>apiAxios(\"post\",adminApi$f+\"samplesPurchaseCompleted \",e),savePurchasePayment:e=>apiAxios(\"post\",adminApi$f+\"savePurchasePayment \",e),cancelPurchasePayment:e=>apiAxios(\"post\",adminApi$f+\"cancelPurchasePayment \",e"
+      }
+    ],
+    "samplesSubmitPurchase": [
+      {
+        "file": "router",
+        "snip": "t\",adminApi$f+\"getNewInspectSn\",e),changeTobeInspectNum:e=>apiAxios(\"post\",adminApi$f+\"changeTobeInspectNum\",e),deleteInspect:e=>apiAxios(\"post\",adminApi$f+\"deleteInspect\",e),samplesBackPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesBackPurchase\",e),samplesSubmitPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesSubmitPurchase\",e),samplesBackTranslation:e=>apiAxios(\"post\",adminApi$f+\"samplesBackTranslation \",e),samplesYResponse:e=>apiAxios(\"post\",adminApi$f+\"samplesYResponse \",e),samplesGRemark:e=>apiAxios(\"post\",adminApi$f+\"samplesGRemark \",e),samplesStartConfirm:e=>apiAxios(\"post\",adminApi$f+\"sa"
+      },
+      {
+        "file": "router",
+        "snip": "um:e=>apiAxios(\"post\",adminApi$f+\"changeTobeInspectNum\",e),deleteInspect:e=>apiAxios(\"post\",adminApi$f+\"deleteInspect\",e),samplesBackPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesBackPurchase\",e),samplesSubmitPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesSubmitPurchase\",e),samplesBackTranslation:e=>apiAxios(\"post\",adminApi$f+\"samplesBackTranslation \",e),samplesYResponse:e=>apiAxios(\"post\",adminApi$f+\"samplesYResponse \",e),samplesGRemark:e=>apiAxios(\"post\",adminApi$f+\"samplesGRemark \",e),samplesStartConfirm:e=>apiAxios(\"post\",adminApi$f+\"samplesStartConfirm \",e),samplesConfirmed:e=>apiAxios(\""
+      }
+    ],
+    "samplesStartPurchase": [
+      {
+        "file": "router",
+        "snip": "xios(\"post\",adminApi$f+\"samplesYremark\",e),samplesStartQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesStartQuote\",e),samplesRaiseQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesRaiseQuote\",e),samplesReQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesReQuote\",e),samplesStartPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesStartPurchase\",e),samplesCompPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesCompPurchase\",e),samplesExpressNo:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressNo\",e),samplesExpressRemark:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressRemark\",e),samplesDispatch:e=>apiAxios(\"post\",adminApi$f+\"sampl"
+      },
+      {
+        "file": "router",
+        "snip": "artQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesStartQuote\",e),samplesRaiseQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesRaiseQuote\",e),samplesReQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesReQuote\",e),samplesStartPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesStartPurchase\",e),samplesCompPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesCompPurchase\",e),samplesExpressNo:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressNo\",e),samplesExpressRemark:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressRemark\",e),samplesDispatch:e=>apiAxios(\"post\",adminApi$f+\"samplesDispatch\",e),samplesPadmin:e=>apiAxios(\"post\",admi"
+      }
+    ],
+    "samplesCompPurchase": [
+      {
+        "file": "router",
+        "snip": "t\",adminApi$f+\"samplesStartQuote\",e),samplesRaiseQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesRaiseQuote\",e),samplesReQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesReQuote\",e),samplesStartPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesStartPurchase\",e),samplesCompPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesCompPurchase\",e),samplesExpressNo:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressNo\",e),samplesExpressRemark:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressRemark\",e),samplesDispatch:e=>apiAxios(\"post\",adminApi$f+\"samplesDispatch\",e),samplesPadmin:e=>apiAxios(\"post\",adminApi$f+\"samplesPadmin\",e)"
+      },
+      {
+        "file": "router",
+        "snip": "ote:e=>apiAxios(\"post\",adminApi$f+\"samplesRaiseQuote\",e),samplesReQuote:e=>apiAxios(\"post\",adminApi$f+\"samplesReQuote\",e),samplesStartPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesStartPurchase\",e),samplesCompPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesCompPurchase\",e),samplesExpressNo:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressNo\",e),samplesExpressRemark:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressRemark\",e),samplesDispatch:e=>apiAxios(\"post\",adminApi$f+\"samplesDispatch\",e),samplesPadmin:e=>apiAxios(\"post\",adminApi$f+\"samplesPadmin\",e),samplesYadmin:e=>apiAxios(\"post\",adminApi$f+\"sampl"
+      }
+    ],
+    "samplesDispatch": [
+      {
+        "file": "router",
+        "snip": "$f+\"samplesStartPurchase\",e),samplesCompPurchase:e=>apiAxios(\"post\",adminApi$f+\"samplesCompPurchase\",e),samplesExpressNo:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressNo\",e),samplesExpressRemark:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressRemark\",e),samplesDispatch:e=>apiAxios(\"post\",adminApi$f+\"samplesDispatch\",e),samplesPadmin:e=>apiAxios(\"post\",adminApi$f+\"samplesPadmin\",e),samplesYadmin:e=>apiAxios(\"post\",adminApi$f+\"samplesYadmin\",e),samplesFollowUp:e=>apiAxios(\"post\",adminApi$f+\"samplesFollowUp\",e),assignJadmin:e=>apiAxios(\"post\",adminApi$f+\"assignJadmin\",e),samplesGadmin:e=>apiAxios(\"po"
+      },
+      {
+        "file": "router",
+        "snip": "e:e=>apiAxios(\"post\",adminApi$f+\"samplesCompPurchase\",e),samplesExpressNo:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressNo\",e),samplesExpressRemark:e=>apiAxios(\"post\",adminApi$f+\"samplesExpressRemark\",e),samplesDispatch:e=>apiAxios(\"post\",adminApi$f+\"samplesDispatch\",e),samplesPadmin:e=>apiAxios(\"post\",adminApi$f+\"samplesPadmin\",e),samplesYadmin:e=>apiAxios(\"post\",adminApi$f+\"samplesYadmin\",e),samplesFollowUp:e=>apiAxios(\"post\",adminApi$f+\"samplesFollowUp\",e),assignJadmin:e=>apiAxios(\"post\",adminApi$f+\"assignJadmin\",e),samplesGadmin:e=>apiAxios(\"post\",adminApi$f+\"samplesGadmin\",e),samplesNum:e="
+      }
+    ],
+    "largeStartConfirm": [
+      {
+        "file": "router",
+        "snip": "pi$f+\"largeWorkingList\",e),largeCompleteList:e=>apiAxios(\"post\",adminApi$f+\"largeCompleteList\",e),largeSubmitPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeSubmitPurchase\",e),largeBackTranslation:e=>apiAxios(\"post\",adminApi$f+\"largeBackTranslation\",e),largeStartConfirm:e=>apiAxios(\"post\",adminApi$f+\"largeStartConfirm\",e),largeConfirmed:e=>apiAxios(\"post\",adminApi$f+\"largeConfirmed\",e),largesBackPurchase:e=>apiAxios(\"post\",adminApi$f+\"largesBackPurchase\",e),largeQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"largeQuoteToUser\",e),largeFinancialPayments:e=>apiAxios(\"post\",adminApi$f+\"largeFinancialPaym"
+      },
+      {
+        "file": "router",
+        "snip": "piAxios(\"post\",adminApi$f+\"largeCompleteList\",e),largeSubmitPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeSubmitPurchase\",e),largeBackTranslation:e=>apiAxios(\"post\",adminApi$f+\"largeBackTranslation\",e),largeStartConfirm:e=>apiAxios(\"post\",adminApi$f+\"largeStartConfirm\",e),largeConfirmed:e=>apiAxios(\"post\",adminApi$f+\"largeConfirmed\",e),largesBackPurchase:e=>apiAxios(\"post\",adminApi$f+\"largesBackPurchase\",e),largeQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"largeQuoteToUser\",e),largeFinancialPayments:e=>apiAxios(\"post\",adminApi$f+\"largeFinancialPayments \",e),largeSavePurchasePayment:e=>apiAxios(\"p"
+      }
+    ],
+    "largeConfirmed": [
+      {
+        "file": "router",
+        "snip": "\",adminApi$f+\"changeCheckNum\",e),getOrderAutoQuotePrice:e=>apiAxios(\"post\",adminApi$f+\"getOrderAutoQuotePrice\",e),saveContract:e=>apiAxios(\"post\",adminApi$f+\"saveContract\",e),largeTranslatedList:e=>apiAxios(\"post\",adminApi$f+\"largeTranslatedList\",e),largeConfirmedList:e=>apiAxios(\"post\",adminApi$f+\"largeConfirmedList\",e),largeQuoteList:e=>apiAxios(\"post\",adminApi$f+\"largeQuoteList\",e),largeInproductionList:e=>apiAxios(\"post\",adminApi$f+\"largeInproductionList\",e),largeWorkingList:e=>apiAxios(\"post\",adminApi$f+\"largeWorkingList\",e),largeCompleteList:e=>apiAxios(\"post\",adminApi$f+\"largeCompleteLi"
+      },
+      {
+        "file": "router",
+        "snip": "Price:e=>apiAxios(\"post\",adminApi$f+\"getOrderAutoQuotePrice\",e),saveContract:e=>apiAxios(\"post\",adminApi$f+\"saveContract\",e),largeTranslatedList:e=>apiAxios(\"post\",adminApi$f+\"largeTranslatedList\",e),largeConfirmedList:e=>apiAxios(\"post\",adminApi$f+\"largeConfirmedList\",e),largeQuoteList:e=>apiAxios(\"post\",adminApi$f+\"largeQuoteList\",e),largeInproductionList:e=>apiAxios(\"post\",adminApi$f+\"largeInproductionList\",e),largeWorkingList:e=>apiAxios(\"post\",adminApi$f+\"largeWorkingList\",e),largeCompleteList:e=>apiAxios(\"post\",adminApi$f+\"largeCompleteList\",e),largeSubmitPurchase:e=>apiAxios(\"post\",admi"
+      }
+    ],
+    "largeStartQuote": [
+      {
+        "file": "router",
+        "snip": "ark\",e),keepSampleShelve:e=>apiAxios(\"post\",adminApi$f+\"keepSampleShelve\",e),largeList:e=>apiAxios(\"post\",adminApi$f+\"largeList\",e),largeDelete:e=>apiAxios(\"post\",adminApi$f+\"largeDelete\",e),largeDetail:e=>apiAxios(\"post\",adminApi$f+\"largeDetail\",e),largeStartQuote:e=>apiAxios(\"post\",adminApi$f+\"largeStartQuote\",e),largeCheckReport:e=>apiAxios(\"post\",adminApi$f+\"largeCheckReport\",e),largeCheckRaise:e=>apiAxios(\"post\",adminApi$f+\"largeCheckRaise\",e),largeCheckInspect:e=>apiAxios(\"post\",adminApi$f+\"largeCheckInspect\",e),largeCheckReturn:e=>apiAxios(\"post\",adminApi$f+\"largeCheckReturn\",e),largeWo"
+      },
+      {
+        "file": "router",
+        "snip": "inApi$f+\"keepSampleShelve\",e),largeList:e=>apiAxios(\"post\",adminApi$f+\"largeList\",e),largeDelete:e=>apiAxios(\"post\",adminApi$f+\"largeDelete\",e),largeDetail:e=>apiAxios(\"post\",adminApi$f+\"largeDetail\",e),largeStartQuote:e=>apiAxios(\"post\",adminApi$f+\"largeStartQuote\",e),largeCheckReport:e=>apiAxios(\"post\",adminApi$f+\"largeCheckReport\",e),largeCheckRaise:e=>apiAxios(\"post\",adminApi$f+\"largeCheckRaise\",e),largeCheckInspect:e=>apiAxios(\"post\",adminApi$f+\"largeCheckInspect\",e),largeCheckReturn:e=>apiAxios(\"post\",adminApi$f+\"largeCheckReturn\",e),largeWorking:e=>apiAxios(\"post\",adminApi$f+\"largeWorki"
+      }
+    ],
+    "largeQuoteToUser": [
+      {
+        "file": "router",
+        "snip": "st\",adminApi$f+\"largeBackTranslation\",e),largeStartConfirm:e=>apiAxios(\"post\",adminApi$f+\"largeStartConfirm\",e),largeConfirmed:e=>apiAxios(\"post\",adminApi$f+\"largeConfirmed\",e),largesBackPurchase:e=>apiAxios(\"post\",adminApi$f+\"largesBackPurchase\",e),largeQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"largeQuoteToUser\",e),largeFinancialPayments:e=>apiAxios(\"post\",adminApi$f+\"largeFinancialPayments \",e),largeSavePurchasePayment:e=>apiAxios(\"post\",adminApi$f+\"largeSavePurchasePayment \",e),largePurchaseCompleted:e=>apiAxios(\"post\",adminApi$f+\"largePurchaseCompleted \",e),largeCancelPurchasePayment:e=>a"
+      },
+      {
+        "file": "router",
+        "snip": "artConfirm:e=>apiAxios(\"post\",adminApi$f+\"largeStartConfirm\",e),largeConfirmed:e=>apiAxios(\"post\",adminApi$f+\"largeConfirmed\",e),largesBackPurchase:e=>apiAxios(\"post\",adminApi$f+\"largesBackPurchase\",e),largeQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"largeQuoteToUser\",e),largeFinancialPayments:e=>apiAxios(\"post\",adminApi$f+\"largeFinancialPayments \",e),largeSavePurchasePayment:e=>apiAxios(\"post\",adminApi$f+\"largeSavePurchasePayment \",e),largePurchaseCompleted:e=>apiAxios(\"post\",adminApi$f+\"largePurchaseCompleted \",e),largeCancelPurchasePayment:e=>apiAxios(\"post\",adminApi$f+\"largeCancelPurchasePa"
+      }
+    ],
+    "largeSubmitPurchase": [
+      {
+        "file": "router",
+        "snip": "adminApi$f+\"largeQuoteList\",e),largeInproductionList:e=>apiAxios(\"post\",adminApi$f+\"largeInproductionList\",e),largeWorkingList:e=>apiAxios(\"post\",adminApi$f+\"largeWorkingList\",e),largeCompleteList:e=>apiAxios(\"post\",adminApi$f+\"largeCompleteList\",e),largeSubmitPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeSubmitPurchase\",e),largeBackTranslation:e=>apiAxios(\"post\",adminApi$f+\"largeBackTranslation\",e),largeStartConfirm:e=>apiAxios(\"post\",adminApi$f+\"largeStartConfirm\",e),largeConfirmed:e=>apiAxios(\"post\",adminApi$f+\"largeConfirmed\",e),largesBackPurchase:e=>apiAxios(\"post\",adminApi$f+\"largesBackPu"
+      },
+      {
+        "file": "router",
+        "snip": "t:e=>apiAxios(\"post\",adminApi$f+\"largeInproductionList\",e),largeWorkingList:e=>apiAxios(\"post\",adminApi$f+\"largeWorkingList\",e),largeCompleteList:e=>apiAxios(\"post\",adminApi$f+\"largeCompleteList\",e),largeSubmitPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeSubmitPurchase\",e),largeBackTranslation:e=>apiAxios(\"post\",adminApi$f+\"largeBackTranslation\",e),largeStartConfirm:e=>apiAxios(\"post\",adminApi$f+\"largeStartConfirm\",e),largeConfirmed:e=>apiAxios(\"post\",adminApi$f+\"largeConfirmed\",e),largesBackPurchase:e=>apiAxios(\"post\",adminApi$f+\"largesBackPurchase\",e),largeQuoteToUser:e=>apiAxios(\"post\",admi"
+      }
+    ],
+    "largeStartPurchase": [
+      {
+        "file": "router",
+        "snip": "e),optionList:e=>apiAxios(\"post\",commonApi$2+\"optionList\",e),largeYremark:e=>apiAxios(\"post\",adminApi$f+\"largeYremark\",e),largeRaiseQuote:e=>apiAxios(\"post\",adminApi$f+\"largeRaiseQuote\",e),largeReQuote:e=>apiAxios(\"post\",adminApi$f+\"largeReQuote\",e),largeStartPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeStartPurchase\",e),largeCompPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeCompPurchase\",e),largeSkuRemark:e=>apiAxios(\"post\",adminApi$f+\"largeSkuRemark\",e),largeSkuImg:e=>apiAxios(\"post\",adminApi$f+\"largeSkuImg\",e),largeRecover:e=>apiAxios(\"post\",adminApi$f+\"largeRecover\",e),largeApplyBalance:e=>"
+      },
+      {
+        "file": "router",
+        "snip": "onList\",e),largeYremark:e=>apiAxios(\"post\",adminApi$f+\"largeYremark\",e),largeRaiseQuote:e=>apiAxios(\"post\",adminApi$f+\"largeRaiseQuote\",e),largeReQuote:e=>apiAxios(\"post\",adminApi$f+\"largeReQuote\",e),largeStartPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeStartPurchase\",e),largeCompPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeCompPurchase\",e),largeSkuRemark:e=>apiAxios(\"post\",adminApi$f+\"largeSkuRemark\",e),largeSkuImg:e=>apiAxios(\"post\",adminApi$f+\"largeSkuImg\",e),largeRecover:e=>apiAxios(\"post\",adminApi$f+\"largeRecover\",e),largeApplyBalance:e=>apiAxios(\"post\",adminApi$f+\"largeApplyBalance\",e),"
+      }
+    ],
+    "largeCompPurchase": [
+      {
+        "file": "router",
+        "snip": ":e=>apiAxios(\"post\",adminApi$f+\"largeYremark\",e),largeRaiseQuote:e=>apiAxios(\"post\",adminApi$f+\"largeRaiseQuote\",e),largeReQuote:e=>apiAxios(\"post\",adminApi$f+\"largeReQuote\",e),largeStartPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeStartPurchase\",e),largeCompPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeCompPurchase\",e),largeSkuRemark:e=>apiAxios(\"post\",adminApi$f+\"largeSkuRemark\",e),largeSkuImg:e=>apiAxios(\"post\",adminApi$f+\"largeSkuImg\",e),largeRecover:e=>apiAxios(\"post\",adminApi$f+\"largeRecover\",e),largeApplyBalance:e=>apiAxios(\"post\",adminApi$f+\"largeApplyBalance\",e),skipFinalPurchasePaymen"
+      },
+      {
+        "file": "router",
+        "snip": "largeRaiseQuote:e=>apiAxios(\"post\",adminApi$f+\"largeRaiseQuote\",e),largeReQuote:e=>apiAxios(\"post\",adminApi$f+\"largeReQuote\",e),largeStartPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeStartPurchase\",e),largeCompPurchase:e=>apiAxios(\"post\",adminApi$f+\"largeCompPurchase\",e),largeSkuRemark:e=>apiAxios(\"post\",adminApi$f+\"largeSkuRemark\",e),largeSkuImg:e=>apiAxios(\"post\",adminApi$f+\"largeSkuImg\",e),largeRecover:e=>apiAxios(\"post\",adminApi$f+\"largeRecover\",e),largeApplyBalance:e=>apiAxios(\"post\",adminApi$f+\"largeApplyBalance\",e),skipFinalPurchasePayment:e=>apiAxios(\"post\",adminApi$f+\"skipFinalPurchas"
+      }
+    ],
+    "largeDispatch": [
+      {
+        "file": "router",
+        "snip": "ost\",adminApi$f+\"largeSkuImg\",e),largeRecover:e=>apiAxios(\"post\",adminApi$f+\"largeRecover\",e),largeApplyBalance:e=>apiAxios(\"post\",adminApi$f+\"largeApplyBalance\",e),skipFinalPurchasePayment:e=>apiAxios(\"post\",adminApi$f+\"skipFinalPurchasePayment\",e),largeDispatch:e=>apiAxios(\"post\",adminApi$f+\"largeDispatch\",e),largeExpressAdd:e=>apiAxios(\"post\",adminApi$f+\"largeExpressAdd\",e),largeExpressDel:e=>apiAxios(\"post\",adminApi$f+\"largeExpressDel\",e),largeExpressEdit:e=>apiAxios(\"post\",adminApi$f+\"largeExpressEdit\",e),largeQuote:e=>apiAxios(\"post\",adminApi$f+\"largeQuote\",e),largeInproduction:e=>apiAxi"
+      },
+      {
+        "file": "router",
+        "snip": ":e=>apiAxios(\"post\",adminApi$f+\"largeRecover\",e),largeApplyBalance:e=>apiAxios(\"post\",adminApi$f+\"largeApplyBalance\",e),skipFinalPurchasePayment:e=>apiAxios(\"post\",adminApi$f+\"skipFinalPurchasePayment\",e),largeDispatch:e=>apiAxios(\"post\",adminApi$f+\"largeDispatch\",e),largeExpressAdd:e=>apiAxios(\"post\",adminApi$f+\"largeExpressAdd\",e),largeExpressDel:e=>apiAxios(\"post\",adminApi$f+\"largeExpressDel\",e),largeExpressEdit:e=>apiAxios(\"post\",adminApi$f+\"largeExpressEdit\",e),largeQuote:e=>apiAxios(\"post\",adminApi$f+\"largeQuote\",e),largeInproduction:e=>apiAxios(\"post\",adminApi$f+\"largeInproduction\",e),l"
+      }
+    ],
+    "porderStartTransalte": [
+      {
+        "file": "router",
+        "snip": "dmin:e=>apiAxios(\"post\",adminApi$f+\"porderAssignFadmin\",e),returnToFollowUp:e=>apiAxios(\"post\",adminApi$f+\"returnToFollowUp\",e),porderDelete:e=>apiAxios(\"post\",adminApi$f+\"porderDelete\",e),porderDetail:e=>apiAxios(\"post\",adminApi$f+\"porderDetail\",e),porderStartTransalte:e=>apiAxios(\"post\",adminApi$f+\"porderStartTransalte\",e),porderSubmitTranslate:e=>apiAxios(\"post\",adminApi$f+\"porderSubmitTranslate\",e),addBox:e=>apiAxios(\"post\",adminApi$f+\"addBox\",e),deleteBox:e=>apiAxios(\"post\",adminApi$f+\"deleteBox\",e),updateExpressInfo:e=>apiAxios(\"post\",adminApi$f+\"updateExpressInfo\",e),porderBackTransalte"
+      },
+      {
+        "file": "router",
+        "snip": "in\",e),returnToFollowUp:e=>apiAxios(\"post\",adminApi$f+\"returnToFollowUp\",e),porderDelete:e=>apiAxios(\"post\",adminApi$f+\"porderDelete\",e),porderDetail:e=>apiAxios(\"post\",adminApi$f+\"porderDetail\",e),porderStartTransalte:e=>apiAxios(\"post\",adminApi$f+\"porderStartTransalte\",e),porderSubmitTranslate:e=>apiAxios(\"post\",adminApi$f+\"porderSubmitTranslate\",e),addBox:e=>apiAxios(\"post\",adminApi$f+\"addBox\",e),deleteBox:e=>apiAxios(\"post\",adminApi$f+\"deleteBox\",e),updateExpressInfo:e=>apiAxios(\"post\",adminApi$f+\"updateExpressInfo\",e),porderBackTransalte:e=>apiAxios(\"post\",adminApi$f+\"porderBackTransalte\""
+      }
+    ],
+    "porderSubmitTranslate": [
+      {
+        "file": "router",
+        "snip": "=>apiAxios(\"post\",adminApi$f+\"returnToFollowUp\",e),porderDelete:e=>apiAxios(\"post\",adminApi$f+\"porderDelete\",e),porderDetail:e=>apiAxios(\"post\",adminApi$f+\"porderDetail\",e),porderStartTransalte:e=>apiAxios(\"post\",adminApi$f+\"porderStartTransalte\",e),porderSubmitTranslate:e=>apiAxios(\"post\",adminApi$f+\"porderSubmitTranslate\",e),addBox:e=>apiAxios(\"post\",adminApi$f+\"addBox\",e),deleteBox:e=>apiAxios(\"post\",adminApi$f+\"deleteBox\",e),updateExpressInfo:e=>apiAxios(\"post\",adminApi$f+\"updateExpressInfo\",e),porderBackTransalte:e=>apiAxios(\"post\",adminApi$f+\"porderBackTransalte\",e),porderPackingComp:e=>"
+      },
+      {
+        "file": "router",
+        "snip": "rderDelete:e=>apiAxios(\"post\",adminApi$f+\"porderDelete\",e),porderDetail:e=>apiAxios(\"post\",adminApi$f+\"porderDetail\",e),porderStartTransalte:e=>apiAxios(\"post\",adminApi$f+\"porderStartTransalte\",e),porderSubmitTranslate:e=>apiAxios(\"post\",adminApi$f+\"porderSubmitTranslate\",e),addBox:e=>apiAxios(\"post\",adminApi$f+\"addBox\",e),deleteBox:e=>apiAxios(\"post\",adminApi$f+\"deleteBox\",e),updateExpressInfo:e=>apiAxios(\"post\",adminApi$f+\"updateExpressInfo\",e),porderBackTransalte:e=>apiAxios(\"post\",adminApi$f+\"porderBackTransalte\",e),porderPackingComp:e=>apiAxios(\"post\",adminApi$f+\"porderPackingComp\",e),box"
+      }
+    ],
+    "porderPackingComp": [
+      {
+        "file": "router",
+        "snip": "addBox:e=>apiAxios(\"post\",adminApi$f+\"addBox\",e),deleteBox:e=>apiAxios(\"post\",adminApi$f+\"deleteBox\",e),updateExpressInfo:e=>apiAxios(\"post\",adminApi$f+\"updateExpressInfo\",e),porderBackTransalte:e=>apiAxios(\"post\",adminApi$f+\"porderBackTransalte\",e),porderPackingComp:e=>apiAxios(\"post\",adminApi$f+\"porderPackingComp\",e),boxPacking:e=>apiAxios(\"post\",adminApi$f+\"boxPacking\",e),boxBatchPacking:e=>apiAxios(\"post\",adminApi$f+\"boxBatchPacking\",e),deleteBoxDetail:e=>apiAxios(\"post\",adminApi$f+\"deleteBoxDetail\",e),savePorderAddress:e=>apiAxios(\"post\",adminApi$f+\"savePorderAddress\",e),userAddressList:e"
+      },
+      {
+        "file": "router",
+        "snip": "deleteBox:e=>apiAxios(\"post\",adminApi$f+\"deleteBox\",e),updateExpressInfo:e=>apiAxios(\"post\",adminApi$f+\"updateExpressInfo\",e),porderBackTransalte:e=>apiAxios(\"post\",adminApi$f+\"porderBackTransalte\",e),porderPackingComp:e=>apiAxios(\"post\",adminApi$f+\"porderPackingComp\",e),boxPacking:e=>apiAxios(\"post\",adminApi$f+\"boxPacking\",e),boxBatchPacking:e=>apiAxios(\"post\",adminApi$f+\"boxBatchPacking\",e),deleteBoxDetail:e=>apiAxios(\"post\",adminApi$f+\"deleteBoxDetail\",e),savePorderAddress:e=>apiAxios(\"post\",adminApi$f+\"savePorderAddress\",e),userAddressList:e=>apiAxios(\"post\",adminApi$f+\"userAddressList\",e)"
+      }
+    ],
+    "porderRaiseQuote": [
+      {
+        "file": "router",
+        "snip": "dminApi$f+\"userAddressList\",e),calculateFreightFee:e=>apiAxios(\"post\",adminApi$f+\"calculateFreightFee\",e),commonApilogisticsList:e=>apiAxios(\"post\",commonApi$2+\"logisticsList\",e),porderBackPacking:e=>apiAxios(\"post\",adminApi$f+\"porderBackPacking\",e),porderRaiseQuote:e=>apiAxios(\"post\",adminApi$f+\"porderRaiseQuote\",e),porderBackUnpaid:e=>apiAxios(\"post\",adminApi$f+\"porderBackUnpaid\",e),getNewFreightFee:e=>apiAxios(\"post\",adminApi$f+\"getNewFreightFee\",e),savePorderExpress:e=>apiAxios(\"post\",adminApi$f+\"savePorderExpress\",e),checkExpressNoRepeat:e=>apiAxios(\"post\",adminApi$f+\"checkExpressNoRepeat"
+      },
+      {
+        "file": "router",
+        "snip": "ee:e=>apiAxios(\"post\",adminApi$f+\"calculateFreightFee\",e),commonApilogisticsList:e=>apiAxios(\"post\",commonApi$2+\"logisticsList\",e),porderBackPacking:e=>apiAxios(\"post\",adminApi$f+\"porderBackPacking\",e),porderRaiseQuote:e=>apiAxios(\"post\",adminApi$f+\"porderRaiseQuote\",e),porderBackUnpaid:e=>apiAxios(\"post\",adminApi$f+\"porderBackUnpaid\",e),getNewFreightFee:e=>apiAxios(\"post\",adminApi$f+\"getNewFreightFee\",e),savePorderExpress:e=>apiAxios(\"post\",adminApi$f+\"savePorderExpress\",e),checkExpressNoRepeat:e=>apiAxios(\"post\",adminApi$f+\"checkExpressNoRepeat\",e),getNewNumber:e=>apiAxios(\"post\",\"https://ap"
+      }
+    ],
+    "porderShipGoods": [
+      {
+        "file": "router",
+        "snip": "peat:e=>apiAxios(\"post\",adminApi$f+\"checkExpressNoRepeat\",e),getNewNumber:e=>apiAxios(\"post\",\"https://apiwww.rakumart.com/api/common/oem/config.logistics.getNewNumber\",e),getLogisticsExpressNo:e=>apiAxios(\"post\",adminApi$f+\"getLogisticsExpressNo\",e),porderShipGoods:e=>apiAxios(\"post\",adminApi$f+\"porderShipGoods\",e),porderSign:e=>apiAxios(\"post\",adminApi$f+\"porderSign\",e),saveWarehouse:e=>apiAxios(\"post\",adminApi$f+\"saveWarehouse\",e),porderNum:e=>apiAxios(\"post\",adminApi$f+\"porderNum\",e),porderLogisticsList:e=>apiAxios(\"post\",adminApi$f+\"porder/logisticsList\",e),getInvoiceDetail:e=>apiAxios(\"po"
+      },
+      {
+        "file": "router",
+        "snip": "sNoRepeat\",e),getNewNumber:e=>apiAxios(\"post\",\"https://apiwww.rakumart.com/api/common/oem/config.logistics.getNewNumber\",e),getLogisticsExpressNo:e=>apiAxios(\"post\",adminApi$f+\"getLogisticsExpressNo\",e),porderShipGoods:e=>apiAxios(\"post\",adminApi$f+\"porderShipGoods\",e),porderSign:e=>apiAxios(\"post\",adminApi$f+\"porderSign\",e),saveWarehouse:e=>apiAxios(\"post\",adminApi$f+\"saveWarehouse\",e),porderNum:e=>apiAxios(\"post\",adminApi$f+\"porderNum\",e),porderLogisticsList:e=>apiAxios(\"post\",adminApi$f+\"porder/logisticsList\",e),getInvoiceDetail:e=>apiAxios(\"post\",adminApi$f+\"getInvoiceDetail\",e),saveInvioc"
+      }
+    ],
+    "porderComplete": [
+      {
+        "file": "router",
+        "snip": "Packing:e=>apiAxios(\"post\",adminApi$f+\"porderPacking\",e),porderQuote:e=>apiAxios(\"post\",adminApi$f+\"porderQuote\",e),porderShipment:e=>apiAxios(\"post\",adminApi$f+\"porderShipment\",e),porderDispatched:e=>apiAxios(\"post\",adminApi$f+\"porderDispatched\",e),porderComplete:e=>apiAxios(\"post\",adminApi$f+\"porderComplete\",e),porderDeleted:e=>apiAxios(\"post\",adminApi$f+\"porderDeleted\",e),porderAssignYadmin:e=>apiAxios(\"post\",adminApi$f+\"porderAssignYadmin\",e),porderAssignPadmin:e=>apiAxios(\"post\",adminApi$f+\"porderAssignPadmin\",e),porderAssignFadmin:e=>apiAxios(\"post\",adminApi$f+\"porderAssignFadmin\",e),ret"
+      },
+      {
+        "file": "router",
+        "snip": "acking\",e),porderQuote:e=>apiAxios(\"post\",adminApi$f+\"porderQuote\",e),porderShipment:e=>apiAxios(\"post\",adminApi$f+\"porderShipment\",e),porderDispatched:e=>apiAxios(\"post\",adminApi$f+\"porderDispatched\",e),porderComplete:e=>apiAxios(\"post\",adminApi$f+\"porderComplete\",e),porderDeleted:e=>apiAxios(\"post\",adminApi$f+\"porderDeleted\",e),porderAssignYadmin:e=>apiAxios(\"post\",adminApi$f+\"porderAssignYadmin\",e),porderAssignPadmin:e=>apiAxios(\"post\",adminApi$f+\"porderAssignPadmin\",e),porderAssignFadmin:e=>apiAxios(\"post\",adminApi$f+\"porderAssignFadmin\",e),returnToFollowUp:e=>apiAxios(\"post\",adminApi$f+\"r"
+      }
+    ],
+    "newOrder": [],
+    "newInquiry": [],
+    "newPorder": [],
+    "accessoryStartInquiry": [
+      {
+        "file": "router",
+        "snip": "yReturnToFollowUp\",e),updateTranslate:e=>apiAxios(\"post\",adminApi$f+\"updateTranslate\",e),accessoryUserRemark:e=>apiAxios(\"post\",adminApi$f+\"accessoryUserRemark \",e),accessoryReturnTranslate:e=>apiAxios(\"post\",adminApi$f+\"accessoryReturnTranslate\",e),accessoryStartInquiry:e=>apiAxios(\"post\",adminApi$f+\"accessoryStartInquiry\",e),accessoryInquiryComplate:e=>apiAxios(\"post\",adminApi$f+\"accessoryInquiryComplate\",e),accessoryInvalid:e=>apiAxios(\"post\",adminApi$f+\"accessoryInvalid\",e),accessoryReInquiry:e=>apiAxios(\"post\",adminApi$f+\"accessoryReInquiry\",e),accessoryStartQuote:e=>apiAxios(\"post\",admin"
+      },
+      {
+        "file": "router",
+        "snip": "st\",adminApi$f+\"updateTranslate\",e),accessoryUserRemark:e=>apiAxios(\"post\",adminApi$f+\"accessoryUserRemark \",e),accessoryReturnTranslate:e=>apiAxios(\"post\",adminApi$f+\"accessoryReturnTranslate\",e),accessoryStartInquiry:e=>apiAxios(\"post\",adminApi$f+\"accessoryStartInquiry\",e),accessoryInquiryComplate:e=>apiAxios(\"post\",adminApi$f+\"accessoryInquiryComplate\",e),accessoryInvalid:e=>apiAxios(\"post\",adminApi$f+\"accessoryInvalid\",e),accessoryReInquiry:e=>apiAxios(\"post\",adminApi$f+\"accessoryReInquiry\",e),accessoryStartQuote:e=>apiAxios(\"post\",adminApi$f+\"accessoryStartQuote\",e),accessoryBackToGadmin:"
+      }
+    ],
+    "accessoryQuoteToUser": [
+      {
+        "file": "router",
+        "snip": "+\"accessoryInvalid\",e),accessoryReInquiry:e=>apiAxios(\"post\",adminApi$f+\"accessoryReInquiry\",e),accessoryStartQuote:e=>apiAxios(\"post\",adminApi$f+\"accessoryStartQuote\",e),accessoryBackToGadmin:e=>apiAxios(\"post\",adminApi$f+\"accessoryBackToGadmin\",e),accessoryQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"accessoryQuoteToUser\",e),accessoryQuoteInvalid:e=>apiAxios(\"post\",adminApi$f+\"accessoryQuoteInvalid\",e),accessoryRemark:e=>apiAxios(\"post\",adminApi$f+\"accessoryRemark \",e),accessoryGRemark:e=>apiAxios(\"post\",adminApi$f+\"accessoryGRemark \",e),accessoryYRemark:e=>apiAxios(\"post\",adminApi$f+\"accessor"
+      },
+      {
+        "file": "router",
+        "snip": "s(\"post\",adminApi$f+\"accessoryReInquiry\",e),accessoryStartQuote:e=>apiAxios(\"post\",adminApi$f+\"accessoryStartQuote\",e),accessoryBackToGadmin:e=>apiAxios(\"post\",adminApi$f+\"accessoryBackToGadmin\",e),accessoryQuoteToUser:e=>apiAxios(\"post\",adminApi$f+\"accessoryQuoteToUser\",e),accessoryQuoteInvalid:e=>apiAxios(\"post\",adminApi$f+\"accessoryQuoteInvalid\",e),accessoryRemark:e=>apiAxios(\"post\",adminApi$f+\"accessoryRemark \",e),accessoryGRemark:e=>apiAxios(\"post\",adminApi$f+\"accessoryGRemark \",e),accessoryYRemark:e=>apiAxios(\"post\",adminApi$f+\"accessoryYRemark \",e),accessoryReQuote:e=>apiAxios(\"post\",ad"
+      }
+    ],
+    "submitTranslate": [
+      {
+        "file": "router",
+        "snip": "688/noSuccessfulBidder\",e),putIntoCirculation:e=>apiAxios(\"post\",adminApi$f+\"1688/putIntoCirculation\",e),stopPutInto:e=>apiAxios(\"post\",adminApi$f+\"1688/stopPutInto\",e),inquiryAccessoryDetail:e=>apiAxios(\"post\",adminApi$f+\"inquiryAccessoryDetail\",e),submitTranslate:e=>apiAxios(\"post\",adminApi$f+\"submitTranslate\",e),accessoryTranslateAudit:e=>apiAxios(\"post\",adminApi$f+\"accessoryTranslateAudit\",e),accessoryReturnToFollowUp:e=>apiAxios(\"post\",adminApi$f+\"accessoryReturnToFollowUp\",e),updateTranslate:e=>apiAxios(\"post\",adminApi$f+\"updateTranslate\",e),accessoryUserRemark:e=>apiAxios(\"post\",adminAp"
+      },
+      {
+        "file": "router",
+        "snip": "=>apiAxios(\"post\",adminApi$f+\"1688/putIntoCirculation\",e),stopPutInto:e=>apiAxios(\"post\",adminApi$f+\"1688/stopPutInto\",e),inquiryAccessoryDetail:e=>apiAxios(\"post\",adminApi$f+\"inquiryAccessoryDetail\",e),submitTranslate:e=>apiAxios(\"post\",adminApi$f+\"submitTranslate\",e),accessoryTranslateAudit:e=>apiAxios(\"post\",adminApi$f+\"accessoryTranslateAudit\",e),accessoryReturnToFollowUp:e=>apiAxios(\"post\",adminApi$f+\"accessoryReturnToFollowUp\",e),updateTranslate:e=>apiAxios(\"post\",adminApi$f+\"updateTranslate\",e),accessoryUserRemark:e=>apiAxios(\"post\",adminApi$f+\"accessoryUserRemark \",e),accessoryReturnTr"
+      }
+    ]
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "cands": [
+    {
+      "sn": "D20260813154254-33-OEM",
+      "admin_status": 44,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20260727151004-33-OEM",
+      "admin_status": 48,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20260727150353-33-OEM",
+      "admin_status": 46,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20260727150055-33-OEM",
+      "admin_status": 36,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20260727143157-33-OEM",
+      "admin_status": 32,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20260723150820-313129-OEM",
+      "admin_status": 44,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20260613110838-15-OEM",
+      "admin_status": 48,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20260610174919-15-OEM-AM-01",
+      "admin_status": 30,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20260127091840-15-OEM",
+      "admin_status": 32,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20260126150236-15-OEM",
+      "admin_status": 36,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20260112100159-15-OEM-AM-03",
+      "admin_status": 36,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20251203195532-15-ODM",
+      "admin_status": 40,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20251115112938-313129-OEM",
+      "admin_status": 40,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20251113162543-15-OEM",
+      "admin_status": 44,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20251112173035-15-OEM",
+      "admin_status": 30,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20250826161507-15-OEM",
+      "admin_status": 32,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20250826145656-15-OEM",
+      "admin_status": 30,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20250709134928-15-OEM",
+      "admin_status": 36,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20250709115537-15-OEM",
+      "admin_status": 36,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    },
+    {
+      "sn": "D20250709112751-15-OEM",
+      "admin_status": 38,
+      "point": null,
+      "path": "/admin/largeInproductionList",
+      "username": null
+    }
+  ],
+  "results": [
+    {
+      "sn": "D20260727151004-33-OEM",
+      "before": 48,
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after": 48
+    },
+    {
+      "sn": "D20260613110838-15-OEM",
+      "before": 48,
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after": 48
+    }
+  ]
+}

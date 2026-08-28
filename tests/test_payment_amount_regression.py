@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from app.data_scripts.payment_amount_regression import runner
-from app.data_scripts.payment_amount_regression.reconciliation import MoneyEvidence
+from app.data_scripts.payment_amount_regression.reconciliation import MoneyEvidence, reconcile_amount
 from app.data_scripts.payment_amount_regression.runner import (
     ScenarioBlocked,
     LivePaymentRegressionExecutor,
@@ -340,6 +340,49 @@ def test_problem_goods_preview_uses_net_amount_and_validates_direction():
 
     assert evidence.amount == 200
     assert evidence.direction == "credit"
+
+
+def test_japan_order_quote_keeps_one_configured_item_instead_of_forcing_two(monkeypatch):
+    executor = LivePaymentRegressionExecutor(object(), {"payment_regression_item_num": 1})
+    scenario = next(item for item in SCENARIO_CATALOG if item.key == "order_balance")
+    captured = {}
+    scripts = type("Scripts", (), {"run_full_flow_script": object()})()
+    monkeypatch.setattr(executor, "_scripts", lambda: scripts)
+    monkeypatch.setattr(
+        executor,
+        "_run_script",
+        lambda runner, env, variables, name: (captured.update(variables) or {"order_sn": "ORDER-1"}, {}, ""),
+    )
+
+    executor._quote_order(scenario, "BATCH-ONE")
+
+    assert captured["order_item_num"] == 1
+
+
+def test_japan_payment_variables_map_one_item_to_order_item_count():
+    from app.system_regression.projects.japan.payment_runner import build_payment_variables
+
+    values = build_payment_variables(
+        {
+            "order": {"item_count": 1, "default_quantity": 1},
+            "items": [{"offer_price": {"value": "10"}, "offer_freight": {"value": "3"}}],
+        }
+    )
+
+    assert values["cart_item_count"] == 1
+    assert values["order_item_count"] == 1
+
+
+def test_japan_amount_mismatch_285_vs_1098_cannot_pass():
+    result = reconcile_amount(
+        "order_balance",
+        MoneyEvidence("order_quote", Decimal("285"), "JPY", "debit"),
+        MoneyEvidence("customer_balance", Decimal("1098"), "JPY", "debit"),
+    )
+
+    assert result["passed"] is False
+    assert result["reason_code"] == "amount_mismatch"
+    assert result["difference_jpy"] == "813"
 
 
 def test_bank_bill_must_match_requested_reference():

@@ -1,0 +1,154 @@
+{
+  "purchase": [
+    {
+      "api": "samplesPurchaseCompleted",
+      "path": "/admin/samplesPurchaseCompleted",
+      "body_keys": [
+        "order_sn"
+      ],
+      "code": 0,
+      "msg": "操作成功",
+      "err": null
+    },
+    {
+      "api": "samplesPurchaseCompleted+city",
+      "path": "/admin/samplesPurchaseCompleted",
+      "body_keys": [
+        "order_sn",
+        "warehouse_city"
+      ],
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "err": null
+    },
+    {
+      "api": "samplesCompPurchase",
+      "path": "/admin/samplesCompPurchase",
+      "body_keys": [
+        "order_sn"
+      ],
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesCompPurchase",
+      "err": null
+    },
+    {
+      "api": "samplesSubmitPurchase",
+      "path": "/admin/samplesSubmitPurchase",
+      "body_keys": [
+        "order_sn",
+        "warehouse_city"
+      ],
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "err": null
+    },
+    {
+      "api": "largePurchaseCompleted",
+      "path": "/admin/largePurchaseCompleted",
+      "body_keys": [
+        "order_sn"
+      ],
+      "code": 0,
+      "msg": "操作成功",
+      "err": null
+    },
+    {
+      "api": "largePurchaseCompleted+city",
+      "path": "/admin/largePurchaseCompleted",
+      "body_keys": [
+        "order_sn",
+        "warehouse_city"
+      ],
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "err": null
+    },
+    {
+      "api": "largeCompPurchase",
+      "path": "/admin/largeCompPurchase",
+      "body_keys": [
+        "order_sn"
+      ],
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/largeCompPurchase",
+      "err": null
+    },
+    {
+      "api": "largeSubmitPurchase",
+      "path": "/admin/largeSubmitPurchase",
+      "body_keys": [
+        "order_sn",
+        "warehouse_city",
+        "sku_info"
+      ],
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "err": null
+    }
+  ],
+  "packing": [
+    {
+      "step": "addBox_api",
+      "body": {
+        "porder_sn": "OP20260302150837-15",
+        "type": 1,
+        "box_num": 1,
+        "length": 30,
+        "width": 20,
+        "height": 10,
+        "weight": 2
+      },
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "step": "packingComp",
+      "path": "/admin/porderPackingComp",
+      "keys": [
+        "porder_sn"
+      ],
+      "code": 10000,
+      "msg": "foreach() argument must be of type array|object, null given",
+      "err": null
+    },
+    {
+      "step": "packingComp",
+      "path": "/admin/porderPackingComp",
+      "keys": [
+        "porder_sn",
+        "box_list",
+        "price_info"
+      ],
+      "code": 10000,
+      "msg": "foreach() argument must be of type array|object, null given",
+      "err": null
+    },
+    {
+      "step": "packingComp",
+      "path": "/admin/porderPackingComplete",
+      "keys": [
+        "porder_sn"
+      ],
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/porderPackingComplete",
+      "err": null
+    }
+  ],
+  "status": {
+    "sample": {
+      "admin_status": 36,
+      "point": 4,
+      "status": null
+    },
+    "bulk": {
+      "admin_status": 36,
+      "point": 4,
+      "status": null
+    },
+    "porder": {
+      "admin_status": 3,
+      "box_len": 1,
+      "status": null
+    }
+  }
+}

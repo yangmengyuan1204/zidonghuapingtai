@@ -1,0 +1,180 @@
+{
+  "sn": "D20260613110838-15-OEM",
+  "express": [
+    {
+      "id": 1127,
+      "order_sn": "D20260613110838-15-OEM",
+      "express_no": "CLEAN1786770295"
+    }
+  ],
+  "results": [
+    {
+      "body": {
+        "order_sn": "D20260613110838-15-OEM",
+        "express_no": "CLEAN1786770295"
+      },
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after_status": 48,
+      "full": {
+        "success": false,
+        "code": 10000,
+        "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+        "data": ""
+      }
+    },
+    {
+      "body": {
+        "order_sn": "D20260613110838-15-OEM",
+        "express_id": 14,
+        "express_no": "CLEAN1786770295"
+      },
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after_status": 48,
+      "full": {
+        "success": false,
+        "code": 10000,
+        "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+        "data": ""
+      }
+    },
+    {
+      "body": {
+        "order_sn": "D20260613110838-15-OEM",
+        "express_id": 14,
+        "express_no": "CLEAN1786770295",
+        "express_remark": ""
+      },
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after_status": 48,
+      "full": {
+        "success": false,
+        "code": 10000,
+        "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+        "data": ""
+      }
+    },
+    {
+      "body": {
+        "order_sn": "D20260613110838-15-OEM",
+        "express_no": "CLEAN1786770295",
+        "express_list": [
+          {
+            "id": 1127,
+            "order_sn": "D20260613110838-15-OEM",
+            "express_no": "CLEAN1786770295"
+          }
+        ]
+      },
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after_status": 48,
+      "full": {
+        "success": false,
+        "code": 10000,
+        "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+        "data": ""
+      }
+    },
+    {
+      "body": {
+        "order_sn": "D20260613110838-15-OEM",
+        "express_list": [
+          {
+            "express_id": 14,
+            "express_no": "CLEAN1786770295"
+          }
+        ]
+      },
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after_status": 48,
+      "full": {
+        "success": false,
+        "code": 10000,
+        "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+        "data": ""
+      }
+    },
+    {
+      "body": {
+        "order_sn": "D20260613110838-15-OEM",
+        "logistics_no": "CLEAN1786770295"
+      },
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after_status": 48,
+      "full": {
+        "success": false,
+        "code": 10000,
+        "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+        "data": ""
+      }
+    },
+    {
+      "body": {
+        "order_sn": "D20260613110838-15-OEM",
+        "logistics_id": 14,
+        "logistics_no": "CLEAN1786770295"
+      },
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after_status": 48,
+      "full": {
+        "success": false,
+        "code": 10000,
+        "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+        "data": ""
+      }
+    },
+    {
+      "body": {
+        "order_sn": "D20260613110838-15-OEM",
+        "expressNo": "CLEAN1786770295"
+      },
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after_status": 48,
+      "full": {
+        "success": false,
+        "code": 10000,
+        "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+        "data": ""
+      }
+    },
+    {
+      "body": {
+        "order_sn": "D20260613110838-15-OEM",
+        "id": 1127,
+        "express_no": "CLEAN1786770295",
+        "express_id": 14
+      },
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after_status": 48,
+      "full": {
+        "success": false,
+        "code": 10000,
+        "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+        "data": ""
+      }
+    },
+    {
+      "body": {
+        "order_sn": "D20260613110838-15-OEM",
+        "dispatch_express_no": "CLEAN1786770295"
+      },
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "after_status": 48,
+      "full": {
+        "success": false,
+        "code": 10000,
+        "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+        "data": ""
+      }
+    }
+  ]
+}

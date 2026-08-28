@@ -1,0 +1,177 @@
+{
+  "before": {
+    "inquiry": {
+      "admin_status": 0,
+      "y_admin_status": 2,
+      "g_admin_status": 2,
+      "point": null,
+      "user_status": 2
+    },
+    "sample": {
+      "admin_status": 20,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "point": 3,
+      "user_status": null
+    },
+    "bulk": {
+      "admin_status": 20,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "point": 3,
+      "user_status": null
+    },
+    "porder": {
+      "admin_status": 2,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "point": null,
+      "user_status": null
+    }
+  },
+  "api_writes": [
+    {
+      "api": "factoryQuote",
+      "code": 1000,
+      "msg": "定金比例不可小于等于0或大于100",
+      "req_snip": "{\"id\": 1015, \"order_sn\": \"X20260805143420-15-OEM\", \"detail_id\": 1015, \"factory_name\": \"\", \"samples_freight\": \"0.00\", \"large_freight\": \"0.00\", \"sku_detail\": [{\"id\": 2214, \"detail_id\": 1015, \"goods_sku_id\": 1527, \"can_proofing\": 1, \"samples_price\": \"0.00\", \"samples_price_return\": \"0\", \"large_min_quantity\": 1, \"large_price\": \"0.00\", \"real_samples_price\": \"0.00\", \"real_large_price\": \"0.00\", \"real_samples_price_return\": \"0.00\", \"sku\": \"sku1\", \"sku_tr\": \"sku1\"}, {\"id\": 2215, \"detail_id\": 1015, \"goods_sku_id\": 1528, \"can_proofing\": 1, \"samples_price\": \"0.00\", \"samples_price_return\": \"0\", \"large_min_quantity\": 1, \"large_price\": \"0.00\", \"real_samples_price\": \"0.00\", \"real_large_price\": \"0.00\", \"real_samples_price_return\": \"0.00\", \"sku\": \"sku2\", \"sku_tr\": \"sku2\"}]}"
+    },
+    {
+      "api": "samplesStartQuote",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "api": "largeStartQuote",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "api": "samplesQuoteToUser",
+      "code": 0,
+      "msg": "操作成功",
+      "body_snip": "{\"order_sn\": \"Y20260403172102-15-OEM\", \"warehouse_city\": 2}"
+    },
+    {
+      "api": "largeQuoteToUser",
+      "code": 0,
+      "msg": "操作成功",
+      "body_snip": "{\"order_sn\": \"D20260613110838-15-OEM\", \"warehouse_city\": 2, \"sku_list\": [{\"id\": 2428, \"sku\": \"ブルー\", \"sku_tr\": \"blue\", \"sku_image\": \"\", \"num\": 1000, \"large_min_quantity\": 100, \"inquiry_large_price\": \"2.20\", \"quote_large_price\": \"2.20\", \"real_large_price\": \"2.00\", \"option\": [{\"id\": 57, \"name\": \"opp袋子四角包装\", \"name_translate\": \"角折りopp梱包\", \"price\": \"2.00\", \"price_type\": 0, \"remark\": \"把opp袋子的四角都粘好的包装\", \"unit\": \"元\", \"sort\": 16, \"price_range\": [], \"num\": 1000, \"checked\": true, \"total\": 2000}, {\"id\": 68, \"name\": \"塑封包装\", \"name_translate\": \"シユリンク包装\", \"price\": \"0.80\", \"price_type\": 0, \"remark\": \"塑封包装\", \"unit\": \"元\", \"sort\": 17, \"price_range\": [], \"num\": 1000, \"checked\": true, \"total\": 800}, {\"id\": 72, \"name\": \"真空包装\", \"name_translate\": \"圧縮包装（袋別途費用）\", \"price\": \"2.00\", \"price_type\": 0, \"remark\": null, \"uni"
+    },
+    {
+      "api": "porderSubmitTranslate",
+      "code": 0,
+      "msg": "操作成功",
+      "body_snip": "{\"porder_sn\": \"OP20260302150837-15\", \"y_remark\": \"auto\", \"detail_list\": [{\"detail_id\": 3118, \"y_remark\": \"tr\", \"warehouse_list\": []}], \"warehouse_type\": 0}"
+    }
+  ],
+  "ui": [
+    {
+      "name": "sample",
+      "buttons": [
+        "回退至报价",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "clicked": null,
+      "confirmed": null,
+      "writes": [
+        {
+          "u": "https://oemapi.rakumart.cn/admin/homePage",
+          "s": 200,
+          "post": "{}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"inspect\":[{\"status\":1,\"route\":\"inspectionMList\",\"name\":\"待检品\",\"num\":10},{\"status\":2,\"route\":\"inspectionMList\",\"name\":\"检品中\",\"num\":42}],\"financial\":[{\"status\":0,\"route\":\"pendingConfirmationOfRemittance\",\"name\":\"待确认汇款\",\"num\":19}],\"check\":[{\"status\":30,\"route\":\"verificationList\",\"name\":\"待核查\",\"num\":15},{\"status\":40,\"route\":\"verificationList\",\"name\":\"核查中\",\"num\":4},{\"status\":70,\"route\":\"verificationList\",\"name\":\"待上架\",\"num\":57},{\"status\":80,\"route\":\"verificationList\",\"name\":\"上架中\",\"num\":79}],\"issues\":[{\"status\":20,\"route\":\"domesticAfterS\",\"name\":\"待业务处理（国内售后）\",\"num\":20},{\"status\":30,\"route\":\"domesticAfterS\",\"name\":\"待配货确认（国内售后）\",\"num\":3},{\"status\":1,\"route\":\"problemProducts\",\"name\":\"待业务决策（问题产品）\",\"num\":84}],\"sample\":{\"import\":[{\"status\":300,\"route\":\"sampleListQuotationStage\",\"name\":\"样品单待报价\",\"num\":73},{\"status\":600,\"route\":\"sampleListProductionStage\",\"name\":\"样品单待采购\",\"num\":100},{\"status\":1400,\"route\":\"deliveryAndHomeworkSampleList\",\"name\":\"样品单待验货确认\",\"num\":4},{\"status\":1600,\"route\":\"deliveryAndHomeworkSampleList\",\"name\":\"样品单上架中\",\"num\":27}],\"tobeFollowed\":[{\"status\":400,\"route\":\"sampleListQuotationStage\",\"name\":\"样品单待入金\",\"num\":22},{\"status\":500,\"route\":\"sampleListQuotationStage\",\"name\":\"样品单入金确认中\",\"num\":0},{\"status\":900,\"route\":\"sampleListProductionStage\",\"name\":\"样品单生产中\",\"num\":43},{\"status\":1200,\"route\":\"deliveryAndHomeworkSampleList\",\"name\":\"样品单国内派送中\",\"num\":18}]},\"large\":{\"import\":[{\"status\":300,\"route\":\"listOfBulkOrdersQuotationStage\",\"name\":\"大货单待报价\",\"num\":78},{\"status\":600,\"route\":\"listOfBulkOrdersProductionStage\",\"name\":\"大货单待采购\",\"num\":110},{\"status\":1000,\"route\":\"listOfBulkOrdersProductionStage\",\"name\":\"待申请尾款\",\"num\":17},{\"status\":1100,\"route\":\"listOfBulkOrdersProductionStage\",\"name\":\"大货单待出货\",\"num\":48},{\"status\":1400,\"route\":\"deliveryAndHomeworkBulkOrder\",\"name\":\"待验货确认\",\"num\":1},{\"status\":1500,\"route\":\"deliveryAndHomeworkBulkOrder\",\"name\":\"大货单检品中\",\"num\":24},{\"status\":1600,\"route\":\"deliveryAndHomeworkBulkOrder\",\"name\":\"大货单上架中\",\"num\":51}],\"tobeFollowed"
+        }
+      ]
+    },
+    {
+      "name": "bulk",
+      "buttons": [
+        "回到询价单",
+        "新增",
+        "回退至报价",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "clicked": null,
+      "confirmed": null,
+      "writes": []
+    },
+    {
+      "name": "inquiry",
+      "buttons": [
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "clicked": null,
+      "confirmed": null,
+      "writes": []
+    },
+    {
+      "name": "porder",
+      "buttons": [
+        "装箱",
+        "批量装箱",
+        "添加箱子",
+        "删除箱子",
+        "退回待翻译",
+        "给业务",
+        "配货打印唛头",
+        "打印商品唛头",
+        "打印装箱单",
+        "确认",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "clicked": null,
+      "confirmed": null,
+      "writes": []
+    }
+  ],
+  "after": {
+    "inquiry": {
+      "admin_status": 0,
+      "y_admin_status": 2,
+      "g_admin_status": 2,
+      "point": null,
+      "user_status": 2
+    },
+    "sample": {
+      "admin_status": 24,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "point": 3,
+      "user_status": null
+    },
+    "bulk": {
+      "admin_status": 24,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "point": 3,
+      "user_status": null
+    },
+    "porder": {
+      "admin_status": 3,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "point": null,
+      "user_status": null
+    }
+  },
+  "sns": {
+    "inquiry": "X20260805143420-15-OEM",
+    "sample": "Y20260403172102-15-OEM",
+    "bulk": "D20260613110838-15-OEM",
+    "porder": "OP20260302150837-15"
+  }
+}

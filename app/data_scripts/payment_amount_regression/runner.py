@@ -777,7 +777,7 @@ class LivePaymentRegressionExecutor:
             batch_id,
             scenario,
             stop_after_node="order_offered",
-            order_item_num=max(2, int(self.variables.get("payment_regression_item_num") or 2)),
+            order_item_num=max(1, int(self.variables.get("payment_regression_item_num") or 1)),
             offer_price=str(self.variables.get("payment_regression_offer_price") or "10"),
             _full_flow_part_pay_script=part_pay,
             order_part_pay=part_pay,
@@ -1222,11 +1222,19 @@ class LivePaymentRegressionExecutor:
             discount_jpy=_ticket_jpy(variables, "payment_regression_discount_jpy"),
             voucher_jpy=_ticket_jpy(variables, "payment_regression_voucher_jpy"),
         )
+        check["captured_before_payment"] = True
         payload = {
             "status": "passed" if check["passed"] else "failed",
             "porder_sn": porder_sn,
             "payment_type": scenario.payment_mode,
             "checks": [check],
+            "predicted_quote": {
+                "amount": str(expected.amount),
+                "currency": expected.currency,
+                "source": expected.source,
+                "captured_before_payment": True,
+                "exchange_rate": str(expected.exchange_rate) if expected.exchange_rate is not None else "",
+            },
         }
         if cross:
             self._apply_ledger_cross_check(

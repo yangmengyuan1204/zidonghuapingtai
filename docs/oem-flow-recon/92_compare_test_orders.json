@@ -1,0 +1,291 @@
+{
+  "bulk_rows": [
+    {
+      "sn": "D20260613110838-15-OEM",
+      "admin_status": 56,
+      "point": 5,
+      "warehouse_city": 0,
+      "express_list": [
+        {
+          "id": 1132,
+          "express_no": "FULL1786771237",
+          "express_id": null
+        }
+      ],
+      "express_nos_ready": [
+        "FULL1786771237"
+      ],
+      "prod": {
+        "f": 4,
+        "y": 4,
+        "s": 1
+      },
+      "check_list_n": 1,
+      "check_report_image_n": 1,
+      "checkDetail_report_image_n": 1,
+      "checkDetail_sku_n": 1,
+      "stock_detail_n": 0,
+      "stock_admin_status": 56,
+      "front_user_status": 9,
+      "front_check_report_is_read": false,
+      "front_check_report_img_n": 1
+    },
+    {
+      "sn": "D20250709134928-15-OEM",
+      "admin_status": 48,
+      "point": 4,
+      "warehouse_city": 1,
+      "express_list": [
+        {
+          "id": 782,
+          "express_no": "",
+          "express_id": null
+        },
+        {
+          "id": 1128,
+          "express_no": "OK1786770419",
+          "express_id": null
+        }
+      ],
+      "express_nos_ready": [
+        "OK1786770419"
+      ],
+      "prod": {
+        "f": 4,
+        "y": 4,
+        "s": 2
+      },
+      "check_list_n": 0,
+      "check_report_image_n": null,
+      "checkDetail_report_image_n": 0,
+      "checkDetail_sku_n": 1,
+      "stock_detail_n": 0,
+      "stock_admin_status": 48,
+      "front_user_status": 7,
+      "front_check_report_is_read": null,
+      "front_check_report_img_n": null
+    },
+    {
+      "sn": "D20260126150236-15-OEM",
+      "admin_status": 48,
+      "point": 4,
+      "warehouse_city": 1,
+      "express_list": [
+        {
+          "id": 976,
+          "express_no": "",
+          "express_id": null
+        },
+        {
+          "id": 1129,
+          "express_no": "OK1786770450",
+          "express_id": null
+        }
+      ],
+      "express_nos_ready": [
+        "OK1786770450"
+      ],
+      "prod": {
+        "f": 4,
+        "y": 4,
+        "s": 1
+      },
+      "check_list_n": 0,
+      "check_report_image_n": null,
+      "checkDetail_report_image_n": 0,
+      "checkDetail_sku_n": 2,
+      "stock_detail_n": 0,
+      "stock_admin_status": 48,
+      "front_user_status": 7,
+      "front_check_report_is_read": null,
+      "front_check_report_img_n": null
+    },
+    {
+      "sn": "D20260112100159-15-OEM-AM-03",
+      "admin_status": 48,
+      "point": 4,
+      "warehouse_city": 1,
+      "express_list": [
+        {
+          "id": 965,
+          "express_no": "",
+          "express_id": null
+        },
+        {
+          "id": 1130,
+          "express_no": "OK1786770464",
+          "express_id": null
+        }
+      ],
+      "express_nos_ready": [
+        "OK1786770464"
+      ],
+      "prod": {
+        "f": 4,
+        "y": 4,
+        "s": 1
+      },
+      "check_list_n": 0,
+      "check_report_image_n": null,
+      "checkDetail_report_image_n": 0,
+      "checkDetail_sku_n": 2,
+      "stock_detail_n": 0,
+      "stock_admin_status": 48,
+      "front_user_status": 7,
+      "front_check_report_is_read": null,
+      "front_check_report_img_n": null
+    },
+    {
+      "sn": "D20260727151004-33-OEM",
+      "admin_status": 48,
+      "point": 4,
+      "warehouse_city": 2,
+      "express_list": [
+        {
+          "id": 1084,
+          "express_no": "",
+          "express_id": null
+        }
+      ],
+      "express_nos_ready": [],
+      "prod": {
+        "f": 4,
+        "y": 4,
+        "s": 1
+      },
+      "check_list_n": 0,
+      "check_report_image_n": null,
+      "checkDetail_report_image_n": 0,
+      "checkDetail_sku_n": 2,
+      "stock_detail_n": 0,
+      "stock_admin_status": 48,
+      "front_user_status": null,
+      "front_check_report_is_read": null,
+      "front_check_report_img_n": null
+    },
+    {
+      "sn": "D20260813154254-33-OEM",
+      "admin_status": 48,
+      "point": 4,
+      "warehouse_city": 2,
+      "express_list": [
+        {
+          "id": 1118,
+          "express_no": "",
+          "express_id": null
+        }
+      ],
+      "express_nos_ready": [],
+      "prod": {
+        "f": 1,
+        "y": 4,
+        "s": 1
+      },
+      "check_list_n": 0,
+      "check_report_image_n": null,
+      "checkDetail_report_image_n": 0,
+      "checkDetail_sku_n": 2,
+      "stock_detail_n": 0,
+      "stock_admin_status": 48,
+      "front_user_status": null,
+      "front_check_report_is_read": null,
+      "front_check_report_img_n": null
+    },
+    {
+      "sn": "D20250709115537-15-OEM",
+      "admin_status": 36,
+      "point": 4,
+      "warehouse_city": 1,
+      "express_list": [
+        {
+          "id": 780,
+          "express_no": "",
+          "express_id": null
+        }
+      ],
+      "express_nos_ready": [],
+      "prod": {
+        "f": 4,
+        "y": 4,
+        "s": 1
+      },
+      "check_list_n": 0,
+      "check_report_image_n": null,
+      "checkDetail_report_image_n": 0,
+      "checkDetail_sku_n": 2,
+      "stock_detail_n": 0,
+      "stock_admin_status": 36,
+      "front_user_status": 4,
+      "front_check_report_is_read": null,
+      "front_check_report_img_n": null
+    }
+  ],
+  "dispatch_results": [
+    {
+      "sn": "D20250709134928-15-OEM",
+      "body": {
+        "order_sn": "D20250709134928-15-OEM",
+        "express_nos": [
+          "OK1786770419"
+        ]
+      },
+      "code": 0,
+      "msg": "操作成功",
+      "after": 50
+    },
+    {
+      "sn": "D20260126150236-15-OEM",
+      "body": {
+        "order_sn": "D20260126150236-15-OEM",
+        "express_nos": [
+          "OK1786770450"
+        ]
+      },
+      "code": 10000,
+      "msg": "存在问题产品待处理，请处理后再试",
+      "after": 48
+    },
+    {
+      "sn": "D20260112100159-15-OEM-AM-03",
+      "body": {
+        "order_sn": "D20260112100159-15-OEM-AM-03",
+        "express_nos": [
+          "OK1786770464"
+        ]
+      },
+      "code": 0,
+      "msg": "操作成功",
+      "after": 50
+    },
+    {
+      "sn": "D20260727151004-33-OEM",
+      "body": {
+        "order_sn": "D20260727151004-33-OEM",
+        "express_nos": [
+          "CHK433OEM"
+        ]
+      },
+      "code": 0,
+      "msg": "操作成功",
+      "after": 50
+    },
+    {
+      "sn": "D20260813154254-33-OEM",
+      "body": {
+        "order_sn": "D20260813154254-33-OEM",
+        "express_nos": [
+          "CHK433OEM"
+        ]
+      },
+      "code": 0,
+      "msg": "操作成功",
+      "after": 50
+    }
+  ],
+  "cur_stock": {
+    "status": 56,
+    "stock_detail": [],
+    "warehouse_city": ""
+  },
+  "sample_stock_status": 64
+}

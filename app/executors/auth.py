@@ -46,6 +46,15 @@ def _sync_compat_globals() -> None:
         globals()[name] = getattr(package, name)
 
 
+LOGIN_TEXT_MARKERS = [
+    "登录", "登入", "立即登录", "登陆", "login", "sign in", "signin",
+    "ログイン", "サインイン", "マイページ", "mypage", "my page"
+]
+REGISTER_TEXT_MARKERS = [
+    "注册", "立即注册", "register", "sign up", "signup", "新規登録"
+]
+
+
 def _impl__guess_login_url(target_url: str | None) -> str:
     raw = str(target_url or "").strip()
     if not raw:
@@ -160,11 +169,11 @@ def _impl__is_login_related_step(step: Dict[str, Any]) -> bool:
     text = _step_text(step)
     if action == "goto" and _looks_like_login_url(step.get("value")):
         return True
-    if action == "input" and any(keyword in text for keyword in ["username", "account", "email", "mobile", "phone", "密码", "password", "账号", "邮箱", "手机", "验证码", "captcha", "code"]):
+    if action == "input" and any(keyword in text.lower() for keyword in ["username", "account", "email", "mobile", "phone", "密码", "password", "账号", "邮箱", "手机", "验证码", "captcha", "code", "ユーザー名", "パスワード"]):
         return True
-    if action == "click" and any(keyword in text for keyword in [*LOGIN_TEXT_MARKERS, *REGISTER_TEXT_MARKERS]):
+    if action == "click" and any(keyword in text.lower() for keyword in [*LOGIN_TEXT_MARKERS, *REGISTER_TEXT_MARKERS]):
         return True
-    if action in {"wait_for_selector", "assert_visible", "text_assert"} and any(keyword in text for keyword in [*LOGIN_TEXT_MARKERS, "验证码", "captcha"]):
+    if action in {"wait_for_selector", "assert_visible", "text_assert"} and any(keyword in text.lower() for keyword in [*LOGIN_TEXT_MARKERS, "验证码", "captcha"]):
         return True
     return False
 
@@ -176,12 +185,16 @@ def _impl__strip_leading_login_steps(steps: list[Dict[str, Any]]) -> tuple[list[
             break
         action = str(step.get("action") or "").strip().lower()
         if action == "goto" and not _looks_like_login_url(step.get("value")):
-            prefix = steps[:index]
-            if prefix and all(
-                isinstance(item, dict) and str(item.get("action") or "").strip().lower() in prefix_actions
-                for item in prefix
-            ):
-                return steps[index:], prefix
+            if index > 0:
+                prefix = steps[:index]
+                if all(
+                    isinstance(item, dict) and (
+                        str(item.get("action") or "").strip().lower() in prefix_actions
+                        or (str(item.get("action") or "").strip().lower() == "goto" and _looks_like_login_url(item.get("value")))
+                    )
+                    for item in prefix
+                ):
+                    return steps[index:], prefix
             break
     kept: list[Dict[str, Any]] = []
     removed: list[Dict[str, Any]] = []
@@ -192,17 +205,29 @@ def _impl__strip_leading_login_steps(steps: list[Dict[str, Any]]) -> tuple[list[
             stripping = False
             continue
         action = str(step.get("action") or "").strip().lower()
-        if stripping and (_is_login_related_step(step) or (removed and action == "wait")):
-            removed.append(step)
-            continue
-        if stripping and removed and action != "goto":
-            removed.append(step)
-            continue
-        if action == "goto" and _looks_like_login_url(step.get("value")):
-            removed.append(step)
+        if action == "goto" and not _looks_like_login_url(step.get("value")):
+            if not kept:
+                kept.append(step)
+                continue
+            else:
+                kept.append(step)
+                stripping = False
+                continue
+        if stripping:
+            if _is_login_related_step(step):
+                removed.append(step)
+                continue
+            if removed and action in ("wait", "wait_for_selector") and _is_login_related_step(step):
+                removed.append(step)
+                continue
+            if action == "goto" and _looks_like_login_url(step.get("value")):
+                removed.append(step)
+                continue
+            # Encountered first non-login business step! Stop stripping!
+            stripping = False
+            kept.append(step)
             continue
         kept.append(step)
-        stripping = False
     return kept or [{"name": "等待页面加载", "action": "wait_for_selector", "locator": "body"}], removed
 
 
@@ -361,11 +386,17 @@ def _impl__prepare_authenticated_page(page: Any, execution_context: Dict[str, An
         'input[name="mobile"]',
         'input[name="email"]',
         'input[type="text"]',
+        'input[placeholder*="ユーザー名"]',
+        'input[placeholder*="携帯番号"]',
+        'input[placeholder*="Email" i]',
+        'input[placeholder*="username" i]',
     ]
     password_defaults = [
         'input[placeholder="请输入密码"]',
         'input[type="password"]',
         'input[name="password"]',
+        'input[placeholder*="パスワード"]',
+        'input[placeholder*="password" i]',
     ]
     submit_defaults = [
         'button:has-text("立即登录")',
@@ -385,6 +416,20 @@ def _impl__prepare_authenticated_page(page: Any, execution_context: Dict[str, An
         '[class*="login"]:has-text("登录")',
         'input[type="submit"][value*="登录"]',
         "text=登录",
+        'button:has-text("ログイン")',
+        '[role="button"]:has-text("ログイン")',
+        '.el-button:has-text("ログイン")',
+        '[class*="button"]:has-text("ログイン")',
+        '[class*="btn"]:has-text("ログイン")',
+        '[class*="login"]:has-text("ログイン")',
+        'input[type="submit"][value*="ログイン"]',
+        "text=ログイン",
+        'button:has-text("サインイン")',
+        "text=サインイン",
+        'button:has-text("Sign in")',
+        'button:has-text("Log in")',
+        "text=Sign in",
+        "text=Log in",
     ]
     username_candidates = _merge_locator_values(_split_locator_values(auth.get("username_locator")), username_defaults)
     password_candidates = _merge_locator_values(_split_locator_values(auth.get("password_locator")), password_defaults)

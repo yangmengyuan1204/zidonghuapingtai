@@ -1,0 +1,12 @@
+[
+  {
+    "m": "POST",
+    "u": "https://oemapi.rakumart.cn/common/common/getExchangeRate",
+    "s": 200
+  },
+  {
+    "m": "POST",
+    "u": "https://apiwww.rakumart.com/client/config.getCalendar",
+    "s": 200
+  }
+]

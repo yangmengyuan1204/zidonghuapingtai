@@ -1,0 +1,117 @@
+[
+  {
+    "name": "orderSign_admin",
+    "path": "/admin/orderSign",
+    "body": {
+      "order_sn": "D20260613110838-15-OEM"
+    },
+    "resp": {
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "error": null
+    },
+    "status": 52
+  },
+  {
+    "name": "orderSign_front",
+    "path": "/api/orderSign",
+    "body": {
+      "order_sn": "D20260613110838-15-OEM"
+    },
+    "resp": {
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/api/orderSign",
+      "data": "",
+      "error": null
+    },
+    "status": 52
+  },
+  {
+    "name": "checkStart",
+    "path": "/admin/checkStart",
+    "body": {
+      "order_sn": "D20260613110838-15-OEM"
+    },
+    "resp": {
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "error": null
+    },
+    "status": 52
+  },
+  {
+    "name": "/admin/checkComplete",
+    "path": "/admin/checkComplete",
+    "body": {
+      "order_sn": "D20260613110838-15-OEM",
+      "check_list": []
+    },
+    "resp": {
+      "code": 1000,
+      "msg": "至少存在一条SKU",
+      "data": "",
+      "error": null
+    },
+    "status": 52
+  },
+  {
+    "name": "/admin/largeCheckComplete",
+    "path": "/admin/largeCheckComplete",
+    "body": {
+      "order_sn": "D20260613110838-15-OEM"
+    },
+    "resp": {
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/largeCheckComplete",
+      "data": "",
+      "error": null
+    },
+    "status": 52
+  },
+  {
+    "name": "/admin/largeCheckRaise",
+    "path": "/admin/largeCheckRaise",
+    "body": {
+      "order_sn": "D20260613110838-15-OEM"
+    },
+    "resp": {
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "data": "",
+      "error": null
+    },
+    "status": 52
+  },
+  {
+    "name": "samplesCheckRaise?",
+    "path": "/admin/largeCheckRaise",
+    "body": {
+      "order_sn": "D20260613110838-15-OEM"
+    },
+    "resp": {
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "data": "",
+      "error": null
+    },
+    "status": 52
+  },
+  {
+    "name": "orderShelve",
+    "path": "/admin/orderShelve",
+    "body": {
+      "order_sn": "D20260613110838-15-OEM",
+      "shelve_info": [],
+      "warehouse_city": "深圳"
+    },
+    "resp": {
+      "code": 0,
+      "msg": "操作成功",
+      "data": true,
+      "error": null
+    },
+    "status": 52
+  }
+]

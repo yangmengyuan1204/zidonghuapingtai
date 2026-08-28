@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>文档造数 · 文字配置示意</title>
+  <style>
+    :root {
+      --sidebar: #16181d; --line-s: #2a2e36; --muted-s: #8b919c; --text-s: #e8eaed;
+      --nav: #1f3d32; --primary: #1f6b4a; --bg: #f3f5f2; --card: #fff;
+      --line: #dfe4dc; --text: #1c2420; --muted: #5f6b64; --ok: #1a7f4b; --bad: #b42318;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text);
+      font-family: "PingFang SC","Microsoft YaHei",Inter,system-ui,sans-serif; }
+    .shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+    aside { background: var(--sidebar); color: var(--text-s); }
+    .brand { display: flex; gap: 10px; align-items: center; height: 56px; padding: 0 14px; border-bottom: 1px solid var(--line-s); }
+    .mark { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--primary); font-weight: 700; }
+    .brand small { display: block; color: var(--muted-s); font-size: 10px; }
+    .nav { padding: 14px 10px; }
+    .nav h2 { margin: 0 8px 6px; font-size: 11px; color: var(--muted-s); font-weight: 500; }
+    .nav div { padding: 8px 10px; border-radius: 8px; font-size: 13px; }
+    .nav .on { background: var(--nav); }
+    .top { height: 56px; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+    .top h1 { margin: 0; font-size: 16px; }
+    .note { margin: 14px 20px 0; padding: 10px 12px; background: #eef6f1; border: 1px solid #cfe3d6; border-radius: 8px; font-size: 13px; color: #355246; }
+    .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 20px 0; }
+    .pill, .btn { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+    .pill.on, .btn.p { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .wrap { padding: 14px 20px 40px; }
+    .hint { background: #eef3ff; border: 1px solid #d7e2fb; color: #1e3a5f; padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+    .hidden { display: none; }
+    h2 { font-size: 16px; margin: 16px 0 8px; }
+    h3 { font-size: 13px; margin: 0 0 8px; }
+    p, label, li { font-size: 13px; line-height: 1.55; color: #31413b; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 13px; text-align: left; vertical-align: top; }
+    th { background: #f6f8f5; color: var(--muted); }
+    .ok { color: var(--ok); font-weight: 600; }
+    .skip { color: var(--muted); }
+    .bad { color: var(--bad); font-weight: 600; }
+    .grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 14px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+    textarea, input[type=text], select {
+      width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+      font-family: Consolas,"Sarasa Mono SC",monospace; font-size: 13px;
+    }
+    textarea { min-height: 220px; line-height: 1.5; resize: vertical; }
+    .node { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid #eef1ec; }
+    .node:last-child { border-bottom: 0; }
+    .num { width: 22px; height: 22px; border-radius: 50%; background: #e8f3ec; color: var(--primary); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: 0 0 22px; }
+    .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
+    .stat { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+    .stat b { display: block; font-size: 20px; }
+    .stat span { color: var(--muted); font-size: 12px; }
+    details.step { background: #fff; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; }
+    details.step summary { cursor: pointer; list-style: none; padding: 10px 12px; display: flex; gap: 10px; align-items: center; }
+    details.step summary::-webkit-details-marker { display: none; }
+    .kv { background: #f6f8f5; border-radius: 8px; padding: 10px; font-family: Consolas,monospace; font-size: 12px; white-space: pre-wrap; overflow: auto; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 12px 12px; }
+    @media (max-width: 960px) { .shell { grid-template-columns: 1fr; } aside { display: none; } .grid, .stats, .row2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside>
+    <div class="brand"><div class="mark">Q</div><div><strong>质量工作台</strong><small>文档造数 · 示意</small></div></div>
+    <div class="nav">
+      <h2>测试资产</h2>
+      <div>接口用例库</div>
+      <div class="on">文档造数</div>
+      <h2>自动化执行</h2>
+      <div>数据工厂</div>
+      <div>执行报告</div>
+    </div>
+  </aside>
+  <main>
+    <div class="top"><h1>文档造数</h1><span style="color:#5f6b64;font-size:13px">文字配置示意 · 不是上线功能</span></div>
+    <div class="note">测试主操作：解析后自动出链路 → 选分类 → 勾节点 → 填字段 → 选停止节点 → 运行。点页签看 3 个页面。</div>
+    <div class="bar">
+      <span style="font-size:13px;color:var(--muted)">站点</span>
+      <button class="pill on" data-site="oem" type="button">OEM</button>
+      <button class="pill" data-site="japan" type="button">日本站</button>
+      <span style="font-size:13px;color:var(--muted);margin-left:8px">业务</span>
+      <span id="biz-pills"></span>
+    </div>
+    <div class="bar">
+      <button class="pill on" data-page="import" type="button">1. 导入并自动拼链路</button>
+      <button class="pill" data-page="config" type="button">2. 文字配置（主页）</button>
+      <button class="pill" data-page="result" type="button">3. 运行结果</button>
+    </div>
+    <section class="wrap">
+      <div id="page-import">
+        <div class="hint">解析后按业务分类各拼一条建议链。顶部可切换询价 / 样品 / 大货 / 配送单 / 辅料，看这一类会被拼成什么样。</div>
+        <div class="grid">
+          <div class="card">
+            <h3>文档来源</h3>
+            <p><input type="text" value="https://docs.apipost.net/docs/detail/6b3fd5a1f069000" /></p>
+            <p style="margin:8px 0 4px;color:var(--muted)">导入目录（OEM 已排除小程序 / 讲师 / 供应商 / 客户）</p>
+            <label><input type="checkbox" checked> 公共接口</label>
+            <label><input type="checkbox" checked> 前台接口</label>
+            <label><input type="checkbox" checked> 后台接口</label>
+            <label><input type="checkbox" checked> 工厂接口</label>
+            <p><button class="btn p" type="button" id="btn-parse">解析并自动拼链路</button></p>
+          </div>
+          <div class="card">
+            <h3>系统怎么拼（给你看规则，不是黑盒）</h3>
+            <p>1. 目录顺序：公共 → 前台 → 后台 → 工厂</p>
+            <p>2. 名称：登录最前，创建/提交在中，查金额靠后</p>
+            <p>3. 字段依赖：有 token / order_id 的接到需要它们的接口前面</p>
+            <p>拼不准的接口放在「未入链」，你可以在配置页补勾。承诺是建议链，不是一次猜对全部业务。</p>
+          </div>
+        </div>
+        <h2>自动拼出的建议链</h2>
+        <table>
+          <thead><tr><th>顺序</th><th>建议角色</th><th>接口</th><th>方法 / 路径</th><th>为何排在这</th></tr></thead>
+          <tbody id="chain-body"></tbody>
+        </table>
+      </div>
+
+      <div id="page-config" class="hidden">
+        <div class="hint">先选业务（询价 / 样品 / 大货 / 配送单 / 辅料），再选这次是造数还是金额比对。节点和字段会跟着变。</div>
+        <div class="grid">
+          <div class="card">
+            <h3>目的</h3>
+            <label><input type="radio" name="cat" value="data" checked> 造测试数据（产出单号，用停止节点控制跑多远）</label>
+            <label><input type="radio" name="cat" value="amount"> 金额比对（同一条链，保留预期 vs 实际）</label>
+            <h3 style="margin-top:14px">停止节点</h3>
+            <select id="stop-node"></select>
+            <p style="color:var(--muted);margin-top:8px">例如询价可停在「只创建」；样品/大货可停在下单，不跑支付和工厂。</p>
+            <h3 style="margin-top:14px">字段（这一次要用的，全部写在这）</h3>
+            <textarea id="fields"></textarea>
+          </div>
+          <div class="card">
+            <h3>该分类自动拼出的节点（勾选用哪些）</h3>
+            <div id="nodes"></div>
+            <p style="margin-top:12px">
+              <button class="btn p" type="button" id="btn-run">按这份配置运行</button>
+              <button class="btn" type="button">保存配置</button>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-result" class="hidden">
+        <div class="hint">每一步默认收起，点开看请求 / 响应 / 抽出的值。金额步保留你认可的预期 vs 实际。</div>
+        <div class="stats">
+          <div class="stat"><b class="ok">通过</b><span>本次运行</span></div>
+          <div class="stat"><b id="oid">BO20260814018</b><span>造出的单号</span></div>
+          <div class="stat"><b id="exp">1280.00</b><span>期望金额</span></div>
+          <div class="stat"><b class="ok" id="act">1280.00</b><span>接口返回金额</span></div>
+        </div>
+        <p>
+          <button class="btn" type="button" id="open-all">全部展开</button>
+          <button class="btn" type="button" id="close-all">全部折叠</button>
+        </p>
+        <div id="steps"></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+  const S = { site: "oem", page: "import", cat: "data", biz: "inquiry" };
+  const BIZ = [
+    { id: "inquiry", name: "询价" },
+    { id: "sample", name: "样品" },
+    { id: "bulk", name: "大货" },
+    { id: "porder", name: "配送单" },
+    { id: "material", name: "辅料" }
+  ];
+  const chain = {
+    inquiry: [
+      ["1", "登录", "账号登录", "POST /auth/login", "公共目录"],
+      ["2", "造数", "创建询价单", "POST /api/newInquiry", "前台创建"],
+      ["3", "后台", "报价给工厂", "POST /admin/quoteToFactory", "询价后续"],
+      ["4", "工厂", "工厂回价", "POST /factory/quote", "工厂目录"],
+      ["5", "金额", "查询询价金额", "GET /admin/inquiry/amount", "金额比对会跑到这"]
+    ],
+    sample: [
+      ["1", "登录", "账号登录", "POST /auth/login", "公共目录"],
+      ["2", "造数", "提出样品单", "POST /api/sampleOrder", "需要询价单号"],
+      ["3", "后台", "样品单后台流程", "POST /admin/sample/flow", "后台目录"],
+      ["4", "支付", "样品余额支付", "POST /pay/balance", "可作停止节点"]
+    ],
+    bulk: [
+      ["1", "登录", "账号登录", "POST /auth/login", "公共目录"],
+      ["2", "查询", "询价报价详情", "GET /api/quoteDetail", "大货依赖已报价询价"],
+      ["3", "造数", "提交大货单", "POST /api/createNewOrder", "前台创建"],
+      ["4", "金额", "查询订单金额", "GET /admin/order/amount", "金额比对"]
+    ],
+    porder: [
+      ["1", "登录", "账号登录", "POST /auth/login", "公共目录"],
+      ["2", "造数", "工厂/仓库出配送", "POST /factory/delivery", "OEM 按文档名称匹配；日本站更完整"],
+      ["3", "支付", "配送单付款", "POST /porder/pay", "可选"],
+      ["4", "金额", "查询配送金额", "GET /porder/amount", "金额比对"]
+    ],
+    material: [
+      ["1", "登录", "账号登录", "POST /auth/login", "公共目录"],
+      ["2", "查询", "辅料类型 / 商品", "GET /api/material/types", "前台查询"],
+      ["3", "造数", "提交辅料单", "POST /api/material/create", "前台创建"],
+      ["—", "未入链", "取消辅料单", "POST /api/material/cancel", "可补勾"]
+    ]
+  };
+  const fields = {
+    inquiry: "account: test_oem_01\npassword: ******\ngoods_name: 测试商品\nsku1: sku1\nsku1_num: 1\nhope_min_price: 1\nhope_max_price: 100\nfactory_urls: https://factory.example/x\n# token 不用填",
+    sample: "account: test_oem_01\npassword: ******\norder_sn:  询价单号，可先跑询价分类带过来\nsku_id: 1001\nnum: 2",
+    bulk: "account: test_oem_01\npassword: ******\norder_sn:  已报价的询价单号\nsku_id: 1001\nqty: 10\nprice: 128.00",
+    porder: "account: test_oem_01\npassword: ******\norder_id:  大货/样品单号\nwarehouse: WH01",
+    material: "account: test_oem_01\npassword: ******\ngoods_id: 8801\nmaterial_type: 1\nqty: 5"
+  };
+  const nodes = {
+    inquiry: [
+      { id: "login", n: "1 账号登录", must: true, on: true },
+      { id: "create", n: "2 创建询价单", must: false, on: true },
+      { id: "toFactory", n: "3 报价给工厂", must: false, on: true },
+      { id: "factoryQuote", n: "4 工厂回价", must: false, on: false },
+      { id: "amount", n: "5 查询询价金额", must: false, on: false }
+    ],
+    sample: [
+      { id: "login", n: "1 账号登录", must: true, on: true },
+      { id: "create", n: "2 提出样品单", must: false, on: true },
+      { id: "admin", n: "3 样品后台流程", must: false, on: false },
+      { id: "pay", n: "4 样品余额支付", must: false, on: false }
+    ],
+    bulk: [
+      { id: "login", n: "1 账号登录", must: true, on: true },
+      { id: "quote", n: "2 询价报价详情", must: false, on: true },
+      { id: "create", n: "3 提交大货单", must: false, on: true },
+      { id: "amount", n: "4 查询订单金额", must: false, on: false }
+    ],
+    porder: [
+      { id: "login", n: "1 账号登录", must: true, on: true },
+      { id: "create", n: "2 提出配送单", must: false, on: true },
+      { id: "pay", n: "3 配送单付款", must: false, on: false },
+      { id: "amount", n: "4 查询配送金额", must: false, on: false }
+    ],
+    material: [
+      { id: "login", n: "1 账号登录", must: true, on: true },
+      { id: "types", n: "2 查辅料类型", must: false, on: true },
+      { id: "create", n: "3 提交辅料单", must: false, on: true }
+    ]
+  };
+  const logs = {
+    oem: [
+      { t: "1 账号登录", s: "通过", k: "抽出 login_token", ms: "0.42s",
+        req: "POST /auth/login\naccount: test_oem_01",
+        res: "{\n  \"code\": 0,\n  \"data\": { \"token\": \"eyJ...\" }\n}",
+        ext: "login_token = eyJ..." },
+      { t: "2 提交大货单", s: "通过", k: "单号 BO20260814018", ms: "1.13s",
+        req: "POST /order/bulk/create\nsku_id: A10086\nqty: 10\nprice: 128.00\nAuthorization: Bearer {{login_token}}",
+        res: "{\n  \"code\": 0,\n  \"data\": { \"order_id\": \"BO20260814018\", \"payable_amount\": 1280.00 }\n}",
+        ext: "order_id = BO20260814018\npayable = 1280.00" },
+      { t: "3 查询订单金额", s: "通过", k: "actual_amount = 1280.00", ms: "0.31s",
+        req: "GET /admin/order/amount?order_id=BO20260814018",
+        res: "{\n  \"code\": 0,\n  \"data\": { \"amount\": 1280.00, \"currency\": \"CNY\" }\n}",
+        ext: "actual_amount = 1280.00" },
+      { t: "金额比对", s: "通过", k: "期望 1280.00 = 实际 1280.00", ms: "—",
+        req: "公式：qty * price\n代入：10 * 128.00",
+        res: "期望：1280.00\n实际：1280.00\n差额：0.00",
+        ext: "比对结果 = 通过（允许误差 0.01）" }
+    ],
+    japan: [
+      { t: "1 客户登录", s: "通过", k: "抽出 login_token", ms: "0.50s", req: "POST /auth/login", res: "{ \"code\": 0, \"data\": { \"token\": \"...\" } }", ext: "login_token = ..." },
+      { t: "2 加入购物车", s: "通过", k: "cart_id = C8829", ms: "0.70s", req: "POST /cart/add", res: "{ \"data\": { \"cart_id\": \"C8829\" } }", ext: "cart_id = C8829" },
+      { t: "3 订单报价", s: "通过", k: "quote = 12800", ms: "0.60s", req: "POST /admin/order/quote", res: "{ \"data\": { \"amount\": 12800, \"freight\": 800 } }", ext: "quote_amount = 12800" },
+      { t: "金额比对", s: "通过", k: "期望 12800 = 实际 12800", ms: "—", req: "公式：货款 + 运费", res: "期望：12800\n实际：12800\n差额：0", ext: "比对结果 = 通过" }
+    ]
+  };
+
+  function rows(list) {
+    return list.map(function (r) {
+      return "<tr>" + r.map(function (c) {
+        if (c === "未入链") return '<td><span class="skip">' + c + "</span></td>";
+        return "<td>" + c + "</td>";
+      }).join("") + "</tr>";
+    }).join("");
+  }
+  function render() {
+    document.querySelectorAll("[data-site]").forEach(function (el) { el.classList.toggle("on", el.dataset.site === S.site); });
+    document.querySelectorAll("[data-page]").forEach(function (el) { el.classList.toggle("on", el.dataset.page === S.page); });
+    ["import", "config", "result"].forEach(function (id) {
+      document.getElementById("page-" + id).classList.toggle("hidden", S.page !== id);
+    });
+    document.getElementById("chain-body").innerHTML = rows(chain[S.biz]);
+    document.getElementById("biz-pills").innerHTML = BIZ.map(function (b) {
+      return '<button class="pill' + (S.biz === b.id ? " on" : "") + '" data-biz="' + b.id + '" type="button">' + b.name + "</button>";
+    }).join("");
+    document.getElementById("fields").value = fields[S.biz];
+    var list = nodes[S.biz];
+    document.getElementById("nodes").innerHTML = list.map(function (n) {
+      return '<div class="node"><input type="checkbox"' + (n.on ? " checked" : "") + (n.must ? " disabled" : "") +
+        '><div><div class="num">' + n.n.split(" ")[0] + "</div></div><div><b>" + n.n + "</b><div style='color:#5f6b64'>" +
+        (n.must ? "必选（登录）" : "可选") + "</div></div></div>";
+    }).join("");
+    document.getElementById("stop-node").innerHTML = list.filter(function (n) { return n.on || n.must; }).map(function (n) {
+      var sel = (S.cat === "amount" && (n.id === "amount" || n.id === "pay")) || (S.cat !== "amount" && n.id === "create") ? " selected" : "";
+      return "<option" + sel + ">" + n.n + "</option>";
+    }).join("");
+    document.getElementById("oid").textContent = S.site === "oem" ? "BO20260814018" : "JP8829103";
+    document.getElementById("exp").textContent = S.site === "oem" ? "1280.00" : "¥12,800";
+    document.getElementById("act").textContent = S.site === "oem" ? "1280.00" : "¥12,800";
+    document.getElementById("steps").innerHTML = logs[S.site].map(function (st) {
+      var tone = st.s === "通过" ? "ok" : "bad";
+      return '<details class="step"><summary><span class="' + tone + '">' + st.s +
+        "</span><b>" + st.t + "</b><span style='color:#5f6b64;flex:1'>" + st.k +
+        "</span><span style='color:#5f6b64'>" + st.ms + "</span></summary>" +
+        '<div class="row2"><div><h3>请求</h3><div class="kv">' + st.req +
+        '</div></div><div><h3>响应</h3><div class="kv">' + st.res +
+        '</div></div></div><div style="padding:0 12px 12px"><h3>本步抽出</h3><div class="kv">' + st.ext +
+        "</div></div></details>";
+    }).join("");
+  }
+  document.querySelectorAll("[data-site]").forEach(function (el) {
+    el.onclick = function () { S.site = el.dataset.site; render(); };
+  });
+  document.querySelectorAll("[data-page]").forEach(function (el) {
+    el.onclick = function () { S.page = el.dataset.page; render(); };
+  });
+  document.getElementById("btn-parse").onclick = function () { S.page = "config"; render(); };
+  document.getElementById("btn-run").onclick = function () { S.page = "result"; render(); };
+  document.querySelectorAll("input[name=cat]").forEach(function (el) {
+    el.onchange = function () { S.cat = el.value; render(); };
+  });
+  document.getElementById("biz-pills").onclick = function (e) {
+    var btn = e.target.closest("[data-biz]");
+    if (!btn) return;
+    S.biz = btn.dataset.biz;
+    render();
+  };
+  document.getElementById("open-all").onclick = function () {
+    document.querySelectorAll("details.step").forEach(function (d) { d.open = true; });
+  };
+  document.getElementById("close-all").onclick = function () {
+    document.querySelectorAll("details.step").forEach(function (d) { d.open = false; });
+  };
+  render();
+</script>
+</body>
+</html>

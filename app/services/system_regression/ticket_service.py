@@ -71,6 +71,16 @@ def _is_order_coupon(row: Mapping[str, Any]) -> bool:
     return type_id == 1 or type_name == "优惠券"
 
 
+def _is_fee_waiver(row: Mapping[str, Any]) -> bool:
+    title = " ".join(
+        _text(row.get(key))
+        for key in ("name_chinese", "name_translation", "type_name")
+    )
+    return ("手数料" in title or "手续费" in title) and any(
+        word in title for word in ("無料", "免费", "免費", "减免", "減免")
+    )
+
+
 def _voucher_kind(row: Mapping[str, Any]) -> str:
     logistics_id = _text(row.get("logistics_id"))
     group = row.get("logistics_group")
@@ -88,7 +98,19 @@ def normalize_usable_discounts(payload: Mapping[str, Any] | None) -> dict[str, A
             continue
         title = _ticket_title(row)
         if _is_order_coupon(row):
-            coupons.append({"id": ticket_id, "title": title})
+            fee_waiver = _is_fee_waiver(row)
+            coupon: dict[str, Any] = {
+                "id": ticket_id,
+                "title": title,
+                "type": _text(row.get("type")),
+                "fee_waiver": fee_waiver,
+            }
+            amount = row.get("discounts_amount_jpy")
+            if amount not in (None, ""):
+                coupon["discounts_amount_jpy"] = _text(amount)
+                if not fee_waiver:
+                    coupon["amount"] = _text(amount)
+            coupons.append(coupon)
             continue
         voucher: dict[str, Any] = {
             "id": ticket_id,

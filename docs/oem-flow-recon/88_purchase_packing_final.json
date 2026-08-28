@@ -1,0 +1,18 @@
+{
+  "sample": {
+    "sn": "Y20260403172102-15-OEM",
+    "admin_status": 36,
+    "point": 4
+  },
+  "bulk": {
+    "sn": "D20260613110838-15-OEM",
+    "admin_status": 36,
+    "point": 4
+  },
+  "porder": {
+    "sn": "OP20260302150837-15",
+    "admin_status": 5,
+    "box_len": 1,
+    "unpacked": 0
+  }
+}

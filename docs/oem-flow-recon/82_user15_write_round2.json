@@ -1,0 +1,129 @@
+{
+  "created": null,
+  "sn": "X20260805143420-15-OEM",
+  "translate": {
+    "code": 1000,
+    "msg": "请选择分类后操作"
+  },
+  "audit": {
+    "code": 10000,
+    "msg": "当前状态无法操作"
+  },
+  "ui": [
+    {
+      "name": "inquiry_after_translate",
+      "clicked": "提交审核",
+      "confirmed": "确认",
+      "buttons": [
+        "上传翻译文件",
+        "确认备注",
+        "临时保存",
+        "提交审核",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "writes": []
+    },
+    {
+      "name": "bulk_confirm_done",
+      "clicked": "确认完成",
+      "confirmed": "是",
+      "buttons": [
+        "回到询价单",
+        "新增",
+        "退回翻译",
+        "特殊报价",
+        "确认完成",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "writes": [
+        {
+          "u": "https://oemapi.rakumart.cn/admin/largeConfirmed",
+          "s": 200,
+          "post": "{\"order_sn\":\"D20260613110838-15-OEM\",\"y_response\":\"\",\"quote_info\":{\"inquiry_other_fee\":\"0.00\",\"inquiry_freight\":\"0.00\",\"inquiry_delivery_time\":7,\"inquiry_large_deposit_rate\":\"100.00\",\"quote_other_fee\":\"0.00\",\"quote_freight\":\"0.00\",\"quote_delivery_time\":7,\"quote_large_deposit_rate\":\"100.00\",\"real_other_fee\":\"0.00\",\"real_freight\":\"50.00\",\"sku_info\":[{\"id\":2428,\"sku\":\"ブルー\",\"sku_tr\":\"blue\",\"sku_image\":\"\",\"num\":1000,\"large_min_quantity\":100,\"inquiry_large_price\":\"2.20\",\"quote_large_price\":\"2.20\",\"real_large_price\":\"2.00\",\"option\":[{\"id\":57,\"name\":\"opp袋子四角包装\",\"name_translate\":\"角折りopp梱包\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"把opp袋子的四角都粘好的包装\",\"unit\":\"元\",\"sort\":16,\"price_range\":[],\"num\":1000,\"checked\":true,\"total\":2000},{\"id\":68,\"name\":\"塑封包装\",\"name_translate\":\"シユリンク包装\",\"price\":\"0.80\",\"price_type\":0,\"remark\":\"塑封包装\",\"unit\":\"元\",\"sort\":17,\"price_range\":[],\"num\":1000,\"checked\":true,\"total\":800},{\"id\":72,\"name\":\"真空包装\",\"name_translate\":\"圧縮包装（袋別途費用）\",\"price\":\"2.00\",\"price_type\":0,\"remark\":null,\"unit\":\"元\",\"sort\":18,\"price_range\":[],\"num\":1000,\"checked\":true,\"total\":2000},{\"id\":73,\"name\":\"更换客户自己的定制袋子\",\"name_translate\":\"別注OPP袋入替\",\"price\":\"0.30\",\"price_type\":0,\"remark\":\"客户有自己袋子的话，更换其需要收费0.3元\",\"unit\":\"元\",\"sort\":19,\"price_range\":[],\"num\":1000,\"checked\":true,\"total\":300}],\"keep_sample_num\":0}]},\"warehouse_city\":2,\"is_special_quote\":false}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":true,\"success\":true}"
+        }
+      ]
+    },
+    {
+      "name": "sample_confirm_done",
+      "clicked": "确认完成",
+      "confirmed": "是",
+      "buttons": [
+        "退回翻译",
+        "特殊报价",
+        "确认完成",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "writes": [
+        {
+          "u": "https://oemapi.rakumart.cn/admin/samplesConfirmed",
+          "s": 200,
+          "post": "{\"warehouse_city\":2,\"is_special_quote\":false,\"order_sn\":\"Y20260403172102-15-OEM\",\"y_response\":\"\",\"quote_info\":{\"inquiry_other_fee\":\"5.00\",\"inquiry_freight\":\"5.00\",\"inquiry_delivery_time\":5,\"quote_other_fee\":\"5.00\",\"quote_freight\":\"5.00\",\"quote_delivery_time\":5,\"real_other_fee\":\"5.00\",\"real_freight\":\"5.00\",\"sku_info\":[{\"id\":2378,\"sku\":\"红1\",\"sku_tr\":\"红1\",\"sku_image\":\"https://rakumart-oem.oss-ap-northeast-1.aliyuncs.com/dest/202601/342396/O1CN01nklPMm2KqWS7HYtvi_!!2248919608.jpg\",\"num\":1,\"inquiry_samples_price\":\"11.00\",\"inquiry_samples_price_return\":\"11\",\"quote_samples_price\":\"11.00\",\"quote_samples_price_return\":\"11.00\",\"real_samples_price\":\"11.00\",\"real_samples_price_return\":\"11.00\",\"keep_sample_sku_num\":0},{\"id\":2379,\"sku\":\"黄2\",\"sku_tr\":\"黄2\",\"sku_image\":\"https://rakumart-oem.oss-ap-northeast-1.aliyuncs.com/dest/202601/470756/tiaosheng.png\",\"num\":1,\"inquiry_samples_price\":\"22.00\",\"inquiry_samples_price_return\":\"22\",\"quote_samples_price\":\"22.00\",\"quote_samples_price_return\":\"22.00\",\"real_samples_price\":\"22.00\",\"real_samples_price_return\":\"22.00\",\"keep_sample_sku_num\":0},{\"id\":2380,\"sku\":\"蓝3\",\"sku_tr\":\"蓝3\",\"sku_image\":\"https://rakumart-oem.oss-ap-northeast-1.aliyuncs.com/dest/202601/600967/O1CN01nklPMm2KqWS7HYtvi_!!2248919608.jpg\",\"num\":1,\"inquiry_samples_price\":\"33.00\",\"inquiry_samples_price_return\":\"33\",\"quote_samples_price\":\"33.00\",\"quote_samples_price_return\":\"33.00\",\"real_samples_price\":\"33.00\",\"real_samples_price_return\":\"33.00\",\"keep_sample_sku_num\":0},{\"id\":2381,\"sku\":\"绿4\",\"sku_tr\":\"绿4\",\"sku_image\":\"https://rakumart-oem.oss-ap-northeast-1.aliyuncs.com/dest/202601/498702/bizhi.jpg\",\"num\":1,\"inquiry_samples_price\":\"44.00\",\"inquiry_samples_price_return\":\"44\",\"quote_samples_price\":\"44.00\",\"quote_samples_price_return\":\"44.00\",\"real_samples_price\":\"44.00\",\"real_samples_price_return\":\"44.00\",\"keep_sample_sku_num\":0}]}}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":true,\"success\":true}"
+        }
+      ]
+    },
+    {
+      "name": "porder_after_start",
+      "clicked": null,
+      "confirmed": null,
+      "buttons": [
+        "删除",
+        "追加",
+        "修改",
+        "提交给配货员",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "writes": [
+        {
+          "u": "https://oemapi.rakumart.cn/admin/porder/logisticsList",
+          "s": 200,
+          "post": "{\"user_id\":\"15\"}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":14,\"name\":\"お任せ(お勧め)\",\"logo\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/20251119155458318190.png\",\"logistics_city\":1,\"chargeFinal\":\"\",\"min_weight\":0},{\"id\":35,\"name\":\"海源電子特殊航空便\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202507\\/688825e5b606f.png\",\"logistics_city\":1,\"chargeFinal\":\"2\",\"min_weight\":\"15\"},{\"id\":37,\"name\":\"switch\",\"logo\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/20250911155501764451.jpg\",\"logistics_city\":2,\"chargeFinal\":\"1\",\"min_weight\":\"20\"},{\"id\":34,\"name\":\"お任せ（広州）\",\"logo\":\"\",\"logistics_city\":2,\"chargeFinal\":\"\",\"min_weight\":0},{\"id\":31,\"name\":\"Raku-KS（広州）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949955a543.png\",\"logistics_city\":2,\"chargeFinal\":\"2\",\"min_weight\":\"20\"},{\"id\":24,\"name\":\"Raku-KS（義鳥）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949955a543.png\",\"logistics_city\":1,\"chargeFinal\":\"2\",\"min_weight\":\"20\"},{\"id\":29,\"name\":\"RW船便（広州）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949a7c76e7.png\",\"logistics_city\":2,\"chargeFinal\":\"\",\"min_weight\":0},{\"id\":20,\"name\":\"RW船便（義鳥）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949a7c76e7.png\",\"logistics_city\":1,\"chargeFinal\":\"\",\"min_weight\":0},{\"id\":33,\"name\":\"Raku-DQ（広州）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949b147430.png\",\"logistics_city\":2,\"chargeFinal\":\"2\",\"min_wei"
+        }
+      ]
+    }
+  ],
+  "after": {
+    "inquiry": {
+      "sn": "X20260805143420-15-OEM",
+      "admin_status": 0,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "user_status": 1,
+      "point": null
+    },
+    "sample": {
+      "sn": "Y20260403172102-15-OEM",
+      "admin_status": 20,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "user_status": null,
+      "point": 3
+    },
+    "bulk": {
+      "sn": "D20260613110838-15-OEM",
+      "admin_status": 20,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "user_status": null,
+      "point": 3
+    },
+    "porder": {
+      "sn": "OP20260302150837-15",
+      "admin_status": 2,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "user_status": null,
+      "point": null
+    }
+  }
+}

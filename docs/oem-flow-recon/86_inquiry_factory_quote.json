@@ -1,0 +1,36 @@
+{
+  "factoryEdit": {
+    "code": 0,
+    "msg": "操作成功"
+  },
+  "factoryQuote": {
+    "code": 0,
+    "msg": "操作成功"
+  },
+  "toUser": {
+    "code": 0,
+    "msg": "操作成功",
+    "data": true,
+    "success": true
+  },
+  "complete": 0,
+  "startQuote": 0,
+  "quoteComplate": {
+    "code": 0,
+    "msg": "操作成功",
+    "data": true,
+    "success": true
+  },
+  "after": {
+    "y": 5,
+    "g": 4,
+    "u": 4,
+    "detail_status": [
+      [
+        1015,
+        2,
+        "报价完成"
+      ]
+    ]
+  }
+}

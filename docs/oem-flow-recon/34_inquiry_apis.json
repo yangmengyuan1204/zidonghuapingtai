@@ -1,0 +1,72 @@
+[
+  {
+    "m": "POST",
+    "u": "https://oemapi.rakumart.cn/api/notice.clientNoticeNum",
+    "s": 200,
+    "post": "{}",
+    "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"all\":91,\"read\":88,\"unread\":3},\"success\":true}"
+  },
+  {
+    "m": "POST",
+    "u": "https://oemapi.rakumart.cn/api/userInfo",
+    "s": 200,
+    "post": "{}",
+    "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"id\":15,\"username\":\"小杨测试账号\",\"realname\":\"小杨测试账号\",\"email\":\"2232\",\"mobile\":\"12345678990\",\"create_at\":\"2024-03-05 03:11:46\",\"y_id\":44,\"p_id\":46,\"j_id\":47,\"g_id\":45,\"last_login_at\":\"2026-08-15 09:16:32\",\"portrait_url\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202601\\/6979dc4b67b53.png\",\"balance\":6190017,\"invoice_scope\":\"user\",\"show_amazon\":false},\"success\":"
+  },
+  {
+    "m": "GET",
+    "u": "https://oemapi.rakumart.cn/api/getUserBanner",
+    "s": 200,
+    "post": "",
+    "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"switch_time\":3,\"list\":[{\"img_url\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/20250715115931634227.png\",\"href_url\":\"\",\"explain\":\"333\",\"status\":true,\"status_name\":\"启用\"},{\"img_url\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/20250715115954560971.png\",\"href_url\":\"\",\"explain\":\"\",\"status\":true,\"status_name\":\"启用\"},{\"img_url\":\"https:\\/\\/rakumart-o"
+  },
+  {
+    "m": "POST",
+    "u": "https://oemapi.rakumart.cn/api/notice.clientNoticeList",
+    "s": 200,
+    "post": "{\"hasRead\":null}",
+    "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"id\":140,\"title\":\"1\",\"content\":\"\",\"created_at\":\"2026-03-03 10:01:01\",\"statusName\":\"未读\",\"type\":2,\"image\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/20260303100050147307.jpeg\",\"url\":\"\"},{\"id\":139,\"title\":\"123\",\"content\":\"\",\"created_at\":\"2026-03-03 09:50:03\",\"statusName\":\"已读\",\"type\":2,\"image\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com"
+  },
+  {
+    "m": "POST",
+    "u": "https://oemapi.rakumart.cn/api/quantitativeStatistics",
+    "s": 200,
+    "post": "{}",
+    "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"order_info\":{\"inqiury_num\":372,\"samples_num\":281,\"large_num\":415,\"porder_num\":193,\"problem_num\":44},\"goods_info\":{\"goods_num\":290,\"accessory_num\":95,\"warehouse_num\":\"8383\",\"keep_sample_warehouse_num\":\"1461\",\"promote_num\":4}},\"success\":true}"
+  },
+  {
+    "m": "POST",
+    "u": "https://oemapi.rakumart.cn/api/user.attentionInfo",
+    "s": 200,
+    "post": "{}",
+    "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"samples_report\":24,\"large_report\":68,\"inspect\":14,\"problem_goods\":44,\"dispatched\":12,\"unread_notice\":92,\"samples_unpaid\":16,\"larges_unpaid\":7,\"larges_balance_unpaid\":8,\"porder_unpaid\":1,\"message_notice\":{\"report\":false,\"inspect\":false,\"problem\":true,\"dispatched\":true,\"samples_unpaid\":true,\"larges_unpaid\":true,\"balance_unpaid\":true,\"porder_unpaid\":true,\"samples_repor"
+  },
+  {
+    "m": "POST",
+    "u": "https://oemapi.rakumart.cn/api/notice.unreadNotice",
+    "s": 200,
+    "post": "{}",
+    "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[],\"success\":true}"
+  },
+  {
+    "m": "POST",
+    "u": "https://oemapi.rakumart.cn/api/user.underwayGoods",
+    "s": 200,
+    "post": "{}",
+    "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"goods_name\":\"11111\",\"goods_id\":\"985\",\"goods_no\":\"43843342\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/089069\\/rakumade-preview-support-person-transparent.png\",\"order_sn\":\"X20260808134327-15-OEM\",\"status\":1,\"status_name\":\"担当者翻訳、整理中\",\"created_at\":\"2026-08-08 13:43:27\",\"type\":\"inquiry\"},{\"goods_name\":\"111\",\"goods_id\":\"984\",\"good"
+  },
+  {
+    "m": "POST",
+    "u": "https://oemapi.rakumart.cn/api/user.goodsImageList",
+    "s": 200,
+    "post": "{}",
+    "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":132,\"goods_name\":\"衣服\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202403\\/65e6f98d5dc64.jpg\"},{\"id\":134,\"goods_name\":\"小杨测试\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202403\\/65e7c8fed7aae.jpg\"},{\"id\":135,\"goods_name\":\"鲁班手办\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/202403\\/65e807cea4"
+  },
+  {
+    "m": "POST",
+    "u": "https://oemapi.rakumart.cn/common/common/getExchangeRate",
+    "s": 200,
+    "post": "{}",
+    "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"rmb_to_jpy\":23.56,\"jpy_to_rmb\":0.0424},\"success\":true}"
+  }
+]

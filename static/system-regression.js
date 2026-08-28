@@ -482,9 +482,10 @@
   }
 
   function orderTotals(c) {
-    let goods = 0, freight = 0, options = 0;
+    let goods = 0, freight = 0, options = 0, quantity = 0;
     (c.items || []).forEach((it) => {
       const unit = moneyValue(it.offer_price);
+      quantity += money(it.quantity);
       goods += money(money(it.quantity) * unit);
       freight += moneyValue(it.offer_freight);
       (it.options || []).forEach((o) => {
@@ -499,7 +500,7 @@
     const serviceRate = membershipServiceRate();
     const serviceBase = money(goods * serviceRate);
     const service = couponOn ? 0 : serviceBase;
-    return { goods, freight, options, other, service, serviceBase, couponOn, serviceRate, payable: money(goods + freight + options + other + service) };
+    return { quantity, goods, freight, options, other, service, serviceBase, couponOn, serviceRate, payable: money(goods + freight + options + other + service) };
   }
 
   function porderTotals(c) {
@@ -533,7 +534,11 @@
     }
     const t = orderTotals(parameters);
     return `<div class="system-regression-bill" id="srBill">
+      <div><span>商品数量（执行数量）</span>${escapeHtml(String(t.quantity))} 个</div>
       <div><span>报给客户的商品金额</span>${dualCnyJpy(t.goods)}</div>
+      <div><span>国内运费</span>${dualCnyJpy(t.freight)}</div>
+      <div><span>OPTION金额</span>${dualCnyJpy(t.options)}</div>
+      ${t.other ? `<div><span>其他费用</span>${dualCnyJpy(t.other)}</div>` : ""}
       <div><span>${t.couponOn ? "手续费（优惠券免）" : "手续费"}</span>${dualCnyJpy(t.service)}</div>
       ${membershipFeeNoteHtml()}
       <div class="first"><span>订单应付</span>${dualCnyJpy(t.payable)}</div>
@@ -668,9 +673,105 @@
       </details>`;
   }
 
+  function adjustmentValue(mode, value = 0) {
+    return { mode, value: mode === "same" || mode === "zero" ? 0 : Math.abs(Number(value || 0)) };
+  }
+
+  function problemRelativeAdjustments(parameters, problem) {
+    const explicit = {
+      quantity: problem.quantity_adjustment,
+      price: problem.price_adjustment,
+      freight: problem.freight_adjustment,
+    };
+    if (Object.values(explicit).some((row) => row && typeof row === "object")) {
+      return {
+        explicit: true,
+        quantity: adjustmentValue(explicit.quantity?.mode || "same", explicit.quantity?.value),
+        price: adjustmentValue(explicit.price?.mode || "same", explicit.price?.value),
+        freight: adjustmentValue(explicit.freight?.mode || "same", explicit.freight?.value),
+      };
+    }
+    const step = Math.abs(Number(parameters.amount_step || 1));
+    const change = String(parameters.adjustment || parameters.option_adjustment || "");
+    const result = {
+      explicit: false,
+      quantity: adjustmentValue("same"),
+      price: adjustmentValue("same"),
+      freight: adjustmentValue("same"),
+    };
+    if (["quantity_partial_down", "quantity_down", "fixed_quantity_down", "rate_quantity_down", "inspection_completed", "non_auto_unchanged", "quantity_and_price_down", "quantity_down_price_up_net_refund", "net_refund"].includes(change)) {
+      result.quantity = adjustmentValue("decrease", 1);
+    } else if (change === "quantity_up") {
+      result.quantity = adjustmentValue("increase", 1);
+    } else if (change === "quantity_all_down") {
+      result.quantity = adjustmentValue("zero");
+    }
+    if (["price_down", "goods_down_refund_service", "goods_down_keep_service", "goods_down_discount_service", "zero_service_rate", "rate_goods_price_down", "quantity_and_price_down", "net_refund"].includes(change)
+      || (change === "rate_price_down" && Number(problem.option_deal_suggest || parameters.option_deal_suggest || 2) === 2)) {
+      result.price = adjustmentValue("decrease", step);
+    } else if (["price_up", "goods_up_charge_service", "goods_up_discount_service", "quantity_down_price_up_net_refund"].includes(change)) {
+      result.price = adjustmentValue("increase", step);
+    } else if (change === "price_down_freight_up_net_refund") {
+      result.price = adjustmentValue("decrease", step * 2);
+    } else if (["price_up_freight_down_net_topup", "net_topup"].includes(change)) {
+      result.price = adjustmentValue("increase", step * 2);
+    }
+    if (["freight_down", "quantity_and_price_down", "net_refund", "price_up_freight_down_net_topup", "net_topup"].includes(change)) {
+      result.freight = adjustmentValue("decrease", step);
+    } else if (["freight_up", "price_down_freight_up_net_refund"].includes(change)) {
+      result.freight = adjustmentValue("increase", step);
+    }
+    return result;
+  }
+
+  function relativeAdjustmentHtml(field, label, adjustment, options = {}) {
+    const mode = adjustment.mode || "same";
+    const buttons = [
+      ["decrease", "降低"],
+      ["same", "不变"],
+      ["increase", "增加"],
+      ...(options.allowZero ? [["zero", "清零"]] : []),
+    ];
+    const unit = options.integer ? "个" : "元";
+    return `
+      <div class="field" data-sr-adjustment-field="${field}" data-sr-adjustment-source="${options.explicit ? "explicit" : "inferred"}">
+        <label>${label}</label>
+        <div class="system-regression-drawer-tabs" style="margin:0;border:0">
+          ${buttons.map(([value, text]) => `<button type="button" data-sr-adjustment-mode="${value}" data-sr-adjustment-target="${field}" class="${mode === value ? "active" : ""}">${text}</button>`).join("")}
+        </div>
+        <label data-sr-adjustment-value-wrap="${field}" ${mode === "same" || mode === "zero" ? 'style="display:none"' : ""}>变动值（${unit}）
+          <input data-sr-adjustment-value="${field}" type="number" min="0" step="${options.integer ? 1 : "0.01"}" value="${escapeHtml(adjustment.value || 1)}" />
+        </label>
+        <small class="system-regression-hint" data-sr-adjustment-hint="${field}">${relativeAdjustmentHint(field, mode, adjustment.value)}</small>
+      </div>`;
+  }
+
+  function relativeAdjustmentHint(field, mode, value) {
+    const label = { quantity: "实际数量", price: "实际单价", freight: "实际国内运费" }[field] || "实际值";
+    const unit = field === "quantity" ? "个" : "元";
+    if (mode === "zero") return `${label} → 0`;
+    if (mode === "same") return `${label}保持不变`;
+    return `${label}${mode === "decrease" ? "降低" : "增加"}${Math.abs(Number(value || 0))}${unit}`;
+  }
+
+  function updateRelativeAdjustmentControl(field) {
+    const mode = document.querySelector(`[data-sr-adjustment-target="${field}"].active`)?.dataset.srAdjustmentMode || "same";
+    const value = document.querySelector(`[data-sr-adjustment-value="${field}"]`)?.value || "0";
+    const wrap = document.querySelector(`[data-sr-adjustment-value-wrap="${field}"]`);
+    const hint = document.querySelector(`[data-sr-adjustment-hint="${field}"]`);
+    if (wrap) wrap.style.display = mode === "same" || mode === "zero" ? "none" : "";
+    if (hint) hint.textContent = relativeAdjustmentHint(field, mode, value);
+  }
+
+  function markRelativeAdjustmentExplicit(field) {
+    const wrapper = document.querySelector(`[data-sr-adjustment-field="${field}"]`);
+    if (wrapper) wrapper.dataset.srAdjustmentSource = "explicit";
+  }
+
   function problemProcessHtml(item, parameters) {
     const problem = parameters.problem_goods || {};
     const it = parameters.items[0] || { quantity: 1, offer_price: { value: 10 }, offer_freight: { value: 3 } };
+    const adjustments = problemRelativeAdjustments(parameters, problem);
     return `
       <p class="system-regression-how">执行时会先按「造订单」下好单，再按下面 6 步做问题产品处理。</p>
       <div class="system-regression-step">
@@ -685,18 +786,14 @@
       <div class="system-regression-step">
         <header><b>2</b><strong>把数量 / 单价 / 运费改成什么样</strong></header>
         <table class="system-regression-case-table system-regression-compare">
-          <thead><tr><th></th><th>下单时</th><th>改成</th></tr></thead>
+          <thead><tr><th></th><th>执行基准</th><th>调整规则</th></tr></thead>
           <tbody>
-            <tr><td>数量</td><td>${escapeHtml(it.quantity ?? 1)}</td><td><input id="srPreNum" type="number" min="0" value="${escapeHtml(problem.pre_num ?? 2)}" /></td></tr>
-            <tr><td>报给客户的单价</td><td>${yen(it.offer_price?.value ?? 10)} CNY</td><td><input id="srPrePrice" type="number" step="0.01" value="${escapeHtml(problem.pre_price?.value ?? 9)}" /></td></tr>
-            <tr><td>国内运费</td><td>${yen(it.offer_freight?.value ?? 3)} CNY</td><td><input id="srPreFreight" type="number" step="0.01" value="${escapeHtml(problem.pre_freight?.value ?? 1)}" /></td></tr>
+            <tr><td>数量</td><td>执行时读取实际数量</td><td>${relativeAdjustmentHtml("quantity", "数量怎么调整", adjustments.quantity, { integer: true, allowZero: true, explicit: adjustments.explicit })}</td></tr>
+            <tr><td>报给客户的单价</td><td>执行时读取实际单价</td><td>${relativeAdjustmentHtml("price", "单价怎么调整", adjustments.price, { explicit: adjustments.explicit })}</td></tr>
+            <tr><td>国内运费</td><td>执行时读取实际运费</td><td>${relativeAdjustmentHtml("freight", "国内运费怎么调整", adjustments.freight, { explicit: adjustments.explicit })}</td></tr>
           </tbody>
         </table>
-        <div class="field" style="margin-top:8px;max-width:220px">
-          <label>每次加减多少元</label>
-          <input id="srAmountStep" type="number" step="0.01" min="0" value="${escapeHtml(parameters.amount_step || 1)}" />
-          <small class="system-regression-hint">自动改单价或运费时用。填 1：原价 10 元，降价变成 9，涨价变成 11。</small>
-        </div>
+        <p class="system-regression-hint">例如选择“单价降低 2 元”，执行时会先读取真实订单单价；实际单价 10 元时改成 8 元。</p>
       </div>
       <div class="system-regression-step">
         <header><b>3</b><strong>OPTION 怎么处理</strong></header>
@@ -913,17 +1010,36 @@
       || ""
     ).trim();
     const ledgerText = ledger ? `客户出入金 ${ledger} 日元。` : "";
+    const checks = Array.isArray(run.result?.checks) ? run.result.checks : [];
+    const configuredCheck = checks.find((row) => row?.key === "configured_amount");
+    const primaryCheck = configuredCheck || checks.find((row) => row && row.key !== "customer_balance" && (row.expected_jpy != null || row.actual_jpy != null));
+    const ledgerCheck = run.result?.ledger_check || checks.find((row) => row?.key === "customer_balance");
+    const amountEvidence = [];
+    if (configuredCheck) {
+      amountEvidence.push(`页面冻结预期 ${configuredCheck.expected_jpy ?? "—"} 日元，订单报价 ${configuredCheck.order_quote_jpy ?? "—"} 日元，支付接口实付 ${configuredCheck.payment_actual_jpy ?? "—"} 日元`);
+      if (configuredCheck.customer_balance_jpy !== "" && configuredCheck.customer_balance_jpy != null) amountEvidence.push(`客户出入金实际 ${configuredCheck.customer_balance_jpy} 日元`);
+    } else if (primaryCheck) {
+      amountEvidence.push(`预期应付 ${primaryCheck.expected_jpy ?? "—"} 日元，支付接口实付 ${primaryCheck.actual_jpy ?? "—"} 日元`);
+      if (primaryCheck.difference_jpy != null) amountEvidence.push(`支付差额 ${primaryCheck.difference_jpy} 日元`);
+    }
+    if (ledgerCheck && (ledgerCheck.customer_balance_jpy != null || ledgerCheck.actual_jpy != null)) {
+      amountEvidence.push(`出入金实际 ${ledgerCheck.customer_balance_jpy ?? ledgerCheck.actual_jpy} 日元`);
+      if (ledgerCheck.difference_jpy != null) amountEvidence.push(`出入金差额 ${ledgerCheck.difference_jpy} 日元`);
+    }
+    const failedCheck = checks.find((row) => row?.passed === false);
+    if (failedCheck) amountEvidence.push(`校验原因 ${failedCheck.reason_code || failedCheck.reason || "金额校验失败"}`);
+    const amountText = amountEvidence.length ? `${amountEvidence.join("；")}。` : "";
     if (run.status === "passed") {
-      if (porderSn) return `通过。配送单 ${porderSn} 已付款。${ledgerText}`;
-      if (orderSn) return `通过。订单 ${orderSn} 已付款。${ledgerText}`;
-      return ledgerText ? `通过。${ledgerText}` : "通过。";
+      if (porderSn) return `通过。配送单 ${porderSn} 已付款。${amountText}${ledgerText}`;
+      if (orderSn) return `通过。订单 ${orderSn} 已付款。${amountText}${ledgerText}`;
+      return amountText || ledgerText ? `通过。${amountText}${ledgerText}` : "通过。";
     }
     if (run.status === "waiting_account") return "等部长账号。";
     if (run.status === "running") return "正在执行。";
     if (run.status === "pending") return "还没开始。";
     if (run.status === "stopped") return note ? `已停止。${note}` : "已停止。";
     if (run.status === "blocked") return note ? `缺前置。${note}` : "缺前置。";
-    return note ? `失败。${note}` : "失败。";
+    return note ? `失败。${amountText}${note}` : `失败。${amountText || "金额校验失败。"}`;
   }
 
   function resultListHtml(batch) {
@@ -1264,12 +1380,18 @@
     });
   }
 
+  function collectRelativeAdjustment(field) {
+    const mode = document.querySelector(`[data-sr-adjustment-target="${field}"].active`)?.dataset.srAdjustmentMode || "same";
+    const raw = document.querySelector(`[data-sr-adjustment-value="${field}"]`)?.value || "0";
+    const value = mode === "same" || mode === "zero" ? 0 : Math.abs(Number(raw || 0));
+    return { mode, value: field === "quantity" ? Math.trunc(value) : String(value) };
+  }
+
   function collectParameters(item) {
     const parameters = normalizedParameters(item);
     const wait = fieldEl("#srLedgerWait")?.value;
     if (wait != null && wait !== "") parameters.ledger_wait_seconds = Number(wait);
     if (fieldEl("#srPaymentMode")) parameters.payment_mode = fieldEl("#srPaymentMode").value || "balance";
-    if (fieldEl("#srAmountStep")) parameters.amount_step = fieldEl("#srAmountStep").value || parameters.amount_step || "1";
     if (fieldEl("#srItemCount")) {
       parameters.order = {
         item_count: Number(fieldEl("#srItemCount").value || 1),
@@ -1325,15 +1447,13 @@
     }
     if (fieldEl("#srProblemType")) {
       const problem = parameters.problem_goods || {};
+      const hasExplicitAdjustments = Boolean(document.querySelector('[data-sr-adjustment-source="explicit"]'));
       parameters.problem_goods = {
         ...problem,
         problem_type: Number(fieldEl("#srProblemType").value),
         problem_num: Number(fieldEl("#srProblemNum").value),
         problem_description: fieldEl("#srProblemDescription").value || "系统回归问题产品",
         translation_content: fieldEl("#srTranslationContent").value || "システム回帰テスト",
-        pre_num: Number(fieldEl("#srPreNum").value),
-        pre_price: { value: fieldEl("#srPrePrice").value || "0", currency: "CNY" },
-        pre_freight: { value: fieldEl("#srPreFreight").value || "0", currency: "CNY" },
         client_deal_choice: fieldEl("#srClientDeal").value,
         client_deal_other: fieldEl("#srClientOther")?.value || "",
         service_deal_suggest: Number(fieldEl("#srServiceSuggest").value),
@@ -1344,6 +1464,11 @@
         purchase_remark: fieldEl("#srPurchaseRemark")?.value || problem.purchase_remark || "系统回归",
         confirm_distribution: fieldEl("#srConfirmDistribution") ? fieldEl("#srConfirmDistribution").checked : problem.confirm_distribution !== false,
       };
+      if (hasExplicitAdjustments) {
+        parameters.problem_goods.quantity_adjustment = collectRelativeAdjustment("quantity");
+        parameters.problem_goods.price_adjustment = collectRelativeAdjustment("price");
+        parameters.problem_goods.freight_adjustment = collectRelativeAdjustment("freight");
+      }
     }
     return parameters;
   }
@@ -1559,6 +1684,16 @@
   }
 
   function bindPage() {
+    document.querySelectorAll("[data-sr-adjustment-mode]").forEach((button) => button.addEventListener("click", () => {
+      const field = button.dataset.srAdjustmentTarget;
+      document.querySelectorAll(`[data-sr-adjustment-target="${field}"]`).forEach((candidate) => candidate.classList.toggle("active", candidate === button));
+      markRelativeAdjustmentExplicit(field);
+      updateRelativeAdjustmentControl(field);
+    }));
+    document.querySelectorAll("[data-sr-adjustment-value]").forEach((input) => input.addEventListener("input", () => {
+      markRelativeAdjustmentExplicit(input.dataset.srAdjustmentValue);
+      updateRelativeAdjustmentControl(input.dataset.srAdjustmentValue);
+    }));
     document.querySelector("#srProject")?.addEventListener("change", async (event) => {
       persistDrawer();
       srState.projectId = event.target.value;

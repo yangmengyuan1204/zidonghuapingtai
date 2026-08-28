@@ -35,6 +35,18 @@
       return;
     }
 
+    // Prefer direct state sync: click-based activation races with /api/auth/me and
+    // can leave v3_embed iframes stuck on default dashboard (looks like 执行报告).
+    if (window.state && typeof window.state === 'object') {
+      if (window.state.view !== view) {
+        window.state.view = view;
+        if (typeof window.renderShell === 'function') {
+          Promise.resolve(window.renderShell()).catch(function () {});
+        }
+      }
+      return;
+    }
+
     var button = document.querySelector('[data-view="' + view + '"]');
     if (button) {
       button.click();

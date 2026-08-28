@@ -1,0 +1,63 @@
+{
+  "body": {
+    "porder_sn": "OP20260302150837-15",
+    "box_info": [
+      {
+        "id": 1201,
+        "box_id": 1201,
+        "number": 1,
+        "express_no": "",
+        "weight": 2,
+        "type": 1,
+        "length": 30,
+        "width": 20,
+        "height": 10,
+        "volume": 6000,
+        "final_weight": 2,
+        "volume_weight": 0,
+        "logistics_id": "",
+        "warehouse_city": 1,
+        "detail": [
+          {
+            "id": 3118,
+            "order_detail_sku_id": 0,
+            "order_detail_stock_id": 492,
+            "inventory_id": 0,
+            "order_sn": "Y20251209131627-15-XH",
+            "order_type": 1,
+            "goods_name": "碎鸡蛋手机支架打碎的鸡蛋摔破的鸡蛋恶作剧搞怪整人玩具礼盒礼物",
+            "num": 2,
+            "unpacked_num": 2,
+            "packed_num": 0,
+            "box_num": 2,
+            "detail_id": 3118
+          }
+        ]
+      }
+    ],
+    "box_list": [
+      {
+        "id": 1201,
+        "number": 1,
+        "express_no": "",
+        "weight": 2,
+        "type": 1,
+        "length": 30,
+        "width": 20,
+        "height": 10,
+        "volume": 6000,
+        "final_weight": 0,
+        "volume_weight": 0,
+        "logistics_id": "",
+        "warehouse_city": "",
+        "detail": []
+      }
+    ]
+  },
+  "resp": {
+    "success": false,
+    "code": 10000,
+    "msg": "第1箱装箱数据为空，请操作后重试",
+    "data": ""
+  }
+}

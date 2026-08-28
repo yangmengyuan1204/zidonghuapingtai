@@ -1,0 +1,4873 @@
+{
+  "front_inquiry": [
+    {
+      "sn": "X20260808134327-15-OEM",
+      "user_status": 1,
+      "status_name": "未翻译",
+      "goods": "11111",
+      "admin_status": null
+    },
+    {
+      "sn": "X20260807093928-15-OEM",
+      "user_status": 2,
+      "status_name": "翻译完成, 未报价",
+      "goods": "111",
+      "admin_status": null
+    },
+    {
+      "sn": "X20260805144828-15-OEM",
+      "user_status": 4,
+      "status_name": "询价完成",
+      "goods": "测试商品",
+      "admin_status": null
+    },
+    {
+      "sn": "X20260805143420-15-OEM",
+      "user_status": 1,
+      "status_name": "未翻译",
+      "goods": "测试商品",
+      "admin_status": null
+    },
+    {
+      "sn": "X20260805143058-15-OEM",
+      "user_status": 1,
+      "status_name": "未翻译",
+      "goods": "测试跟单",
+      "admin_status": null
+    }
+  ],
+  "front_sample": [
+    {
+      "sn": "Y20260805145106-15-OEM",
+      "user_status": 9,
+      "status_name": "上架中",
+      "goods": "测试商品",
+      "admin_status": 60
+    },
+    {
+      "sn": "Y20260806140526-15-OEM",
+      "user_status": 9,
+      "status_name": "上架中",
+      "goods": "测试商品",
+      "admin_status": 60
+    },
+    {
+      "sn": "Y20260702151425--OEM",
+      "user_status": 10,
+      "status_name": "上架完成",
+      "goods": "测试商品",
+      "admin_status": 64
+    },
+    {
+      "sn": "Y20260702130651-15-OEM",
+      "user_status": 10,
+      "status_name": "上架完成",
+      "goods": "测试商品",
+      "admin_status": 64
+    },
+    {
+      "sn": "Y20260702110850-15-OEM",
+      "user_status": 1,
+      "status_name": "报价中",
+      "goods": "测试商品",
+      "admin_status": 1
+    }
+  ],
+  "front_bulk": [
+    {
+      "sn": "D20260706163753-15-OEM",
+      "user_status": 1,
+      "status_name": "报价中",
+      "goods": "小原的bug",
+      "admin_status": 1
+    },
+    {
+      "sn": "D20260706152119-15-OEM-AM-01",
+      "user_status": 1,
+      "status_name": "报价中",
+      "goods": "bug检测机",
+      "admin_status": 20
+    },
+    {
+      "sn": "D20260702161145-15-OEM",
+      "user_status": 1,
+      "status_name": "报价中",
+      "goods": "探测前台确认2",
+      "admin_status": 1
+    },
+    {
+      "sn": "D20260626104658-15-OEM",
+      "user_status": 9,
+      "status_name": "上架中",
+      "goods": "バッグ",
+      "admin_status": 60
+    },
+    {
+      "sn": "D20260616092358-15-OEM",
+      "user_status": 10,
+      "status_name": "上架完成",
+      "goods": "靴",
+      "admin_status": 64
+    }
+  ],
+  "front_porder": [
+    {
+      "sn": "OP20260616095955-15",
+      "user_status": 1,
+      "status_name": null,
+      "goods": null,
+      "admin_status": null
+    },
+    {
+      "sn": "OP20260615161919-15",
+      "user_status": 6,
+      "status_name": null,
+      "goods": null,
+      "admin_status": null
+    },
+    {
+      "sn": "OP20260615153415-15",
+      "user_status": 6,
+      "status_name": null,
+      "goods": null,
+      "admin_status": null
+    },
+    {
+      "sn": "OP20260615140351-15",
+      "user_status": 6,
+      "status_name": null,
+      "goods": null,
+      "admin_status": null
+    },
+    {
+      "sn": "OP20260309171450-15",
+      "user_status": 1,
+      "status_name": null,
+      "goods": null,
+      "admin_status": null
+    }
+  ],
+  "admin_translate": [
+    {
+      "sn": "X20260805143420-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260805143058-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "测试跟单",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260804144338-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "测试跟进",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260703101949-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "YYYY",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701115001-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260204132001-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "再来",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260123155916-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "321321",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260123155811-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "123123123",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251209170054-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "11",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251205165347-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "12",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251124151725-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "测试111",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251113151329-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "11",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251113110039-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "57",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251113105357-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "6856",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251113105043-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "45754",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251113103034-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "111",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251105134543-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "测一个留底样",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251031092507-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "询价单删除",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251028171210-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "留底仓创建",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251028150947-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "4324",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251027160352-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "留底",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251020153751-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "莆田鞋纯原NB1906RHC浪新百伦威复古老爹鞋情侣新款女鞋透气跑鞋",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250916133809-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "test",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250910134810-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "test",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250820160310-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "测试留底仓",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250403145804-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250212140915-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "小章采购测试阿三发射点",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250211172246-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "水电费",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241224190233-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "测试SKU图片",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241224185537-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "测试sku图片",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241216111021-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241210114504-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "高货值提醒",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241129142942-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "test工厂",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241123141258-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241123131716-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "催催催",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241120142227-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "测试option 摄影服务",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241120134429-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "拍照新规则计算",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241119160323-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "大货起订量的输入框直接默认填充客户的希望数量，可自行编辑修改",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241118111657-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "工厂短信发送时间时间节点根据纳期自动调整",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241115142958-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241115131550-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "测试两条报价",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241112160900-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241109113708-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "ODM自动报价测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241109144047-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241108140202-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "OEM自动报价测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241104141103-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "自动报价-OEM",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241022111321-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241017132148-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "小杨让我走一条目标工厂",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241021132937-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "测试备注",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241018144226-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241017144948-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "回归测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241017131336-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "小程序走流程",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241017093903-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "工厂",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241016191057-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "小杨不让我用测试单，我自己创一个",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241016173928-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "小程序测试9",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241016134306-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "小程序测试8",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241015134807-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "小程序测试7",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241015101324-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "小程序测试6",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241014171111-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "小程序测试5",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241014162956-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "小程序专业询价单4",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241011154556-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "小程序测试3",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241010193037-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "小程序专用询价单2",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241009104941-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "小程序专用询价单",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240527132247-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "测试衣服",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240624153608-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "删除测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240924113111-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240923103729-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240828110402-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "商品名",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240810140843-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "测试1",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240810134502-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "询价单报价比例默认100",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240809154518-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "OEM变变变",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240809134414-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "OEM订单",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240807133441-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "きもの",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240802111409-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240730092737-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240724103944-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "sku追加测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240717133534-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240716131951-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240716091922-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240713164528-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240713141845-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240713140219-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240713135529-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240713135228-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240713133551-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240713132038-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240713112731-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240712172515-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240712170727-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240712170451-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240712170354-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240712170211-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240712163856-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240712143612-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240705134207-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240629103754-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "121",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240625140059-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240624103108-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240622154803-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240622105217-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240622093123-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240620164711-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "1688询价分类",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240620111103-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "商品详情创建",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240620105424-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240620103053-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240620101937-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240619104125-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "12",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240615170025-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "测试新增状态",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240530105633-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "毛衣",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240530101952-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "党员为人民服务",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240528142742-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "上衣",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240528134939-15-FL",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240525162538-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "https://detail.1688.com/offer/594331432678.html?_t=1716625459339&spm=a2615.7691456.co_1_0_wangpu_score_0_0_0_0_0_0_0000_0.0",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240520173226-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "12",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240517112514-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "这个是工厂下的单子",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240516162126-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "5.16测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240516111158-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 2,
+      "goods": "工厂测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20240516101743-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "admin_status": 1,
+      "goods": "背包",
+      "follow_up_status": "serious_delay"
+    }
+  ],
+  "admin_audit": [
+    {
+      "sn": "X20260703104935-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "这个真难写",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701165521-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701165129-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701154026-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701153852-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701153704-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701153555-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701103431-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "这个是写脚本的辅料商品名",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260611143241-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "测试调整担当",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260121175928-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "袋",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260112093600-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 0,
+      "admin_status": 0,
+      "goods": "111111111111111111",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250910135220-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "创建",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250604141247-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "11",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250422133947-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "这个是回归测试的询价单",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250402162744-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250402141719-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250401134545-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "测试一个流程giao",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250331105730-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": -2,
+      "goods": "询价单新流程",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250329094814-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "hdsng-",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250328173034-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "测试5555",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250324134910-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "pen",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250301152314-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "商品名",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250219154747-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 3,
+      "goods": "测试20天纳期",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250218105141-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250217112339-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250214193958-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250214171022-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250212145431-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 3,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250121132252-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "测试仓库详情",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20241225111109-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 1,
+      "goods": "测试测试测试是",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20241216111145-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 1,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    }
+  ],
+  "admin_inquiry": [
+    {
+      "sn": "X20260706160353-15-FL",
+      "user_id": 15,
+      "y_admin_status": 2,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "这个是辅料名",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260703111943-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "测试商品",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260703091910-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 2,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "小原的原型看不懂",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260702164033-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "多工厂差异化报价测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260702152807-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 2,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "测试商品",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260702152705-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 2,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "测试商品",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260702090455-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测前台确认2",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260702090326-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测前台inquiryDetail",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260702090215-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测前台确认商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260702090101-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测全新双调商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701175947-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测双调商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701175727-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测quotation商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701175539-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测状态商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701175231-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701175021-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701174153-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701173818-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701172740-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701172011-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701171328-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701170937-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701170631-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701170358-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701163005-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701162803-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701162559-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 2,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260701154839-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 2,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701103431-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "这个是写脚本的辅料商品名",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260615165801-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 2,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "靴",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260611143241-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "测试调整担当",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260403173858-15-FL",
+      "user_id": 15,
+      "y_admin_status": 2,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "测试123",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260121175928-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "袋",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251203161715-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "1",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251127154945-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "来试水第二个商品2",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251111185007-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "辅料测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251027145259-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "留底仓--可以登记--现在登记",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251024170532-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "户外大黄靴",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251020164615-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "防砸防刺穿劳保鞋百华防滑耐磨安全鞋牛巴舒适高邦男款",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251018133946-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "水杯",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250915104845-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "测试商品3",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250910135220-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "创建",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250822163800-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "留底仓测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250820160743-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "odm留底仓",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250812132638-15-FL",
+      "user_id": 15,
+      "y_admin_status": 2,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "异常辅料回归测试",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250701152730-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "123123",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250618142631-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "青苹果",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250606143059-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "这是工厂测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250604141247-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "11",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250604133831-15-FL",
+      "user_id": 15,
+      "y_admin_status": 2,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "辅料名",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250422133947-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "这个是回归测试的询价单",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250412165805-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": -1,
+      "admin_status": 0,
+      "goods": "asdf",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250402162744-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250402143237-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250402141719-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250401134545-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "测试一个流程giao",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250331105730-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": -2,
+      "goods": "询价单新流程",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250329094814-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "hdsng-",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250328173034-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "测试5555",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250328145423-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "测试22222",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250324134910-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "pen",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250301152314-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "商品名",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250221152631-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "23",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250221092116-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "new test goods",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250219154747-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 3,
+      "goods": "测试20天纳期",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250218105141-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250217112339-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250214193958-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250214171022-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250212145431-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 3,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250124143207-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 2,
+      "g_admin_status": -1,
+      "admin_status": 0,
+      "goods": "说奥迪发",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250121132252-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 0,
+      "goods": "测试仓库详情",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241225111109-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 1,
+      "goods": "测试测试测试是",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241216111145-15-FL",
+      "user_id": 15,
+      "y_admin_status": 1,
+      "g_admin_status": 1,
+      "admin_status": 1,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241210134729-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "企业微信",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20241210105831-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20241209130710-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "赊账专用",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20241123143331-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "测试翻译",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20241114133230-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20241113164617-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 2,
+      "goods": "fl格式发给",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20241113134105-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "1113--OEM订单--自动报价测试",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240924141858-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "摄影测试",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240912134349-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "测试在库数变化",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240812141205-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "这个是ODM，要改成OEM",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240812133826-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "这个是OEM，要改ODM",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240808185503-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "这个是ODM",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240808184722-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "这个是oem",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240808151758-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240808134443-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "出入金调整，加人民币",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240805141957-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "测试大货单调整手续费比例",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240802162053-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240802150052-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240802104143-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "测试服务费差值减少",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240801150733-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "辅料关联订单",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20240801145833-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    }
+  ],
+  "admin_quote": [
+    {
+      "sn": "X20260703111943-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "测试商品",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260702164033-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "多工厂差异化报价测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260702090455-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测前台确认2",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260702090326-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测前台inquiryDetail",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260702090215-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测前台确认商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260702090101-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测全新双调商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701175947-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测双调商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701175727-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测quotation商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701175539-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "探测状态商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701175231-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701175021-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701174153-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701173818-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701172740-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701172011-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701171328-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701170937-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701170631-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701170358-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701163005-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260701162803-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "全流程测试商品",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20260615142238-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "紙タグ",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260615132111-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "バッグ",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260613162528-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "太刀",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260613150950-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "テストカバン",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260613095858-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "str",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260613094551-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "スクリーン",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260612141056-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "0612测试商品",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260129153636-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "bug检测机",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20260115172755-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "小狗牵引绳",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251212152240-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "测试询价工厂",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251209143235-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "测试一下新增的仓库",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251208154224-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "邮件",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251203161715-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "1",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251201110544-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "来第三个商品3",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251127154945-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "来试水第二个商品2",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251127150936-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "先来一个试试水的商品",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251118160945-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "测试一下指定工厂",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251117130921-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "11.17留底仓测试",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251115101113-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "11.15留底仓",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251114112059-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "1114留底仓test",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251113094029-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "1113测试留底仓",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251112130825-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "1112留底仓测试",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251111185007-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "辅料测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251110095526-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "11.10询价单",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251107133459-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "1107测试",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251106154953-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "1106在跑一单留底仓 的",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251104192124-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "多建立几个商品看留底仓",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251103163115-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "这是ODM的留底仓库",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251028131850-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "留底001",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251027145259-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "留底仓--可以登记--现在登记",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251027105902-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "留底仓先测一下",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251024170532-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "户外大黄靴",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251024114518-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "烫钻",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251024110835-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "测试辅料",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251024090919-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "黄色靴子",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251023094756-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "运动鞋",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251022140332-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "防风冲锋衣",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251022093016-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "跨境电商连帽夹克男 薄款冲锋衣男装风衣户外运动休闲外套男春秋",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251021091834-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "牛仔裤",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251020164615-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "防砸防刺穿劳保鞋百华防滑耐磨安全鞋牛巴舒适高邦男款",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20251018150457-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "五路财神手链五行黑曜石本命年手串化解红玛瑙金木水火土男女手串",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20251018133946-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "水杯",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250915104845-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "测试商品3",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250830133602-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "odm留底仓",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250822163800-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "留底仓测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250820160743-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "odm留底仓",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250808145020-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "测试异常辅料的辅料单",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250807100421-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "辅料算问题产品",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250806135122-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "呦，写bug呢",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250805164949-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "瞧，这是bug",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250710094517-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "回归测试ODM",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250709105018-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "回归测试",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250707175618-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "新测试辅料ccd",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250704162602-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "50000以上",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250704162531-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "20000-50000元",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250704162453-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "10000-20000元",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250704162246-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "5000-10000元",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250704162146-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "5000元 以下",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250704141250-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "50000块以上",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250704141153-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "20000元 -50000元",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250704141004-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "10000元- 20000元",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250704132924-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "5000元 -10000元",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250704110730-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "大货订单5000元以下",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250701152730-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "123123",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250626152603-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "测试优惠券的询价单DD",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250618142631-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "青苹果",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250606143059-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "这是工厂测试",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250604141337-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "11",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250513160727-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "供应商单子",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250423131626-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "这是辅料的回归测试",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250422100808-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "阿斯蒂芬",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250421165120-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "这是辅料名称",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250421163105-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "这是一个测试的商品",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250417111702-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "大货单的叛逆流程",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250415154813-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "叛逆的大货单流程",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250414170819-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "狡猾的样品单",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250412165805-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": -1,
+      "admin_status": 0,
+      "goods": "asdf",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250412132234-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "这个是样品单流程",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250407092740-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "辅料测试test001",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250402143237-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 0,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250328145423-15-ODM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "测试22222",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250328101529-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "在跑个流程",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20250221152631-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "23",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250221092116-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 2,
+      "admin_status": 0,
+      "goods": "new test goods",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "X20250214185143-15-FL",
+      "user_id": 15,
+      "y_admin_status": 4,
+      "g_admin_status": 4,
+      "admin_status": 0,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20241210134729-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "企业微信",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20241210105831-15-FL",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "fl格式发给",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "X20241209130710-15-OEM",
+      "user_id": 15,
+      "y_admin_status": 3,
+      "g_admin_status": 3,
+      "admin_status": 3,
+      "goods": "赊账专用",
+      "follow_up_status": "normal"
+    }
+  ],
+  "admin_sample_confirm": [
+    {
+      "sn": "Y20260403172102-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 10,
+      "goods": "bug检测机",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "Y20260127131240-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 12,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20260122134712-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 12,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20260121181231-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 12,
+      "goods": "小狗牵引绳",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20251209150328-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 10,
+      "goods": "测试一下新增的仓库",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "Y20250412165859-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 10,
+      "goods": "这个是样品单流程",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "Y20250327163053-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "测试SKU图片",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250327155714-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "23",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250318175144-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 12,
+      "goods": "测试20天纳期",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250318173930-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 12,
+      "goods": "测试20天纳期",
+      "follow_up_status": "normal"
+    }
+  ],
+  "admin_sample_quote": [
+    {
+      "sn": "Y20260613125728-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "str",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250410093110-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250318175204-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250224135623-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "测试20天纳期",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250215175215-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250215175046-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250215174355-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250215172617-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250215171804-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250213103142-15-ODM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "测试仓库详情",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250212155757-15-ODM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "测试仓库详情",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250212154302-15-ODM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 20,
+      "goods": "测试仓库详情",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250207090709-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250206171255-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20250124132029-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241217185917-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241223104922-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241223093602-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241220135631-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241218163938-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241218154848-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241218154220-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241218152315-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241218151917-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241218143147-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241218142410-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241218112808-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241217165320-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241218094623-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241218091118-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241217092541-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241217092000-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241217091257-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241217090046-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241216161950-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241213150619-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241213142035-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241212143947-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241212103308-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241210192922-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241205201151-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241205200958-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241205171615-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241205143834-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241205140708-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241205133520-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241204152401-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241202173501-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241202162354-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241202162058-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241202152232-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241130133608-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241129152408-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241129093544-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241127172336-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241127112144-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241113134503-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "1113--OEM订单--自动报价测试",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241112164953-15-ODM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "ODM自动报价测试",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241021135723-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241021133720-15-ODM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "测试备注",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241021091330-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20241017145305-15-XH",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20240924145309-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "摄影测试",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20240812094418-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 24,
+      "goods": "这个是ODM",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20240807140443-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "测试大货单调整手续费比例",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "Y20240807135439-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 22,
+      "goods": "测试大货单调整手续费比例",
+      "follow_up_status": "normal"
+    }
+  ],
+  "admin_bulk_confirm": [
+    {
+      "sn": "D20260613110838-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 12,
+      "goods": "スクリーン",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "D20251211133618-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 12,
+      "goods": "测试一下新增的仓库",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "D20250522132636-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 12,
+      "goods": "供应商单子",
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "D20250513160951-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 10,
+      "goods": "供应商单子",
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "D20250313114455-15-OEM",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 12,
+      "goods": "测试20天纳期",
+      "follow_up_status": "normal"
+    }
+  ],
+  "admin_porder_translate": [
+    {
+      "sn": "OP20260302150837-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260210131239-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260131100539-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260131100032-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260131095434-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260131095335-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260131095207-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260130142949-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260130142832-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260130142542-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260130142542-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260130134537-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260130132110-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260130113546-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260130101941-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260130101329-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260130100540-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260130093820-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260127143015-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260123170024-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260123165940-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260117132255-15-1",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20260117132255-15-2",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260112170559-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20260112092751-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20251224092617-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251215140533-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251208171831-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20251208143652-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20251119195327-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20251119093850-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251118141239-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251117144046-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20251115162230-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251115160202-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251115153859-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251031165812-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251031133814-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251030174043-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20251030140659-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251029164955-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20251029164758-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20251029144959-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251028160104-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20251028105606-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20251027174321-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20250715155658-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20250427171713-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20250427171306-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20250424141036-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20250320165304-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20250320165106-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20250303141520-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20250221170505-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20250221165747-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20250122132626-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20250121172452-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20250121160446-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20250121150139-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241225114227-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241224192853-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241224192226-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241223160759-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241217093648-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241213142330-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241205164545-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241204163705-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241203160541-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241129112427-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241128112043-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20241128103605-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20241118092923-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20240914093505-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20240912170457-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20240912142651-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20240912142624-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20240912142557-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20240912141949-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20240905151126-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20240905145311-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20240905142653-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20240905142315-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20240905142213-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "OP20240903141228-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "OP20240903140024-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "P20240618134104-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "P20240424144442-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "P20240411140318-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    },
+    {
+      "sn": "P20240411140258-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 2,
+      "goods": null,
+      "follow_up_status": "normal"
+    },
+    {
+      "sn": "P20240411114022-15",
+      "user_id": 15,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "admin_status": 1,
+      "goods": null,
+      "follow_up_status": "serious_delay"
+    }
+  ]
+}

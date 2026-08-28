@@ -1,0 +1,110 @@
+[
+  {
+    "name": "chk",
+    "path": "/admin/changeCheckNum",
+    "code": 1000,
+    "msg": "至少存在一条SKU"
+  },
+  {
+    "name": "chk",
+    "path": "/admin/changeCheckNum ",
+    "code": 1000,
+    "msg": "至少存在一条SKU"
+  },
+  {
+    "name": "chk",
+    "path": "/admin/checkComplete",
+    "code": 1000,
+    "msg": "至少存在一条SKU"
+  },
+  {
+    "name": "chk",
+    "path": "/admin/checkComplete ",
+    "code": 1000,
+    "msg": "至少存在一条SKU"
+  },
+  {
+    "name": "chk",
+    "path": "/admin/checkTempSave",
+    "code": 1000,
+    "msg": "至少存在一条SKU"
+  },
+  {
+    "name": "chk",
+    "path": "/admin/checkTempSave ",
+    "code": 1000,
+    "msg": "至少存在一条SKU"
+  },
+  {
+    "name": "complete-sku_info",
+    "path": "/admin/checkComplete ",
+    "code": 1000,
+    "msg": "至少存在一条SKU"
+  },
+  {
+    "name": "complete-check_list",
+    "path": "/admin/checkComplete ",
+    "code": 0,
+    "msg": "操作成功"
+  },
+  {
+    "name": "complete-list",
+    "path": "/admin/checkComplete ",
+    "code": 1000,
+    "msg": "至少存在一条SKU"
+  },
+  {
+    "name": "complete-sku",
+    "path": "/admin/checkComplete ",
+    "code": 1000,
+    "msg": "至少存在一条SKU"
+  },
+  {
+    "name": "complete-data",
+    "path": "/admin/checkComplete ",
+    "code": 1000,
+    "msg": "至少存在一条SKU"
+  },
+  {
+    "name": "savePorderExpress",
+    "path": "/admin/savePorderExpress",
+    "code": 0,
+    "msg": "操作成功"
+  },
+  {
+    "name": "updExpr",
+    "path": "/admin/updateExpressInfo",
+    "code": 0,
+    "msg": "操作成功"
+  },
+  {
+    "name": "updExpr",
+    "path": "/admin/updateExpressInfo",
+    "code": 1000,
+    "msg": "参数错误"
+  },
+  {
+    "name": "raise-14",
+    "path": "/admin/porderRaiseQuote",
+    "code": 10000,
+    "msg": "当前物流无法计算费用"
+  },
+  {
+    "name": "raise-35",
+    "path": "/admin/porderRaiseQuote",
+    "code": 0,
+    "msg": "操作成功"
+  },
+  {
+    "name": "ship",
+    "path": "/admin/porderShipGoods",
+    "code": 10000,
+    "msg": "当前状态无法操作"
+  },
+  {
+    "name": "sign",
+    "path": "/admin/porderSign",
+    "code": 10000,
+    "msg": "当前状态无法操作"
+  }
+]

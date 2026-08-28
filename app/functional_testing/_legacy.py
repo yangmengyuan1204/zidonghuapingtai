@@ -60,6 +60,9 @@ ALLOWED_UI_ACTIONS = {
     "assert_visible",
     "assert_url",
     "assert_value",
+    "extract_text",
+    "extract_value",
+    "resume_order_flow",
 }
 
 

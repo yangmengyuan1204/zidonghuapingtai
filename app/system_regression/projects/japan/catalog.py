@@ -90,7 +90,8 @@ def _guard(
 
 
 def _raw_definitions():
-    mixed_options = [dict(PACK_OPTION), dict(INSPECT_OPTION)]
+    # OPTION 数量与商品数量一致；真实 option_id/名称/价格来自当前日本站目录基线。
+    mixed_options = [{**PACK_OPTION, "num": 2}, {**INSPECT_OPTION, "num": 2}]
     pay_index = 0
     porder_index = 0
 
@@ -367,20 +368,20 @@ def _raw_definitions():
         ),
         _success(
             _porder_key(),
-            "配送单国际运费固定为88",
+            "配送单按KS-JP电子特殊便自动计算国际运费",
             "porder",
             "debit",
             runner_kind="porder_payment",
-            parameters=porder_panel(payment_mode="balance", price_manual=True, logistics_price="88"),
-            tags=("支付", "配送单", "人工运费"),
+            parameters=porder_panel(payment_mode="balance", logistics="25"),
+            tags=("支付", "配送单", "自动运费"),
         ),
         _success(
             _porder_key(),
-            "配送单按RW船便计算国际运费",
+            "配送单按Rロジ专用船便计算国际运费",
             "porder",
             "debit",
             runner_kind="porder_payment",
-            parameters=porder_panel(payment_mode="balance", logistics="20"),
+            parameters=porder_panel(payment_mode="balance", logistics="30"),
             tags=("支付", "配送单", "船便"),
         ),
         _success(
@@ -476,7 +477,7 @@ def _raw_definitions():
         ("商品增加补收手续费", "goods_up_charge_service", 2, False, "debit"),
         ("手续费减免券下商品减少", "goods_down_discount_service", 2, True, "credit"),
         ("手续费减免券下商品增加", "goods_up_discount_service", 2, True, "debit"),
-        ("手续费率变为0后退款", "zero_service_rate", 2, False, "credit"),
+        ("按订单运行时手续费率退款", "zero_service_rate", 2, False, "credit"),
     )
     services = tuple(
         _success(

@@ -1,0 +1,67 @@
+{
+  "steps": [
+    {
+      "name": "orderSign",
+      "path": "/admin/orderSign",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "name": "checkStart",
+      "path": "/admin/checkStart",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "name": "checkDetail",
+      "path": "/admin/checkDetail",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "name": "checkNum",
+      "path": "/admin/checkNum",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "name": "shelvesList",
+      "path": "/admin/shelvesList",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/shelvesList",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "name": "shelvesDetail",
+      "path": "/admin/shelvesDetail",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/shelvesDetail",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "name": "shelvesSave",
+      "path": "/admin/shelvesSave",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/shelvesSave",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+[
+  {
+    "ui": "修改",
+    "u": "/admin/samplesExpressNo",
+    "post": "{\"express_id\":1121,\"express_no\":\"SF1786762885\",\"express_remark\":\"auto\"}",
+    "resp": "{\"code\":0,\"msg\":\"操作成功\",\"data\":true,\"success\":true}"
+  }
+]

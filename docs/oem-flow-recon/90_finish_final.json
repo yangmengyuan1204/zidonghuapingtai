@@ -1,0 +1,19 @@
+{
+  "sample": {
+    "sn": "Y20260403172102-15-OEM",
+    "admin_status": 64,
+    "point": 6,
+    "name": "作业完成"
+  },
+  "bulk": {
+    "sn": "D20260613110838-15-OEM",
+    "admin_status": 48,
+    "point": 4,
+    "name": "待出货(largeDispatch服务器array_diff阻塞)"
+  },
+  "porder": {
+    "sn": "OP20260302150837-15",
+    "admin_status": 10,
+    "name": "完成/国际派送后"
+  }
+}

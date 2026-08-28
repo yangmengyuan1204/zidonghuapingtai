@@ -25,7 +25,7 @@ def _sync_compat_globals() -> None:
         globals()[name] = getattr(package, name)
 
 
-def _impl__step_timeout_ms(step: Dict[str, Any], default_seconds: int, cap_seconds: int = 8) -> int:
+def _impl__step_timeout_ms(step: Dict[str, Any], default_seconds: int, cap_seconds: int = 15) -> int:
     raw = step.get("timeout")
     if raw in (None, ""):
         return min(default_seconds, cap_seconds) * 1000
@@ -97,6 +97,22 @@ def _impl__locator_candidates(step: Dict[str, Any]) -> list[str]:
                     f'input[type="submit"][value*="{quoted}"]',
                 ]
             )
+    step_name = str(step.get("name") or "")
+    if "搜索" in step_name or "search" in step_name.lower() or "search" in primary.lower():
+        candidates.extend([
+            "button:has(img[src*='smallss'])",
+            "button[data-logger-action-type*='rakumart']",
+            ".flexAndCenter button",
+            "button:has(.el-icon-search)",
+        ])
+    if any(k in step_name.lower() or k in primary.lower() for k in ("cart", "カート", "购物车", "加购", "買い物かご")):
+        candidates.extend([
+            'button:has-text("ショッピングカートに入れる")',
+            'button:has-text("カートに追加")',
+            'button:has-text("カートに入れる")',
+            'button:has-text("カート")',
+            '.el-button--primary:has-text("カート")',
+        ])
     result = []
     for item in candidates:
         if item and item not in result:
@@ -152,15 +168,43 @@ def _impl__classify_ui_error(error: str, step: Dict[str, Any], current_url: str 
 
 def _impl__resolve_locator(page: Any, candidates: list[str], timeout_ms: int, state: str = "visible") -> tuple[Any, str, int]:
     errors = []
+    # 1. 第一轮：标准等待指定状态（如 visible）
     for locator in candidates:
         try:
             target = page.locator(locator).first
-            target.wait_for(state=state, timeout=timeout_ms)
+            req_state = "attached" if locator.strip().lower() in ("body", "html", ":root") else state
+            target.wait_for(state=req_state, timeout=timeout_ms)
             count = page.locator(locator).count()
             return target, locator, count
         except Exception as exc:
             errors.append(f"{locator}: {exc}")
             continue
+
+    # 2. 第二轮：若寻找可见元素失败，但元素在 DOM 中（如悬浮菜单、隐藏提示文案），查找其最近的可见祖先容器
+    if state == "visible":
+        for locator in candidates:
+            try:
+                target = page.locator(locator).first
+                if target.count() > 0:
+                    ancestor = target.locator(
+                        "xpath=ancestor-or-self::*[not(contains(@style,'display: none')) and not(contains(@style,'display:none')) and not(self::html) and not(self::body)][1]"
+                    )
+                    if ancestor.count() > 0 and ancestor.first.is_visible():
+                        return ancestor.first, f"{locator} (ancestor)", 1
+            except Exception:
+                continue
+
+    # 3. 第三轮：尝试 locator heal 自愈
+    for locator in candidates:
+        try:
+            healed = _heal_locator(page, locator, "; ".join(errors[-2:]))
+            if healed:
+                target = page.locator(healed).first
+                target.wait_for(state=state, timeout=min(timeout_ms, 3000))
+                return target, healed, page.locator(healed).count()
+        except Exception:
+            continue
+
     raise TimeoutError("未找到可用定位器：" + "；".join(errors[-4:]))
 
 
@@ -187,7 +231,10 @@ def _impl__wait_text_contains(target: Any, expected: Any, timeout_ms: int) -> st
     while True:
         remaining_ms = max(250, int((deadline - time.time()) * 1000))
         try:
-            last_text = target.inner_text(timeout=min(1000, remaining_ms))
+            try:
+                last_text = target.inner_text(timeout=min(1000, remaining_ms))
+            except Exception:
+                last_text = target.evaluate("el => el.innerText || el.textContent || ''")
             if expected_text in _normalize_text(last_text):
                 return last_text
         except Exception as exc:
@@ -247,6 +294,36 @@ def _impl__heal_locator(page: Any, failed_locator: str, error_text: str) -> str 
             except Exception:
                 pass
 
+    if "search" in failed_locator.lower() or "搜索" in failed_locator:
+        for search_cand in [
+            "button:has(img[src*='smallss'])",
+            "button[data-logger-action-type*='rakumart']",
+            ".flexAndCenter button",
+            "button:has(.el-icon-search)",
+            "button[type='submit']",
+        ]:
+            try:
+                el = page.locator(search_cand).first
+                if el.count() > 0 and el.is_visible():
+                    heal_candidates.append(search_cand)
+            except Exception:
+                pass
+
+    if any(k in failed_locator.lower() for k in ("cart", "カート", "购物车", "加购", "買い物かご")):
+        for cart_cand in [
+            'button:has-text("ショッピングカートに入れる")',
+            'button:has-text("カートに追加")',
+            'button:has-text("カートに入れる")',
+            'button:has-text("カート")',
+            '.el-button--primary:has-text("カート")',
+        ]:
+            try:
+                el = page.locator(cart_cand).first
+                if el.count() > 0 and el.is_visible():
+                    heal_candidates.append(cart_cand)
+            except Exception:
+                pass
+
     return heal_candidates[0] if heal_candidates else None
 
 
@@ -263,7 +340,7 @@ def _impl__wait_page_stable(page: Any, timeout: int = 1500) -> None:
     page.wait_for_timeout(300)
 
 
-def _step_timeout_ms(step: Dict[str, Any], default_seconds: int, cap_seconds: int=8) -> int:
+def _step_timeout_ms(step: Dict[str, Any], default_seconds: int, cap_seconds: int = 15) -> int:
     _sync_compat_globals()
     return _impl__step_timeout_ms(step, default_seconds, cap_seconds)
 

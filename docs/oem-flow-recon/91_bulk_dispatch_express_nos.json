@@ -1,0 +1,15 @@
+{
+  "request": {
+    "order_sn": "D20260613110838-15-OEM",
+    "express_nos": [
+      "FULL1786771237"
+    ]
+  },
+  "response": {
+    "code": 0,
+    "msg": "操作成功",
+    "data": true,
+    "success": true
+  },
+  "after_status": 50
+}

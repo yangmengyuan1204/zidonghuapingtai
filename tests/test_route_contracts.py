@@ -94,6 +94,74 @@ def test_migration_bridge_consumes_initial_legacy_hash():
     assert behavior["invalid"] == {"clicked": 0, "href": "UNCHANGED", "queryCalls": 0}
 
 
+def test_legacy_app_syncs_view_from_location_hash_before_bootstrap():
+    """v3 embed must honor #/viewKey before first render, not stay on default dashboard."""
+    root = Path(__file__).resolve().parents[1]
+    app_js = (root / "static" / "app.js").read_text(encoding="utf-8")
+
+    assert "function readHashViewKey(" in app_js
+    assert "window.state = state" in app_js
+    assert "const initialHashView = readHashViewKey()" in app_js
+    assert "if (initialHashView) state.view = initialHashView" in app_js
+
+
+def test_migration_bridge_prefers_direct_state_sync_for_v3_embed():
+    """When legacy state is available, hash activation must set state.view directly (no dashboard stuck)."""
+    bridge_path = Path(__file__).resolve().parents[1] / "static" / "migration-bridge.js"
+    script = textwrap.dedent(
+        f"""
+        const fs = require('fs');
+        const vm = require('vm');
+        const source = fs.readFileSync({json.dumps(str(bridge_path))}, 'utf8');
+
+        async function run() {{
+          let renderCalls = 0;
+          let clicked = 0;
+          const state = {{ view: 'dashboard' }};
+          const context = {{
+            fetch() {{ return Promise.resolve({{ json() {{ return Promise.resolve({{ migrated: ['dataScripts', 'records'] }}); }} }}); }},
+            document: {{
+              addEventListener() {{}},
+              querySelector() {{
+                clicked += 1;
+                return {{ click() {{ clicked += 1; }} }};
+              }},
+            }},
+            window: {{
+              location: {{ hash: '#/dataScripts', href: 'UNCHANGED', search: '?v3_embed=1' }},
+              state,
+              renderShell() {{ renderCalls += 1; }},
+            }},
+            setTimeout(fn) {{ fn(); return 1; }},
+            Set,
+            URLSearchParams,
+          }};
+          vm.runInNewContext(source, context);
+          await new Promise((resolve) => setImmediate(resolve));
+          await new Promise((resolve) => setImmediate(resolve));
+          return {{ view: state.view, renderCalls, clicked, href: context.window.location.href }};
+        }}
+
+        run().then((result) => process.stdout.write(JSON.stringify(result)))
+          .catch((error) => {{ console.error(error); process.exit(1); }});
+        """
+    )
+    result = subprocess.run(["node", "-e", script], check=True, capture_output=True, text=True)
+    behavior = json.loads(result.stdout)
+    assert behavior["view"] == "dataScripts"
+    assert behavior["renderCalls"] >= 1
+    assert behavior["href"] == "UNCHANGED"
+
+
+def test_legacy_embed_recovers_when_iframe_state_mismatches_route():
+    """LegacyEmbed must force iframe state.view to the Vue route when hash/state drift."""
+    embed = Path(__file__).resolve().parents[1] / "frontend" / "src" / "views" / "LegacyEmbedView.vue"
+    source = embed.read_text(encoding="utf-8")
+    assert "frameWindow.state.view" in source
+    assert "renderShell" in source
+    assert "state.view !== viewKey.value" in source
+
+
 def test_data_factory_stays_on_v3_with_legacy_embed():
     root = Path(__file__).resolve().parents[1]
     router_source = (root / "frontend" / "src" / "router" / "index.js").read_text(encoding="utf-8")

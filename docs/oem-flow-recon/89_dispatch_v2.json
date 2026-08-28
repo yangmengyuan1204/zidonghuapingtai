@@ -1,0 +1,11 @@
+{
+  "sample": {
+    "admin_status": 50,
+    "point": 5
+  },
+  "bulk": {
+    "admin_status": 36,
+    "point": 4
+  },
+  "express_id_used": 14
+}

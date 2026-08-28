@@ -124,10 +124,6 @@ def test_attach_page_recorder_captures_navigation_from_second_tab():
         def __init__(self):
             self.main_frame = object()
             self.handlers = {}
-            self.binding_name = ""
-
-        async def expose_binding(self, name, _callback):
-            self.binding_name = name
 
         def on(self, event, callback):
             self.handlers[event] = callback
@@ -142,12 +138,12 @@ def test_attach_page_recorder_captures_navigation_from_second_tab():
         case_name="多标签页录制",
         start_url="https://example.test",
     )
-    asyncio.run(ui_recording_session._attach_page_recorder(session, page))
+    ui_recording_session._attach_page_recorder(session, page)
 
     page.main_frame = SimpleNamespace(url="https://example.test/detail")
     page.handlers["framenavigated"](page.main_frame)
 
-    assert page.binding_name == "__recordUiEvent"
+    assert {"framenavigated", "domcontentloaded", "load"}.issubset(page.handlers)
     assert session.events[-1]["url"] == "https://example.test/detail"
 
 
