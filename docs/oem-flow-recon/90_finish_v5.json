@@ -1,0 +1,753 @@
+{
+  "sample": [
+    {
+      "name": "checkDetail",
+      "path": "/admin/checkDetail",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "name": "changeCheckNum",
+      "path": "/admin/changeCheckNum",
+      "code": 1000,
+      "msg": "请完善信息后提出",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM",
+        "check_list": [
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2378,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "红1",
+            "sku_tr": "红1",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2379,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "黄2",
+            "sku_tr": "黄2",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2380,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "蓝3",
+            "sku_tr": "蓝3",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2381,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "绿4",
+            "sku_tr": "绿4",
+            "after_sale_num": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "checkTempSave",
+      "path": "/admin/checkTempSave",
+      "code": 1000,
+      "msg": "请完善信息后提出",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM",
+        "check_list": [
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2378,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "红1",
+            "sku_tr": "红1",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2379,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "黄2",
+            "sku_tr": "黄2",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2380,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "蓝3",
+            "sku_tr": "蓝3",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2381,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "绿4",
+            "sku_tr": "绿4",
+            "after_sale_num": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "checkReport",
+      "path": "/admin/checkReport",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM",
+        "check_list": [
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2378,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "红1",
+            "sku_tr": "红1",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2379,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "黄2",
+            "sku_tr": "黄2",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2380,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "蓝3",
+            "sku_tr": "蓝3",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2381,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "绿4",
+            "sku_tr": "绿4",
+            "after_sale_num": 0
+          }
+        ],
+        "image": [],
+        "video": [],
+        "remark": "auto",
+        "remark_tr": "auto"
+      }
+    },
+    {
+      "name": "checkComplete",
+      "path": "/admin/checkComplete",
+      "code": 1000,
+      "msg": "至少存在一条SKU",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "name": "checkComplete+list",
+      "path": "/admin/checkComplete",
+      "code": 1000,
+      "msg": "请完善信息后提出",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM",
+        "check_list": [
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2378,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "红1",
+            "sku_tr": "红1",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2379,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "黄2",
+            "sku_tr": "黄2",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2380,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "蓝3",
+            "sku_tr": "蓝3",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2381,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "绿4",
+            "sku_tr": "绿4",
+            "after_sale_num": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "samplesCheckReport",
+      "path": "/admin/samplesCheckReport",
+      "code": 1000,
+      "msg": "参数错误",
+      "body": {
+        "keys": [
+          "order_sn",
+          "check_list",
+          "image",
+          "video",
+          "remark",
+          "remark_tr"
+        ]
+      }
+    },
+    {
+      "name": "samplesCheckRaise",
+      "path": "/admin/samplesCheckRaise",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "name": "orderShelve",
+      "path": "/admin/orderShelve",
+      "code": 1000,
+      "msg": "参数错误",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM",
+        "check_list": [
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2378,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "红1",
+            "sku_tr": "红1",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2379,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "黄2",
+            "sku_tr": "黄2",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2380,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "蓝3",
+            "sku_tr": "蓝3",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2381,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "绿4",
+            "sku_tr": "绿4",
+            "after_sale_num": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "directShelve",
+      "path": "/admin/directShelve",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "name": "stockOrderShelve",
+      "path": "/admin/stockOrderShelve",
+      "code": 1000,
+      "msg": "参数错误",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM",
+        "check_list": [
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2378,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "红1",
+            "sku_tr": "红1",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2379,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "黄2",
+            "sku_tr": "黄2",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2380,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "蓝3",
+            "sku_tr": "蓝3",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2381,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "绿4",
+            "sku_tr": "绿4",
+            "after_sale_num": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "tipShelves",
+      "path": "/admin/tipShelves",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "name": "samplesComplete",
+      "path": "/admin/samplesComplete",
+      "code": 1000,
+      "msg": "参数错误",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM",
+        "check_list": [
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2378,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "红1",
+            "sku_tr": "红1",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2379,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "黄2",
+            "sku_tr": "黄2",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2380,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "蓝3",
+            "sku_tr": "蓝3",
+            "after_sale_num": 0
+          },
+          {
+            "check_num": 1,
+            "weight": 1,
+            "size": "10*10*10",
+            "possible_num": 1,
+            "storage_num": 1,
+            "order_detail_sku_id": 2381,
+            "shipped_num": 0,
+            "purchase_num": 1,
+            "sku": "绿4",
+            "sku_tr": "绿4",
+            "after_sale_num": 0
+          }
+        ]
+      }
+    }
+  ],
+  "bulk": [
+    {
+      "name": "largeDispatch",
+      "path": "/admin/largeDispatch",
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "name": "orderSign",
+      "path": "/admin/orderSign",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "name": "skipFinal",
+      "path": "/admin/skipFinalPurchasePayment",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "name": "largeDispatch2",
+      "path": "/admin/largeDispatch",
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "name": "checkStart",
+      "path": "/admin/checkStart",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "name": "largeCheckRaise",
+      "path": "/admin/largeCheckRaise",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "name": "directShelve",
+      "path": "/admin/directShelve",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "name": "orderShelve",
+      "path": "/admin/orderShelve",
+      "code": 1000,
+      "msg": "参数错误",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "name": "largeComplete",
+      "path": "/admin/largeComplete",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/largeComplete",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    }
+  ],
+  "porder": [
+    {
+      "name": "porderRaiseQuote",
+      "path": "/admin/porderRaiseQuote",
+      "code": 10000,
+      "msg": "存在未选择发货方式的箱子，请操作后再试",
+      "body": {
+        "keys": [
+          "porder_sn",
+          "other_price",
+          "box_info",
+          "detail_list"
+        ]
+      }
+    },
+    {
+      "name": "porderRaiseQuote-sn",
+      "path": "/admin/porderRaiseQuote",
+      "code": 10000,
+      "msg": "服务器内部错误array_column(): Argument #1 ($array) must be of type array, null given LINE:1810",
+      "body": {
+        "porder_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "porderShipGoods",
+      "path": "/admin/porderShipGoods",
+      "code": 10000,
+      "msg": "物流单号未填写完整，请补充信息后再试",
+      "body": {
+        "porder_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "porderDispatched",
+      "path": "/admin/porderDispatched",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "porder_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "porderSign",
+      "path": "/admin/porderSign",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "porder_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "porderComplete",
+      "path": "/admin/porderComplete",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "porder_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "paymentDetail",
+      "path": "/api/paymentDetail",
+      "code": 10000,
+      "msg": "注文が見つかりません",
+      "body": {
+        "order_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "porderPaymentDetail",
+      "path": "/api/porderPaymentDetail",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "porder_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "balancePayOrder",
+      "path": "/api/balancePayOrder",
+      "code": 10000,
+      "msg": "エラー",
+      "body": {
+        "order_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "balancePayPorder",
+      "path": "/api/balancePayPorder",
+      "code": 10000,
+      "msg": "現在の状態では操作できません",
+      "body": {
+        "porder_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "porderRaiseQuote2",
+      "path": "/admin/porderRaiseQuote",
+      "code": 10000,
+      "msg": "存在未选择发货方式的箱子，请操作后再试",
+      "body": {
+        "keys": [
+          "porder_sn",
+          "other_price",
+          "box_info",
+          "detail_list"
+        ]
+      }
+    },
+    {
+      "name": "porderShipGoods2",
+      "path": "/admin/porderShipGoods",
+      "code": 10000,
+      "msg": "物流单号未填写完整，请补充信息后再试",
+      "body": {
+        "porder_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "porderDispatched2",
+      "path": "/admin/porderDispatched",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "porder_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "porderSign2",
+      "path": "/admin/porderSign",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "porder_sn": "OP20260302150837-15"
+      }
+    },
+    {
+      "name": "porderComplete2",
+      "path": "/admin/porderComplete",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "porder_sn": "OP20260302150837-15"
+      }
+    }
+  ],
+  "summary": {
+    "sample": {
+      "admin_status": 52,
+      "point": 5
+    },
+    "bulk": {
+      "admin_status": 48,
+      "point": 4
+    },
+    "porder": {
+      "admin_status": 5
+    }
+  }
+}

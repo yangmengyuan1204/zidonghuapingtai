@@ -732,6 +732,24 @@ def test_per_item_offer_prices_follow_stable_detail_order():
         )
 
 
+def test_per_item_offer_freights_follow_stable_detail_order():
+    prepared = data_scripts._prepare_offer_data(
+        {"order_detail": [{"id": 11, "num": 2}, {"id": 22, "num": 2}]},
+        {"offer_price": "10", "offer_freights": ["3", "4"]},
+        2,
+    )
+
+    assert [row["offer_freight"] for row in prepared["order_detail"]] == ["3", "4"]
+    assert [row["offer_total"] for row in prepared["order_detail"]] == ["23", "24"]
+
+    with pytest.raises(ValueError, match="逐商品运费数量不匹配"):
+        data_scripts._prepare_offer_data(
+            {"order_detail": [{"id": 11}, {"id": 22}]},
+            {"offer_freights": ["3", "4", "5"]},
+            1,
+        )
+
+
 def test_agent_removes_unevidenced_domestic_freight_from_new_contract():
     instruction = "帮我创建一个订单，一番商品一件，商品单价10，到待付款"
     payload = {
@@ -988,6 +1006,13 @@ def test_order_payloads_fill_required_confirm_freight_but_preserve_explicit_valu
     )["order_detail"][0]
     assert offer_positive["offer_freight"] == "7.5"
     assert offer_positive["offer_total"] == "27.5"
+
+    confirm_per_item = data_scripts._build_confirm_data(
+        {"order_sn": "ORDER-1", "order_detail": [{"id": 11, "num": 2}, {"id": 22, "num": 2}]},
+        {"confirm_price": "10", "confirm_freights": ["3", "4"]},
+        2,
+    )["order_detail"]
+    assert [row["confirm_freight"] for row in confirm_per_item] == ["3", "4"]
 
 
 def test_unknown_tool_never_calls_business_runner():

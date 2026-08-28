@@ -1,0 +1,319 @@
+{
+  "inquiry": {
+    "inquiryTranslate": [
+      {
+        "style": "var",
+        "arg": "t",
+        "ctx": "class:w.detailData.value.goods_class,y_remark:w.detailData.value.y_remark,user_remark:w.detailData.value.user_remark};a.inquiryTranslate(t).then(t=>{if(0!=t.code)return ElementPlus.ElMessage.error(t.msg);ElementPlus.ElMessage.success(t.msg),l||(w.canTr.value=!1),w.getData(e)})},submitTranslateAudit:"
+      }
+    ],
+    "inquiryTranslateAudit": [
+      {
+        "style": "object",
+        "payload": "{order_sn:w.detailData.value.order_sn}",
+        "ctx": "success(t.msg),l||(w.canTr.value=!1),w.getData(e)})},submitTranslateAudit:e=>{a.inquiryTranslateAudit({order_sn:w.detail"
+      }
+    ],
+    "inquiryStartInquiry": [],
+    "inquiryComplete": [],
+    "inquiryStartQuote": [
+      {
+        "style": "object",
+        "payload": "{order_sn:u.$route.query.order_sn}",
+        "ctx": "celBtn:\"取消\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{v(u)}})},x=()=>{u.$api.inquiryStartQuote({order_sn:u.$route.que"
+      }
+    ],
+    "inquiryQuoteComplate": [],
+    "factoryQuote": [],
+    "factoryQuoteToUser": [],
+    "factoryEdit": [
+      {
+        "style": "object",
+        "payload": "{detail_id:u.value.id,factory_iid:a.value.factory_iid,factory_name:a.value.factory_name,factory_province:a.value.factory_province,factory_city:a.value.factory_city,factory_img:a.value.factory_img,factory_url:a.value.factory_url,salesman:a.value.salesman,salesman_phone:a.value.salesman_phone,goods_url:a.value.goods_url}",
+        "ctx": "warning(\"请填写所有信息\"):t.$message.warning(\"请填写工厂ID和工厂名称\"),!1;\"编辑工厂\"==n.value?t.$api.factoryEdit({detail_id:u.value.id,factor"
+      }
+    ],
+    "factoryAdd": [
+      {
+        "style": "object",
+        "payload": "{order_sn:t.$route.query.order_sn,factory_iid:a.value.factory_iid,factory_name:a.value.factory_name,factory_province:a.value.factory_province,factory_city:a.value.factory_city,factory_url:a.value.factory_url,factory_img:a.value.factory_img,salesman:a.value.salesman,salesman_phone:a.value.salesman_phone,goods_url:a.value.goods_url}",
+        "ctx": "=a.value.salesman_phone,u.value.goods_url=a.value.goods_url,d.value=!1}):t.$api.factoryAdd({order_sn:t.$route.query.orde"
+      }
+    ],
+    "inquiryDetail": [
+      {
+        "style": "object",
+        "payload": "{order_sn:e.$route.query.order_sn,is_quote:-1!=decodeURI(location.href).indexOf(\"报价阶段\"),...a?{point_name:a}:{}}",
+        "ctx": "_type\"))[u]));return a}),getData:(e,t)=>{const a=m(e.$route.query.stage);e.$api.inquiryDetail({order_sn:e.$route.query.o"
+      }
+    ],
+    "inquiryReturnTranslate": [],
+    "reinquiry": [],
+    "submitInquiryMotion": [
+      {
+        "style": "object",
+        "payload": "{inquiry_detail_id:n.value.id}",
+        "ctx": "=Vue.inject(\"getquotationStatus\"),V=()=>{a.$refs.oformRef.validate(e=>{e?a.$api.submitInquiryMotion({inquiry_detail_id:n"
+      }
+    ],
+    "getInquiryAutoQuotePrice": [
+      {
+        "style": "object",
+        "payload": "{order_sn:a.$route.query.order_sn,type:e,real_price:l}",
+        "ctx": ":\"\",editData:e,successMethods:()=>{r(a)},canEdit:l})},L=(e,l,t,u,o)=>{o||a.$api.getInquiryAutoQuotePrice({order_sn:a.$ro"
+      }
+    ]
+  },
+  "sample": {
+    "samplesDetail": [
+      {
+        "style": "object",
+        "payload": "{order_sn:e.$route.query.order_sn}",
+        "ctx": "ref(),getData:e=>{t.problemTypes().then(e=>{$.problemTypesList.value=e.data}),t.samplesDetail({order_sn:e.$route.query.o"
+      }
+    ],
+    "samplesStartConfirm": [
+      {
+        "style": "object",
+        "payload": "{order_sn:a.$route.query.order_sn}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{a.$api.samplesStartConfirm({order_sn:a.$route.q"
+      }
+    ],
+    "samplesConfirmed": [
+      {
+        "style": "object",
+        "payload": "{warehouse_city:o.value.warehouse_city,is_special_quote:!p.value,order_sn:a.$route.query.order_sn,y_response:o.value.y_response,quote_info:t}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{a.$api.samplesConfirmed({warehouse_city:o.value"
+      }
+    ],
+    "samplesStartQuote": [
+      {
+        "style": "object",
+        "payload": "{order_sn:a.$route.query.order_sn}",
+        "ctx": "turn a.$message.error(e.msg);a.$message.success(e.msg),i(a)})}})},N=()=>{a.$api.samplesStartQuote({order_sn:a.$route.que"
+      }
+    ],
+    "samplesQuoteToUser": [
+      {
+        "style": "object",
+        "payload": "{order_sn:a.$route.query.order_sn,warehouse_city:o.value.warehouse_city}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{a.$api.samplesQuoteToUser({order_sn:a.$route.qu"
+      }
+    ],
+    "samplesSubmitPurchase": [
+      {
+        "style": "object",
+        "payload": "{order_sn:a.$route.query.order_sn,warehouse_city:o.value.warehouse_city}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{a.$api.samplesSubmitPurchase({order_sn:a.$route"
+      }
+    ],
+    "samplesStartPurchase": [
+      {
+        "style": "object",
+        "payload": "{order_sn:a.$route.query.order_sn}",
+        "ctx": "ue)?void 0:e.sku_info)||[]).forEach(e=>{t+=Number(e.num)||0}),t}),N=()=>{a.$api.samplesStartPurchase({order_sn:a.$route."
+      }
+    ],
+    "samplesCompPurchase": [],
+    "samplesDispatch": [
+      {
+        "style": "object",
+        "payload": "{express_id:u.value.express_id,order_sn:a.$route.query.order_sn,express_no:u.value.express_no,express_remark:u.value.express_remark}",
+        "ctx": "nBlock(),Vue.createBlock(r,{key:0,type:\"primary\",onClick:t[2]||(t[2]=e=>{a.$api.samplesDispatch({express_id:u.value.expr"
+      }
+    ],
+    "samplesRaiseQuote": [],
+    "samplesReQuote": [
+      {
+        "style": "object",
+        "payload": "{order_sn:a.$route.query.order_sn}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{a.$api.samplesReQuote({order_sn:a.$route.query."
+      }
+    ],
+    "samplesBackTranslation": [
+      {
+        "style": "object",
+        "payload": "{order_sn:a.$route.query.order_sn}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{a.$api.samplesBackTranslation({order_sn:a.$rout"
+      }
+    ],
+    "samplesYResponse": [
+      {
+        "style": "object",
+        "payload": "{order_sn:a.$route.query.order_sn,y_response:o.value.y_response,noLoading:!0}",
+        "ctx": "ding:!0}).then(e=>{if(0!=e.code)return a.$message.error(e.msg)})},f=()=>{a.$api.samplesYResponse({order_sn:a.$route.quer"
+      }
+    ],
+    "samplesFollowUp": [],
+    "samplesWorking": [],
+    "samplesComplete": []
+  },
+  "bulk": {
+    "largeDetail": [
+      {
+        "style": "object",
+        "payload": "{order_sn:e.$route.query.order_sn}",
+        "ctx": "),getData:(e,u)=>{t.problemTypes().then(e=>{M.problemTypesList.value=e.data}),t.largeDetail({order_sn:e.$route.query.ord"
+      }
+    ],
+    "largeStartConfirm": [
+      {
+        "style": "object",
+        "payload": "{order_sn:l.$route.query.order_sn}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.largeStartConfirm({order_sn:l.$route.que"
+      }
+    ],
+    "largeConfirmed": [
+      {
+        "style": "object",
+        "payload": "{order_sn:l.$route.query.order_sn,y_response:n.value.y_response,quote_info:V.value,warehouse_city:n.value.warehouse_city,is_special_quote:!a.value}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.largeConfirmed({order_sn:l.$route.query."
+      }
+    ],
+    "largeStartQuote": [
+      {
+        "style": "object",
+        "payload": "{order_sn:l.$route.query.order_sn}",
+        "ctx": ")}})},T=()=>{sessionStorage.removeItem(\"bulkOrderSalesmanFlog\"),f(l,()=>{l.$api.largeStartQuote({order_sn:l.$route.query"
+      }
+    ],
+    "largeQuoteToUser": [
+      {
+        "style": "object",
+        "payload": "{order_sn:l.$route.query.order_sn,warehouse_city:n.value.warehouse_city,sku_list:V.value.sku_info}",
+        "ctx": "}).then(e=>{if(0!=e.code)return l.$message.error(e.msg);k(l)})})},L=()=>{l.$api.largeQuoteToUser({order_sn:l.$route.quer"
+      }
+    ],
+    "largeSubmitPurchase": [
+      {
+        "style": "object",
+        "payload": "{order_sn:l.$route.query.order_sn,sku_info:V.value.sku_info,warehouse_city:n.value.warehouse_city}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.largeSubmitPurchase({order_sn:l.$route.q"
+      }
+    ],
+    "largeStartPurchase": [
+      {
+        "style": "object",
+        "payload": "{order_sn:l.$route.query.order_sn}",
+        "ctx": "nst B=()=>{l.$parent.$refs.MerchandiseSubtotal.calculationData()},E=()=>{l.$api.largeStartPurchase({order_sn:l.$route.qu"
+      }
+    ],
+    "largeCompPurchase": [],
+    "largeDispatch": [
+      {
+        "style": "object",
+        "payload": "{order_sn:l.$route.query.order_sn,express_nos:e}",
+        "ctx": "cessBtn:\"确认\",cancelBtn:\"取消\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.largeDispatch({order_sn:l.$route.query.o"
+      },
+      {
+        "style": "object",
+        "payload": "{order_sn:l.$route.query.order_sn}",
+        "ctx": "cessBtn:\"确认\",cancelBtn:\"取消\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.largeDispatch({order_sn:l.$route.query.o"
+      }
+    ],
+    "largeRaiseQuote": [],
+    "largeReQuote": [
+      {
+        "style": "object",
+        "payload": "{order_sn:l.$route.query.order_sn}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.largeReQuote({order_sn:l.$route.query.or"
+      }
+    ],
+    "largeBackTranslation": [
+      {
+        "style": "object",
+        "payload": "{order_sn:l.$route.query.order_sn}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.largeBackTranslation({order_sn:l.$route."
+      }
+    ],
+    "largeFollowUp": [],
+    "largeApplyBalance": [
+      {
+        "style": "object",
+        "payload": "{order_sn:l.$route.query.order_sn}",
+        "ctx": "cessBtn:\"确认\",cancelBtn:\"取消\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.largeApplyBalance({order_sn:l.$route.que"
+      }
+    ]
+  },
+  "delivery": {
+    "porderDetail": [
+      {
+        "style": "object",
+        "payload": "{porder_sn:e.$route.query.porder_sn}",
+        "ctx": "s:Vue.ref([]),BottomInformation:Vue.ref(),RemarkBox:Vue.ref(),getData:(e,l)=>{t.porderDetail({porder_sn:e.$route.query.p"
+      }
+    ],
+    "porderStartTransalte": [
+      {
+        "style": "object",
+        "payload": "{porder_sn:l.$route.query.porder_sn}",
+        "ctx": "e.forEach(t=>{t.num==t.packed_num||t.checked||(e=!1)}),I.value=e},J=()=>{l.$api.porderStartTransalte({porder_sn:l.$route"
+      }
+    ],
+    "porderSubmitTranslate": [
+      {
+        "style": "object",
+        "payload": "{porder_sn:l.$route.query.porder_sn,y_remark:o.value.y_remark,detail_list:t,warehouse_type:f.value}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.porderSubmitTranslate({porder_sn:l.$rout"
+      }
+    ],
+    "porderPackingComp": [
+      {
+        "style": "object",
+        "payload": "{porder_sn:l.$route.query.porder_sn,box_info:p.value}",
+        "ctx": "cessBtn:\"确认\",cancelBtn:\"取消\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.porderPackingComp({porder_sn:l.$route.qu"
+      }
+    ],
+    "porderRaiseQuote": [
+      {
+        "style": "object",
+        "payload": "{porder_sn:l.$route.query.porder_sn,other_price:E.value.other_fee,box_info:e,detail_list:a}",
+        "ctx": "cessBtn:\"确认\",cancelBtn:\"取消\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.porderRaiseQuote({porder_sn:l.$route.que"
+      }
+    ],
+    "porderShipGoods": [
+      {
+        "style": "object",
+        "payload": "{porder_sn:l.$route.query.porder_sn}",
+        "ctx": "cessBtn:\"确认\",cancelBtn:\"取消\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.porderShipGoods({porder_sn:l.$route.quer"
+      }
+    ],
+    "porderComplete": [],
+    "porderBackTransalte": [
+      {
+        "style": "object",
+        "payload": "{porder_sn:l.$route.query.porder_sn}",
+        "ctx": "cessBtn:\"确认\",cancelBtn:\"取消\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.porderBackTransalte({porder_sn:l.$route."
+      }
+    ],
+    "porderBackPacking": [
+      {
+        "style": "object",
+        "payload": "{porder_sn:l.$route.query.porder_sn}",
+        "ctx": "cessBtn:\"确认\",cancelBtn:\"取消\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.porderBackPacking({porder_sn:l.$route.qu"
+      }
+    ],
+    "addBox": [
+      {
+        "style": "var",
+        "arg": "i.value",
+        "ctx": "ight,i.value.length=e.length},V=()=>{if(!i.value.box_num&&0!=i.value.box_num)return l.$message.warning(\"请填写箱子数\");l.$api.addBox(i.value).then(e=>{if(0!=e.code)return l.$message.error(e.msg);e.data.forEach(e=>{e.checked=!0,u.value.push(e)}),r.value=!1})};return t({open:()=>{i.value={box_num:1,porder_s"
+      }
+    ],
+    "deleteBoxDetail": [
+      {
+        "style": "object",
+        "payload": "{box_detail_id:e.id}",
+        "ctx": "uccessBtn:\"是\",cancelBtn:\"否\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{l.$api.deleteBoxDetail({box_detail_id:e.id}).th"
+      }
+    ],
+    "savePorderExpress": [
+      {
+        "style": "object",
+        "payload": "{box_id:e.id,express_no:e.express_no}",
+        "ctx": "e;return null==(e=a.value)?void 0:e.validate()}).then(()=>{t.forEach(e=>{l.$api.savePorderExpress({box_id:e.id,express_n"
+      }
+    ],
+    "balancePayPorder": []
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "status": 48,
+  "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671",
+  "prod": {
+    "production_status_fadmin": 4,
+    "production_status_yadmin": 4,
+    "production_status_salesman": 1,
+    "express_list": [
+      {
+        "id": 1127,
+        "order_sn": "D20260613110838-15-OEM",
+        "express_no": "CLEAN1786770295"
+      }
+    ]
+  }
+}

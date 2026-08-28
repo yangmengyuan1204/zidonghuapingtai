@@ -262,12 +262,24 @@ def _impl_resolve_execution_account(
         return runtime_vars, {}
     account_vars, meta = account_profile_variables(db, profile.id, project_id)
     variables = {**account_vars, **runtime_vars}
+    login_config = meta.get("login_config") or {}
+    stored = decrypt_account_payload(profile.browser_state_encrypted) if profile.browser_state_encrypted else {}
+    storage_state = stored.get("storage_state") if isinstance(stored, dict) else None
+    has_valid_session = bool(isinstance(storage_state, dict) and profile.browser_session_status == "valid")
+    has_explicit_login = bool(login_config.get("login_url"))
+
     execution_context = {
-        "login_required": True,
         "account_profile_id": profile.id,
-        "login_config": meta.get("login_config") or {},
+        "login_config": login_config,
         "target_url": target_url,
     }
+    if isinstance(storage_state, dict):
+        execution_context["storage_state"] = storage_state
+    if has_valid_session:
+        execution_context["preauthenticated"] = True
+        execution_context["login_required"] = False
+    else:
+        execution_context["login_required"] = has_explicit_login
     return variables, execution_context
 
 

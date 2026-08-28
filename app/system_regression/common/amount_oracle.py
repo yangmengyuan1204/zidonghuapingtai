@@ -35,7 +35,10 @@ def _active_options(value: Any) -> list[dict[str, Any]]:
 
 def _option_amount(row: Mapping[str, Any], goods_price: Decimal) -> Decimal:
     price = _decimal(row.get("price") or 0, "OPTION价格")
-    quantity = _decimal(row.get("num") or row.get("quantity") or 0, "OPTION数量")
+    quantity = _decimal(
+        row.get("num") or row.get("order_num") or row.get("quantity") or 0,
+        "OPTION数量",
+    )
     if int(row.get("price_type") or 0) == 1:
         return _money(price / Decimal("100") * quantity * goods_price)
     return _money(price * quantity)
@@ -88,27 +91,25 @@ def expected_problem_amount(
     freight = _money(new_freight - old_freight)
     service = Decimal("0.00")
     service_rate = _decimal(request.get("service_rate") or candidate.get("service_rate") or 0, "手续费率")
-    if not request.get("service_discount"):
-        service_should = _money(goods * service_rate)
-        if goods > 0 or (goods < 0 and int(request.get("service_deal_suggest") or 2) == 2 and candidate.get("service_fee_paid", True)):
-            service = service_should
+    service_should = _money(goods * service_rate)
+    if goods > 0 or (goods < 0 and int(request.get("service_deal_suggest") or 2) == 2 and candidate.get("service_fee_paid", True)):
+        service = service_should
 
     old_options = _active_options(candidate.get("option"))
     option_rule = int(request.get("option_deal_suggest") or 0)
     option = Decimal("0.00")
     if option_rule == 1:
-        new_options = _active_options(request.get("option_new") or old_options)
-        old_by_name = {str(row.get("name") or ""): row for row in old_options}
-        new_by_name = {str(row.get("name") or ""): row for row in new_options}
-        for name in set(old_by_name) | set(new_by_name):
-            option += _option_amount(new_by_name[name], new_price) if name in new_by_name else Decimal("0")
-            option -= _option_amount(old_by_name[name], old_price) if name in old_by_name else Decimal("0")
+        new_options = _active_options(request.get("option_new") if "option_new" in request else old_options)
+        option += sum((_option_amount(row, new_price) for row in new_options), Decimal("0"))
+        option -= sum((_option_amount(row, old_price) for row in old_options), Decimal("0"))
     elif option_rule == 2:
         decrease = max(0, old_quantity - new_quantity)
         for row in old_options:
             if row.get("auto_calculate", True) is False:
                 continue
-            new_option_quantity = int(_decimal(row.get("num") or 0, "OPTION数量"))
+            new_option_quantity = int(
+                _decimal(row.get("num") or row.get("order_num") or row.get("quantity") or 0, "OPTION数量")
+            )
             if decrease:
                 refund_count = decrease
                 if "检品" in str(row.get("name") or ""):

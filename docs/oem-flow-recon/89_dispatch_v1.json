@@ -1,0 +1,102 @@
+{
+  "probes": [
+    {
+      "api": "samplesDispatch",
+      "code": 0,
+      "msg": "操作成功",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM",
+        "express_id": 1,
+        "express_no": "TEST123",
+        "express_remark": ""
+      }
+    },
+    {
+      "api": "samplesStartDispatch",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesStartDispatch",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "api": "samplesSubmitDispatch",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesSubmitDispatch",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "api": "samplesDispatchCompleted",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesDispatchCompleted",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "api": "largeDispatch",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM",
+        "express_id": 1,
+        "express_no": "TEST123",
+        "express_remark": ""
+      }
+    },
+    {
+      "api": "largeStartDispatch",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/largeStartDispatch",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "api": "largeSubmitDispatch",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/largeSubmitDispatch",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "api": "largeDispatchCompleted",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/largeDispatchCompleted",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    }
+  ],
+  "ui": {
+    "sample": {
+      "url": "https://oemadmin.rakumart.cn/#/sampleOrderDetails?order_sn=Y20260403172102-15-OEM",
+      "btns": [],
+      "clicked": null,
+      "writes": []
+    },
+    "bulk": {
+      "url": "https://oemadmin.rakumart.cn/#/largeOrderDetails?order_sn=D20260613110838-15-OEM",
+      "btns": [],
+      "clicked": null,
+      "writes": []
+    }
+  },
+  "after": {
+    "sample": {
+      "admin_status": 50,
+      "point": 5,
+      "express_id": null,
+      "express_no": null
+    },
+    "bulk": {
+      "admin_status": 36,
+      "point": 4,
+      "express_id": null,
+      "express_no": null
+    }
+  }
+}

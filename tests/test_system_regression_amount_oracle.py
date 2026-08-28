@@ -11,7 +11,7 @@ def _candidate():
         "service_rate": "0.1",
         "service_fee_paid": True,
         "option": [
-            {"name": "固定", "price_type": 0, "price": "2", "num": 3, "auto_calculate": True},
+            {"id": 79, "name": "固定", "price_type": 0, "price": "2", "num": 3, "auto_calculate": True},
         ],
     }
 
@@ -51,3 +51,91 @@ def test_problem_oracle_returns_zero_for_unchanged_case():
 
     assert result.direction == "none"
     assert result.total_cny == Decimal("0.00")
+
+
+def test_problem_oracle_reads_runtime_option_order_quantity():
+    candidate = _candidate()
+    candidate["option"] = [
+        {"id": 79, "name": "固定", "price_type": 0, "price": "2", "num": 0, "order_num": 3},
+    ]
+
+    result = expected_problem_amount(
+        candidate,
+        {
+            "pre_num": 3,
+            "pre_price": "10",
+            "pre_freight": "3",
+            "service_deal_suggest": 1,
+            "option_deal_suggest": 1,
+            "option_new": [],
+        },
+    )
+
+    assert result.option_cny == Decimal("-6.00")
+    assert result.total_cny == Decimal("-6.00")
+
+
+def test_problem_oracle_uses_runtime_service_rate_for_discounted_order_adjustment():
+    candidate = _candidate()
+    candidate["service_rate"] = "0.045"
+
+    result = expected_problem_amount(
+        candidate,
+        {
+            "pre_num": 3,
+            "pre_price": "9",
+            "pre_freight": "3",
+            "service_deal_suggest": 2,
+            "service_discount": True,
+            "option_deal_suggest": 0,
+        },
+    )
+
+    assert result.goods_cny == Decimal("-3.00")
+    assert result.service_cny == Decimal("-0.14")
+    assert result.total_cny == Decimal("-3.14")
+
+
+def test_problem_oracle_matches_same_name_options_by_id():
+    candidate = _candidate()
+    candidate["option"] = [
+        {"id": 78, "name": "检品", "price_type": 0, "price": "2", "num": 1},
+        {"id": 79, "name": "检品", "price_type": 0, "price": "3", "num": 1},
+    ]
+
+    result = expected_problem_amount(
+        candidate,
+        {
+            "pre_num": 3,
+            "pre_price": "10",
+            "pre_freight": "3",
+            "service_deal_suggest": 1,
+            "option_deal_suggest": 1,
+            "option_new": [
+                {"id": 78, "name": "检品", "price_type": 0, "price": "2", "num": 1},
+            ],
+        },
+    )
+
+    assert result.option_cny == Decimal("-3.00")
+
+
+def test_problem_oracle_allows_new_option_without_runtime_id():
+    candidate = _candidate()
+
+    result = expected_problem_amount(
+        candidate,
+        {
+            "pre_num": 3,
+            "pre_price": "10",
+            "pre_freight": "3",
+            "service_deal_suggest": 1,
+            "option_deal_suggest": 1,
+            "option_new": [
+                *candidate["option"],
+                {"name": "系统回归OPTION", "price_type": 0, "price": "1", "num": 1},
+            ],
+        },
+    )
+
+    assert result.option_cny == Decimal("1.00")

@@ -1,0 +1,214 @@
+{
+  "summary": {
+    "S": 64,
+    "S_point": 6,
+    "B": 48,
+    "P": 10
+  },
+  "steps": [
+    {
+      "name": "checkReport",
+      "path": "/admin/checkReport ",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "checkReport2",
+      "path": "/admin/checkReport",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "samplesCheckRaise",
+      "path": "/admin/samplesCheckRaise",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "frontConfirmCheck",
+      "path": "/api/confirmCheck",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/api/confirmCheck"
+    },
+    {
+      "name": "frontCheckConfirm",
+      "path": "/api/checkConfirm",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/api/checkConfirm"
+    },
+    {
+      "name": "frontOrderConfirm",
+      "path": "/api/orderCheckConfirm",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/api/orderCheckConfirm"
+    },
+    {
+      "name": "directShelve",
+      "path": "/admin/directShelve",
+      "code": 10000,
+      "msg": "当前状态无法操作"
+    },
+    {
+      "name": "orderShelve",
+      "path": "/admin/orderShelve",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "orderShelve-min",
+      "path": "/admin/orderShelve",
+      "code": 10000,
+      "msg": "可上架数不足, 存在留底数"
+    },
+    {
+      "name": "tipShelves",
+      "path": "/admin/tipShelves",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "stockTipShelves",
+      "path": "/admin/stockTipShelves",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "samplesComplete",
+      "path": "/admin/samplesComplete",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "samplesComplete ",
+      "path": "/admin/samplesComplete ",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "inspectStart",
+      "path": "/admin/inspectStart ",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "inspectStart2",
+      "path": "/admin/inspectStart",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "newInspect",
+      "path": "/admin/newInspect",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "inspectCompelte",
+      "path": "/admin/inspectCompelte ",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "inspectComplete",
+      "path": "/admin/inspectComplete",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/inspectComplete"
+    },
+    {
+      "name": "porderPaymentDetail",
+      "path": "/api/porderPaymentDetail",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "pay",
+      "path": "/api/balancePayPorder",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "pay",
+      "path": "/api/balancePayOrder",
+      "code": 10000,
+      "msg": "エラー"
+    },
+    {
+      "name": "pay",
+      "path": "/api/porderPay",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/api/porderPay"
+    },
+    {
+      "name": "pay",
+      "path": "/api/payOrder",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/api/payOrder"
+    },
+    {
+      "name": "saveExpress",
+      "path": "/admin/savePorderExpress",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "porderShipGoods",
+      "path": "/admin/porderShipGoods",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "porderSign",
+      "path": "/admin/porderSign",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "porderComplete",
+      "path": "/admin/porderComplete",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "porderDispatched",
+      "path": "/admin/porderDispatched",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "pay2",
+      "path": "/api/porderBalancePay",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/api/porderBalancePay"
+    },
+    {
+      "name": "pay2",
+      "path": "/api/balancePay",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/api/balancePay"
+    },
+    {
+      "name": "pay2",
+      "path": "/api/newPorderPay",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/api/newPorderPay"
+    },
+    {
+      "name": "pay2",
+      "path": "/api/porderPayOrder",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/api/porderPayOrder"
+    },
+    {
+      "name": "bulkDispatch",
+      "path": "/admin/largeDispatch",
+      "code": 10000,
+      "msg": "服务器内部错误array_diff(): Argument #1 ($array) must be of type array, null given LINE:2671"
+    },
+    {
+      "name": "bulkSign",
+      "path": "/admin/orderSign",
+      "code": 10000,
+      "msg": "当前状态无法操作"
+    }
+  ]
+}

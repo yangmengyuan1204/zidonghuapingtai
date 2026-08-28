@@ -9,7 +9,21 @@ def test_legacy_index_loads_independent_system_regression_assets():
 
     assert "/static/system-regression.css" in html
     assert "/static/system-regression.css?v=20260820-case-delete-2" in html
-    assert "/static/system-regression.js?v=20260820-case-delete-2" in html
+    assert "/static/system-regression.js?v=20260824-payment-evidence-4" in html
+
+
+def test_legacy_system_regression_script_cache_buster_is_current():
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+
+    assert "/static/system-regression.js?v=20260824-payment-evidence-4" in html
+
+
+def test_result_prefers_frozen_panel_amount_evidence_when_backend_quote_differs():
+    script = (ROOT / "static" / "system-regression.js").read_text(encoding="utf-8")
+
+    assert 'checks.find((row) => row?.key === "configured_amount")' in script
+    assert "页面冻结预期" in script
+    assert "订单报价" in script
 
 
 def test_system_regression_menu_and_execution_controls_are_present():
@@ -149,6 +163,43 @@ def test_problem_type_options_use_catalog_labels_instead_of_numeric_labels():
     assert "catalog.problem_types" in script
     assert "problemType.label" in script
     assert ">${index + 1}</option>" not in script
+
+
+def test_problem_amount_editor_uses_independent_relative_adjustment_controls():
+    script = (ROOT / "static" / "system-regression.js").read_text(encoding="utf-8")
+
+    assert "每次加减多少元" not in script
+    assert "数量怎么调整" in script
+    assert "单价怎么调整" in script
+    assert "国内运费怎么调整" in script
+    assert '["decrease", "降低"]' in script
+    assert '["same", "不变"]' in script
+    assert '["increase", "增加"]' in script
+    assert 'data-sr-adjustment-mode="${value}"' in script
+    assert "quantity_adjustment" in script
+    assert "price_adjustment" in script
+    assert "freight_adjustment" in script
+
+
+def test_problem_amount_editor_only_persists_relative_adjustments_after_user_action():
+    script = (ROOT / "static" / "system-regression.js").read_text(encoding="utf-8")
+
+    assert 'data-sr-adjustment-source="${options.explicit ? "explicit" : "inferred"}"' in script
+    assert 'wrapper.dataset.srAdjustmentSource = "explicit"' in script
+    assert 'document.querySelector(\'[data-sr-adjustment-source="explicit"]\')' in script
+    assert "if (hasExplicitAdjustments)" in script
+
+
+def test_system_regression_result_exposes_amount_evidence_and_mismatch_reason():
+    script = (ROOT / "static" / "system-regression.js").read_text(encoding="utf-8")
+
+    assert "预期应付" in script
+    assert "支付接口实付" in script
+    assert "出入金实际" in script
+    assert "difference_jpy" in script
+    assert "校验原因" in script
+    assert "国内运费" in script
+    assert "OPTION金额" in script
 
 
 def test_customer_id_uses_an_ordinary_input_and_batch_runtime_context():

@@ -108,9 +108,27 @@ function waitForRerunModule(frameWindow, attempts = 20) {
 
 function frameMatchesCurrentView(frameWindow) {
   try {
-    return frameWindow?.location?.hash === `#/${viewKey.value}`
+    const hashOk = frameWindow?.location?.hash === `#/${viewKey.value}`
+    const stateView = frameWindow?.state?.view
+    const stateOk = !stateView || stateView === viewKey.value
+    return hashOk && stateOk
   } catch {
     return false
+  }
+}
+
+function syncFrameToCurrentView(frameWindow) {
+  if (!frameWindow?.state || !viewKey.value) return Promise.resolve(false)
+  try {
+    if (frameWindow.state.view !== viewKey.value) {
+      frameWindow.state.view = viewKey.value
+    }
+    if (frameWindow.location.hash !== `#/${viewKey.value}`) {
+      frameWindow.location.hash = `#/${viewKey.value}`
+    }
+    return Promise.resolve(frameWindow.renderShell?.()).then(() => true).catch(() => false)
+  } catch {
+    return Promise.resolve(false)
   }
 }
 
@@ -164,7 +182,15 @@ async function openPendingRerun() {
 function onFrameLoad() {
   try {
     const frameWindow = frameEl.value?.contentWindow
-    if (!frameMatchesCurrentView(frameWindow)) return
+    if (!frameMatchesCurrentView(frameWindow)) {
+      syncFrameToCurrentView(frameWindow).then((synced) => {
+        if (!synced || !frameMatchesCurrentView(frameWindow)) return
+        applyEmbedChrome(frameEl.value?.contentDocument)
+        frameReady.value = true
+        openPendingRerun()
+      })
+      return
+    }
     applyEmbedChrome(frameEl.value?.contentDocument)
     frameReady.value = true
     openPendingRerun()

@@ -1,0 +1,56 @@
+{
+  "sn": "D20260613110838-15-OEM",
+  "log": [
+    {
+      "checkComplete": {
+        "code": 1000,
+        "msg": "至少存在一条SKU",
+        "n": 0
+      },
+      "status": 52
+    },
+    {
+      "raise": "/admin/largeCheckRaise",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "status": 52
+    },
+    {
+      "raise": "/admin/checkRaise",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/checkRaise",
+      "status": 52
+    },
+    {
+      "path": "/admin/tipShelves",
+      "code": 0,
+      "msg": "操作成功",
+      "status": 52,
+      "body_keys": [
+        "order_sn"
+      ]
+    },
+    {
+      "path": "/admin/stockTipShelves",
+      "code": 0,
+      "msg": "操作成功",
+      "status": 52,
+      "body_keys": [
+        "order_sn"
+      ]
+    },
+    {
+      "path": "/admin/orderShelve",
+      "code": 0,
+      "msg": "操作成功",
+      "status": 52,
+      "body_keys": [
+        "order_sn",
+        "shelve_info",
+        "warehouse_city"
+      ]
+    }
+  ],
+  "final": 52,
+  "shelve_info": []
+}

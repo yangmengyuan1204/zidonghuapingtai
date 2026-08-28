@@ -1,0 +1,138 @@
+[
+  {
+    "i": 0,
+    "body": {
+      "box_id": 1201,
+      "packing_info": [
+        {
+          "id": 3118,
+          "box_num": 2,
+          "warehouse_city": 1
+        }
+      ]
+    },
+    "code": 10000,
+    "msg": "服务器内部错误Undefined array key \"pack_num\" LINE:95"
+  },
+  {
+    "i": 1,
+    "body": {
+      "box_id": 1201,
+      "packing_info": [
+        {
+          "detail_id": 3118,
+          "box_num": 2,
+          "warehouse_city": 1
+        }
+      ]
+    },
+    "code": 10000,
+    "msg": "服务器内部错误Undefined array key \"pack_num\" LINE:95"
+  },
+  {
+    "i": 2,
+    "body": {
+      "box_id": 1201,
+      "packing_info": [
+        {
+          "id": 3118,
+          "num": 2,
+          "box_num": 2,
+          "warehouse_city": 1,
+          "unpacked_num": 2
+        }
+      ]
+    },
+    "code": 10000,
+    "msg": "服务器内部错误Undefined array key \"pack_num\" LINE:95"
+  },
+  {
+    "i": 3,
+    "body": {
+      "box_id": 1201,
+      "packing_info": [
+        {
+          "id": 3118,
+          "box_num": 2,
+          "warehouse_city": 1,
+          "order_detail_stock_id": 492
+        }
+      ]
+    },
+    "code": 10000,
+    "msg": "服务器内部错误Undefined array key \"pack_num\" LINE:95"
+  },
+  {
+    "i": 4,
+    "body": {
+      "box_id": 1201,
+      "packing_info": [
+        {
+          "id": 3118,
+          "order_detail_sku_id": 0,
+          "order_detail_stock_id": 492,
+          "inventory_id": 0,
+          "order_sn": "Y20251209131627-15-XH",
+          "order_type": 1,
+          "postnatal_sample_from": "",
+          "goods_name": "碎鸡蛋手机支架打碎的鸡蛋摔破的鸡蛋恶作剧搞怪整人玩具礼盒礼物",
+          "goods_name_tr": "割れた卵のスマホスタンド、割れた卵、壊れた卵、いたずら、面白い、人をいたわるおもちゃ、ギフトボックス、プレゼント",
+          "goods_img": "https://cbu01.alicdn.com/img/ibank/O1CN01eqk8fE1EuHpOvfPu6_!!2219521070411-0-cib.jpg",
+          "sku": "",
+          "sku_tr": "",
+          "sku_image": "",
+          "factory_name": "宁海子玛电子商务商行(个体工商户)",
+          "detail": [
+            {
+              "key": "颜色",
+              "value": "黄色(真的鸡蛋壳)"
+            }
+          ],
+          "detailT": [
+            {
+              "key": "色",
+              "value": "黄色（本物の卵の殻）"
+            }
+          ],
+          "warehouse_city": 1,
+          "location_num": 0,
+          "purchase_num": 2,
+          "num": 2,
+          "unpacked_num": 2,
+          "packed_num": 0,
+          "packing_info": [],
+          "sku_price": "2.00",
+          "sku_price_jp": 47,
+          "subtotal": 94,
+          "warehouse_num": 0,
+          "option": [],
+          "user_remark": "",
+          "y_remark": "tr",
+          "warehouse_list": [],
+          "purchase_no": "777",
+          "express_no": [
+            "33"
+          ],
+          "j_remark": "",
+          "accessory_list": [],
+          "is_keep_sample": false,
+          "amazon_type": "",
+          "amazon_inventory_id": 0,
+          "order_sku_rate": "23.55",
+          "box_num": 2
+        }
+      ]
+    },
+    "code": 10000,
+    "msg": "服务器内部错误Undefined array key \"pack_num\" LINE:95"
+  },
+  {
+    "comp_body_snip": {
+      "porder_sn": "OP20260302150837-15",
+      "box_info_len": 1,
+      "box0_detail_len": 1
+    },
+    "code": 10000,
+    "msg": "第1箱装箱数据为空，请操作后重试"
+  }
+]

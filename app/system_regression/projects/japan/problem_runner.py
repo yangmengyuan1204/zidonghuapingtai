@@ -146,6 +146,30 @@ def _text(value: Decimal) -> str:
     return format(value.normalize(), "f")
 
 
+def _relative_adjustment(
+    base: Decimal,
+    config: Any,
+    *,
+    label: str,
+    integer: bool = False,
+) -> Decimal:
+    row = config if isinstance(config, Mapping) else {}
+    mode = str(row.get("mode") or "same")
+    if mode == "zero":
+        return Decimal("0")
+    if mode == "same":
+        return base
+    if mode not in {"decrease", "increase"}:
+        raise ValueError(f"{label}调整方式无效")
+    value = Decimal(str(row.get("value") or 0))
+    if value < 0:
+        raise ValueError(f"{label}调整值不能小于0")
+    if integer and value != value.to_integral_value():
+        raise ValueError(f"{label}调整值必须为整数")
+    result = base - value if mode == "decrease" else base + value
+    return max(Decimal("0"), result)
+
+
 def _active_options(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
     return [dict(row) for row in (candidate.get("option") or []) if isinstance(row, Mapping) and row.get("checked") is not False]
 
@@ -252,7 +276,23 @@ def build_problem_goods_request(
 
     step = abs(Decimal(str(amount_step)))
     adjustment = str(parameters.get("adjustment") or parameters.get("option_adjustment") or "")
-    if adjustment in {"quantity_partial_down", "quantity_down", "fixed_quantity_down", "rate_quantity_down", "inspection_completed", "non_auto_unchanged"}:
+    relative_keys = ("quantity_adjustment", "price_adjustment", "freight_adjustment")
+    if any(isinstance(structured.get(key), Mapping) for key in relative_keys):
+        request["pre_num"] = int(
+            _relative_adjustment(
+                Decimal(quantity),
+                structured.get("quantity_adjustment"),
+                label="数量",
+                integer=True,
+            )
+        )
+        request["pre_price"] = _text(
+            _relative_adjustment(price, structured.get("price_adjustment"), label="单价")
+        )
+        request["pre_freight"] = _text(
+            _relative_adjustment(freight, structured.get("freight_adjustment"), label="国内运费")
+        )
+    elif adjustment in {"quantity_partial_down", "quantity_down", "fixed_quantity_down", "rate_quantity_down", "inspection_completed", "non_auto_unchanged"}:
         request["pre_num"] = max(0, quantity - 1)
     elif adjustment == "quantity_up":
         request["pre_num"] = quantity + 1
@@ -295,8 +335,6 @@ def build_problem_goods_request(
         request["option_new"] = list(structured.get("option_new") or [])
     if request["option_deal_suggest"] == 1 and "option_new" not in request:
         request["option_new"] = original_options
-    if adjustment == "zero_service_rate":
-        request["service_rate"] = "0"
     request["expected_direction"] = expected_direction
     return request
 
@@ -341,6 +379,22 @@ def _evidence(payload: Mapping[str, Any] | None) -> MoneyEvidence | None:
     )
 
 
+def _written_options_from_detail(detail: Mapping[str, Any]) -> list[dict[str, Any]]:
+    from .fee_evidence import _detail_rows, _options
+
+    rows: list[dict[str, Any]] = []
+    for item in _detail_rows(detail):
+        raw_options = item.get("option")
+        if not isinstance(raw_options, list):
+            raw_options = item.get("offer_option_bak")
+        rows.extend(
+            dict(option)
+            for option in _options(raw_options)
+            if option.get("checked") is not False
+        )
+    return rows
+
+
 class ProblemGoodsRunner:
     def __init__(
         self,
@@ -354,6 +408,109 @@ class ProblemGoodsRunner:
         self.live_gateway = live_gateway or self._live_execute
         self.candidate_loader = candidate_loader or self._prepare_candidate_with_evidence
         self.account_resolver = account_resolver
+
+    @staticmethod
+    def _option_row_identity(row: Mapping[str, Any]) -> dict[str, str]:
+        price = Decimal(str(row.get("price") or 0))
+        num = int(Decimal(str(row.get("num") or row.get("order_num") or 0)))
+        return {
+            "id": str(row.get("id") or row.get("option_id") or row.get("key") or "").strip(),
+            "name_translate": str(row.get("name_translate") or "").strip(),
+            "name": str(row.get("name") or "").strip(),
+            "price_type": str(row.get("price_type") if row.get("price_type") not in (None, "") else "0"),
+            "price": format(price, "f"),
+            "num": str(num),
+        }
+
+    @staticmethod
+    def _written_option_check(
+        request: Mapping[str, Any],
+        payload: Mapping[str, Any],
+    ) -> dict[str, Any] | None:
+        if int(request.get("option_deal_suggest") or 0) != 1 or "option_new" not in request:
+            return None
+        if not (payload.get("completed") or payload.get("problem_goods_id")):
+            return None
+        wanted_rows = [
+            row
+            for row in (request.get("option_new") or [])
+            if isinstance(row, Mapping) and row.get("checked") is not False
+        ]
+        after = payload.get("after_evidence") if isinstance(payload.get("after_evidence"), Mapping) else {}
+        actual_rows = after.get("written_options")
+        if not isinstance(actual_rows, list):
+            return {
+                "key": "option_identity",
+                "passed": False,
+                "reason_code": "option_identity_missing",
+                "reason": "问题件完成后缺少写入 OPTION 身份证据",
+            }
+        leftover = [
+            ProblemGoodsRunner._option_row_identity(row)
+            for row in actual_rows
+            if isinstance(row, Mapping) and row.get("checked") is not False
+        ]
+        for want in (ProblemGoodsRunner._option_row_identity(row) for row in wanted_rows):
+            match_index = -1
+            if want["id"]:
+                match_index = next((index for index, row in enumerate(leftover) if row["id"] == want["id"]), -1)
+            else:
+                match_index = next(
+                    (
+                        index
+                        for index, row in enumerate(leftover)
+                        if row["name_translate"] == want["name_translate"]
+                        and row["price_type"] == want["price_type"]
+                        and Decimal(row["price"]) == Decimal(want["price"])
+                        and row["num"] == want["num"]
+                    ),
+                    -1,
+                )
+            if match_index < 0:
+                return {
+                    "key": "option_identity",
+                    "passed": False,
+                    "reason_code": "option_identity_mismatch",
+                    "reason": "问题件完成后 OPTION 与请求不一致",
+                    "wanted": want,
+                }
+            found = leftover.pop(match_index)
+            if (
+                found["price_type"] != want["price_type"]
+                or Decimal(found["price"]) != Decimal(want["price"])
+                or found["num"] != want["num"]
+            ):
+                return {
+                    "key": "option_identity",
+                    "passed": False,
+                    "reason_code": "option_identity_mismatch",
+                    "reason": "问题件完成后 OPTION 数量或价格与请求不一致",
+                    "wanted": want,
+                    "actual": found,
+                }
+            if want["name_translate"] and found["name_translate"] != want["name_translate"]:
+                return {
+                    "key": "option_identity",
+                    "passed": False,
+                    "reason_code": "option_identity_mismatch",
+                    "reason": "问题件完成后 OPTION 名称翻译与请求不一致",
+                    "wanted": want,
+                    "actual": found,
+                }
+        if leftover:
+            return {
+                "key": "option_identity",
+                "passed": False,
+                "reason_code": "option_identity_mismatch",
+                "reason": "问题件完成后存在未请求的 OPTION",
+                "extra": leftover,
+            }
+        return {
+            "key": "option_identity",
+            "passed": True,
+            "reason_code": "",
+            "reason": "",
+        }
 
     def _prepare_candidate_with_evidence(
         self,
@@ -792,6 +949,18 @@ class ProblemGoodsRunner:
             "balance_delta_jpy": int(actual_jpy),
             "matched_bill_count": len(rows),
         }
+        if request.get("option_new") is not None and int(request.get("option_deal_suggest") or 0) == 1:
+            try:
+                from .payment_runner import PaymentRunner
+
+                detail = PaymentRunner._load_order_evidence(
+                    self.env,
+                    variables,
+                    str(context.get("order_sn") or ""),
+                )
+                after_evidence["written_options"] = _written_options_from_detail(detail)
+            except Exception as exc:
+                after_evidence["written_options_error"] = str(exc)[:200]
         payment_executed = any("pay" in str(row.get("target") or "").lower() for row in write_actions)
         balance_bill_created = bool(rows)
         side_effects = {
@@ -972,6 +1141,9 @@ class ProblemGoodsRunner:
             expected_direction=direction,
             amount_step=Decimal(str(parameters.get("amount_step") or run_context.get("amount_step") or 1)),
         )
+        run_variables = run_context.get("variables") if isinstance(run_context.get("variables"), Mapping) else {}
+        if request.get("service_rate") in (None, "") and run_variables.get("service_rate") not in (None, ""):
+            request["service_rate"] = str(run_variables["service_rate"])
         refund_cny = estimate_refund_cny(candidate, request) if direction == "credit" else Decimal("0.00")
         has_temporary_account = bool(run_context.get("temporary_account_override"))
         if self.account_resolver is not None and refund_cny >= Decimal("500") and not has_temporary_account:
@@ -1012,12 +1184,30 @@ class ProblemGoodsRunner:
             result_payload = {**payload, "reconciliation": check.__dict__}
         else:
             status = str(payload.get("status") or "failed")
-            error_code = "" if status == "passed" else str(payload.get("error_code") or "problem_execution_failed")
-            error_message = "" if status == "passed" else str(payload.get("error_message") or payload.get("failure_reason") or "问题产品执行失败")
+            error_code = "" if status == "passed" else str(
+                payload.get("error_code") or payload.get("reason_code") or "problem_execution_failed"
+            )
+            error_message = "" if status == "passed" else str(
+                payload.get("error_message")
+                or payload.get("failure_reason")
+                or payload.get("reason")
+                or "问题产品执行失败"
+            )
             if run_context.get("minister_account_required") and status != "passed" and "登录" in error_message:
                 status = "waiting_account"
                 error_code = "minister_account_required"
             result_payload = payload
+        option_check = self._written_option_check(request, result_payload)
+        if option_check is not None:
+            checks = result_payload.get("checks")
+            if not isinstance(checks, list):
+                checks = []
+            checks.append(option_check)
+            result_payload = {**result_payload, "checks": checks, "option_identity": option_check}
+            if not option_check["passed"]:
+                status = "failed"
+                error_code = str(option_check.get("reason_code") or "option_identity_missing")
+                error_message = str(option_check.get("reason") or "问题件 OPTION 身份核验失败")
         return CaseRunResult(
             status=status,
             order_sn=str(payload.get("order_sn") or ""),

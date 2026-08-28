@@ -1,0 +1,16 @@
+{
+  "req": {
+    "box_id": 1201,
+    "packing_info": [
+      {
+        "porder_detail_id": 3118,
+        "pack_num": 2,
+        "warehouse_city": 1
+      }
+    ]
+  },
+  "resp": {
+    "code": 0,
+    "msg": "操作成功"
+  }
+}

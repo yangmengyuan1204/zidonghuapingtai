@@ -74,13 +74,14 @@ UI_ACTION_LABELS = {
     "extract_text": "提取文本",
     "extract_value": "提取输入值",
     "screenshot": "截图",
+    "resume_order_flow": "执行全流程履约至发货",
 }
 
 UI_LOCATOR_REQUIRED = {"input", "click", "wait_for_selector", "text_assert", "select", "check", "uncheck", "assert_visible", "assert_value", "extract_text", "extract_value"}
 UI_VALUE_REQUIRED = {"goto", "input", "wait", "text_assert", "select", "assert_url", "assert_value"}
 BUILTIN_VAR_NAMES = {"timestamp", "datetime", "date", "uuid", "random_int", "random_str", "random_phone", "random_email"}
 LOGIN_URL_MARKERS = ("login", "signin")
-LOGIN_TEXT_MARKERS = ("登录", "登入", "登陆", "login", "sign in", "ログイン")
+LOGIN_TEXT_MARKERS = ("登录", "登入", "登陆", "login", "sign in", "signin", "ログイン", "サインイン", "マイページ", "mypage", "my page")
 REGISTER_TEXT_MARKERS = ("立即注册", "马上注册", "去注册", "register", "sign up", "新規登録")
 
 

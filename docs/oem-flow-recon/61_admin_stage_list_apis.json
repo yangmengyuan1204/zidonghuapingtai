@@ -1,0 +1,886 @@
+{
+  "inquiryOrderList": {
+    "url": "https://oemadmin.rakumart.cn/#/inquiryOrderList",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 大货订单 收货管理 配送单管理 售前问题 订单采购 合同管理 商品管理 原值计算 首页 组织架构 订单 财务 运营 商品管理 客户管理 工厂管理 问题处理 数据统计 BLOG 23.56円 admin 订单管",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/common/common/workTypeList",
+        "s": 200,
+        "post": "{\"page\":1,\"pageSize\":999}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":1,\"work_name\":\"业务\"},{\"id\":2,\"work_name\":\"配货\"},{\"id\":3,\"work_name\":\"财务\"},{\"id\":4,\"work_name\":\"检品\"},{\"id\":5,\"work_name\":\"采购\"}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":6,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":23,\"realname\":\"检品001\",\"forbid_login\":0},{\"id\":33,\"realname\":\"跟进01\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":34,\"realname\":\"跟进阿三\",\"forbid_login\":0},{\"id\":35,\"realname\":\"跟进岗教学用\",\"forbid_login\":0},{\"id\":36,\"realname\":\"印度阿四\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/inquiryList",
+        "s": 200,
+        "post": "{\"status\":\"100\",\"start_time\":\"\",\"end_time\":\"\",\"page\":1,\"y_id\":\"\",\"g_id\":\"\",\"f_id\":\"\",\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"order_sn\":\"X20260811170721-33-OEM\",\"goods_id\":\"987\",\"goods_no\":\"61948335\",\"create_at\":\"2026-08-11 17:07:21\",\"translate_submit_at\":\"2026-08-11 17:37:01\",\"translate_at\":\"2026-08-12 10:04:23\",\"first_inquiry_at\":\"2026-08-12 10:15:12\",\"first_quote_at\":\"2026-08-12 13:29:40\",\"inquiry_at\":\"2026-08-12 10:15:20\",\"complete_at\":\"2026-08-12 13:29:45\",\"admin_status\":0,\"y_admin_status\":5,\"g_admin_status\":4,\"y_id\":21,\"g_id\":27,\"f_id\":35,\"y_remark\":\"\",\"goods_type\":1,\"user_id\":33,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":false,\"accessory\":null,\"y_admin\":\"业务001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"inquiry_detail\":[{\"order_sn\":\"X20260811170721-33-OEM\",\"status\":2}],\"goods_name\":\"マイクロファイバー\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/559698\\/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20260811170511.png\",\"factory_unquote\":0,\"factory_quote\":1,\"has_forward_order\":false,\"follow_up_stage\":\"\",\"follow_up_status\":\"normal\"},{\"order_sn\":\"X20260810140811-33-OEM\",\"goods_id\":\"986\",\"goods_no\":\"81284914\",\"create_at\":\"2026-08-10 14:08:11\",\"translate_submit_at\":\"2026-08-10 14:10:56\",\"translate_at\":\"2026-08-10 14:12:33\",\"first_inquiry_at\":null,\"first_quote_at\":null,\"inquiry_at\":null,\"complete_at\":null,\"admin_status\":0,\"y_admin_status\":2,\"g_admin_status\":1,\"y_id\":21,\"g_id\":27,\"f_id\":35,\"y_remark\":\"\",\"goods_type\":1,\"user_id\":33,\"delete_reason\":\"\",\"delete_at\":"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":1,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":24,\"realname\":\"业务绩效测试\",\"forbid_login\":0},{\"id\":29,\"realname\":\"章北海\",\"forbid_login\":0},{\"id\":32,\"realname\":\"admin2\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":21,\"realname\":\"业务001\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "inquiryTranslationStage": {
+    "url": "https://oemadmin.rakumart.cn/#/inquiryTranslationStage",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 大货订单 收货管理 配送单管理 售前问题 订单采购 合同管理 商品管理 原值计算 首页 组织架构 订单 财务 运营 商品管理 客户管理 工厂管理 问题处理 数据统计 BLOG 23.56円 admin 订单管",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":1,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":24,\"realname\":\"业务绩效测试\",\"forbid_login\":0},{\"id\":29,\"realname\":\"章北海\",\"forbid_login\":0},{\"id\":32,\"realname\":\"admin2\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":21,\"realname\":\"业务001\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":6,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":23,\"realname\":\"检品001\",\"forbid_login\":0},{\"id\":33,\"realname\":\"跟进01\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":34,\"realname\":\"跟进阿三\",\"forbid_login\":0},{\"id\":35,\"realname\":\"跟进岗教学用\",\"forbid_login\":0},{\"id\":36,\"realname\":\"印度阿四\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/translateInquiryList",
+        "s": 200,
+        "post": "{\"status\":\"100\",\"start_time\":\"\",\"end_time\":\"\",\"page\":1,\"y_id\":\"\",\"g_id\":\"\",\"f_id\":\"\",\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"order_sn\":\"X20260805143420-15-OEM\",\"goods_id\":\"980\",\"goods_no\":\"06252534\",\"create_at\":\"2026-08-05 14:34:20\",\"translate_submit_at\":null,\"translate_at\":null,\"first_inquiry_at\":null,\"first_quote_at\":null,\"inquiry_at\":null,\"complete_at\":null,\"admin_status\":0,\"y_admin_status\":0,\"g_admin_status\":0,\"y_id\":19,\"g_id\":19,\"f_id\":33,\"y_remark\":\"\",\"goods_type\":1,\"user_id\":15,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":false,\"accessory\":null,\"y_admin\":\"admin\",\"g_admin\":\"admin\",\"f_admin\":\"跟进01\",\"user\":{\"id\":15,\"realname\":\"小杨测试账号\"},\"inquiry_detail\":[{\"order_sn\":\"X20260805143420-15-OEM\",\"status\":0}],\"goods_name\":\"测试商品\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/871608\\/鲁班.jpg\",\"factory_unquote\":0,\"factory_quote\":0,\"has_forward_order\":false,\"follow_up_stage\":10,\"follow_up_status\":\"serious_delay\"},{\"order_sn\":\"X20260805143058-15-OEM\",\"goods_id\":\"979\",\"goods_no\":\"82293765\",\"create_at\":\"2026-08-05 14:30:58\",\"translate_submit_at\":null,\"translate_at\":null,\"first_inquiry_at\":null,\"first_quote_at\":null,\"inquiry_at\":null,\"complete_at\":null,\"admin_status\":0,\"y_admin_status\":0,\"g_admin_status\":0,\"y_id\":19,\"g_id\":19,\"f_id\":33,\"y_remark\":\"\",\"goods_type\":1,\"user_id\":15,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":false,\"accessory\":null,\"y_admin\":\"admin\",\"g_admin\":\"admin\",\"f_admin\":\"跟进01\",\"user\":{\"id\":15,\"realname\":\"小杨测试账号\"},\"inquiry_detail\":[{\"order_sn\":\"X20260805143058-15-OEM\",\"statu"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "inquiryTranslationAuditStage": {
+    "url": "https://oemadmin.rakumart.cn/#/inquiryTranslationAuditStage",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 大货订单 收货管理 配送单管理 售前问题 订单采购 合同管理 商品管理 原值计算 首页 组织架构 订单 财务 运营 商品管理 客户管理 工厂管理 问题处理 数据统计 BLOG 23.56円 admin 订单管",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":6,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":23,\"realname\":\"检品001\",\"forbid_login\":0},{\"id\":33,\"realname\":\"跟进01\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":34,\"realname\":\"跟进阿三\",\"forbid_login\":0},{\"id\":35,\"realname\":\"跟进岗教学用\",\"forbid_login\":0},{\"id\":36,\"realname\":\"印度阿四\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":1,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":24,\"realname\":\"业务绩效测试\",\"forbid_login\":0},{\"id\":29,\"realname\":\"章北海\",\"forbid_login\":0},{\"id\":32,\"realname\":\"admin2\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":21,\"realname\":\"业务001\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/translateAuditList",
+        "s": 200,
+        "post": "{\"status\":\"100\",\"start_time\":\"\",\"end_time\":\"\",\"page\":1,\"y_id\":\"\",\"g_id\":\"\",\"f_id\":\"\",\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"order_sn\":\"X20260721135449-33-OEM\",\"goods_id\":\"971\",\"goods_no\":\"11495117\",\"create_at\":\"2026-07-21 13:54:49\",\"translate_submit_at\":\"2026-07-21 14:00:22\",\"translate_at\":null,\"first_inquiry_at\":null,\"first_quote_at\":null,\"inquiry_at\":null,\"complete_at\":null,\"admin_status\":0,\"y_admin_status\":1,\"g_admin_status\":0,\"y_id\":21,\"g_id\":27,\"f_id\":33,\"y_remark\":\"\",\"goods_type\":1,\"user_id\":33,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":false,\"accessory\":null,\"y_admin\":\"业务001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进01\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"inquiry_detail\":[],\"goods_name\":\"翻译状态\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/991219\\/1675685636366.png\",\"factory_unquote\":0,\"factory_quote\":0,\"has_forward_order\":false,\"follow_up_stage\":25,\"follow_up_status\":\"serious_delay\"},{\"order_sn\":\"X20260709091127-33-ODM\",\"goods_id\":\"967\",\"goods_no\":\"31130771\",\"create_at\":\"2026-07-09 09:11:27\",\"translate_submit_at\":\"2026-07-09 09:15:10\",\"translate_at\":null,\"first_inquiry_at\":null,\"first_quote_at\":null,\"inquiry_at\":null,\"complete_at\":null,\"admin_status\":0,\"y_admin_status\":1,\"g_admin_status\":0,\"y_id\":21,\"g_id\":27,\"f_id\":33,\"y_remark\":\"\",\"goods_type\":2,\"user_id\":33,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":false,\"accessory\":null,\"y_admin\":\"业务001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进01\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"inquiry_detail\":[{\"order_sn\":\"X20260709091127-33-OD"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "inquiryInquiryStage": {
+    "url": "https://oemadmin.rakumart.cn/#/inquiryInquiryStage",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 大货订单 收货管理 配送单管理 售前问题 订单采购 合同管理 商品管理 原值计算 首页 组织架构 订单 财务 运营 商品管理 客户管理 工厂管理 问题处理 数据统计 BLOG 23.56円 admin 订单管",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":1,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":24,\"realname\":\"业务绩效测试\",\"forbid_login\":0},{\"id\":29,\"realname\":\"章北海\",\"forbid_login\":0},{\"id\":32,\"realname\":\"admin2\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":21,\"realname\":\"业务001\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/inquiryNum",
+        "s": 200,
+        "post": "{\"point\":2}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":237,\"status\":100},{\"name\":\"待询价\",\"num\":46,\"status\":20},{\"name\":\"询价中\",\"num\":41,\"status\":30},{\"name\":\"询价完成\",\"num\":150,\"status\":40}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":6,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":23,\"realname\":\"检品001\",\"forbid_login\":0},{\"id\":33,\"realname\":\"跟进01\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":34,\"realname\":\"跟进阿三\",\"forbid_login\":0},{\"id\":35,\"realname\":\"跟进岗教学用\",\"forbid_login\":0},{\"id\":36,\"realname\":\"印度阿四\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/gInquirtList",
+        "s": 200,
+        "post": "{\"status\":\"100\",\"start_time\":\"\",\"end_time\":\"\",\"page\":1,\"y_id\":\"\",\"g_id\":\"\",\"f_id\":\"\",\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"order_sn\":\"X20260810140811-33-OEM\",\"goods_id\":\"986\",\"goods_no\":\"81284914\",\"create_at\":\"2026-08-10 14:08:11\",\"translate_submit_at\":\"2026-08-10 14:10:56\",\"translate_at\":\"2026-08-10 14:12:33\",\"first_inquiry_at\":null,\"first_quote_at\":null,\"inquiry_at\":null,\"complete_at\":null,\"admin_status\":0,\"y_admin_status\":2,\"g_admin_status\":1,\"y_id\":21,\"g_id\":27,\"f_id\":35,\"y_remark\":\"\",\"goods_type\":1,\"user_id\":33,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":false,\"accessory\":null,\"y_admin\":\"业务001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"inquiry_detail\":[],\"status_name\":\"未询价\",\"goods_name\":\"野球バット【演示用2】\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/166312\\/%E6%A3%92%E7%90%831.jpg\",\"factory_unquote\":0,\"factory_quote\":0,\"has_forward_order\":false,\"follow_up_stage\":5,\"follow_up_status\":\"delay\"},{\"order_sn\":\"X20260728145335-33-OEM\",\"goods_id\":\"976\",\"goods_no\":\"90803105\",\"create_at\":\"2026-07-28 14:53:35\",\"translate_submit_at\":\"2026-07-28 14:54:55\",\"translate_at\":\"2026-07-28 14:54:59\",\"first_inquiry_at\":\"2026-07-28 14:57:12\",\"first_quote_at\":null,\"inquiry_at\":null,\"complete_at\":null,\"admin_status\":0,\"y_admin_status\":3,\"g_admin_status\":2,\"y_id\":21,\"g_id\":27,\"f_id\":34,\"y_remark\":\"\",\"goods_type\":1,\"user_id\":33,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":false,\"accessory\":null,\"y_admin\":\"业务001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进阿三\",\"user\":{\"id\":33,\"re"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "inquiryQuotationStage": {
+    "url": "https://oemadmin.rakumart.cn/#/inquiryQuotationStage",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 大货订单 收货管理 配送单管理 售前问题 订单采购 合同管理 商品管理 原值计算 首页 组织架构 订单 财务 运营 商品管理 客户管理 工厂管理 问题处理 数据统计 BLOG 23.56円 admin 订单管",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":1,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":24,\"realname\":\"业务绩效测试\",\"forbid_login\":0},{\"id\":29,\"realname\":\"章北海\",\"forbid_login\":0},{\"id\":32,\"realname\":\"admin2\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":21,\"realname\":\"业务001\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":6,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":23,\"realname\":\"检品001\",\"forbid_login\":0},{\"id\":33,\"realname\":\"跟进01\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":34,\"realname\":\"跟进阿三\",\"forbid_login\":0},{\"id\":35,\"realname\":\"跟进岗教学用\",\"forbid_login\":0},{\"id\":36,\"realname\":\"印度阿四\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/qouteInquirytList",
+        "s": 200,
+        "post": "{\"status\":\"100\",\"start_time\":\"\",\"end_time\":\"\",\"page\":1,\"y_id\":\"\",\"g_id\":\"\",\"f_id\":\"\",\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"order_sn\":\"X20260728145335-33-OEM\",\"goods_id\":\"976\",\"goods_no\":\"90803105\",\"create_at\":\"2026-07-28 14:53:35\",\"translate_submit_at\":\"2026-07-28 14:54:55\",\"translate_at\":\"2026-07-28 14:54:59\",\"first_inquiry_at\":\"2026-07-28 14:57:12\",\"first_quote_at\":null,\"inquiry_at\":null,\"complete_at\":null,\"admin_status\":0,\"y_admin_status\":3,\"g_admin_status\":2,\"y_id\":21,\"g_id\":27,\"f_id\":34,\"y_remark\":\"\",\"goods_type\":1,\"user_id\":33,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":false,\"accessory\":null,\"y_admin\":\"业务001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进阿三\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"inquiry_detail\":[{\"order_sn\":\"X20260728145335-33-OEM\",\"status\":1}],\"goods_name\":\"报价2026年7月28日14:51:44\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/534567\\/1675685636366.png\",\"factory_unquote\":1,\"factory_quote\":0,\"has_forward_order\":false,\"follow_up_stage\":18,\"follow_up_status\":\"serious_delay\"},{\"order_sn\":\"X20260720094308-33-OEM\",\"goods_id\":\"969\",\"goods_no\":\"20282771\",\"create_at\":\"2026-07-20 09:43:08\",\"translate_submit_at\":\"2026-07-20 13:21:04\",\"translate_at\":\"2026-07-20 15:44:33\",\"first_inquiry_at\":\"2026-07-20 16:07:50\",\"first_quote_at\":\"2026-07-20 16:09:15\",\"inquiry_at\":null,\"complete_at\":\"2026-07-20 16:09:19\",\"admin_status\":0,\"y_admin_status\":4,\"g_admin_status\":2,\"y_id\":21,\"g_id\":27,\"f_id\":0,\"y_remark\":\"\",\"goods_type\":1,\"user_id\":33,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":false,"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/inquiryNum",
+        "s": 200,
+        "post": "{\"point\":3}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":278,\"status\":100},{\"name\":\"未报价\",\"num\":181,\"status\":50},{\"name\":\"报价中\",\"num\":97,\"status\":60}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "inquiryHomeworkCompleted": {
+    "url": "https://oemadmin.rakumart.cn/#/inquiryHomeworkCompleted",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 大货订单 收货管理 配送单管理 售前问题 订单采购 合同管理 商品管理 原值计算 首页 组织架构 订单 财务 运营 商品管理 客户管理 工厂管理 问题处理 数据统计 BLOG 23.56円 admin 订单管",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":6,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":23,\"realname\":\"检品001\",\"forbid_login\":0},{\"id\":33,\"realname\":\"跟进01\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":34,\"realname\":\"跟进阿三\",\"forbid_login\":0},{\"id\":35,\"realname\":\"跟进岗教学用\",\"forbid_login\":0},{\"id\":36,\"realname\":\"印度阿四\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":1,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":24,\"realname\":\"业务绩效测试\",\"forbid_login\":0},{\"id\":29,\"realname\":\"章北海\",\"forbid_login\":0},{\"id\":32,\"realname\":\"admin2\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":21,\"realname\":\"业务001\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/complateInquiryList",
+        "s": 200,
+        "post": "{\"status\":\"100\",\"start_time\":\"\",\"end_time\":\"\",\"page\":1,\"y_id\":\"\",\"g_id\":\"\",\"f_id\":\"\",\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"order_sn\":\"X20260811170721-33-OEM\",\"goods_id\":\"987\",\"goods_no\":\"61948335\",\"create_at\":\"2026-08-11 17:07:21\",\"translate_submit_at\":\"2026-08-11 17:37:01\",\"translate_at\":\"2026-08-12 10:04:23\",\"first_inquiry_at\":\"2026-08-12 10:15:12\",\"first_quote_at\":\"2026-08-12 13:29:40\",\"inquiry_at\":\"2026-08-12 10:15:20\",\"complete_at\":\"2026-08-12 13:29:45\",\"admin_status\":0,\"y_admin_status\":5,\"g_admin_status\":4,\"y_id\":21,\"g_id\":27,\"f_id\":35,\"y_remark\":\"\",\"goods_type\":1,\"user_id\":33,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":false,\"accessory\":null,\"y_admin\":\"业务001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"inquiry_detail\":[{\"order_sn\":\"X20260811170721-33-OEM\",\"status\":2}],\"goods_name\":\"マイクロファイバー\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/559698\\/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20260811170511.png\",\"factory_unquote\":0,\"factory_quote\":1,\"has_forward_order\":false,\"follow_up_stage\":\"\",\"follow_up_status\":\"normal\"},{\"order_sn\":\"X20260805144828-15-OEM\",\"goods_id\":\"981\",\"goods_no\":\"61493876\",\"create_at\":\"2026-08-05 14:48:28\",\"translate_submit_at\":\"2026-08-05 14:48:37\",\"translate_at\":\"2026-08-05 14:48:38\",\"first_inquiry_at\":\"2026-08-05 14:48:40\",\"first_quote_at\":\"2026-08-05 14:48:41\",\"inquiry_at\":\"2026-08-05 14:48:40\",\"complete_at\":\"2026-08-05 14:48:42\",\"admin_status\":0,\"y_admin_status\":5,\"g_admin_status\":4,\"y_id\":19,\"g_id\":19,\"f_id\":33,\"y_re"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/inquiryNum",
+        "s": 200,
+        "post": "{\"point\":4}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":25,\"status\":100},{\"name\":\"报价完成\",\"num\":18,\"status\":70},{\"name\":\"无法报价\",\"num\":7,\"status\":80}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      }
+    ]
+  },
+  "sampleOrderList": {
+    "url": "https://oemadmin.rakumart.cn/#/sampleOrderList",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 收货管理 配送单管理 售前问题 订",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesNum",
+        "s": 200,
+        "post": "{\"point\":1}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":36,\"admin_status\":10000},{\"name\":\"翻译\",\"num\":31,\"admin_status\":100}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesList",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"Y20260812133242-33-OEM\",\"goods_name\":\"マイクロファイバー\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/559698\\/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20260811170511.png\"],\"admin_status\":50,\"status_name\":\"国内派送中\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"create_at\":\"2026-08-12 13:33:17\",\"datetime_translated\":\"2026-08-12 13:57:15\",\"datetime_confirmed\":\"2026-08-12 13:59:42\",\"datetime_quote\":\"2026-08-12 14:31:41\",\"datetime_pay_submit\":\"2026-08-12 14:32:14\",\"datetime_pay_confirm\":\"2026-08-12 14:32:14\",\"datetime_purchase_complete\":\"2026-08-12 14:36:36\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"factory_name\":\"蠡县泽畅纺织品店\",\"goods_type\":1,\"warehouse_city\":2,\"has_keep_sample\":true,\"is_amazon\":false,\"follow_up_stage\":3,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":2,\"order_sn\":\"Y20260810141250-33-OEM\",\"goods_name\":\"野球バット【演示用】\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/333252\\/%E6%A3%92%E7%90%831.jpg\"],\"admin_status\":50,\"status_name\":\"国内派送中\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"create_at\":\"2026-08-10 14:13:04\",\"datetime_translated\":\"2026-08-10 14:15:56\",\"datetime_confirmed\":\"2026-08-10 14:17:28\",\"d"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      }
+    ]
+  },
+  "sampleListTranslationStage": {
+    "url": "https://oemadmin.rakumart.cn/#/sampleListTranslationStage",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 收货管理 配送单管理 售前问题 订",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesNum",
+        "s": 200,
+        "post": "{\"point\":1}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":36,\"admin_status\":10000},{\"name\":\"翻译\",\"num\":31,\"admin_status\":100}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesTranslatedList",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"Y20260805110539-33-OEM\",\"goods_name\":\"野球バット【演示用】\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/333252\\/%E6%A3%92%E7%90%831.jpg\"],\"admin_status\":1,\"status_name\":\"待翻译\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进阿三\",\"create_at\":\"2026-08-05 11:05:43\",\"datetime_translated\":\"\",\"datetime_confirmed\":\"\",\"datetime_quote\":\"\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"factory_name\":\"永康市宁欣工贸有限公司\",\"goods_type\":1,\"warehouse_city\":1,\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":10,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":2,\"order_sn\":\"Y20260728145024-33-XH\",\"goods_name\":\"\",\"goods_img\":[\"https:\\/\\/cbu01.alicdn.com\\/img\\/ibank\\/O1CN01sHstFG1TVkdsgjvyC_!!2202377042388-0-cib.jpg\"],\"admin_status\":1,\"status_name\":\"待翻译\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进阿三\",\"create_at\":\"2026-07-28 14:50:59\",\"datetime_translated\":\"\",\"datetime_confirmed\":\"\",\"datetime_quote\":\"\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"\",\"user\":{\"id\":33,\"realname\":\"Rakuma"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "sampleListConfirmationStage": {
+    "url": "https://oemadmin.rakumart.cn/#/sampleListConfirmationStage",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 收货管理 配送单管理 售前问题 订",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesNum",
+        "s": 200,
+        "post": "{\"point\":2}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":18,\"admin_status\":10000},{\"name\":\"确认\",\"num\":15,\"admin_status\":200}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesConfirmedList",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"Y20260727131141-33-OEM\",\"goods_name\":\"商品成本+跟进\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/929233\\/2.png\"],\"admin_status\":10,\"status_name\":\"待确认\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进阿三\",\"create_at\":\"2026-07-27 13:11:47\",\"datetime_translated\":\"2026-07-27 13:20:55\",\"datetime_confirmed\":\"\",\"datetime_quote\":\"\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"样品单确认2026年7月27日13:20:37\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"factory_name\":\"保护伞公司\",\"goods_type\":1,\"warehouse_city\":1,\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":19,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":2,\"order_sn\":\"Y20260727130859-33-OEM\",\"goods_name\":\"商品成本+跟进\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/929233\\/2.png\"],\"admin_status\":10,\"status_name\":\"待确认\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进阿三\",\"create_at\":\"2026-07-27 13:09:09\",\"datetime_translated\":\"2026-07-30 13:33:10\",\"datetime_confirmed\":\"\",\"datetime_quote\":\"\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\""
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "sampleListQuotationStage": {
+    "url": "https://oemadmin.rakumart.cn/#/sampleListQuotationStage",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 收货管理 配送单管理 售前问题 订",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesNum",
+        "s": 200,
+        "post": "{\"point\":3}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":98,\"admin_status\":10000},{\"name\":\"取消\",\"num\":5,\"admin_status\":0},{\"name\":\"报价\",\"num\":73,\"admin_status\":300},{\"name\":\"等待入金\",\"num\":19,\"admin_status\":400},{\"name\":\"入金确认中\",\"num\":0,\"admin_status\":500}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesQuote",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"Y20260727130920-33-OEM\",\"goods_name\":\"商品成本+跟进\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/929233\\/2.png\"],\"admin_status\":20,\"status_name\":\"待报价\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进阿三\",\"create_at\":\"2026-07-27 13:09:31\",\"datetime_translated\":\"2026-07-27 13:10:20\",\"datetime_confirmed\":\"2026-07-27 13:10:49\",\"datetime_quote\":\"\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"样品单报价2026年7月27日\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"factory_name\":\"保护伞公司\",\"goods_type\":1,\"warehouse_city\":1,\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":19,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":2,\"order_sn\":\"Y20260613125728-15-OEM\",\"goods_name\":\"str\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202606\\/556320\\/th.jpg\"],\"admin_status\":24,\"status_name\":\"等待入金\",\"y_id\":21,\"p_id\":26,\"g_id\":19,\"f_id\":33,\"y_admin\":\"业务001\",\"p_admin\":\"配货绩效测试\",\"g_admin\":\"admin\",\"f_admin\":\"跟进01\",\"create_at\":\"2026-06-13 12:58:48\",\"datetime_translated\":\"2026-06-13 13:09:56\",\"datetime_confirmed\":\"2026-06-13 13:14:07\",\"datetime_quote\":\"2026-06-13 13:14:17\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":\"\",\"datetime_deliv"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "sampleListProductionStage": {
+    "url": "https://oemadmin.rakumart.cn/#/sampleListProductionStage",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 收货管理 配送单管理 售前问题 订",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesNum",
+        "s": 200,
+        "post": "{\"point\":4}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":146,\"admin_status\":10000},{\"name\":\"待拍下\",\"num\":43,\"admin_status\":600},{\"name\":\"待改价\",\"num\":42,\"admin_status\":700},{\"name\":\"待财务付款\",\"num\":5,\"admin_status\":800},{\"name\":\"生产中\",\"num\":38,\"admin_status\":900},{\"name\":\"尾款确认\",\"num\":0,\"admin_status\":1000},{\"name\":\"尾款支付\",\"num\":0,\"admin_status\":1010},{\"name\":\"出货\",\"num\":0,\"admin_status\":1100}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesInproduction",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"Y20260805100238-33-XH\",\"goods_name\":\"\",\"goods_img\":[\"https:\\/\\/cbu01.alicdn.com\\/img\\/ibank\\/O1CN01JXAFdk1S9Tu8wUiLo_!!1000352204-0-cib.jpg\",\"https:\\/\\/cbu01.alicdn.com\\/img\\/ibank\\/4635005759_951598459.400x400.jpg\"],\"admin_status\":36,\"status_name\":\"生产中\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"create_at\":\"2026-08-05 10:05:25\",\"datetime_translated\":\"2026-08-05 10:07:35\",\"datetime_confirmed\":\"2026-08-05 10:07:38\",\"datetime_quote\":\"2026-08-05 10:08:03\",\"datetime_pay_submit\":\"2026-08-05 10:08:19\",\"datetime_pay_confirm\":\"2026-08-05 10:08:19\",\"datetime_purchase_complete\":\"2026-08-05 10:09:05\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"factory_name\":\"\",\"goods_type\":4,\"warehouse_city\":1,\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":11,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":2,\"order_sn\":\"Y20260727135034-33-OEM\",\"goods_name\":\"商品成本+跟进\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/929233\\/2.png\"],\"admin_status\":36,\"status_name\":\"生产中\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进阿三\",\"create_at\":\"2026-07-27 13:50:53\",\"datetime_translated\":\"2026-07-27 13:51:42\",\"datetime_confirmed\":\"2026-07-27 13:51:54\",\"datetime_quote\":\"2026-07-27 13:52:"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "deliveryAndHomeworkSampleList": {
+    "url": "https://oemadmin.rakumart.cn/#/deliveryAndHomeworkSampleList",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 收货管理 配送单管理 售前问题 订",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesNum",
+        "s": 200,
+        "post": "{\"point\":5}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":71,\"admin_status\":10000},{\"name\":\"国内派送中\",\"num\":17,\"admin_status\":1200},{\"name\":\"已签收\",\"num\":6,\"admin_status\":1300},{\"name\":\"验货确认\",\"num\":4,\"admin_status\":1400},{\"name\":\"检品\",\"num\":0,\"admin_status\":1500},{\"name\":\"上架中\",\"num\":44,\"admin_status\":1600}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesWorking",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"Y20260812133242-33-OEM\",\"goods_name\":\"マイクロファイバー\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/559698\\/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20260811170511.png\"],\"admin_status\":50,\"status_name\":\"国内派送中\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"create_at\":\"2026-08-12 13:33:17\",\"datetime_translated\":\"2026-08-12 13:57:15\",\"datetime_confirmed\":\"2026-08-12 13:59:42\",\"datetime_quote\":\"2026-08-12 14:31:41\",\"datetime_pay_submit\":\"2026-08-12 14:32:14\",\"datetime_pay_confirm\":\"2026-08-12 14:32:14\",\"datetime_purchase_complete\":\"2026-08-12 14:36:36\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"factory_name\":\"蠡县泽畅纺织品店\",\"goods_type\":1,\"warehouse_city\":2,\"has_keep_sample\":true,\"is_amazon\":false,\"follow_up_stage\":3,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":2,\"order_sn\":\"Y20260810141250-33-OEM\",\"goods_name\":\"野球バット【演示用】\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/333252\\/%E6%A3%92%E7%90%831.jpg\"],\"admin_status\":50,\"status_name\":\"国内派送中\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"create_at\":\"2026-08-10 14:13:04\",\"datetime_translated\":\"2026-08-10 14:15:56\",\"datetime_confirmed\":\"2026-08-10 14:17:28\",\"d"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "listOfBulkOrdersInProgress": {
+    "url": "https://oemadmin.rakumart.cn/#/listOfBulkOrdersInProgress",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/largeList",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"p_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"D20260814154719-313129-OEM-AM-01\",\"goods_name\":\"商品不良率\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202510\\/096495\\/4dab0b9862af4305a9a9ca5ebb7ea389.jpeg\"],\"admin_status\":64,\"status_name\":\"上架完成\",\"y_id\":21,\"p_id\":32,\"g_id\":32,\"f_id\":null,\"y_admin\":\"业务001\",\"p_admin\":\"admin2\",\"g_admin\":\"admin2\",\"f_admin\":\"\",\"create_at\":\"2026-08-14 15:52:29\",\"datetime_translated\":\"2026-08-14 15:56:10\",\"datetime_confirmed\":\"2026-08-14 15:56:18\",\"datetime_quote\":\"2026-08-14 15:56:31\",\"datetime_pay_submit\":\"2026-08-14 15:56:42\",\"datetime_pay_confirm\":\"2026-08-14 15:56:42\",\"datetime_purchase_complete\":\"2026-08-14 15:56:59\",\"datetime_up_complete\":\"2026-08-14 15:58:58\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"2026-08-14 15:57:55\",\"y_remark\":\"\",\"user\":{\"id\":313129,\"realname\":\"zn\"},\"factory_name\":\"深圳市福田区潮流韩尚服饰店\",\"goods_type\":1,\"warehouse_city\":1,\"has_keep_sample\":false,\"is_amazon\":true,\"follow_up_stage\":\"已完成\",\"follow_up_status\":\"normal\"},{\"rowNumber\":2,\"order_sn\":\"D20260814154719-313129-ODM-AM-02\",\"goods_name\":\"自动报价测试\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202411\\/658614\\/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20240802130608.jpg\"],\"admin_status\":1,\"status_name\":\"待翻译\",\"y_id\":21,\"p_id\":32,\"g_id\":32,\"f_id\":null,\"y_admin\":\"业务001\",\"p_admin\":\"admin2\",\"g_admin\":\"admin2\",\"f_admin\":\"\",\"create_at\":\"2026-08-14 15:52:29\",\"datetime_translated\":\"\",\"datetime_confirmed\":\"\",\"date"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "listOfBulkOrdersTranslate": {
+    "url": "https://oemadmin.rakumart.cn/#/listOfBulkOrdersTranslate",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/largeTranslatedList",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"p_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"D20260814154719-313129-ODM-AM-02\",\"goods_name\":\"自动报价测试\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202411\\/658614\\/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20240802130608.jpg\"],\"admin_status\":1,\"status_name\":\"待翻译\",\"y_id\":21,\"p_id\":32,\"g_id\":32,\"f_id\":null,\"y_admin\":\"业务001\",\"p_admin\":\"admin2\",\"g_admin\":\"admin2\",\"f_admin\":\"\",\"create_at\":\"2026-08-14 15:52:29\",\"datetime_translated\":\"\",\"datetime_confirmed\":\"\",\"datetime_quote\":\"\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"\",\"user\":{\"id\":313129,\"realname\":\"zn\"},\"factory_name\":\"深圳市福田区潮流韩尚服饰店\",\"goods_type\":2,\"warehouse_city\":1,\"has_keep_sample\":false,\"is_amazon\":true,\"follow_up_stage\":1,\"follow_up_status\":\"normal\"},{\"rowNumber\":2,\"order_sn\":\"D20260814154717-313129-OEM-AM-01\",\"goods_name\":\"商品不良率\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202510\\/096495\\/4dab0b9862af4305a9a9ca5ebb7ea389.jpeg\"],\"admin_status\":1,\"status_name\":\"待翻译\",\"y_id\":21,\"p_id\":32,\"g_id\":32,\"f_id\":null,\"y_admin\":\"业务001\",\"p_admin\":\"admin2\",\"g_admin\":\"admin2\",\"f_admin\":\"\",\"create_at\":\"2026-08-14 15:50:49\",\"datetime_translated\":\"\",\"datetime_confirmed\":\"\",\"datetime_quote\":\"\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"d"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "listOfBulkOrdersConfirm": {
+    "url": "https://oemadmin.rakumart.cn/#/listOfBulkOrdersConfirm",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/largeConfirmedList",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"p_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"D20260727142725-33-OEM\",\"goods_name\":\"商品成本+跟进\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/929233\\/2.png\"],\"admin_status\":10,\"status_name\":\"待确认\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进阿三\",\"create_at\":\"2026-07-27 14:27:35\",\"datetime_translated\":\"2026-07-27 14:27:54\",\"datetime_confirmed\":\"\",\"datetime_quote\":\"\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"factory_name\":\"广州衫阁服饰有限公司\",\"goods_type\":1,\"warehouse_city\":2,\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":19,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":2,\"order_sn\":\"D20260613110838-15-OEM\",\"goods_name\":\"スクリーン\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202606\\/589241\\/th.jpg\"],\"admin_status\":12,\"status_name\":\"确认中\",\"y_id\":21,\"p_id\":26,\"g_id\":19,\"f_id\":33,\"y_admin\":\"业务001\",\"p_admin\":\"配货绩效测试\",\"g_admin\":\"admin\",\"f_admin\":\"跟进01\",\"create_at\":\"2026-06-13 11:15:13\",\"datetime_translated\":\"2026-06-13 11:17:49\",\"datetime_confirmed\":\"2026-06-13 11:21:41\",\"datetime_quote\":\"2026-06-13 11:22:04\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_r"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "listOfBulkOrdersQuotationStage": {
+    "url": "https://oemadmin.rakumart.cn/#/listOfBulkOrdersQuotationStage",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/largeNum",
+        "s": 200,
+        "post": "{\"point\":3}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":91,\"admin_status\":10000},{\"name\":\"取消\",\"num\":2,\"admin_status\":0},{\"name\":\"报价\",\"num\":78,\"admin_status\":300},{\"name\":\"等待入金\",\"num\":11,\"admin_status\":400},{\"name\":\"入金确认中\",\"num\":0,\"admin_status\":500}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/largeQuoteList",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"p_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"D20260727142808-33-OEM\",\"goods_name\":\"商品成本+跟进\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/929233\\/2.png\"],\"admin_status\":22,\"status_name\":\"报价中\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进阿三\",\"create_at\":\"2026-07-27 14:28:17\",\"datetime_translated\":\"2026-07-27 14:28:45\",\"datetime_confirmed\":\"2026-07-27 14:29:24\",\"datetime_quote\":\"\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"报价2026年7月27日\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"factory_name\":\"广州衫阁服饰有限公司\",\"goods_type\":1,\"warehouse_city\":2,\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":\"\",\"follow_up_status\":\"normal\"},{\"rowNumber\":2,\"order_sn\":\"D20260706152119-15-OEM-AM-01\",\"goods_name\":\"bug检测机\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202601\\/456455\\/O1CN01sLVlVW25ABa5bQubA_!!1870557485.jpg\"],\"admin_status\":20,\"status_name\":\"待报价\",\"y_id\":19,\"p_id\":26,\"g_id\":19,\"f_id\":33,\"y_admin\":\"admin\",\"p_admin\":\"配货绩效测试\",\"g_admin\":\"admin\",\"f_admin\":\"跟进01\",\"create_at\":\"2026-07-06 15:21:26\",\"datetime_translated\":\"2026-08-04 16:29:11\",\"datetime_confirmed\":\"2026-08-04 16:29:52\",\"datetime_quote\":\"\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_purchase_complete\":\"\",\"datetime_up_complete\":"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "listOfBulkOrdersProductionStage": {
+    "url": "https://oemadmin.rakumart.cn/#/listOfBulkOrdersProductionStage",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/largeNum",
+        "s": 200,
+        "post": "{\"point\":4}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":315,\"admin_status\":10000},{\"name\":\"待拍下\",\"num\":52,\"admin_status\":600},{\"name\":\"待改价\",\"num\":50,\"admin_status\":700},{\"name\":\"待财务付款\",\"num\":2,\"admin_status\":800},{\"name\":\"生产中\",\"num\":92,\"admin_status\":900},{\"name\":\"尾款确认\",\"num\":28,\"admin_status\":1000},{\"name\":\"尾款支付\",\"num\":13,\"admin_status\":1010},{\"name\":\"出货\",\"num\":47,\"admin_status\":1100}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/largeInproductionList",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"p_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"D20260813154254-33-OEM\",\"goods_name\":\"マイクロファイバー\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/559698\\/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20260811170511.png\"],\"admin_status\":44,\"status_name\":\"待提交尾款审核\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"create_at\":\"2026-08-13 15:42:58\",\"datetime_translated\":\"2026-08-13 15:43:33\",\"datetime_confirmed\":\"2026-08-13 15:43:43\",\"datetime_quote\":\"2026-08-13 15:43:58\",\"datetime_pay_submit\":\"2026-08-13 15:44:15\",\"datetime_pay_confirm\":\"2026-08-13 15:44:15\",\"datetime_purchase_complete\":\"2026-08-13 15:44:39\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"factory_name\":\"蠡县泽畅纺织品店\",\"goods_type\":1,\"warehouse_city\":2,\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":2,\"follow_up_status\":\"normal\"},{\"rowNumber\":2,\"order_sn\":\"D20260810145904-33-OEM\",\"goods_name\":\"野球バット【演示用】\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/333252\\/%E6%A3%92%E7%90%831.jpg\"],\"admin_status\":44,\"status_name\":\"待提交尾款审核\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"create_at\":\"2026-08-10 14:59:07\",\"datetime_translated\":\"2026-08-10 15:02:31\",\"datetime_confirmed\":\"2026-08-10 15:04:47\",\"dat"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "deliveryAndHomeworkBulkOrder": {
+    "url": "https://oemadmin.rakumart.cn/#/deliveryAndHomeworkBulkOrder",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/largeNum",
+        "s": 200,
+        "post": "{\"point\":5}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"name\":\"全部\",\"num\":139,\"admin_status\":10000},{\"name\":\"国内派送中\",\"num\":13,\"admin_status\":1200},{\"name\":\"已签收\",\"num\":11,\"admin_status\":1300},{\"name\":\"验货确认\",\"num\":1,\"admin_status\":1400},{\"name\":\"检品\",\"num\":24,\"admin_status\":1500},{\"name\":\"上架中\",\"num\":90,\"admin_status\":1600}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/largeWorkingList",
+        "s": 200,
+        "post": "{\"y_id\":\"\",\"p_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"10000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"order_sn\":\"D20260810142052-33-OEM\",\"goods_name\":\"野球バット【演示用】\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/333252\\/%E6%A3%92%E7%90%831.jpg\"],\"admin_status\":50,\"status_name\":\"国内派送中\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"create_at\":\"2026-08-10 14:20:56\",\"datetime_translated\":\"2026-08-10 14:22:00\",\"datetime_confirmed\":\"2026-08-10 14:22:09\",\"datetime_quote\":\"2026-08-10 14:22:22\",\"datetime_pay_submit\":\"2026-08-10 14:22:42\",\"datetime_pay_confirm\":\"2026-08-10 14:22:42\",\"datetime_purchase_complete\":\"2026-08-10 14:23:09\",\"datetime_up_complete\":\"\",\"datetime_delivery_complete\":\"\",\"datetime_receive\":\"\",\"y_remark\":\"\",\"user\":{\"id\":33,\"realname\":\"Rakumade_test\"},\"factory_name\":\"永康市宁欣工贸有限公司\",\"goods_type\":1,\"warehouse_city\":1,\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":5,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":2,\"order_sn\":\"D20260805110607-33-OEM\",\"goods_name\":\"野球バット【演示用】\",\"goods_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/333252\\/%E6%A3%92%E7%90%831.jpg\"],\"admin_status\":50,\"status_name\":\"国内派送中\",\"y_id\":21,\"p_id\":22,\"g_id\":27,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"g_admin\":\"采购张三\",\"f_admin\":\"跟进岗教学用\",\"create_at\":\"2026-08-05 11:06:15\",\"datetime_translated\":\"2026-08-05 11:11:24\",\"datetime_confirmed\":\"2026-08-05 11:11:36\",\"datetime_quote\":\"2026-08-05 11:11:50\",\"datetim"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "inProgressDeliveryOrder": {
+    "url": "https://oemadmin.rakumart.cn/#/inProgressDeliveryOrder",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/allPorder",
+        "s": 200,
+        "post": "{\"porder_sn\":\"\",\"express_no\":\"\",\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"1000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"porder_sn\":\"OP20260812162836-33\",\"admin_status\":1,\"y_id\":21,\"p_id\":22,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进岗教学用\",\"created_at\":\"2026-08-12 16:29:16\",\"datetime_translate\":\"\",\"datetime_confirm\":\"\",\"datetime_offer\":\"\",\"datetime_pay_submit\":\"\",\"datetime_pay_confirm\":\"\",\"datetime_delivery\":\"\",\"datetime_client_receive\":\"\",\"user_id\":33,\"user_name\":\"Rakumade_test\",\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":3,\"follow_up_status\":\"delay\"},{\"rowNumber\":2,\"porder_sn\":\"OP20260810144457-33\",\"admin_status\":9,\"y_id\":21,\"p_id\":22,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进岗教学用\",\"created_at\":\"2026-08-10 14:45:14\",\"datetime_translate\":\"2026-08-10 14:45:47\",\"datetime_confirm\":\"2026-08-10 14:45:59\",\"datetime_offer\":\"2026-08-10 14:46:09\",\"datetime_pay_submit\":\"2026-08-10 14:46:23\",\"datetime_pay_confirm\":\"2026-08-10 14:46:23\",\"datetime_delivery\":\"2026-08-10 14:47:02\",\"datetime_client_receive\":\"\",\"user_id\":33,\"user_name\":\"Rakumade_test\",\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":\"\",\"follow_up_status\":\"normal\"},{\"rowNumber\":3,\"porder_sn\":\"OP20260806130916-33\",\"admin_status\":9,\"y_id\":21,\"p_id\":22,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进岗教学用\",\"created_at\":\"2026-08-06 13:09:23\",\"datetime_translate\":\"2026-08-06 13:10:31\",\"datetime_confirm\":\"2026-08-06 13:10:46\",\"datetime_offer\":\"2026-08-06 13:11:10\",\"datetime_pay_submit\":\"2026-08-06 13:11:24\",\"datetime_pay_confir"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "translateDeliveryOrder": {
+    "url": "https://oemadmin.rakumart.cn/#/translateDeliveryOrder",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/porderTransalte",
+        "s": 200,
+        "post": "{\"porder_sn\":\"\",\"express_no\":\"\",\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"1000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"porder_sn\":\"OP20260812162836-33\",\"admin_status\":1,\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_id\":21,\"p_id\":22,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进岗教学用\",\"y_remark\":\"\",\"order_sn_list\":{\"D20260812145513-33-OEM\":{\"order_sn\":\"D20260812145513-33-OEM\",\"order_type\":2,\"postnatal_sample_from\":\"\"}},\"logistice_express\":[],\"created_at\":\"2026-08-12 16:29:16\",\"datetime_offer\":\"\",\"datetime_pay_submit\":\"\",\"datetime_delivery\":\"\",\"datetime_client_receive\":\"\",\"datetime_delete\":\"\",\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":3,\"follow_up_status\":\"delay\"},{\"rowNumber\":2,\"porder_sn\":\"OP20260728095219-33\",\"admin_status\":1,\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_id\":21,\"p_id\":22,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进阿三\",\"y_remark\":\"\",\"order_sn_list\":{\"D20260416083704-33-OEM\":{\"order_sn\":\"D20260416083704-33-OEM\",\"order_type\":2,\"postnatal_sample_from\":\"\"}},\"logistice_express\":[],\"created_at\":\"2026-07-28 09:52:27\",\"datetime_offer\":\"\",\"datetime_pay_submit\":\"\",\"datetime_delivery\":\"\",\"datetime_client_receive\":\"\",\"datetime_delete\":\"\",\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":19,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":3,\"porder_sn\":\"OP20260727140941-313129\",\"admin_status\":1,\"user_id\":313129,\"user_name\":\"zn\",\"y_id\":32,\"p_id\":32,\"f_id\":33,\"y_admin\":\"admin2\",\"p_admin\":\"admin2\",\"f_admin\":\"跟进01\",\"y_remark\":\"\",\"order_sn_list\":{\"D20260708103510-313129-OEM\":{\"order_sn\":\"D2"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "packingDeliveryOrder": {
+    "url": "https://oemadmin.rakumart.cn/#/packingDeliveryOrder",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/porderPacking",
+        "s": 200,
+        "post": "{\"porder_sn\":\"\",\"express_no\":\"\",\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"1000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"porder_sn\":\"OP20260728095349-33\",\"admin_status\":3,\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_id\":21,\"p_id\":22,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进阿三\",\"y_remark\":\"\",\"order_sn_list\":{\"D20260416083704-33-OEM\":{\"order_sn\":\"D20260416083704-33-OEM\",\"order_type\":2,\"postnatal_sample_from\":\"\"}},\"logistice_express\":[],\"created_at\":\"2026-07-28 09:57:06\",\"datetime_offer\":\"\",\"datetime_pay_submit\":\"\",\"datetime_delivery\":\"\",\"datetime_client_receive\":\"\",\"datetime_delete\":\"\",\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":19,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":2,\"porder_sn\":\"OP20260721162146-33\",\"admin_status\":3,\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_id\":21,\"p_id\":22,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进阿三\",\"y_remark\":\"\",\"order_sn_list\":{\"Y20260720162021-33-OEM\":{\"order_sn\":\"Y20260720162021-33-OEM\",\"order_type\":1,\"postnatal_sample_from\":\"\"}},\"logistice_express\":[],\"created_at\":\"2026-07-21 16:21:56\",\"datetime_offer\":\"\",\"datetime_pay_submit\":\"\",\"datetime_delivery\":\"\",\"datetime_client_receive\":\"\",\"datetime_delete\":\"\",\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":25,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":3,\"porder_sn\":\"OP20260616095955-15\",\"admin_status\":3,\"user_id\":15,\"user_name\":\"小杨测试账号\",\"y_id\":21,\"p_id\":26,\"f_id\":33,\"y_admin\":\"业务001\",\"p_admin\":\"配货绩效测试\",\"f_admin\":\"跟进01\",\"y_remark\":\"\",\"order_sn_list\":{\"D20260616092358-15-OEM\":{\"order_sn\":\"D202"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "offerDeliveryOrder": {
+    "url": "https://oemadmin.rakumart.cn/#/offerDeliveryOrder",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/porderNum",
+        "s": 200,
+        "post": "{\"father_status\":30}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"num\":58,\"admin_status\":5,\"name\":\"待报价\"},{\"num\":21,\"admin_status\":6,\"name\":\"待客户入金\"},{\"num\":0,\"admin_status\":7,\"name\":\"入金确认中\"},{\"num\":79,\"admin_status\":1000,\"name\":\"全部\"}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/porderQuote",
+        "s": 200,
+        "post": "{\"porder_sn\":\"\",\"express_no\":\"\",\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"1000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"porder_sn\":\"OP20260728095748-33\",\"admin_status\":5,\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_id\":21,\"p_id\":22,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进阿三\",\"y_remark\":\"\",\"order_sn_list\":{\"D20260416083704-33-OEM\":{\"order_sn\":\"D20260416083704-33-OEM\",\"order_type\":2,\"postnatal_sample_from\":\"\"}},\"logistice_express\":[],\"created_at\":\"2026-07-28 09:57:56\",\"datetime_offer\":\"\",\"datetime_pay_submit\":\"\",\"datetime_delivery\":\"\",\"datetime_client_receive\":\"\",\"datetime_delete\":\"\",\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":19,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":2,\"porder_sn\":\"OP20260708155918-313129\",\"admin_status\":6,\"user_id\":313129,\"user_name\":\"zn\",\"y_id\":32,\"p_id\":32,\"f_id\":33,\"y_admin\":\"admin2\",\"p_admin\":\"admin2\",\"f_admin\":\"跟进01\",\"y_remark\":\"\",\"order_sn_list\":{\"D20260708103510-313129-OEM\":{\"order_sn\":\"D20260708103510-313129-OEM\",\"order_type\":2,\"postnatal_sample_from\":\"\"}},\"logistice_express\":[{\"logistics\":\"Raku-DQ（義鳥）\",\"express\":[\"\"],\"logistics_id\":23}],\"created_at\":\"2026-07-08 15:59:46\",\"datetime_offer\":\"2026-07-31 17:47:19\",\"datetime_pay_submit\":\"\",\"datetime_delivery\":\"\",\"datetime_client_receive\":\"\",\"datetime_delete\":\"\",\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":\"\",\"follow_up_status\":\"normal\"},{\"rowNumber\":3,\"porder_sn\":\"OP20260708145815-313129\",\"admin_status\":6,\"user_id\":313129,\"user_name\":\"zn\",\"y_id\":32,\"p_id\":32,\"f_id\":33,\"y_admin\":\"admin2\",\"p_admin\":\"admin2\",\"f_adm"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "shippingDeliveryOrder": {
+    "url": "https://oemadmin.rakumart.cn/#/shippingDeliveryOrder",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/porderShipment",
+        "s": 200,
+        "post": "{\"porder_sn\":\"\",\"express_no\":\"\",\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"1000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"porder_sn\":\"OP20260728095941-33\",\"admin_status\":8,\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_id\":21,\"p_id\":22,\"f_id\":34,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进阿三\",\"y_remark\":\"\",\"order_sn_list\":{\"D20260416083704-33-OEM\":{\"order_sn\":\"D20260416083704-33-OEM\",\"order_type\":2,\"postnatal_sample_from\":\"\"}},\"logistice_express\":[{\"logistics\":\"Raku-DQ（義鳥）\",\"express\":[\"\"],\"logistics_id\":23}],\"created_at\":\"2026-07-28 09:59:48\",\"datetime_offer\":\"2026-07-28 10:01:00\",\"datetime_pay_submit\":\"2026-07-28 10:01:28\",\"datetime_delivery\":\"\",\"datetime_client_receive\":\"\",\"datetime_delete\":\"\",\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":19,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":2,\"porder_sn\":\"OP20260203142731-15-1\",\"admin_status\":8,\"user_id\":15,\"user_name\":\"小杨测试账号\",\"y_id\":19,\"p_id\":22,\"f_id\":33,\"y_admin\":\"admin\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进01\",\"y_remark\":\"\",\"order_sn_list\":{\"D20260202154638-15-OEM-AM-02\":{\"order_sn\":\"D20260202154638-15-OEM-AM-02\",\"order_type\":2,\"postnatal_sample_from\":\"\"}},\"logistice_express\":[{\"logistics\":\"TW船便（広州）\",\"express\":[123213],\"logistics_id\":32}],\"created_at\":\"2026-02-03 14:30:05\",\"datetime_offer\":\"2026-02-03 14:43:34\",\"datetime_pay_submit\":\"2026-02-03 15:01:10\",\"datetime_delivery\":\"\",\"datetime_client_receive\":\"\",\"datetime_delete\":\"\",\"has_keep_sample\":false,\"is_amazon\":true,\"follow_up_stage\":193,\"follow_up_status\":\"serious_delay\"},{\"rowNumber\":3,\"porder_sn\":\"OP20260203142731-15-2\",\"a"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "internationalDeliveryOrder": {
+    "url": "https://oemadmin.rakumart.cn/#/internationalDeliveryOrder",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/porderDispatched",
+        "s": 200,
+        "post": "{\"porder_sn\":\"\",\"express_no\":\"\",\"y_id\":\"\",\"f_id\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"status\":\"1000\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"rowNumber\":1,\"porder_sn\":\"OP20260810144457-33\",\"admin_status\":9,\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_id\":21,\"p_id\":22,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进岗教学用\",\"y_remark\":\"\",\"order_sn_list\":{\"Y20250703093327-33-XH\":{\"order_sn\":\"Y20250703093327-33-XH\",\"order_type\":1,\"postnatal_sample_from\":\"\"}},\"logistice_express\":[{\"logistics\":\"EMS（義鳥）\",\"express\":[11111111],\"logistics_id\":1}],\"created_at\":\"2026-08-10 14:45:14\",\"datetime_offer\":\"2026-08-10 14:46:09\",\"datetime_pay_submit\":\"2026-08-10 14:46:23\",\"datetime_delivery\":\"2026-08-10 14:47:02\",\"datetime_client_receive\":\"\",\"datetime_delete\":\"\",\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":\"\",\"follow_up_status\":\"normal\"},{\"rowNumber\":2,\"porder_sn\":\"OP20260806130916-33\",\"admin_status\":9,\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_id\":21,\"p_id\":22,\"f_id\":35,\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"f_admin\":\"跟进岗教学用\",\"y_remark\":\"\",\"order_sn_list\":{\"D20260727170826-33-OEM\":{\"order_sn\":\"D20260727170826-33-OEM\",\"order_type\":2,\"postnatal_sample_from\":\"\"}},\"logistice_express\":[{\"logistics\":\"海源DQ船便（広州）\",\"express\":[\"DQ333\"],\"logistics_id\":27}],\"created_at\":\"2026-08-06 13:09:23\",\"datetime_offer\":\"2026-08-06 13:11:10\",\"datetime_pay_submit\":\"2026-08-06 13:11:24\",\"datetime_delivery\":\"2026-08-06 13:19:43\",\"datetime_client_receive\":\"\",\"datetime_delete\":\"\",\"has_keep_sample\":false,\"is_amazon\":false,\"follow_up_stage\":\"\",\"follow_up_status\":\"normal\"},{\"rowNumber\":3,\"porder_sn\":\"OP"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "listOfAuxiliaryMaterials": {
+    "url": "https://oemadmin.rakumart.cn/#/listOfAuxiliaryMaterials",
+    "title_snip": "辅料管理 辅料列表 等待补货 辅料配置 商品管理 商品管理 仓库管理 仓库列表 留底仓库 首页 组织架构 订单 财务 运营 商品管理 客户管理 工厂管理 问题处理 数据统计 BLOG 23.56円 admin 辅料管理 / 辅料列表 全部 数量充足 建议补货 补充中 在库不足 辅料名称/辅料ID： 客户名/客户ID： 业务员： 业务员 跟进员： 全部 确认 重置 No 辅料名称（日文） 辅",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/myAdmins",
+        "s": 200,
+        "post": "{\"work_type\":1,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":24,\"realname\":\"业务绩效测试\",\"forbid_login\":0},{\"id\":29,\"realname\":\"章北海\",\"forbid_login\":0},{\"id\":32,\"realname\":\"admin2\",\"forbid_login\":0},{\"id\":19,\"realname\":\"admin\",\"forbid_login\":0},{\"id\":21,\"realname\":\"业务001\",\"forbid_login\":0}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/manage.accessoryList",
+        "s": 200,
+        "post": "{\"status\":\"\",\"start_time\":\"\",\"end_time\":\"\",\"page\":1,\"y_id\":\"\",\"f_id\":\"\",\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"id\":177,\"order_sn\":\"X20260804164253-33-FL\",\"user_id\":33,\"accessory_name\":\"OPP袋\",\"inventory\":0,\"status\":30,\"factory_name\":null,\"factory_link\":null,\"master_image\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/298354\\/OPP%E8%A2%8B.jpg\",\"goods_name_y\":null,\"rowNumber\":1,\"user_name\":\"Rakumade_test\",\"y_name\":\"业务001\",\"f_name\":\"跟进岗教学用\",\"goods_data\":[{\"goods_id\":977,\"goods_name\":\"野球バット【演示用】\",\"goods_name_tr\":\"棒球棒【演示用】\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/333252\\/%E6%A3%92%E7%90%831.jpg\"}]},{\"id\":176,\"order_sn\":\"X20260721132904-33-FL\",\"user_id\":33,\"accessory_name\":\"辅料（成本+跟进）\",\"inventory\":999,\"status\":41,\"factory_name\":\"1\",\"factory_link\":\"·\",\"master_image\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/402012\\/OPP%E8%A2%8B.png\",\"goods_name_y\":\"辅料（成本+跟进）\",\"rowNumber\":2,\"user_name\":\"Rakumade_test\",\"y_name\":\"章北海\",\"f_name\":\"跟进01\",\"goods_data\":[{\"goods_id\":969,\"goods_name\":\"商品成本+跟进\",\"goods_name_tr\":\"商品成本+跟进\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/929233\\/2.png\"}]},{\"id\":175,\"order_sn\":\"X20260708140349-313129-FL\",\"user_id\":313129,\"accessory_name\":\"商品辅料成本2\",\"inventory\":1,\"status\":41,\"factory_name\":\"423423\",\"factory_link\":null,\"master_image\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/708318\\/0d0983525bc14ac4874d7b04e2e4c466.jpeg\",\"goods_name_y\":\"商品辅料成本2\",\"rowNumber\":3,\"user_name\":\"zn\",\"y_na"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/unviewedNoteCount",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleListTranslationStage\":23,\"sampleListConfirmationStage\":7,\"sampleListQuotationStage\":87,\"listOfBulkOrdersTranslate\":59,\"listOfBulkOrdersConfirm\":3,\"listOfBulkOrdersQuotationStage\":81,\"inquiryTranslationStage\":275,\"inquiryTranslationAuditStage\":55,\"inquiryQuotationStage\":274,\"inquiryInquiryStage\":207,\"translateDeliveryOrder\":133,\"offerDeliveryOrder\":73,\"shippingDeliveryOrder\":62,\"packingDeliveryOrder\":14,\"verificationList\":176,\"domesticAfterS\":5,\"inspectionMList\":52,\"pendingConfirmationOfRemittance\":0,\"domesticPaymentPendingReview\":0},\"success\":true}"
+      }
+    ]
+  },
+  "followUpList": {
+    "url": "https://oemadmin.rakumart.cn/#/followUpList",
+    "title_snip": "询价订单 进行中询价单 翻译阶段 (284) 275 翻译审核阶段 (65) 55 询价阶段 (238) 207 报价阶段 (278) 274 作业完成 (25) 已删除 (30) 样品订单 进行中订单 (468) 翻译阶段 (31) 23 确认阶段 (17) 7 报价阶段 (93) 87 生产阶段 (141) 派送与作业 (71) 作业完成 (76) 大货订单 进行中订单 (755) 翻译阶段 ",
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/goodsClassList",
+        "s": 200,
+        "post": "{\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":110,\"parent_id\":0,\"class_name\":\"测试分类111\",\"class_name_translation\":\"测试分类\",\"childs\":[]},{\"id\":8,\"parent_id\":0,\"class_name\":\"五金产品\",\"class_name_translation\":\"\",\"childs\":[{\"id\":9,\"parent_id\":8,\"class_name\":\"冲压五金件（紧固件\\/支架）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":10,\"parent_id\":8,\"class_name\":\"铸造五金件（阀门\\/机械部件）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":11,\"parent_id\":8,\"class_name\":\"CNC精密加工件（模具\\/精密齿轮）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":12,\"parent_id\":8,\"class_name\":\"表面处理件（电镀\\/阳极氧化）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":13,\"parent_id\":8,\"class_name\":\"建筑五金系统（门窗配件\\/卫浴五金）\",\"class_name_translation\":\"\",\"childs\":[]}]},{\"id\":1,\"parent_id\":0,\"class_name\":\"电子产品\",\"class_name_translation\":\"\",\"childs\":[{\"id\":2,\"parent_id\":1,\"class_name\":\"消费电子组装（蓝牙设备\\/小家电）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":3,\"parent_id\":1,\"class_name\":\"工业设备配件（控制面板\\/传感器）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":5,\"parent_id\":1,\"class_name\":\"防灾电子设备（应急灯\\/报警器）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":6,\"parent_id\":1,\"class_name\":\"医疗电子配件（体征监测模块）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":7,\"parent_id\":1,\"class_name\":\"检测仪\",\"class_name_translation\":\"\",\"childs\":[]}]},{\"id\":14,\"parent_id\":0,\"class_name\":\"运动户外\",\"class_name_translation\":\"\",\"childs\":[{\"id\":4,\"parent_id\":14,\"class_name\":\"运动户外\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":15,\"parent_id\":14,\"class_name\":\"健身器材（金属框架\\/橡胶配件）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":16,\""
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/bankList",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"bank_idx\":2,\"bank_name\":\"りそな銀行\"}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/goodsManage/followUpList",
+        "s": 200,
+        "post": "{\"start_time\":\"\",\"end_time\":\"\",\"page\":1,\"pageSize\":10}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"id\":987,\"goods_name\":\"マイクロファイバー\",\"goods_name_tr\":\"擦车布\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/559698\\/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20260811170511.png\",\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_id\":21,\"y_admin\":\"业务001\",\"create_at\":\"2026-08-11 17:07:21\",\"status\":30,\"goods_class\":{\"id\":65,\"class_name\":\"家居针织品（毯子\\/窗帘\\/桌布））\"},\"ordered_amount\":\"13213.20\",\"last_ordered_time\":\"2026-08-13 15:44:16\"},{\"id\":981,\"goods_name\":\"测试商品\",\"goods_name_tr\":\"测试商品\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/029706\\/鲁班.jpg\",\"user_id\":15,\"user_name\":\"小杨测试账号\",\"y_id\":19,\"y_admin\":\"admin\",\"create_at\":\"2026-08-05 14:48:28\",\"status\":10,\"goods_class\":{\"id\":110,\"class_name\":\"测试分类111\"},\"ordered_amount\":\"44.00\",\"last_ordered_time\":\"2026-08-06 15:30:38\"},{\"id\":977,\"goods_name\":\"野球バット【演示用】\",\"goods_name_tr\":\"棒球棒【演示用】\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/333252\\/%E6%A3%92%E7%90%831.jpg\",\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_id\":21,\"y_admin\":\"业务001\",\"create_at\":\"2026-08-04 14:09:16\",\"status\":10,\"goods_class\":{\"id\":4,\"class_name\":\"运动户外\"},\"ordered_amount\":\"151901.20\",\"last_ordered_time\":\"2026-08-10 15:06:13\"},{\"id\":969,\"goods_name\":\"商品成本+跟进\",\"goods_name_tr\":\"商品成本+跟进\",\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/929233\\/2.png\",\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_id\":21,\""
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/orderStatistics",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"sampleOrderList\":468,\"sampleListTranslationStage\":31,\"sampleListConfirmationStage\":17,\"sampleListQuotationStage\":93,\"sampleListProductionStage\":141,\"deliveryAndHomeworkSampleList\":71,\"sampleListOperationCompleted\":76,\"listOfBulkOrdersInProgress\":755,\"listOfBulkOrdersTranslate\":75,\"listOfBulkOrdersConfirm\":8,\"listOfBulkOrdersQuotationStage\":89,\"listOfBulkOrdersProductionStage\":315,\"deliveryAndHomeworkBulkOrder\":139,\"completeTheHomeworkForTheBulkOrder\":94,\"inquiryTranslationStage\":284,\"inquiryTranslationAuditStage\":65,\"inquiryInquiryStage\":238,\"inquiryQuotationStage\":278,\"inquiryHomeworkCompleted\":25,\"inquiryRemoved\":30,\"verificationList\":708,\"inspectionMList\":152,\"inProgressDeliveryOrder\":480,\"translateDeliveryOrder\":141,\"packingDeliveryOrder\":21,\"offerDeliveryOrder\":79,\"shippingDeliveryOrder\":65,\"internationalDeliveryOrder\":121,\"completeDeliveryOrder\":49,\"problemProducts\":65,\"domesticAfterS\":81,\"accessoryAbnormal\":7},\"success\":true}"
+      }
+    ]
+  }
+}

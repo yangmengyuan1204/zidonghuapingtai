@@ -1,0 +1,209 @@
+{
+  "before": {
+    "sample": {
+      "admin_status": 24,
+      "point": 3,
+      "user_status": null,
+      "keys": [
+        "warehouse_city",
+        "point",
+        "admin_status",
+        "quote_info",
+        "price_info"
+      ]
+    },
+    "bulk": {
+      "admin_status": 24,
+      "point": 3,
+      "user_status": null,
+      "keys": [
+        "warehouse_city",
+        "point",
+        "admin_status",
+        "quote_info",
+        "price_info"
+      ]
+    },
+    "porder": {
+      "admin_status": 3,
+      "point": null,
+      "user_status": null,
+      "keys": [
+        "warehouse_type",
+        "admin_status",
+        "box_list",
+        "price_info"
+      ]
+    }
+  },
+  "api_log": [
+    {
+      "api": "samplesSubmitPurchase",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM",
+        "warehouse_city": 2
+      }
+    },
+    {
+      "api": "samplesStartPurchase",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "api": "samplesCompPurchase",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/samplesCompPurchase",
+      "body": {
+        "order_sn": "Y20260403172102-15-OEM"
+      }
+    },
+    {
+      "api": "largeSubmitPurchase",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body_snip": "{\"order_sn\": \"D20260613110838-15-OEM\", \"sku_info\": [{\"id\": 2428, \"sku\": \"ブルー\", \"sku_tr\": \"blue\", \"sku_image\": \"\", \"num\": 1000, \"large_min_quantity\": 100, \"inquiry_large_price\": \"2.20\", \"quote_large_price\": \"2.20\", \"real_large_price\": \"2.00\", \"option\": [{\"id\": 57, \"name\": \"opp袋子四角包装\", \"name_translate\": \"角折りopp梱包\", \"price\": \"2.00\", \"price_type\": 0, \"remark\": \"把opp袋子的四角都粘好的包装\", \"unit\": \"元\", \"sort\": 16, \"price_range\": [], \"num\": 1000, \"checked\": true, \"total\": 2000}, {\"id\": 68, \"name\": \"塑封包装\", \"name_translate\": \"シユリンク包装\", \"price\": \"0.80\", \"price_type\": 0, \"remark\": \"塑封包装\", \"unit\": \"元\", \"sort\": 17,"
+    },
+    {
+      "api": "largeStartPurchase",
+      "code": 10000,
+      "msg": "当前状态无法操作",
+      "body_snip": "{\"order_sn\": \"D20260613110838-15-OEM\"}"
+    },
+    {
+      "api": "largeCompPurchase",
+      "code": 0,
+      "msg": "接口路由错误:https://oemapi.rakumart.cn/admin/largeCompPurchase",
+      "body": {
+        "order_sn": "D20260613110838-15-OEM"
+      }
+    },
+    {
+      "api": "addBox",
+      "code": 10000,
+      "msg": "服务器内部错误Undefined array key \"type\" LINE:35",
+      "body": {
+        "porder_sn": "OP20260302150837-15",
+        "box_num": 1,
+        "weight": 1,
+        "length": 10,
+        "width": 10,
+        "height": 10
+      }
+    },
+    {
+      "api": "addBox",
+      "code": 10000,
+      "msg": "服务器内部错误Undefined array key \"type\" LINE:35",
+      "body": {
+        "porder_sn": "OP20260302150837-15",
+        "box_num": 1,
+        "weight": 1,
+        "length": 10,
+        "width": 10,
+        "height": 10,
+        "box_weight": 1
+      }
+    },
+    {
+      "api": "porderPackingComp",
+      "code": 10000,
+      "msg": "Undefined array key 3118",
+      "box_len": 0,
+      "body_snip": "{\"porder_sn\": \"OP20260302150837-15\", \"box_info\": []}"
+    }
+  ],
+  "ui_log": [
+    {
+      "name": "sample",
+      "buttons": [
+        "回退至报价",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "clicked": null,
+      "confirmed": null,
+      "writes": []
+    },
+    {
+      "name": "bulk",
+      "buttons": [
+        "回到询价单",
+        "新增",
+        "回退至报价",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "clicked": null,
+      "confirmed": null,
+      "writes": []
+    },
+    {
+      "name": "porder",
+      "buttons": [
+        "装箱",
+        "批量装箱",
+        "添加箱子",
+        "删除箱子",
+        "退回待翻译",
+        "给业务",
+        "配货打印唛头",
+        "打印商品唛头",
+        "打印装箱单",
+        "确认",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "clicked": "确认",
+      "confirmed": null,
+      "writes": []
+    }
+  ],
+  "after": {
+    "sample": {
+      "admin_status": 24,
+      "point": 3,
+      "user_status": null
+    },
+    "bulk": {
+      "admin_status": 24,
+      "point": 3,
+      "user_status": null
+    },
+    "porder": {
+      "admin_status": 3,
+      "point": null,
+      "user_status": null,
+      "box_len": 0,
+      "price_info": {
+        "freight_list": [],
+        "other_fee": "0.00",
+        "other_fee_jp": 0,
+        "big_fee": 0,
+        "big_fee_jp": 0,
+        "far_fee": 0,
+        "far_fee_jp": 0,
+        "service_fee_jp": 0,
+        "logistics_fee": 0,
+        "logistics_fee_jp": 0,
+        "old_logistics_fee": 0,
+        "old_logistics_fee_jp": 0,
+        "total_weight": 0,
+        "total_charged_weight": 0,
+        "total_volume": 0
+      }
+    }
+  },
+  "sns": {
+    "sample": "Y20260403172102-15-OEM",
+    "bulk": "D20260613110838-15-OEM",
+    "porder": "OP20260302150837-15"
+  }
+}

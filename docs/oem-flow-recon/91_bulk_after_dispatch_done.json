@@ -1,0 +1,46 @@
+{
+  "sn": "D20260613110838-15-OEM",
+  "final": 56,
+  "log": [
+    {
+      "largeCheckReport": 0,
+      "msg": "操作成功"
+    },
+    {
+      "checkComplete": 0,
+      "msg": "操作成功",
+      "status": 54
+    },
+    {
+      "raise": "/admin/largeCheckRaise",
+      "code": 0,
+      "msg": "操作成功",
+      "status": 56
+    },
+    {
+      "path": "/admin/tipShelves",
+      "code": 0,
+      "msg": "操作成功",
+      "status": 56
+    },
+    {
+      "path": "/admin/stockTipShelves",
+      "code": 0,
+      "msg": "操作成功",
+      "status": 56
+    },
+    {
+      "path": "/admin/orderShelve",
+      "code": 1000,
+      "msg": "参数错误",
+      "status": 56
+    }
+  ],
+  "shelve_info": [
+    {
+      "order_detail_sku_id": 2428,
+      "shelves_num": 1000,
+      "sku": "ブルー"
+    }
+  ]
+}

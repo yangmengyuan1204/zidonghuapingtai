@@ -205,6 +205,13 @@ def _impl__offer_unit_price_values(value: Any) -> list[str]:
     return prices
 
 
+def _impl__offer_freight_values(value: Any) -> list[str]:
+    try:
+        return _impl__offer_unit_price_values(value)
+    except ValueError as exc:
+        raise ValueError(str(exc).replace("逐商品报价", "逐商品运费")) from exc
+
+
 def _impl__admin_headers(token: str) -> Dict[str, str]:
     return {
         "Authorization": f"Bearer {token}",
@@ -537,15 +544,22 @@ def _impl__prepare_translate_data(order_data: Dict[str, Any], variables: Dict[st
 
 def _impl__build_confirm_data(order_data: Dict[str, Any], variables: Dict[str, Any], item_quantity: int) -> Dict[str, Any]:
     quote_price = _decimal_text(variables.get("confirm_price") or variables.get("quote_unit_price") or "10")
+    confirm_freights = _impl__offer_freight_values(variables.get("confirm_freights"))
     freight = _impl__optional_decimal_text(variables.get("confirm_freight"), variables.get("freight")) or "0"
     volume = str(variables.get("confirm_volume") or "1x2x3")
     weight = _as_int(variables.get("confirm_weight") or variables.get("weight"), 200)
     remark = str(variables.get("confirm_remark") or "自动化采购调查")
     details = order_data.get("order_detail")
     confirm_details = []
-    for detail in details if isinstance(details, list) else []:
-        if not isinstance(detail, dict) or detail.get("id") in (None, ""):
-            continue
+    valid_details = [detail for detail in details if isinstance(detail, dict) and detail.get("id") not in (None, "")] if isinstance(details, list) else []
+    if len(confirm_freights) > 1 and len(confirm_freights) != len(valid_details):
+        raise ValueError(
+            f"逐商品确认运费数量不匹配：订单有{len(valid_details)}个商品，收到{len(confirm_freights)}个运费"
+        )
+    for index, detail in enumerate(valid_details):
+        item_freight = confirm_freights[0] if len(confirm_freights) == 1 else (
+            confirm_freights[index] if confirm_freights else freight
+        )
         quantity = _as_int(detail.get("num") or item_quantity, item_quantity)
         confirm_detail = {
             "id": detail.get("id"),
@@ -556,8 +570,8 @@ def _impl__build_confirm_data(order_data: Dict[str, Any], variables: Dict[str, A
             "volume": volume,
             "weight": weight,
         }
-        confirm_detail["confirm_freight"] = freight
-        confirm_detail["confirm_dicker_freight"] = freight
+        confirm_detail["confirm_freight"] = item_freight
+        confirm_detail["confirm_dicker_freight"] = item_freight
         confirm_details.append(confirm_detail)
     return {"order_sn": order_data.get("order_sn"), "order_detail": confirm_details}
 
@@ -679,6 +693,7 @@ def _impl__prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, A
     prepared = copy.deepcopy(order_data)
     quote_price = _decimal_text(variables.get("offer_price") or variables.get("quote_unit_price") or "10")
     unit_prices = _impl__offer_unit_price_values(variables.get("offer_unit_prices"))
+    offer_freights = _impl__offer_freight_values(variables.get("offer_freights"))
     offer_freight = _impl__optional_decimal_text(variables.get("offer_freight"))
     prepared["other_price"] = _decimal_text(variables.get("other_price") or prepared.get("other_price") or "0")
     prepared["other_price_remark"] = str(variables.get("other_price_remark") or prepared.get("other_price_remark") or "自动化其他费用备注")
@@ -693,11 +708,18 @@ def _impl__prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, A
             raise ValueError(
                 f"逐商品报价数量不匹配：订单有{len(valid_details)}个商品，收到{len(unit_prices)}个报价"
             )
+        if len(offer_freights) > 1 and len(offer_freights) != len(valid_details):
+            raise ValueError(
+                f"逐商品运费数量不匹配：订单有{len(valid_details)}个商品，收到{len(offer_freights)}个运费"
+            )
         for index, detail in enumerate(valid_details):
             if not isinstance(detail, dict):
                 continue
             item_offer_price = unit_prices[0] if len(unit_prices) == 1 else (
                 unit_prices[index] if unit_prices else quote_price
+            )
+            item_offer_freight = offer_freights[0] if len(offer_freights) == 1 else (
+                offer_freights[index] if offer_freights else offer_freight
             )
             quantity = _as_int(detail.get("confirm_num") or detail.get("num") or item_quantity, item_quantity)
             offer_quantity = _as_int(variables.get("offer_num"), quantity)
@@ -707,10 +729,10 @@ def _impl__prepare_offer_data(order_data: Dict[str, Any], variables: Dict[str, A
             detail["offer_num"] = offer_quantity
             detail["offer_price"] = item_offer_price
             detail.pop("offer_freight", None)
-            if offer_freight is not None:
-                detail["offer_freight"] = offer_freight
+            if item_offer_freight is not None:
+                detail["offer_freight"] = item_offer_freight
             detail["offer_total"] = _money_total(
-                offer_quantity, item_offer_price, offer_freight or "0"
+                offer_quantity, item_offer_price, item_offer_freight or "0"
             )
     return prepared
 

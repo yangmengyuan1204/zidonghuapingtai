@@ -264,6 +264,7 @@ def test_attach_page_recorder_captures_navigation_from_second_tab():
     page.main_frame = SimpleNamespace(url="https://example.test/detail")
     page.handlers["framenavigated"](page.main_frame)
 
+    assert {"framenavigated", "domcontentloaded", "load"}.issubset(page.handlers)
     assert page.binding_name == "__recordUiEvent"
     assert session.events[-1]["url"] == "https://example.test/detail"
 

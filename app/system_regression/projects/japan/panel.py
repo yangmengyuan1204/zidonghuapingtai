@@ -9,8 +9,8 @@ ACCOUNT_COUPON_ID = "__account_coupon__"
 ACCOUNT_VOUCHER_ID = "__account_voucher__"
 UNBOUND_COUPON_IDS = frozenset({"", SERVICE_COUPON_ID, ACCOUNT_COUPON_ID})
 
-PACK_OPTION = {"name": "加固包装", "price_type": 0, "price": "2.5", "num": 1, "checked": True}
-INSPECT_OPTION = {"name": "检品", "price_type": 1, "price": "5", "num": 1, "checked": True}
+PACK_OPTION = {"id": "79", "name": "针检", "price_type": 0, "price": "0.8", "num": 1, "checked": True}
+INSPECT_OPTION = {"id": "78", "name": "详细检品", "price_type": 1, "price": "4", "num": 1, "checked": True}
 
 
 def _money(value: Any, currency: str = "CNY") -> dict[str, str]:

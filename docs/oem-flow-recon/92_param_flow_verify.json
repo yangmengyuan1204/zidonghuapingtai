@@ -1,0 +1,141 @@
+{
+  "log": [
+    {
+      "main_shelve": 0,
+      "code": 0,
+      "msg": "操作成功",
+      "status": 64
+    },
+    {
+      "mini": {
+        "order_sn": "D20260613110838-15-OEM",
+        "warehouse_city": 1,
+        "shelve_info": [
+          {
+            "id": 2428,
+            "shelve_num": 1000,
+            "checked_listing": true,
+            "possible_num": 1000
+          }
+        ]
+      },
+      "code": 1000,
+      "msg": "参数错误",
+      "status": 64
+    },
+    {
+      "mini": {
+        "order_sn": "D20260613110838-15-OEM",
+        "warehouse_city": 1,
+        "shelve_info": [
+          {
+            "order_detail_sku_id": 2428,
+            "shelve_num": 1000,
+            "possible_num": 1000,
+            "checked_listing": true
+          }
+        ]
+      },
+      "code": 1000,
+      "msg": "参数错误",
+      "status": 64
+    },
+    {
+      "mini": {
+        "order_sn": "D20260613110838-15-OEM",
+        "warehouse_city": 2,
+        "shelve_info": [
+          {
+            "order_detail_sku_id": 2428,
+            "shelve_num": 1000,
+            "possible_num": 1000
+          }
+        ]
+      },
+      "code": 1000,
+      "msg": "参数错误",
+      "status": 64
+    },
+    {
+      "other": "D20250709134928-15-OEM",
+      "name": "orderSign",
+      "path": "/admin/orderSign",
+      "body_keys": [
+        "order_sn"
+      ],
+      "code": 0,
+      "msg": "操作成功",
+      "status": 52
+    },
+    {
+      "other": "D20250709134928-15-OEM",
+      "name": "checkStart",
+      "path": "/admin/checkStart",
+      "body_keys": [
+        "order_sn"
+      ],
+      "code": 0,
+      "msg": "操作成功",
+      "status": 52
+    },
+    {
+      "other_report": 0,
+      "msg": "操作成功"
+    },
+    {
+      "other": "D20250709134928-15-OEM",
+      "name": "checkComplete",
+      "path": "/admin/checkComplete",
+      "body_keys": [
+        "order_sn",
+        "check_list"
+      ],
+      "code": 0,
+      "msg": "操作成功",
+      "status": 54
+    },
+    {
+      "other": "D20250709134928-15-OEM",
+      "name": "largeCheckRaise",
+      "path": "/admin/largeCheckRaise",
+      "body_keys": [
+        "order_sn"
+      ],
+      "code": 0,
+      "msg": "操作成功",
+      "status": 56
+    },
+    {
+      "other_shelve": {
+        "city": 1,
+        "code": 0,
+        "msg": "操作成功",
+        "status": 64,
+        "sku_keys": [
+          "id",
+          "check_id",
+          "sku_tr",
+          "sku",
+          "sku_image",
+          "num",
+          "price",
+          "option",
+          "check_num",
+          "weight",
+          "size",
+          "length",
+          "width",
+          "height",
+          "possible_num",
+          "storage_num",
+          "shelves_num",
+          "wait_inspect_num",
+          "inspect_num",
+          "bad_num"
+        ]
+      }
+    }
+  ],
+  "main_st": 64,
+  "other_st": 64
+}

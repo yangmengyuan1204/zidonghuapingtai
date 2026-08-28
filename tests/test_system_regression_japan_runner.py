@@ -13,10 +13,13 @@ from app.data_scripts.porder_flow_support import (
     _extract_predicted_price,
     _logistics_ids_from_freight,
     _select_porder_logistics,
+    _set_porder_other_fee,
+    _update_porder_logistics,
 )
 from app.system_regression.projects.japan.payment_runner import PaymentRunner, build_payment_variables
 from app.system_regression.projects.japan.problem_runner import (
     ProblemGoodsRunner,
+    _written_options_from_detail,
     build_problem_goods_request,
 )
 from app.system_regression.projects.japan.runner import JapanRegressionRunner
@@ -71,11 +74,16 @@ def test_build_payment_variables_maps_all_editable_fee_fields_without_actual_evi
     )
 
     assert values["cart_item_count"] == 2
+    assert values["order_item_count"] == 2
     assert values["order_item_num"] == 3
+    assert values["payment_regression_item_num"] == 3
     assert values["other_price"] == "5.5"
     assert values["other_price_remark"] == "加固包装费"
     assert values["offer_unit_prices"] == ["12", "20"]
     assert values["offer_freights"] == ["3", "4"]
+    assert values["confirm_freights"] == ["3", "4"]
+    assert values["offer_freight"] == "3"
+    assert values["confirm_freight"] == "3"
     assert values["order_option_counts"] == {"验品": 2, "拍照": 1}
     assert "actual_amount" not in values
     assert "actual_evidence" not in values
@@ -114,6 +122,7 @@ def test_build_payment_variables_maps_part_pay_coupon_and_porder_boxes():
     assert values["logistics_price_from_api"] is True
     assert values["box_length"] == "58"
     assert values["delivery_quote_logistics_id"] == "25"
+    assert values["strict_delivery_logistics"] is True
     assert values["ledger_wait_seconds"] == 12
     assert values["payment_regression_evidence_delay"] == 0.5
     assert values["payment_regression_evidence_retries"] == 24
@@ -180,6 +189,103 @@ def test_select_porder_logistics_retries_sea_id_from_refreshed_freight_list(monk
     assert selected == "31"
     assert payload.get("success") is True
     assert [fields.get("logistics_id") for path, fields in calls if path.endswith("batchUpdateFreightLogistics")] == ["31"]
+
+
+def test_select_porder_logistics_strict_mode_never_falls_back_to_another_line(monkeypatch):
+    import app.data_scripts.porder_flow_support as flow
+
+    attempted = []
+
+    def fake_post(_session, _base_url, path, fields, _timeout):
+        if path.endswith("freightList"):
+            return {"success": True, "code": 0, "data": [{"logistics_id": "14", "name": "默认线路"}]}
+        attempted.append(str(fields.get("logistics_id") or ""))
+        return {"success": False, "code": 10000, "msg": "物流不可用"}
+
+    monkeypatch.setattr(flow, "_sync_compat_globals", lambda: None, raising=False)
+    monkeypatch.setattr(flow, "_post_admin_urlencoded", fake_post, raising=False)
+    monkeypatch.setattr(flow, "_api_path", lambda _variables, _key, default: default, raising=False)
+    monkeypatch.setattr(flow, "_api_success", lambda payload: bool(payload.get("success")), raising=False)
+    monkeypatch.setattr(flow, "_payload_brief", lambda payload: dict(payload or {}), raising=False)
+    monkeypatch.setattr(flow, "_payload_structure_sample", lambda payload, limit=4: payload, raising=False)
+
+    selected, _payload = _select_porder_logistics(
+        object(),
+        "http://example",
+        {"strict_delivery_logistics": True},
+        "P1",
+        "F1",
+        "25",
+        [{"success": True, "data": [{"logistics_id": "14", "name": "默认线路"}]}],
+        10,
+        {},
+    )
+
+    assert selected == ""
+    assert attempted == ["25"]
+
+
+def test_update_porder_logistics_writes_requested_header_line(monkeypatch):
+    import app.data_scripts.porder_flow_support as flow
+
+    calls = []
+
+    def fake_post(_session, _base_url, path, fields, _timeout):
+        calls.append((path, fields))
+        return {"success": True, "code": 0, "msg": "操作成功"}
+
+    monkeypatch.setattr(flow, "_sync_compat_globals", lambda: None, raising=False)
+    monkeypatch.setattr(flow, "_post_admin_urlencoded", fake_post, raising=False)
+    monkeypatch.setattr(flow, "_api_path", lambda _variables, _key, default: default, raising=False)
+
+    payload = _update_porder_logistics(object(), "http://example", {}, "P1", "25", 10)
+
+    assert payload["success"] is True
+    assert calls == [("/porder.updatePorderLogistics", {"porder_sn": "P1", "logistics_id": "25"})]
+
+
+def test_set_porder_other_fee_uses_real_detail_contract(monkeypatch):
+    import app.data_scripts.porder_flow_support as flow
+
+    calls = []
+
+    def fake_post(_session, _base_url, path, fields, _timeout):
+        calls.append((path, fields))
+        return {"success": True, "code": 0, "msg": "操作成功"}
+
+    monkeypatch.setattr(flow, "_sync_compat_globals", lambda: None, raising=False)
+    monkeypatch.setattr(flow, "_post_admin_urlencoded", fake_post, raising=False)
+    monkeypatch.setattr(flow, "_api_path", lambda _variables, _key, default: default, raising=False)
+
+    payload = _set_porder_other_fee(
+        object(),
+        "http://example",
+        {"other_price": "8", "other_price_remark": "系统回归附加费"},
+        "P1",
+        "F1",
+        "25",
+        10,
+    )
+
+    assert payload["success"] is True
+    assert calls == [
+        (
+            "/porder.setPorderOtherFee",
+            {
+                "porder_sn": "P1",
+                "list": [
+                    {
+                        "porder_sn": "P1",
+                        "logistics_id": "25",
+                        "type": 1,
+                        "desc": "系统回归附加费",
+                        "fee": "8",
+                        "freight_id": "F1",
+                    }
+                ],
+            },
+        )
+    ]
 
 
 def test_select_porder_logistics_uses_user_logistics_list_when_requested_sea_id_unavailable(monkeypatch):
@@ -263,6 +369,23 @@ def test_build_payment_variables_keeps_real_coupon_id_and_manual_freight():
     assert manual["logistics_price_artificial"] == "88"
 
 
+def test_build_payment_variables_maps_porder_extra_fee_to_backend_contract():
+    values = build_payment_variables(
+        {
+            "order": {"other_fee_amount": {"value": "0"}},
+            "porder": {
+                "logistics": "25",
+                "extra_fee": {"value": "8", "currency": "CNY"},
+                "extra_name": "加固包装",
+            },
+        },
+        runner_kind="porder_payment",
+    )
+
+    assert values["other_price"] == "8"
+    assert values["other_price_remark"] == "加固包装"
+
+
 def test_build_payment_variables_does_not_send_account_ticket_sentinels():
     from app.system_regression.projects.japan.panel import ACCOUNT_COUPON_ID, ACCOUNT_VOUCHER_ID
 
@@ -294,7 +417,7 @@ def test_bind_account_tickets_replaces_coupon_sentinel(monkeypatch):
     monkeypatch.setattr(
         "app.system_regression.projects.japan.payment_runner.list_usable_tickets",
         lambda _env, _variables: {
-            "coupons": [{"id": "C1", "title": "手续费免费"}],
+            "coupons": [{"id": "C1", "title": "订单优惠券", "amount": "10", "fee_waiver": False}],
             "vouchers": [],
             "reason": "",
         },
@@ -308,6 +431,165 @@ def test_bind_account_tickets_replaces_coupon_sentinel(monkeypatch):
     assert bound["coupon"]["selectedId"] == "C1"
     assert bound["discounts_id"] == "C1"
     assert bound["service_discount"] is True
+
+
+def test_bind_service_discount_sentinel_to_real_fee_waiver_coupon(monkeypatch):
+    from app.system_regression.projects.japan.panel import SERVICE_COUPON_ID
+    from app.system_regression.projects.japan.payment_runner import bind_account_tickets
+
+    monkeypatch.setattr(
+        "app.system_regression.projects.japan.payment_runner.list_usable_tickets",
+        lambda _env, _variables: {
+            "coupons": [
+                {"id": "C10", "title": "订单优惠券", "amount": "10", "fee_waiver": False},
+                {
+                    "id": "180928",
+                    "title": "手数料無料",
+                    "discounts_amount_jpy": "1",
+                    "fee_waiver": True,
+                },
+            ],
+            "vouchers": [],
+            "reason": "",
+        },
+    )
+
+    bound = bind_account_tickets(
+        object(),
+        {"coupon": {"selectedId": SERVICE_COUPON_ID}, "service_discount": True},
+        {},
+        runner_kind="order_payment",
+    )
+
+    assert bound["coupon"]["selectedId"] == "180928"
+    assert bound["discounts_id"] == "180928"
+    assert "payment_regression_discount_jpy" not in bound
+
+
+def test_bind_account_coupon_sentinel_skips_fee_waiver_coupon(monkeypatch):
+    from app.system_regression.projects.japan.panel import ACCOUNT_COUPON_ID
+    from app.system_regression.projects.japan.payment_runner import bind_account_tickets
+
+    monkeypatch.setattr(
+        "app.system_regression.projects.japan.payment_runner.list_usable_tickets",
+        lambda _env, _variables: {
+            "coupons": [
+                {"id": "FREE", "title": "手数料無料", "fee_waiver": True},
+                {"id": "C10", "title": "订单优惠券", "amount": "10", "fee_waiver": False},
+            ],
+            "vouchers": [],
+            "reason": "",
+        },
+    )
+
+    bound = bind_account_tickets(
+        object(),
+        {"coupon": {"selectedId": ACCOUNT_COUPON_ID}},
+        {},
+        runner_kind="order_payment",
+    )
+
+    assert bound["coupon"]["selectedId"] == "C10"
+    assert bound["payment_regression_discount_jpy"] == "10"
+
+
+def test_bind_account_coupon_falls_back_to_real_fee_waiver(monkeypatch):
+    from app.system_regression.projects.japan.panel import ACCOUNT_COUPON_ID
+    from app.system_regression.projects.japan.payment_runner import bind_account_tickets
+
+    monkeypatch.setattr(
+        "app.system_regression.projects.japan.payment_runner.list_usable_tickets",
+        lambda _env, _variables: {
+            "coupons": [{
+                "id": "FREE",
+                "title": "手数料無料",
+                "discounts_amount_jpy": "1",
+                "fee_waiver": True,
+            }],
+            "vouchers": [],
+            "reason": "",
+        },
+    )
+
+    bound = bind_account_tickets(
+        object(),
+        {"coupon": {"selectedId": ACCOUNT_COUPON_ID}},
+        {},
+        runner_kind="order_payment",
+    )
+
+    assert bound["coupon"]["selectedId"] == "FREE"
+    assert bound["service_discount"] is True
+    assert "payment_regression_discount_jpy" not in bound
+
+
+def test_account_coupon_expected_amount_keeps_service_fee_and_subtracts_ticket_jpy(monkeypatch):
+    captured = {}
+
+    class FakeExecutor:
+        def __init__(self, variables):
+            captured.update(variables)
+
+        def execute(self, _scenario, _batch_no):
+            return {
+                "status": "passed",
+                "order_sn": "O-COUPON",
+                "checks": [
+                    {
+                        "passed": True,
+                        "expected_source": "order_quote",
+                        "expected_jpy": "285",
+                        "actual_source": "payment_api",
+                        "actual_jpy": "285",
+                    },
+                    {"passed": True, "actual_source": "customer_balance", "actual_jpy": "275"},
+                ],
+            }
+
+    monkeypatch.setattr(
+        "app.system_regression.projects.japan.payment_runner.list_usable_tickets",
+        lambda _env, _variables: {
+            "coupons": [{"id": "C10", "title": "订单优惠券", "amount": "10"}],
+            "vouchers": [],
+            "reason": "",
+        },
+    )
+    monkeypatch.setattr(
+        "app.system_regression.projects.japan.payment_runner.inspect_membership_from_env",
+        lambda _env, _variables: {
+            "kind": "regular",
+            "level_name": "V6",
+            "service_rate": "0.045",
+            "preview_cny_to_jpy": "21.20",
+        },
+    )
+    from app.system_regression.projects.japan.panel import ACCOUNT_COUPON_ID
+
+    result = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, variables: FakeExecutor(variables),
+    ).execute(
+        _case(
+            key="支付-016",
+            runner_kind="order_payment",
+            parameters={
+                "payment_mode": "balance",
+                "order": {"item_count": 1, "default_quantity": 1},
+                "items": [{
+                    "quantity": 1,
+                    "offer_price": {"value": "10"},
+                    "offer_freight": {"value": "3"},
+                    "options": [],
+                }],
+                "coupon": {"selectedId": ACCOUNT_COUPON_ID},
+            },
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert captured["payment_regression_discount_jpy"] == "10"
+    assert result.result["configured_expected_jpy"] == "275"
+    assert result.status == "passed"
 
 
 def test_bind_account_tickets_blocks_when_account_has_no_coupon(monkeypatch):
@@ -371,12 +653,15 @@ def test_payment_runner_execute_binds_account_coupon_into_discounts_id(monkeypat
     monkeypatch.setattr(
         "app.system_regression.projects.japan.payment_runner.list_usable_tickets",
         lambda _env, _variables: {
-            "coupons": [{"id": "C9", "title": "手续费免费"}],
+            "coupons": [{"id": "C9", "title": "订单优惠券", "amount": "10", "fee_waiver": False}],
             "vouchers": [],
             "reason": "",
         },
     )
-    runner = PaymentRunner(env=object(), executor_factory=lambda _env, variables: FakeExecutor(variables))
+    runner = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, variables: FakeExecutor(variables),
+    )
     result = runner.execute(
         _case(
             key="支付-016",
@@ -400,7 +685,28 @@ def test_payment_runner_porder_voucher_does_not_put_discounts_id_on_order_pay(mo
             captured.update(variables)
 
         def execute(self, _scenario, _batch_no):
-            return {"status": "passed", "porder_sn": "P1", "checks": [{"passed": True}]}
+            return {
+                "status": "passed",
+                "porder_sn": "P1",
+                "checks": [{
+                    "passed": True,
+                    "expected_source": "porder_pay_detail",
+                    "expected_currency": "CNY",
+                    "expected_amount": "775",
+                    "expected_jpy": "14930",
+                    "actual_source": "payment_api",
+                    "actual_jpy": "14930",
+                    "captured_before_payment": True,
+                    "exchange_rate": "21.20",
+                }],
+                "ledger_check": {"passed": True, "customer_balance_jpy": "14930"},
+                "predicted_quote": {
+                    "amount": "775",
+                    "currency": "CNY",
+                    "source": "porder_pay_detail",
+                    "captured_before_payment": True,
+                },
+            }
 
     monkeypatch.setattr(
         "app.system_regression.projects.japan.payment_runner.list_usable_tickets",
@@ -410,7 +716,18 @@ def test_payment_runner_porder_voucher_does_not_put_discounts_id_on_order_pay(mo
             "reason": "",
         },
     )
-    runner = PaymentRunner(env=object(), executor_factory=lambda _env, variables: FakeExecutor(variables))
+    runner = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, variables: FakeExecutor(variables),
+        porder_evidence_loader=lambda _env, _variables, _porder_sn: {
+            "porder_sn": "P1",
+            "logistics": {"id": 25},
+            "logistics_price": "775",
+            "other_price": "0",
+            "exchange_rate": "21.20",
+            "status": 50,
+        },
+    )
     result = runner.execute(
         _case(
             key="配送-006",
@@ -464,6 +781,537 @@ def test_build_payment_variables_ignores_porder_block_for_order_cases():
 def test_extract_predicted_logistics_price_from_nested_list():
     assert _extract_predicted_price({"data": {"list": [{"price": "123.45"}]}}) == "123.45"
     assert _extract_predicted_price({"data": {"logistics_price": "88"}}) == "88"
+    assert _extract_predicted_price({"data": {"totalLogisticsFee": "2776.98"}}) == "2776.98"
+
+
+def test_payment_runner_rejects_porder_detail_that_does_not_match_configuration():
+    class FakeExecutor:
+        def execute(self, _scenario, _batch_no):
+            return {
+                "status": "passed",
+                "porder_sn": "P1",
+                "checks": [{"passed": True}],
+            }
+
+    runner = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, _variables: FakeExecutor(),
+        porder_evidence_loader=lambda _env, _variables, _porder_sn: {
+            "porder_sn": "P1",
+            "logistics": {"id": 14, "name": "推荐线路"},
+            "logistics_price": "775.00",
+            "other_price": "0.00",
+            "status": 50,
+            "statusName": "已支付已确认",
+        },
+    )
+
+    result = runner.execute(
+        _case(
+            key="配送-003",
+            runner_kind="porder_payment",
+            parameters={
+                "payment_mode": "balance",
+                "porder": {
+                    "logistics": "25",
+                    "price_manual": True,
+                    "logistics_price": {"value": "88"},
+                    "extra_fee": {"value": "8"},
+                },
+            },
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "failed"
+    assert result.reason_code == "porder_config_mismatch"
+    porder_check = next(row for row in result.result["checks"] if row.get("key") == "porder_config")
+    assert {row["field"] for row in porder_check["differences"]} == {
+        "logistics",
+        "logistics_price",
+        "extra_fee",
+    }
+    assert result.result["porder_evidence"]["status_name"] == "已支付已确认"
+
+
+def test_porder_config_check_compares_money_numerically():
+    check = PaymentRunner._porder_config_check(
+        {
+            "porder": {
+                "logistics": "25",
+                "price_manual": True,
+                "logistics_price": {"value": "88"},
+                "extra_fee": {"value": "0"},
+            }
+        },
+        {
+            "logistics": {"id": 25},
+            "logistics_price": "88.00",
+            "other_price": "0.00",
+            "status": 50,
+        },
+    )
+
+    assert check["passed"] is True
+    assert check["differences"] == []
+
+
+def test_porder_config_check_requires_exact_paid_status():
+    check = PaymentRunner._porder_config_check(
+        {"porder": {"logistics": "25", "extra_fee": {"value": "0"}}},
+        {
+            "logistics": {"id": 25},
+            "logistics_price": "775.00",
+            "other_price": "0.00",
+            "status": 60,
+        },
+    )
+
+    assert check["passed"] is False
+    assert check["differences"][-1] == {"field": "status", "expected": "50", "actual": "60"}
+
+
+def test_order_config_check_rejects_detail_and_status_differences():
+    check = PaymentRunner._order_config_check(
+        {
+            "order": {"item_count": 1, "default_quantity": 2},
+            "items": [{
+                "sorting": 1,
+                "quantity": 2,
+                "offer_price": {"value": "10"},
+                "offer_freight": {"value": "3"},
+                "options": [{"id": "79", "num": 2, "checked": True}],
+            }],
+        },
+        {
+            "status": 70,
+            "list": [{
+                "sorting": 1,
+                "confirm_num": 1,
+                "confirm_price": "10.00",
+                "confirm_freight": "4.00",
+                "option": [{"id": 78, "num": "3", "checked": True}],
+            }],
+        },
+        expected_status=50,
+    )
+
+    assert check["passed"] is False
+    assert {row["field"] for row in check["differences"]} == {
+        "sorting:1.quantity",
+        "sorting:1.freight",
+        "sorting:1.options",
+        "status",
+    }
+
+
+def test_payment_runner_fails_when_porder_number_is_missing():
+    class FakeExecutor:
+        def execute(self, _scenario, _batch_no):
+            return {"status": "passed", "checks": [{"passed": True}]}
+
+    result = PaymentRunner(
+        env=object(), executor_factory=lambda _env, _variables: FakeExecutor()
+    ).execute(
+        _case(
+            key="配送-001",
+            runner_kind="porder_payment",
+            parameters={"payment_mode": "balance", "porder": {"logistics": "25"}},
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "failed"
+    assert result.reason_code == "evidence_incomplete"
+
+
+def test_payment_runner_checks_every_order_detail_and_exact_status():
+    class FakeExecutor:
+        def execute(self, _scenario, _batch_no):
+            return {"status": "passed", "order_sn": "O1", "checks": [{"passed": True}]}
+
+    runner = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, _variables: FakeExecutor(),
+        order_evidence_loader=lambda _env, _variables, _order_sn: {
+            "status": 50,
+            "list": [{
+                "sorting": 1,
+                "confirm_num": 2,
+                "confirm_price": "10.00",
+                "confirm_freight": "3.00",
+                "option": [{"id": 79, "num": "2", "checked": True}],
+            }],
+        },
+    )
+    result = runner.execute(
+        _case(
+            key="支付-001",
+            runner_kind="order_payment",
+            parameters={
+                "payment_mode": "balance",
+                "items": [{
+                    "sorting": 1,
+                    "quantity": 2,
+                    "offer_price": {"value": "10"},
+                    "offer_freight": {"value": "3"},
+                    "options": [{"id": "79", "num": 2, "checked": True}],
+                }],
+            },
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "passed"
+    assert result.result["order_evidence"]["status"] == 50
+
+
+def test_payment_runner_rejects_manual_porder_price_when_ledger_uses_system_quote():
+    class FakeExecutor:
+        def execute(self, _scenario, _batch_no):
+            return {
+                "status": "passed",
+                "porder_sn": "P1",
+                "checks": [
+                    {
+                        "passed": True,
+                        "expected_source": "porder_pay_detail",
+                        "expected_jpy": "16430",
+                        "actual_source": "payment_api",
+                        "actual_jpy": "16430",
+                    },
+                    {"passed": True, "actual_source": "customer_balance", "actual_jpy": "16430"},
+                ],
+                "ledger_check": {"passed": True, "customer_balance_jpy": "16430"},
+            }
+
+    runner = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, _variables: FakeExecutor(),
+        porder_evidence_loader=lambda _env, _variables, _porder_sn: {
+            "porder_sn": "P1",
+            "logistics": {"id": 25, "name": "KS-JP電子特殊便"},
+            "logistics_price": "88.00",
+            "other_price": "0.00",
+            "exchange_rate": "21.20",
+            "status": 50,
+        },
+    )
+
+    result = runner.execute(
+        _case(
+            key="配送-004",
+            runner_kind="porder_payment",
+            parameters={
+                "payment_mode": "balance",
+                "porder": {
+                    "logistics": "25",
+                    "price_manual": True,
+                    "logistics_price": {"value": "88"},
+                    "extra_fee": {"value": "0"},
+                },
+            },
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "failed"
+    assert result.reason_code == "configured_amount_mismatch"
+    amount_check = next(row for row in result.result["checks"] if row.get("key") == "configured_amount")
+    assert amount_check["expected_jpy"] == "1866"
+    assert amount_check["customer_balance_jpy"] == "16430"
+
+
+def test_payment_runner_fails_when_porder_predicted_quote_cny_is_missing():
+    class FakeExecutor:
+        def execute(self, _scenario, _batch_no):
+            return {
+                "status": "passed",
+                "porder_sn": "P1",
+                "checks": [{
+                    "passed": True,
+                    "expected_source": "porder_pay_detail",
+                    "expected_jpy": "16430",
+                    "actual_source": "payment_api",
+                    "actual_jpy": "16430",
+                }],
+                "ledger_check": {"passed": True, "customer_balance_jpy": "16430"},
+            }
+
+    result = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, _variables: FakeExecutor(),
+        porder_evidence_loader=lambda _env, _variables, _porder_sn: {
+            "porder_sn": "P1",
+            "logistics": {"id": 25, "name": "KS-JP電子特殊便"},
+            "logistics_price": "775.00",
+            "other_price": "0.00",
+            "exchange_rate": "21.20",
+            "status": 50,
+        },
+    ).execute(
+        _case(
+            key="配送-001",
+            runner_kind="porder_payment",
+            parameters={
+                "payment_mode": "balance",
+                "porder": {"logistics": "25", "extra_fee": {"value": "0"}},
+            },
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "failed"
+    assert result.reason_code == "evidence_incomplete"
+    chain = next(row for row in result.result["checks"] if row.get("key") == "porder_quote_chain")
+    assert "predicted_quote_cny" in chain["missing"]
+
+
+def test_payment_runner_fails_when_predicted_quote_cny_differs_from_porder_detail():
+    class FakeExecutor:
+        def execute(self, _scenario, _batch_no):
+            return {
+                "status": "passed",
+                "porder_sn": "P1",
+                "checks": [{
+                    "passed": True,
+                    "expected_source": "porder_pay_detail",
+                    "expected_currency": "CNY",
+                    "expected_amount": "800",
+                    "expected_jpy": "16430",
+                    "actual_source": "payment_api",
+                    "actual_jpy": "16430",
+                    "captured_before_payment": True,
+                    "exchange_rate": "21.20",
+                }],
+                "ledger_check": {"passed": True, "customer_balance_jpy": "16430"},
+                "predicted_quote": {
+                    "amount": "800",
+                    "currency": "CNY",
+                    "source": "porder_pay_detail",
+                    "captured_before_payment": True,
+                },
+            }
+
+    result = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, _variables: FakeExecutor(),
+        porder_evidence_loader=lambda _env, _variables, _porder_sn: {
+            "porder_sn": "P1",
+            "logistics": {"id": 25},
+            "logistics_price": "775.00",
+            "other_price": "0.00",
+            "exchange_rate": "21.20",
+            "status": 50,
+        },
+    ).execute(
+        _case(
+            key="配送-001",
+            runner_kind="porder_payment",
+            parameters={
+                "payment_mode": "balance",
+                "porder": {"logistics": "25", "extra_fee": {"value": "0"}},
+            },
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "failed"
+    assert result.reason_code == "porder_quote_chain_mismatch"
+    chain = next(row for row in result.result["checks"] if row.get("key") == "porder_quote_chain")
+    assert chain["predicted_cny"] == "800"
+    assert chain["detail_cny"] == "775.00"
+
+
+def test_payment_runner_allows_two_fen_cny_rounding_on_porder_quote_chain():
+    class FakeExecutor:
+        def execute(self, _scenario, _batch_no):
+            return {
+                "status": "passed",
+                "porder_sn": "P1",
+                "checks": [{
+                    "passed": True,
+                    "expected_source": "porder_pay_detail",
+                    "expected_currency": "CNY",
+                    "expected_amount": "783.02",
+                    "expected_jpy": "16600",
+                    "actual_source": "payment_api",
+                    "actual_jpy": "16600",
+                    "captured_before_payment": True,
+                    "exchange_rate": "21.20",
+                }],
+                "ledger_check": {"passed": True, "customer_balance_jpy": "16600"},
+                "predicted_quote": {
+                    "amount": "783.02",
+                    "currency": "CNY",
+                    "source": "porder_pay_detail",
+                    "captured_before_payment": True,
+                },
+            }
+
+    result = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, _variables: FakeExecutor(),
+        porder_evidence_loader=lambda _env, _variables, _porder_sn: {
+            "porder_sn": "P1",
+            "logistics": {"id": 25},
+            "logistics_price": "775.00",
+            "other_price": "8.00",
+            "exchange_rate": "21.20",
+            "status": 50,
+        },
+    ).execute(
+        _case(
+            key="配送-003",
+            runner_kind="porder_payment",
+            parameters={
+                "payment_mode": "balance",
+                "porder": {"logistics": "25", "extra_fee": {"value": "8"}},
+            },
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "passed"
+    chain = next(row for row in result.result["checks"] if row.get("key") == "porder_quote_chain")
+    assert chain["passed"] is True
+    assert chain["predicted_cny"] == "783.02"
+    assert chain["detail_cny"] == "783.00"
+
+
+def test_payment_runner_accepts_status_60_for_tail_partial_part_pay():
+    class FakeExecutor:
+        def execute(self, _scenario, _batch_no):
+            return {"status": "passed", "order_sn": "O1", "checks": [{"passed": True}]}
+
+    runner = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, _variables: FakeExecutor(),
+        order_evidence_loader=lambda _env, _variables, _order_sn: {
+            "status": 60,
+            "list": [{
+                "sorting": 1,
+                "confirm_num": 1,
+                "confirm_price": "10.00",
+                "confirm_freight": "3.00",
+                "option": [],
+            }],
+        },
+    )
+    result = runner.execute(
+        _case(
+            key="支付-012",
+            runner_kind="order_part_payment",
+            parameters={
+                "payment_mode": "balance",
+                "part_pay": {"enabled": True, "percent": 50, "tail_partial": True, "tail_sortings": "1"},
+                "items": [{
+                    "sorting": 1,
+                    "quantity": 1,
+                    "offer_price": {"value": "10"},
+                    "offer_freight": {"value": "3"},
+                    "options": [],
+                }],
+            },
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "passed"
+    assert result.result["order_evidence"]["status"] == 60
+
+
+def test_payment_runner_bank_cannot_pass_on_customer_balance_only():
+    class FakeExecutor:
+        def execute(self, _scenario, _batch_no):
+            return {
+                "status": "passed",
+                "order_sn": "O1",
+                "checks": [{
+                    "passed": True,
+                    "expected_source": "order_quote",
+                    "expected_jpy": "285",
+                    "actual_source": "customer_balance",
+                    "actual_jpy": "285",
+                }],
+                "ledger_check": {"passed": True, "customer_balance_jpy": "285"},
+            }
+
+    result = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, _variables: FakeExecutor(),
+        order_evidence_loader=lambda _env, _variables, _order_sn: {
+            "status": 50,
+            "list": [{
+                "sorting": 1,
+                "confirm_num": 1,
+                "confirm_price": "10.00",
+                "confirm_freight": "3.00",
+                "option": [],
+            }],
+        },
+    ).execute(
+        _case(
+            key="支付-002",
+            runner_kind="order_payment",
+            parameters={"payment_mode": "bank", "finance_confirm": True},
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "failed"
+    assert result.reason_code == "bank_channel_missing"
+    bank_check = next(row for row in result.result["checks"] if row.get("key") == "bank_channel")
+    assert bank_check["passed"] is False
+
+
+def test_payment_runner_fails_when_porder_amount_evidence_is_incomplete():
+    class FakeExecutor:
+        def execute(self, _scenario, _batch_no):
+            return {
+                "status": "passed",
+                "porder_sn": "P1",
+                "checks": [{
+                    "passed": True,
+                    "expected_source": "porder_pay_detail",
+                    "expected_jpy": "16430",
+                    "actual_source": "payment_api",
+                    "actual_jpy": "16430",
+                }],
+            }
+
+    result = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, _variables: FakeExecutor(),
+        porder_evidence_loader=lambda _env, _variables, _porder_sn: {
+            "porder_sn": "P1",
+            "logistics": {"id": 25, "name": "KS-JP電子特殊便"},
+            "logistics_price": "775.00",
+            "other_price": "0.00",
+            "exchange_rate": "21.20",
+            "status": 50,
+        },
+    ).execute(
+        _case(
+            key="配送-001",
+            runner_kind="porder_payment",
+            parameters={
+                "payment_mode": "balance",
+                "porder": {
+                    "logistics": "25",
+                    "extra_fee": {"value": "0"},
+                },
+            },
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "failed"
+    assert result.reason_code == "evidence_incomplete"
+    evidence_check = next(
+        row for row in result.result["checks"] if row.get("key") == "porder_amount_evidence"
+    )
+    assert evidence_check["missing"] == ["customer_balance"]
 
 
 def test_payment_runner_dispatches_all_payment_runner_kinds():
@@ -472,9 +1320,55 @@ def test_payment_runner_dispatches_all_payment_runner_kinds():
     class FakeExecutor:
         def execute(self, scenario, batch_no):
             calls.append((scenario.category, scenario.payment_mode, batch_no))
+            if scenario.category == "porder":
+                return {
+                    "status": "passed",
+                    "porder_sn": "P1",
+                    "checks": [{
+                        "passed": True,
+                        "expected_source": "porder_pay_detail",
+                        "expected_currency": "CNY",
+                        "expected_amount": "775",
+                        "expected_jpy": "16430",
+                        "actual_source": "payment_api",
+                        "actual_jpy": "16430",
+                        "captured_before_payment": True,
+                        "exchange_rate": "21.20",
+                    }],
+                    "ledger_check": {"passed": True, "customer_balance_jpy": "16430"},
+                    "predicted_quote": {
+                        "amount": "775",
+                        "currency": "CNY",
+                        "source": "porder_pay_detail",
+                        "captured_before_payment": True,
+                    },
+                }
+            if scenario.payment_mode == "bank":
+                return {
+                    "status": "passed",
+                    "order_sn": "O1",
+                    "checks": [{
+                        "passed": True,
+                        "expected_source": "order_quote",
+                        "expected_jpy": "285",
+                        "actual_source": "finance_confirmed_bill",
+                        "actual_jpy": "285",
+                    }],
+                }
             return {"status": "passed", "order_sn": "O1", "checks": [{"passed": True}]}
 
-    runner = PaymentRunner(env=object(), executor_factory=lambda _env, _variables: FakeExecutor())
+    runner = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, _variables: FakeExecutor(),
+        porder_evidence_loader=lambda _env, _variables, _porder_sn: {
+            "porder_sn": "P1",
+            "logistics": {"id": 25},
+            "logistics_price": "775",
+            "other_price": "0",
+            "exchange_rate": "21.20",
+            "status": 50,
+        },
+    )
     contexts = {"batch_no": "B1", "variables": {}}
 
     assert runner.execute(_case(key="P1", runner_kind="order_payment", parameters={"payment_mode": "balance"}), contexts).status == "passed"
@@ -543,6 +1437,57 @@ def test_payment_runner_fixed_and_rate_profile_selects_real_option_ids():
     assert captured["order_option_counts"] == {"fixed-7": 2, "rate-8": 2}
     required = captured["system_regression_fee_contract"]["required_components"]
     assert {(row["kind"], row["option_id"]) for row in required} == {("option_fixed", "7"), ("option_rate", "8")}
+
+
+def test_payment_runner_fixed_and_rate_profile_uses_configured_option_ids():
+    captured = {}
+
+    class FakeExecutor:
+        def __init__(self, variables):
+            captured.update(variables)
+
+        def execute(self, _scenario, _batch_no):
+            required = captured["system_regression_fee_contract"]["required_components"]
+            return {"status": "passed", "order_sn": "O1", "fee_components": required, "checks": [{"passed": True}]}
+
+    runner = PaymentRunner(
+        env=object(),
+        option_catalog_loader=lambda _env, _variables: {
+            "options": [
+                {"id": 7, "key": "wrong-fixed", "name": "错误固定", "price_type": 0, "price": "2"},
+                {"id": 79, "key": "fixed-79", "name": "针检", "price_type": 0, "price": "0.8"},
+                {"id": 8, "key": "wrong-rate", "name": "错误比例", "price_type": 1, "price": "5"},
+                {"id": 78, "key": "rate-78", "name": "详细检品", "price_type": 1, "price": "4"},
+            ]
+        },
+        executor_factory=lambda _env, variables: FakeExecutor(variables),
+    )
+
+    result = runner.execute(
+        _case(
+            key="支付-007",
+            runner_kind="order_payment",
+            parameters={
+                "payment_mode": "balance",
+                "option_profile": "fixed_and_rate",
+                "items": [{
+                    "quantity": 2,
+                    "offer_price": {"value": "10"},
+                    "offer_freight": {"value": "3"},
+                    "options": [
+                        {"id": "79", "num": 2, "price_type": 0, "checked": True},
+                        {"id": "78", "num": 2, "price_type": 1, "checked": True},
+                    ],
+                }],
+            },
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "passed"
+    required = captured["system_regression_fee_contract"]["required_components"]
+    assert {row["option_id"] for row in required} == {"79", "78"}
+    assert captured["order_option_counts"] == {"fixed-79": 2, "rate-78": 2}
 
 
 def test_payment_runner_rejects_matching_total_when_required_fee_component_is_wrong():
@@ -653,7 +1598,7 @@ def test_payment_runner_all_fee_profile_requires_every_requested_component():
         _case(
             key="支付-008",
             runner_kind="order_payment",
-            parameters={"payment_mode": "balance", "fee_profile": "all"},
+            parameters={"payment_mode": "balance", "fee_profile": "all", "item_count": 2, "item_quantity": 2},
         ),
         {"batch_no": "B1", "variables": {}},
     )
@@ -665,6 +1610,130 @@ def test_payment_runner_all_fee_profile_requires_every_requested_component():
     assert captured["other_price"] == "5"
     required = captured["system_regression_fee_contract"]["required_components"]
     assert {row["component_id"] for row in required} == {row["component_id"] for row in actual_components}
+
+
+def test_payment_runner_all_fee_profile_preserves_one_configured_item():
+    runner = PaymentRunner(
+        env=object(),
+        option_catalog_loader=lambda _env, _variables: {
+            "options": [
+                {"id": 7, "key": "fixed-7", "name": "检品", "price_type": 0, "price": "2"},
+                {"id": 8, "key": "rate-8", "name": "保险", "price_type": 1, "price": "5"},
+            ]
+        },
+        fee_evidence_loader=lambda _env, _variables, _order_sn: [],
+    )
+
+    variables = {"order_item_count": 1, "order_item_num": 1, "offer_freight": "3"}
+    runner._apply_fee_profile(
+        {"fee_profile": "all", "item_count": 1, "item_quantity": 1, "offer_unit_prices": ["10"]},
+        variables,
+    )
+
+    assert variables["cart_item_count"] == 1
+    assert variables["order_item_count"] == 1
+    assert variables["offer_unit_prices"] == ["10"]
+    assert variables["offer_freights"] == ["3"]
+
+
+def test_payment_runner_page_item_count_overrides_stale_flow_two_item_defaults():
+    captured = {}
+
+    class FakeExecutor:
+        def __init__(self, variables):
+            captured.update(variables)
+
+        def execute(self, _scenario, _batch_no):
+            return {"status": "passed", "order_sn": "O-ONE", "checks": [{"passed": True}]}
+
+    runner = PaymentRunner(
+        env=object(),
+        executor_factory=lambda _env, variables: FakeExecutor(variables),
+    )
+    result = runner.execute(
+        _case(
+            key="支付-001",
+            runner_kind="order_payment",
+            parameters={
+                "payment_mode": "balance",
+                "order": {"item_count": 1, "default_quantity": 1},
+                "items": [{"offer_price": {"value": "10"}, "offer_freight": {"value": "3"}, "quantity": 1}],
+            },
+        ),
+        {"batch_no": "B1", "variables": {"order_per_shop": 2, "per_shop": 2, "order_item_count": 2}},
+    )
+
+    assert result.status == "passed"
+    assert captured["order_item_count"] == 1
+    assert captured["order_per_shop"] == 1
+    assert captured["per_shop"] == 1
+    assert captured["order_shop_count"] == 1
+
+
+def test_payment_runner_rejects_quote_and_payment_that_disagree_with_frozen_panel_amount(monkeypatch):
+    class FakeExecutor:
+        def execute(self, _scenario, _batch_no):
+            return {
+                "status": "passed",
+                "order_sn": "O-WRONG",
+                "checks": [
+                    {
+                        "passed": True,
+                        "expected_jpy": "655",
+                        "actual_jpy": "655",
+                        "expected_source": "order_quote",
+                        "actual_source": "payment_api",
+                    },
+                    {
+                        "passed": True,
+                        "expected_jpy": "655",
+                        "actual_jpy": "655",
+                        "actual_source": "customer_balance",
+                    },
+                ],
+            }
+
+    monkeypatch.setattr(
+        "app.system_regression.projects.japan.payment_runner.inspect_membership_from_env",
+        lambda _env, _variables: {
+            "kind": "regular",
+            "level_name": "V6",
+            "service_rate": "0.045",
+            "preview_cny_to_jpy": "21.20",
+        },
+    )
+    runner = PaymentRunner(env=object(), executor_factory=lambda _env, _variables: FakeExecutor())
+    result = runner.execute(
+        _case(
+            key="支付-001",
+            runner_kind="order_payment",
+            parameters={
+                "payment_mode": "balance",
+                "order": {
+                    "item_count": 1,
+                    "default_quantity": 1,
+                    "other_fee_amount": {"value": "0"},
+                },
+                "items": [
+                    {
+                        "sorting": 1,
+                        "quantity": 1,
+                        "offer_price": {"value": "10"},
+                        "offer_freight": {"value": "3"},
+                        "options": [],
+                    }
+                ],
+                "coupon": {"selectedId": ""},
+            },
+        ),
+        {"batch_no": "B1", "variables": {}},
+    )
+
+    assert result.status == "failed"
+    assert result.reason_code == "configured_amount_mismatch"
+    assert result.result["configured_expected_jpy"] == "285"
+    assert result.result["order_quote_jpy"] == "655"
+    assert result.result["payment_actual_jpy"] == "655"
 
 
 def test_problem_goods_request_maps_combination_and_uses_candidate_baseline():
@@ -698,6 +1767,63 @@ def test_problem_goods_request_maps_combination_and_uses_candidate_baseline():
     assert request["problem_description"] == "系统回归问题产品"
     assert request["translation_content"] == "システム回帰テスト"
     assert request["refund_channel"] == "customer_balance"
+
+
+def test_problem_goods_request_applies_independent_runtime_relative_adjustments():
+    request = build_problem_goods_request(
+        {
+            "problem_type": 8,
+            "adjustment": "price_down",
+            "amount_step": "99",
+            "problem_goods": {
+                "problem_type": 8,
+                "quantity_adjustment": {"mode": "decrease", "value": 1},
+                "price_adjustment": {"mode": "decrease", "value": "2"},
+                "freight_adjustment": {"mode": "increase", "value": "5"},
+            },
+        },
+        {
+            "order_purchase_id": 21,
+            "order_detail_id": 31,
+            "possible_num": 3,
+            "confirm_price": "20",
+            "confirm_freight": "6",
+            "option": [],
+        },
+        expected_direction="credit",
+        amount_step=Decimal("99"),
+    )
+
+    assert request["pre_num"] == 2
+    assert request["pre_price"] == "18"
+    assert request["pre_freight"] == "11"
+
+
+def test_problem_goods_request_can_set_runtime_quantity_to_zero():
+    request = build_problem_goods_request(
+        {
+            "problem_type": 3,
+            "problem_goods": {
+                "problem_type": 3,
+                "quantity_adjustment": {"mode": "zero", "value": 0},
+                "price_adjustment": {"mode": "same", "value": 0},
+                "freight_adjustment": {"mode": "same", "value": 0},
+            },
+        },
+        {
+            "order_purchase_id": 21,
+            "order_detail_id": 31,
+            "possible_num": 3,
+            "confirm_price": "20",
+            "confirm_freight": "6",
+            "option": [],
+        },
+        expected_direction="credit",
+    )
+
+    assert request["pre_num"] == 0
+    assert request["pre_price"] == "20"
+    assert request["pre_freight"] == "6"
 
 
 def test_problem_goods_request_ignores_stale_structured_pre_baseline():
@@ -804,6 +1930,178 @@ def test_empty_nested_option_new_does_not_block_option_adjustment():
     assert request["option_new"][0]["name"]
 
 
+def test_problem_runner_fails_when_written_option_identity_is_missing():
+    def gateway(_case, _context, _request):
+        return {
+            "status": "passed",
+            "order_sn": "O1",
+            "problem_goods_id": "PG1",
+            "expected": {"amount": "21", "currency": "JPY", "direction": "debit", "source": "calculator"},
+            "preview": {"amount": "21", "currency": "JPY", "direction": "debit", "source": "preview"},
+            "actual": {"amount": "21", "currency": "JPY", "direction": "debit", "source": "customer_balance"},
+            "after_evidence": {"customer_balance_jpy": 21},
+        }
+
+    result = ProblemGoodsRunner(env=object(), live_gateway=gateway).execute(
+        _case(
+            key="手动OPTION-001",
+            runner_kind="problem_goods",
+            parameters={"problem_type": 6, "option_adjustment": "fixed_add", "option_deal_suggest": 1},
+            direction="debit",
+        ),
+        {
+            "candidate": {
+                "order_purchase_id": 1,
+                "order_detail_id": 2,
+                "possible_num": 2,
+                "confirm_price": "10",
+                "confirm_freight": "1",
+                "option": [],
+            }
+        },
+    )
+
+    assert result.status == "failed"
+    assert result.error_code == "option_identity_missing"
+
+
+def test_problem_runner_accepts_new_option_by_returned_id_and_fields():
+    def gateway(_case, _context, request):
+        return {
+            "status": "passed",
+            "order_sn": "O1",
+            "problem_goods_id": "PG1",
+            "expected": {"amount": "21", "currency": "JPY", "direction": "debit", "source": "calculator"},
+            "preview": {"amount": "21", "currency": "JPY", "direction": "debit", "source": "preview"},
+            "actual": {"amount": "21", "currency": "JPY", "direction": "debit", "source": "customer_balance"},
+            "after_evidence": {
+                "written_options": [
+                    {
+                        "id": "991",
+                        "name": request["option_new"][0]["name"],
+                        "name_translate": request["option_new"][0]["name_translate"],
+                        "price_type": request["option_new"][0]["price_type"],
+                        "price": request["option_new"][0]["price"],
+                        "num": request["option_new"][0]["num"],
+                    }
+                ]
+            },
+        }
+
+    result = ProblemGoodsRunner(env=object(), live_gateway=gateway).execute(
+        _case(
+            key="手动OPTION-001",
+            runner_kind="problem_goods",
+            parameters={"problem_type": 6, "option_adjustment": "fixed_add", "option_deal_suggest": 1},
+            direction="debit",
+        ),
+        {
+            "candidate": {
+                "order_purchase_id": 1,
+                "order_detail_id": 2,
+                "possible_num": 2,
+                "confirm_price": "10",
+                "confirm_freight": "1",
+                "option": [],
+            }
+        },
+    )
+
+    assert result.status == "passed"
+
+
+def test_problem_runner_keeps_execution_error_when_problem_not_completed():
+    def gateway(_case, _context, _request):
+        return {
+            "status": "failed",
+            "completed": False,
+            "order_sn": "O1",
+            "reason": "客户处理失败且未完成：客户处理网络结果不确定，必须先查询状态",
+            "reason_code": "client_deal_uncertain",
+            "error_code": "client_deal_uncertain",
+            "error_message": "客户处理失败且未完成：客户处理网络结果不确定，必须先查询状态",
+        }
+
+    result = ProblemGoodsRunner(env=object(), live_gateway=gateway).execute(
+        _case(
+            key="手动OPTION-008",
+            runner_kind="problem_goods",
+            parameters={"problem_type": 6, "option_adjustment": "rate_delete", "option_deal_suggest": 1},
+            direction="credit",
+        ),
+        {
+            "candidate": {
+                "order_purchase_id": 1,
+                "order_detail_id": 2,
+                "possible_num": 2,
+                "confirm_price": "10",
+                "confirm_freight": "1",
+                "option": [{"id": 78, "name": "详细检品", "price_type": 1, "price": "4", "num": 3, "checked": True}],
+            }
+        },
+    )
+
+    assert result.status == "failed"
+    assert result.error_code == "client_deal_uncertain"
+    assert "网络结果不确定" in result.error_message
+
+
+def test_problem_runner_accepts_new_option_without_platform_id():
+    def gateway(_case, _context, request):
+        return {
+            "status": "passed",
+            "order_sn": "O1",
+            "problem_goods_id": "PG1",
+            "expected": {"amount": "21", "currency": "JPY", "direction": "debit", "source": "calculator"},
+            "preview": {"amount": "21", "currency": "JPY", "direction": "debit", "source": "preview"},
+            "actual": {"amount": "21", "currency": "JPY", "direction": "debit", "source": "customer_balance"},
+            "after_evidence": {
+                "written_options": [
+                    {
+                        "name_translate": request["option_new"][0]["name_translate"],
+                        "price_type": request["option_new"][0]["price_type"],
+                        "price": request["option_new"][0]["price"],
+                        "num": request["option_new"][0]["num"],
+                    }
+                ]
+            },
+        }
+
+    result = ProblemGoodsRunner(env=object(), live_gateway=gateway).execute(
+        _case(
+            key="手动OPTION-001",
+            runner_kind="problem_goods",
+            parameters={"problem_type": 6, "option_adjustment": "fixed_add", "option_deal_suggest": 1},
+            direction="debit",
+        ),
+        {
+            "candidate": {
+                "order_purchase_id": 1,
+                "order_detail_id": 2,
+                "possible_num": 2,
+                "confirm_price": "10",
+                "confirm_freight": "1",
+                "option": [],
+            }
+        },
+    )
+
+    assert result.status == "passed"
+
+
+def test_written_options_empty_list_does_not_fallback_to_bak():
+    assert _written_options_from_detail(
+        {
+            "list": [{
+                "option": [],
+                "offer_option_bak": [
+                    {"id": 78, "name": "检品", "price": "2", "num": 1, "checked": True},
+                ],
+            }]
+        }
+    ) == []
+
+
 def test_problem_runner_rejects_non_balance_actual_evidence():
     def gateway(_case, _context, _request):
         return {
@@ -823,6 +2121,80 @@ def test_problem_runner_rejects_non_balance_actual_evidence():
 
     assert result.status == "failed"
     assert result.error_code == "invalid_actual_source"
+
+
+def test_problem_runner_passes_runtime_membership_service_rate_to_oracle_request():
+    captured = {}
+
+    def gateway(_case, _context, request):
+        captured.update(request)
+        return {
+            "status": "passed",
+            "order_sn": "O1",
+            "problem_goods_id": "PG1",
+            "expected": {"amount": "10", "currency": "JPY", "direction": "credit", "source": "calculator"},
+            "preview": {"amount": "10", "currency": "JPY", "direction": "credit", "source": "preview"},
+            "actual": {"amount": "10", "currency": "JPY", "direction": "credit", "source": "customer_balance"},
+        }
+
+    result = ProblemGoodsRunner(env=object(), live_gateway=gateway).execute(
+        _case(
+            key="金额-002",
+            runner_kind="problem_goods",
+            parameters={"problem_type": 3, "adjustment": "quantity_partial_down"},
+            direction="credit",
+        ),
+        {
+            "candidate": {
+                "order_purchase_id": 1,
+                "order_detail_id": 2,
+                "possible_num": 2,
+                "confirm_price": "10",
+                "confirm_freight": "1",
+            },
+            "variables": {"service_rate": "0.045"},
+        },
+    )
+
+    assert result.status == "passed"
+    assert captured["service_rate"] == "0.045"
+
+
+def test_zero_service_rate_scenario_does_not_override_runtime_order_rate():
+    captured = {}
+
+    def gateway(_case, _context, request):
+        captured.update(request)
+        return {
+            "status": "passed",
+            "order_sn": "O1",
+            "problem_goods_id": "PG1",
+            "expected": {"amount": "67", "currency": "JPY", "direction": "credit", "source": "calculator"},
+            "preview": {"amount": "67", "currency": "JPY", "direction": "credit", "source": "preview"},
+            "actual": {"amount": "67", "currency": "JPY", "direction": "credit", "source": "customer_balance"},
+        }
+
+    result = ProblemGoodsRunner(env=object(), live_gateway=gateway).execute(
+        _case(
+            key="手续费-006",
+            runner_kind="problem_goods",
+            parameters={"problem_type": 1, "adjustment": "zero_service_rate"},
+            direction="credit",
+        ),
+        {
+            "candidate": {
+                "order_purchase_id": 1,
+                "order_detail_id": 2,
+                "possible_num": 3,
+                "confirm_price": "10",
+                "confirm_freight": "3",
+            },
+            "variables": {"service_rate": "0.045"},
+        },
+    )
+
+    assert result.status == "passed"
+    assert captured["service_rate"] == "0.045"
 
 
 def test_problem_gateway_records_each_write_once_without_sensitive_fields(monkeypatch):
@@ -1033,7 +2405,15 @@ def test_problem_flow_applies_default_adjustment_for_each_problem_type(problem_t
 
     def gateway(_case, _context, request):
         captured.update(request)
-        return {"status": "passed"}
+        payload = {"status": "passed"}
+        if int(request.get("option_deal_suggest") or 0) == 1:
+            written = []
+            for index, row in enumerate(request.get("option_new") or []):
+                item = dict(row)
+                item["id"] = str(item.get("id") or item.get("option_id") or f"opt-{index + 1}")
+                written.append(item)
+            payload["after_evidence"] = {"written_options": written}
+        return payload
 
     result = ProblemGoodsRunner(env=object(), live_gateway=gateway).execute(
         _case(

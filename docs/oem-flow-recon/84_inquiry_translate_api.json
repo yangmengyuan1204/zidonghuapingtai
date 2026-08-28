@@ -1,0 +1,52 @@
+{
+  "sn": "X20260805143420-15-OEM",
+  "translate_req": {
+    "is_temp": false,
+    "order_sn": "X20260805143420-15-OEM",
+    "goods_name_tr": "测试商品_TR",
+    "material_tr": "m_TR",
+    "customize_detail_tr": "c_TR",
+    "goods_detail_tr": "d_TR",
+    "goods_file_tr": [],
+    "sku_info": [
+      {
+        "id": 1527,
+        "sku": "sku1",
+        "sku_tr": "sku1",
+        "num": 1
+      },
+      {
+        "id": 1528,
+        "sku": "sku2",
+        "sku_tr": "sku2",
+        "num": 1
+      }
+    ],
+    "goods_id": "980",
+    "goods_class": 110,
+    "y_remark": "auto-capture-class110",
+    "user_remark": ""
+  },
+  "translate_resp": {
+    "code": 0,
+    "msg": "操作成功",
+    "data": true
+  },
+  "audit_resp": {
+    "code": 0,
+    "msg": "操作成功",
+    "data": true
+  },
+  "start_resp": {
+    "code": 0,
+    "msg": "操作成功"
+  },
+  "after": {
+    "y_admin_status": 2,
+    "g_admin_status": 1,
+    "goods_class": {
+      "id": 110,
+      "class_name": "测试分类111"
+    }
+  }
+}

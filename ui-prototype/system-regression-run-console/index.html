@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>系统回归 · 执行控制台交互稿</title>
+  <link rel="icon" href="data:," />
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --box: #ffffff;
+      --line: rgba(15, 23, 42, 0.08);
+      --line-strong: #e2e8ee;
+      --field: #dbdfe1;
+      --ink: #29343d;
+      --ink-strong: #323251;
+      --muted: #7987a1;
+      --faint: #949eb7;
+      --hover: #f2f4f5;
+      --primary: #5d87ff;
+      --primary-hover: #4a7aff;
+      --primary-soft: #edf2ff;
+      --pass: #027a48;
+      --pass-bg: #ecfdf3;
+      --fail: #d92d20;
+      --fail-bg: #fef0f0;
+      --hold: #c2410c;
+      --hold-bg: #fff7ed;
+      --hold-line: #fdba74;
+      --queued: #e8ecf1;
+      --radius: 8px;
+      --sidebar: 230px;
+      --topbar: 60px;
+      --font: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", "Cascadia Mono", "Sarasa Gothic SC", Consolas, ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--ink);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: var(--sidebar) minmax(0, 1fr);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--box);
+      border-right: 1px solid var(--line);
+    }
+    .brand {
+      display: flex;
+      height: var(--topbar);
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand-mark {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    .brand-copy strong,
+    .brand-copy span { display: block; }
+    .brand-copy strong { font-size: 15px; color: var(--ink-strong); }
+    .brand-copy span {
+      margin-top: 2px;
+      color: var(--faint);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .project {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .project-label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .project-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--field);
+      border-radius: 7px;
+    }
+    .project-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #12b76a;
+    }
+    .project-card select {
+      flex: 1;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+    }
+    .nav { flex: 1; overflow: auto; padding: 10px 0 16px; }
+    .nav-heading {
+      margin: 10px 16px 6px;
+      color: var(--faint);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .nav-item {
+      position: relative;
+      display: flex;
+      width: calc(100% - 16px);
+      height: 42px;
+      align-items: center;
+      gap: 10px;
+      margin: 0 8px 4px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font-weight: 500;
+      text-align: left;
+    }
+    .nav-item svg {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 auto;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .nav-item:hover { background: var(--hover); }
+    .nav-item.is-active {
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .nav-item.is-active::before {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 4px;
+      height: 20px;
+      border-radius: 0 3px 3px 0;
+      background: var(--primary);
+      content: "";
+      transform: translateY(-50%);
+    }
+    .sidebar-foot {
+      padding: 12px 14px;
+      border-top: 1px solid var(--line);
+    }
+    .account {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .avatar {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 500;
+    }
+    .account-copy { flex: 1; min-width: 0; }
+    .account-copy strong, .account-copy small { display: block; }
+    .account-copy small { color: var(--faint); font-size: 11px; }
+    .role {
+      height: 22px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: var(--hover);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 22px;
+    }
+
+    .main { min-width: 0; background: var(--bg); }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      height: var(--topbar);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 24px;
+      background: rgba(255, 255, 255, 0.96);
+      border-bottom: 1px solid var(--line);
+    }
+    .crumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+    }
+    .crumb strong { color: var(--ink-strong); }
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .text-btn {
+      height: 34px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+    }
+    .text-btn:hover { background: var(--hover); color: var(--ink-strong); }
+
+    .capsule {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      height: 36px;
+      padding: 0 6px 0 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--box);
+      color: var(--ink);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .capsule.is-visible { display: inline-flex; }
+    .capsule.is-running { border-color: #c5d4ff; background: var(--primary-soft); }
+    .capsule.is-waiting { border-color: var(--hold-line); background: var(--hold-bg); }
+    .capsule.is-done { border-color: var(--line-strong); }
+    .capsule-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+    .capsule.is-running .capsule-dot { animation: pulse 1.4s ease-in-out infinite; }
+    .capsule.is-waiting .capsule-dot { background: var(--hold); animation: pulse 1.4s ease-in-out infinite; }
+    .capsule.is-done .capsule-dot { background: var(--pass); animation: none; }
+    .capsule-copy {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .capsule-copy b { font-weight: 600; }
+    .capsule-copy span {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+    }
+    .capsule-go {
+      height: 26px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 12px;
+    }
+    .capsule-go:hover { background: var(--primary-hover); }
+
+    .content {
+      width: 100%;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 18px 24px 40px;
+    }
+
+    .hint {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      border: 1px dashed #c5d4ff;
+      border-radius: 7px;
+      background: var(--primary-soft);
+      color: var(--ink);
+      font-size: 12px;
+    }
+    .hint button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .page-head { margin-bottom: 14px; }
+    .eyebrow {
+      margin: 0 0 4px;
+      color: var(--faint);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .page-head h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 30px;
+      color: var(--ink-strong);
+    }
+    .page-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+    }
+
+    .card {
+      background: var(--box);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+    .toolbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .fields { display: flex; gap: 12px; flex-wrap: wrap; }
+    .field { min-width: 150px; }
+    .field.grow { min-width: 180px; }
+    .field label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .field input,
+    .field select {
+      width: 100%;
+      height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--field);
+      border-radius: 7px;
+      background: var(--box);
+      color: var(--ink);
+    }
+    .actions { display: flex; gap: 8px; align-items: center; }
+
+    .btn {
+      display: inline-flex;
+      height: 36px;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 14px;
+      border-radius: 7px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { border: 1px solid var(--primary); background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-secondary { border: 1px solid var(--field); background: var(--box); color: var(--ink); }
+    .btn-secondary:hover:not(:disabled) { background: var(--hover); }
+    .btn-danger { border: 1px solid #f5c2c0; background: var(--fail-bg); color: var(--fail); }
+    .btn-danger:hover:not(:disabled) { background: #fde8e8; }
+    .btn-sm { height: 30px; padding: 0 10px; font-size: 12px; }
+    .btn-ghost { border: 1px solid transparent; background: transparent; color: var(--muted); }
+    .btn-ghost:hover { background: var(--hover); color: var(--ink-strong); }
+    .link {
+      border: 0;
+      background: transparent;
+      color: var(--primary);
+      padding: 0;
+      text-align: left;
+    }
+
+    /* ===== Run console ===== */
+    .run {
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .run.is-waiting { border-color: var(--hold-line); }
+    .run.is-failed { border-color: #f5c2c0; }
+    .run.is-passed { border-color: #abefc6; }
+    .run-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      background: #f7f8fb;
+      border-bottom: 1px solid var(--line);
+    }
+    .run-id {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .run-no {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .pill-running { background: var(--primary-soft); color: var(--primary); }
+    .pill-waiting { background: var(--hold-bg); color: var(--hold); }
+    .pill-passed { background: var(--pass-bg); color: var(--pass); }
+    .pill-failed { background: var(--fail-bg); color: var(--fail); }
+    .pill-stopped { background: var(--hover); color: var(--muted); }
+    .run-clock {
+      font-family: var(--mono);
+      font-size: 20px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      color: var(--ink-strong);
+      line-height: 1;
+    }
+    .run-clock small {
+      display: block;
+      margin-top: 2px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: var(--faint);
+      text-transform: uppercase;
+    }
+    .run-head-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .run-frac {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+    }
+    .run-frac b { color: var(--ink-strong); }
+
+    .hold-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+      background: var(--hold-bg);
+      border-bottom: 1px solid var(--hold-line);
+      color: var(--hold);
+    }
+
+    .run-body { padding: 14px 16px 8px; }
+    .meters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .meter {
+      padding: 8px 10px;
+      border-radius: 7px;
+      background: var(--bg);
+    }
+    .meter b {
+      display: block;
+      font-family: var(--mono);
+      font-size: 18px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+    .meter span { color: var(--muted); font-size: 11px; }
+    .meter.is-pass b { color: var(--pass); }
+    .meter.is-fail b { color: var(--fail); }
+    .meter.is-hold b { color: var(--hold); }
+
+    .seq {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+    .seq-cell {
+      position: relative;
+      flex: 0 0 118px;
+      min-height: 64px;
+      padding: 8px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: var(--box);
+      overflow: hidden;
+    }
+    .seq-cell kbd {
+      display: block;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-strong);
+    }
+    .seq-cell em {
+      display: block;
+      margin-top: 4px;
+      font-style: normal;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .seq-cell small {
+      display: block;
+      margin-top: 6px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--faint);
+    }
+    .seq-cell.is-queued { background: #fbfcfd; }
+    .seq-cell.is-running {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+    .seq-cell.is-running::after {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--fill, 35%);
+      background: linear-gradient(90deg, transparent, rgba(93, 135, 255, 0.18));
+      content: "";
+      animation: scan 1.8s linear infinite;
+    }
+    .seq-cell.is-passed { border-color: #abefc6; background: var(--pass-bg); }
+    .seq-cell.is-passed kbd, .seq-cell.is-passed small { color: var(--pass); }
+    .seq-cell.is-failed { border-color: #f5c2c0; background: var(--fail-bg); }
+    .seq-cell.is-failed kbd, .seq-cell.is-failed small { color: var(--fail); }
+    .seq-cell.is-waiting,
+    .seq-cell.is-waiting_account { border-color: var(--hold-line); background: var(--hold-bg); }
+    .seq-cell.is-waiting kbd, .seq-cell.is-waiting small,
+    .seq-cell.is-waiting_account kbd, .seq-cell.is-waiting_account small { color: var(--hold); }
+    .seq-cell.is-stopped { opacity: 0.55; }
+    .seq-cell.is-current { box-shadow: 0 0 0 2px rgba(93, 135, 255, 0.25); }
+
+    .now-line {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 10px 0 4px;
+      color: var(--ink);
+    }
+    .now-line strong { font-weight: 600; }
+    .now-line span {
+      font-family: var(--mono);
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin: 8px 16px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .tab {
+      height: 36px;
+      padding: 0 14px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .tab.is-on {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      font-weight: 600;
+    }
+    .pane {
+      max-height: 240px;
+      overflow: auto;
+      padding: 8px 8px 12px;
+    }
+
+    .event {
+      display: grid;
+      grid-template-columns: 64px 108px minmax(0, 1fr);
+      gap: 8px;
+      padding: 7px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .event:hover { background: var(--hover); }
+    .event time {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      color: var(--faint);
+    }
+    .event kbd {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--primary);
+    }
+    .event p { margin: 0; color: var(--ink); }
+
+    .result {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      margin: 6px 8px;
+      overflow: hidden;
+    }
+    .result-head {
+      display: grid;
+      grid-template-columns: 118px minmax(0, 1fr) 88px 120px;
+      gap: 8px;
+      width: 100%;
+      align-items: center;
+      padding: 10px 12px;
+      border: 0;
+      background: var(--box);
+      text-align: left;
+    }
+    .result-head kbd { font-family: var(--mono); font-size: 12px; }
+    .result-head span { color: var(--ink); }
+    .evidence {
+      display: none;
+      padding: 0 12px 12px;
+      background: #fafbfc;
+      border-top: 1px solid var(--line);
+    }
+    .result.is-open .evidence { display: block; }
+    .ev-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      padding-top: 10px;
+    }
+    .ev-item {
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: var(--box);
+      border: 1px solid var(--line);
+    }
+    .ev-item label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .ev-item b { font-weight: 600; }
+    .ev-item.wide { grid-column: 1 / -1; }
+    .diff-bad { color: var(--fail); }
+    .diff-ok { color: var(--pass); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 190px minmax(420px, 1fr) minmax(320px, 0.78fr);
+      gap: 12px;
+      align-items: start;
+    }
+    .panel { padding: 12px; }
+    .panel-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .panel-title h3 { margin: 0; font-size: 13px; }
+    .panel-title span { color: var(--faint); font-size: 12px; }
+    .cat {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      border: 0;
+      border-radius: 7px;
+      padding: 9px 10px;
+      min-height: 36px;
+      background: transparent;
+      text-align: left;
+    }
+    .cat:hover { background: var(--hover); }
+    .cat.is-on { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+    .cat b { font-variant-numeric: tabular-nums; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+    th {
+      height: 38px;
+      background: #f2f4f7;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    tr.is-active td { background: color-mix(in srgb, var(--primary) 7%, transparent); }
+    tr:hover td { background: #f8fafc; }
+    .status-chip {
+      display: inline-flex;
+      height: 22px;
+      align-items: center;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .drawer { position: sticky; top: 74px; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .grid .wide { grid-column: 1 / -1; }
+    .section {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+    .section h4 { margin: 0 0 10px; font-size: 13px; }
+
+    .dash-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .dash-card { padding: 16px; }
+    .dash-card span { color: var(--muted); font-size: 12px; }
+    .dash-card b {
+      display: block;
+      margin-top: 8px;
+      font-size: 24px;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink-strong);
+    }
+    .dash-note {
+      padding: 18px 16px;
+      color: var(--muted);
+    }
+    .dash-note strong { color: var(--ink); }
+
+    .modal-back {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      background: rgba(15, 23, 42, 0.36);
+      padding: 24px;
+    }
+    .modal {
+      width: min(440px, 100%);
+      padding: 18px;
+      border-radius: 10px;
+      background: var(--box);
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+    }
+    .modal h2 { margin: 0 0 6px; font-size: 16px; }
+    .modal p { margin: 0 0 14px; color: var(--muted); }
+    .modal .actions { justify-content: flex-end; margin-top: 16px; }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 60;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: var(--ink-strong);
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    @keyframes scan {
+      0% { transform: translateX(-40%); }
+      100% { transform: translateX(180%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .capsule-dot, .seq-cell.is-running::after { animation: none; }
+    }
+    @media (max-width: 1180px) {
+      .layout { grid-template-columns: 170px 1fr; }
+      .drawer { position: static; grid-column: 1 / -1; }
+      .meters { grid-template-columns: repeat(2, 1fr); }
+      .dash-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">Q</span>
+        <div class="brand-copy">
+          <strong>质量工作台</strong>
+          <span>AI TEST OPERATIONS</span>
+        </div>
+      </div>
+      <div class="project">
+        <span class="project-label">当前项目</span>
+        <div class="project-card">
+          <span class="project-dot"></span>
+          <select aria-label="当前项目">
+            <option selected>日本站测试</option>
+          </select>
+        </div>
+      </div>
+      <nav class="nav" aria-label="主导航">
+        <div class="nav-heading">工作空间</div>
+        <button class="nav-item" data-view="dashboard" type="button">
+          <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4V4Zm10 0h6v10h-6V4ZM4 14h6v6H4v-6Zm10 4h6v2h-6v-2Z" /></svg>
+          <span>工作台总览</span>
+        </button>
+        <div class="nav-heading">系统管理</div>
+        <button class="nav-item is-active" data-view="regression" type="button">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16v11H4V7Zm4-3h8v3H8V4Zm0 8 2 2 5-5" /></svg>
+          <span>系统回归</span>
+        </button>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="account">
+          <span class="avatar">A</span>
+          <div class="account-copy"><strong>admin</strong><small>admin</small></div>
+          <span class="role">管理员</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <nav class="crumb" id="crumb"></nav>
+        <div class="topbar-actions">
+          <div id="capsuleSlot"></div>
+          <button class="text-btn" type="button">全局 AI 配置</button>
+          <button class="text-btn" type="button">退出</button>
+        </div>
+      </header>
+      <div class="content" id="viewRoot"></div>
+    </div>
+  </div>
+  <div id="modalRoot"></div>
+  <div id="toastRoot"></div>
+
+  <script>
+    const CATEGORIES = [
+      { key: "all", label: "全部用例" },
+      { key: "payment", label: "支付金额" },
+      { key: "problem_amount", label: "问题产品-基础金额" },
+      { key: "problem_guard", label: "问题产品-预期拦截" },
+    ];
+
+    const CASES = [
+      { id: 1, key: "JP-PAY-001", name: "单番余额全额支付", category: "payment" },
+      { id: 2, key: "JP-PAY-002", name: "单番银行全额支付", category: "payment" },
+      { id: 3, key: "JP-PAY-003", name: "余额分批付款", category: "payment" },
+      { id: 4, key: "JP-PAY-008", name: "其他费用金额与名义", category: "payment" },
+      { id: 5, key: "JP-PRB-001", name: "问题产品数量调整后退款", category: "problem_amount" },
+      { id: 6, key: "JP-PAY-007", name: "多单番独立国内运费", category: "payment" },
+      { id: 7, key: "JP-GRD-001", name: "预期拦截-超额退款", category: "problem_guard" },
+      { id: 8, key: "JP-PAY-010", name: "全费用混合订单", category: "payment" },
+    ];
+
+    const OUTCOMES = {
+      1: { status: "passed", ms: 1600, reason: "", events: ["冻结参数", "客户登录", "下单并余额支付", "核对实扣 130.00 JPY · 通过"], evidence: { before: "客户余额 ¥12,480.00", after: "客户余额 ¥12,350.00", expected: "实扣 ¥130.00", actual: "实扣 ¥130.00", note: "金额与名义一致" } },
+      2: { status: "passed", ms: 1800, reason: "", events: ["冻结参数", "银行支付确认", "财务确认到账", "核对实扣 130.00 · 通过"], evidence: { before: "待支付 ¥130.00", after: "已支付 ¥130.00", expected: "银行全额", actual: "银行全额", note: "财务确认完成" } },
+      3: { status: "failed", ms: 2000, reason: "business_diff", events: ["冻结参数", "分批首付 50%", "核对实扣", "业务差异：国内运费未计入 OPTION"], evidence: { before: "客户余额 ¥12,350.00", after: "客户余额 ¥12,221.50", expected: "实扣 ¥130.00", actual: "实扣 ¥128.50", note: "实扣少 ¥1.50，国内运费未计入 OPTION" } },
+      4: { status: "passed", ms: 1400, reason: "", events: ["写入其他费用 包装材料费 ¥5", "核对名义与金额 · 通过"], evidence: { before: "其他费用 ¥0", after: "包装材料费 ¥5.00", expected: "名义+金额同时出现", actual: "一致", note: "费用名义已落到对账页" } },
+      5: { status: "waiting_account", ms: 1500, reason: "refund_need_minister", events: ["问题产品调整数量", "计算退款 ¥520.00", "退款达到 500 元，需要部长账号"], evidence: { before: "问题数量 1", after: "待退款 ¥520.00", expected: "部长账号审批后退款", actual: "等待补充账号", note: "超过 500 元退款阈值" } },
+      6: { status: "passed", ms: 1600, reason: "", events: ["两单番分别写入国内运费", "核对分项运费 · 通过"], evidence: { before: "运费合计 ¥0", after: "运费合计 ¥16.00", expected: "按单番独立计算", actual: "单番1 ¥7 / 单番2 ¥9", note: "未合并到订单头" } },
+      7: { status: "passed", ms: 1200, reason: "guard_matched", events: ["触发超额退款拦截", "接口返回预期错误码", "守卫命中 · 通过"], evidence: { before: "申请退款 ¥800.00", after: "请求被拦截", expected: "错误关键词 超过可退金额", actual: "已拦截", note: "这是预期失败，记为通过" } },
+      8: { status: "passed", ms: 2200, reason: "", events: ["混合 OPTION + 其他费用 + 运费", "三路金额对账", "全费用混合 · 通过"], evidence: { before: "订单合计 ¥0", after: "订单合计 ¥186.40", expected: "全费用加总", actual: "¥186.40", note: "与冻结参数一致" } },
+    };
+
+    const STATUS_LABEL = {
+      queued: "排队",
+      running: "执行中",
+      passed: "通过",
+      failed: "失败",
+      waiting_account: "等待账号",
+      stopped: "已停止",
+    };
+
+    const state = {
+      view: "regression",
+      category: "all",
+      selected: new Set(CASES.map((item) => item.id)),
+      activeId: 1,
+      hint: true,
+      tab: "events",
+      expanded: null,
+      accountOpen: false,
+      accountUser: "",
+      accountPass: "",
+      toast: "",
+      batch: null,
+    };
+
+    let runTimer = 0;
+    let clockTimer = 0;
+    let toastTimer = 0;
+
+    function visibleCases() {
+      return state.category === "all" ? CASES : CASES.filter((item) => item.category === state.category);
+    }
+
+    function counts() {
+      const map = { all: CASES.length };
+      CASES.forEach((item) => { map[item.category] = (map[item.category] || 0) + 1; });
+      return map;
+    }
+
+    function runOf(caseId) {
+      return state.batch?.runs.find((item) => item.caseId === caseId) || null;
+    }
+
+    function tally() {
+      const runs = state.batch?.runs || [];
+      return {
+        total: runs.length,
+        passed: runs.filter((item) => item.status === "passed").length,
+        failed: runs.filter((item) => item.status === "failed").length,
+        waiting: runs.filter((item) => item.status === "waiting_account").length,
+        queued: runs.filter((item) => item.status === "queued").length,
+        running: runs.filter((item) => item.status === "running").length,
+        stopped: runs.filter((item) => item.status === "stopped").length,
+        done: runs.filter((item) => !["queued", "running", "waiting_account"].includes(item.status)).length,
+      };
+    }
+
+    function isLive(status) {
+      return ["running", "waiting_account"].includes(status);
+    }
+
+    function fmtClock(ms) {
+      const total = Math.max(0, Math.floor((ms || 0) / 1000));
+      const m = String(Math.floor(total / 60)).padStart(2, "0");
+      const s = String(total % 60).padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    function nowStamp() {
+      const d = new Date();
+      return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, "0")).join(":");
+    }
+
+    function pillClass(status) {
+      if (status === "running") return "pill-running";
+      if (status === "waiting_account") return "pill-waiting";
+      if (status === "passed") return "pill-passed";
+      if (status === "failed") return "pill-failed";
+      return "pill-stopped";
+    }
+
+    function statusChip(status) {
+      const map = {
+        passed: ["status-chip", "var(--pass-bg)", "var(--pass)", "通过"],
+        failed: ["status-chip", "var(--fail-bg)", "var(--fail)", "失败"],
+        running: ["status-chip", "var(--primary-soft)", "var(--primary)", "执行中"],
+        waiting_account: ["status-chip", "var(--hold-bg)", "var(--hold)", "等待账号"],
+        queued: ["status-chip", "var(--hover)", "var(--muted)", "排队"],
+        stopped: ["status-chip", "var(--hover)", "var(--muted)", "已停止"],
+      };
+      const item = map[status];
+      if (!item) return `<span class="status-chip" style="background:#f2f4f7;color:var(--muted)">启用</span>`;
+      return `<span class="status-chip" style="background:${item[1]};color:${item[2]}">${item[3]}</span>`;
+    }
+
+    function batchNo() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, "0");
+      return `SYSREG-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+    }
+
+    function pushEvent(caseKey, text) {
+      if (!state.batch) return;
+      state.batch.events.push({ time: nowStamp(), key: caseKey || "BATCH", text });
+    }
+
+    function toast(text) {
+      state.toast = text;
+      paintToast();
+      clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => { state.toast = ""; paintToast(); }, 2200);
+    }
+
+    function startBatch(ids) {
+      if (!ids.length) return toast("请至少选择一条用例");
+      if (state.batch && isLive(state.batch.status)) return toast("当前批次还在执行");
+      state.batch = {
+        no: batchNo(),
+        status: "running",
+        startedAt: Date.now(),
+        elapsed: 0,
+        tab: state.tab,
+        events: [],
+        runs: ids.map((id) => {
+          const item = CASES.find((row) => row.id === id);
+          return {
+            caseId: id,
+            key: item.key,
+            name: item.name,
+            status: "queued",
+            startedAt: 0,
+            duration: 0,
+            reason: "",
+            evidence: null,
+          };
+        }),
+      };
+      state.tab = "events";
+      state.expanded = null;
+      state.hint = false;
+      pushEvent("", `批次 ${state.batch.no} 已创建，共 ${ids.length} 条`);
+      paint();
+      startClock();
+      runNext();
+    }
+
+    function startClock() {
+      clearInterval(clockTimer);
+      clockTimer = window.setInterval(() => {
+        if (!state.batch || !isLive(state.batch.status)) return;
+        state.batch.elapsed = Date.now() - state.batch.startedAt;
+        const clock = document.querySelector("[data-clock]");
+        const frac = document.querySelector("[data-frac]");
+        const nowDur = document.querySelector("[data-now-dur]");
+        const capClock = document.querySelector("[data-cap-clock]");
+        const capFrac = document.querySelector("[data-cap-frac]");
+        if (clock) clock.textContent = fmtClock(state.batch.elapsed);
+        if (capClock) capClock.textContent = fmtClock(state.batch.elapsed);
+        const t = tally();
+        if (frac) frac.innerHTML = `<b>${t.done}</b>/${t.total}`;
+        if (capFrac) capFrac.textContent = `${t.done}/${t.total}`;
+        const current = state.batch.runs.find((item) => item.status === "running");
+        if (nowDur && current) nowDur.textContent = `本条 ${fmtClock(Date.now() - current.startedAt)}`;
+        const dash = document.querySelector("[data-dash-reg]");
+        if (dash) dash.textContent = `${t.done}/${t.total}`;
+      }, 200);
+    }
+
+    function runNext() {
+      if (!state.batch || state.batch.status === "stopped") return;
+      const current = state.batch.runs.find((item) => item.status === "waiting_account");
+      if (current) {
+        state.batch.status = "waiting_account";
+        state.accountOpen = state.view === "regression";
+        paint();
+        return;
+      }
+      const next = state.batch.runs.find((item) => item.status === "queued");
+      if (!next) {
+        finishBatch();
+        return;
+      }
+      next.status = "running";
+      next.startedAt = Date.now();
+      state.batch.status = "running";
+      pushEvent(next.key, `开始执行 ${next.name}`);
+      paint();
+      const outcome = OUTCOMES[next.caseId];
+      let i = 0;
+      const step = () => {
+        if (!state.batch || next.status !== "running") return;
+        if (i < outcome.events.length) {
+          pushEvent(next.key, outcome.events[i]);
+          i += 1;
+          paintEvents();
+          runTimer = window.setTimeout(step, Math.max(280, Math.floor(outcome.ms / (outcome.events.length + 1))));
+        } else {
+          completeRun(next, outcome);
+        }
+      };
+      runTimer = window.setTimeout(step, 400);
+    }
+
+    function completeRun(run, outcome) {
+      run.status = outcome.status;
+      run.duration = Date.now() - run.startedAt;
+      run.reason = outcome.reason;
+      run.evidence = outcome.evidence;
+      if (outcome.status === "waiting_account") {
+        state.batch.status = "waiting_account";
+        state.accountOpen = state.view === "regression";
+        pushEvent(run.key, "批次暂停，等待部长账号");
+        paint();
+        return;
+      }
+      pushEvent(run.key, outcome.status === "passed" ? "本条通过" : `本条失败 · ${outcome.reason}`);
+      paint();
+      runTimer = window.setTimeout(runNext, 420);
+    }
+
+    function finishBatch() {
+      if (!state.batch) return;
+      const t = tally();
+      if (t.failed) state.batch.status = "failed";
+      else if (t.stopped && t.passed === 0) state.batch.status = "stopped";
+      else state.batch.status = "passed";
+      state.batch.elapsed = Date.now() - state.batch.startedAt;
+      pushEvent("", `批次结束：通过 ${t.passed} · 失败 ${t.failed}`);
+      state.tab = "results";
+      paint();
+    }
+
+    function stopBatch() {
+      clearTimeout(runTimer);
+      if (!state.batch || !isLive(state.batch.status)) return;
+      state.batch.runs.forEach((item) => {
+        if (item.status === "queued" || item.status === "running" || item.status === "waiting_account") item.status = "stopped";
+      });
+      state.batch.status = "stopped";
+      state.accountOpen = false;
+      pushEvent("", "已停止批次，未跑完的用例标记为已停止");
+      toast("已停止批次");
+      paint();
+    }
+
+    function resumeAccount() {
+      if (!state.accountUser.trim() || !state.accountPass.trim()) return toast("请填写账号和密码");
+      const run = state.batch.runs.find((item) => item.status === "waiting_account");
+      if (!run) return;
+      run.status = "passed";
+      run.reason = "";
+      run.evidence = { ...OUTCOMES[run.caseId].evidence, actual: "部长账号已确认，退款已执行", note: "补充账号后继续" };
+      run.duration = Date.now() - run.startedAt;
+      state.accountOpen = false;
+      state.batch.status = "running";
+      pushEvent(run.key, `部长账号 ${state.accountUser} 已确认，继续执行`);
+      toast("已继续执行");
+      paint();
+      runTimer = window.setTimeout(runNext, 500);
+    }
+
+    function rerunFailed() {
+      if (!state.batch) return;
+      const failed = state.batch.runs.filter((item) => item.status === "failed" || item.status === "stopped");
+      if (!failed.length) return toast("没有可重跑的失败/停止用例");
+      failed.forEach((item) => {
+        item.status = "queued";
+        item.reason = "";
+        item.evidence = null;
+        item.duration = 0;
+      });
+      state.batch.status = "running";
+      state.tab = "events";
+      pushEvent("", `重跑 ${failed.length} 条失败/停止用例`);
+      toast("开始重跑");
+      startClock();
+      paint();
+      runNext();
+    }
+
+    function go(view) {
+      state.view = view;
+      if (view === "regression" && state.batch?.status === "waiting_account") state.accountOpen = true;
+      paint();
+    }
+
+    function paint() {
+      document.querySelectorAll(".nav-item").forEach((item) => {
+        item.classList.toggle("is-active", item.dataset.view === state.view);
+      });
+      document.getElementById("crumb").innerHTML = state.view === "dashboard"
+        ? `<span>工作空间</span><span>/</span><strong>工作台总览</strong>`
+        : `<span>系统管理</span><span>/</span><strong>系统回归</strong>`;
+      paintCapsule();
+      document.getElementById("viewRoot").innerHTML = state.view === "dashboard" ? dashboardHtml() : regressionHtml();
+      bindView();
+      paintModal();
+      paintToast();
+    }
+
+    function paintCapsule() {
+      const slot = document.getElementById("capsuleSlot");
+      const batch = state.batch;
+      const shouldShow = batch && state.view !== "regression";
+      if (!shouldShow) {
+        slot.innerHTML = "";
+        return;
+      }
+      const t = tally();
+      const live = isLive(batch.status);
+      const tone = batch.status === "waiting_account" ? "waiting" : live ? "running" : "done";
+      const title = batch.status === "waiting_account"
+        ? "需要部长账号"
+        : live ? "系统回归执行中" : batch.status === "failed" ? "批次已结束，有失败" : batch.status === "stopped" ? "批次已停止" : "批次已完成";
+      slot.innerHTML = `
+        <button class="capsule is-visible is-${tone}" id="capsuleBtn" type="button">
+          <span class="capsule-dot"></span>
+          <span class="capsule-copy"><b>${title}</b><span data-cap-frac>${t.done}/${t.total}</span><span data-cap-clock>${fmtClock(batch.elapsed)}</span></span>
+          <span class="capsule-go">返回查看</span>
+        </button>`;
+      slot.querySelector("#capsuleBtn").addEventListener("click", () => go("regression"));
+    }
+
+    function dashboardHtml() {
+      const batch = state.batch;
+      const t = batch ? tally() : null;
+      return `
+        ${state.hint ? `<div class="hint">交互稿：先到「系统回归」点批量执行，再回到这里看顶栏胶囊是否还在跑。<button type="button" data-dismiss-hint>知道了</button></div>` : ""}
+        <div class="page-head">
+          <p class="eyebrow">WORKSPACE</p>
+          <h1>工作台总览</h1>
+          <p>这是离开系统回归后的页面。长任务应继续跑，进度在顶栏胶囊上。</p>
+        </div>
+        <div class="dash-grid">
+          <div class="card dash-card"><span>今日执行</span><b>128</b></div>
+          <div class="card dash-card"><span>通过率</span><b>96%</b></div>
+          <div class="card dash-card"><span>待处理失败</span><b>3</b></div>
+          <div class="card dash-card"><span>系统回归</span><b data-dash-reg>${batch ? `${t.done}/${t.total}` : "空闲"}</b></div>
+        </div>
+        <section class="card dash-note">
+          ${batch
+            ? `<strong>后台仍有回归批次 ${batch.no}</strong><p style="margin:6px 0 0">状态 ${STATUS_LABEL[batch.status] || batch.status}。点顶栏胶囊或左侧「系统回归」回去，进度不会重头。</p>`
+            : `<strong>当前没有正在执行的回归批次</strong><p style="margin:6px 0 0">切到系统回归，选用例后点「批量执行」。</p>`}
+        </section>`;
+    }
+
+    function regressionHtml() {
+      const batch = state.batch;
+      const t = batch ? tally() : null;
+      const current = batch?.runs.find((item) => item.status === "running" || item.status === "waiting_account");
+      return `
+        ${state.hint ? `<div class="hint">交互稿：点「批量执行」看控制台；执行中再切左侧「工作台总览」，顶栏胶囊会继续走，点「返回查看」回来。<button type="button" data-dismiss-hint>知道了</button></div>` : ""}
+        <div class="page-head">
+          <p class="eyebrow">SYSTEM REGRESSION</p>
+          <h1>日本站系统回归</h1>
+          <p>按冻结参数批量验证跨系统业务链路。执行中可离开页面，回来仍能看到进度和结果。</p>
+        </div>
+        <section class="card toolbar">
+          <div class="fields">
+            <div class="field"><label>回归项目</label><select><option>日本站</option></select></div>
+            <div class="field"><label>业务项目</label><select><option>日本站测试</option></select></div>
+            <div class="field"><label>执行环境</label><select><option>oem-测试</option></select></div>
+            <div class="field grow"><label>客户 ID</label><input value="300001" /></div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary" data-select-visible type="button">选择当前分类</button>
+            <button class="btn btn-primary" data-run-batch type="button" ${batch && isLive(batch.status) ? "disabled" : ""}>${batch && isLive(batch.status) ? "执行中…" : "批量执行"}</button>
+          </div>
+        </section>
+        ${batch ? runConsoleHtml(batch, t, current) : ""}
+        <div class="layout">
+          <nav class="card panel">
+            <div class="panel-title"><h3>用例分类</h3></div>
+            ${CATEGORIES.map((item) => `<button class="cat ${state.category === item.key ? "is-on" : ""}" data-cat="${item.key}" type="button"><span>${item.label}</span><b>${counts()[item.key] || 0}</b></button>`).join("")}
+          </nav>
+          <main class="card panel" style="padding:0;overflow:auto">
+            <table>
+              <thead><tr><th style="width:36px"><input data-select-all type="checkbox" /></th><th>编号</th><th>用例名称</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody>
+                ${visibleCases().map((item) => {
+                  const run = runOf(item.id);
+                  return `<tr class="${item.id === state.activeId ? "is-active" : ""}">
+                    <td><input data-select="${item.id}" type="checkbox" ${state.selected.has(item.id) ? "checked" : ""} /></td>
+                    <td style="font-family:var(--mono);font-size:12px">${item.key}</td>
+                    <td><button class="link" data-open="${item.id}" type="button">${item.name}</button></td>
+                    <td>${statusChip(run?.status)}</td>
+                    <td><button class="btn btn-secondary btn-sm" data-open="${item.id}" type="button">编辑</button></td>
+                  </tr>`;
+                }).join("")}
+              </tbody>
+            </table>
+          </main>
+          ${drawerHtml()}
+        </div>`;
+    }
+
+    function runConsoleHtml(batch, t, current) {
+      const waiting = batch.runs.find((item) => item.status === "waiting_account");
+      return `
+        <section class="card run ${batch.status === "waiting_account" ? "is-waiting" : batch.status === "failed" ? "is-failed" : batch.status === "passed" ? "is-passed" : ""}">
+          <div class="run-head">
+            <div class="run-id">
+              <span class="run-no">${batch.no}</span>
+              <span class="pill ${pillClass(batch.status)}">${STATUS_LABEL[batch.status] || batch.status}</span>
+            </div>
+            <div class="run-head-right">
+              <div class="run-frac" data-frac><b>${t.done}</b>/${t.total}</div>
+              <div class="run-clock"><span data-clock>${fmtClock(batch.elapsed)}</span><small>已用时间</small></div>
+              ${isLive(batch.status) ? `<button class="btn btn-danger btn-sm" data-stop type="button">停止</button>` : `<button class="btn btn-secondary btn-sm" data-rerun type="button">失败重跑</button>`}
+            </div>
+          </div>
+          ${waiting ? `<div class="hold-bar"><span>退款达到 500 元，${waiting.key} 需要部长账号才能继续</span><button class="btn btn-sm btn-primary" data-open-account type="button">补充账号</button></div>` : ""}
+          <div class="run-body">
+            <div class="meters">
+              <div class="meter is-pass"><span>通过</span><b>${t.passed}</b></div>
+              <div class="meter is-fail"><span>失败</span><b>${t.failed}</b></div>
+              <div class="meter is-hold"><span>等待账号</span><b>${t.waiting}</b></div>
+              <div class="meter"><span>排队</span><b>${t.queued + t.running}</b></div>
+            </div>
+            <div class="seq">
+              ${batch.runs.map((item) => `
+                <div class="seq-cell is-${item.status} ${current && current.caseId === item.caseId ? "is-current" : ""}">
+                  <kbd>${item.key}</kbd>
+                  <em>${item.name}</em>
+                  <small>${STATUS_LABEL[item.status]}${item.duration ? " · " + fmtClock(item.duration) : ""}</small>
+                </div>`).join("")}
+            </div>
+            <div class="now-line">
+              <div>${current ? `当前 <strong>${current.key}</strong> ${current.name}` : batch.status === "passed" ? "全部执行完毕" : batch.status === "failed" ? "批次结束，存在失败项" : batch.status === "stopped" ? "批次已停止" : "等待下一条"}</div>
+              <span data-now-dur>${current && current.status === "running" ? "本条 " + fmtClock(Date.now() - current.startedAt) : ""}</span>
+            </div>
+          </div>
+          <div class="tabs">
+            <button class="tab ${state.tab === "events" ? "is-on" : ""}" data-tab="events" type="button">实时事件 ${batch.events.length}</button>
+            <button class="tab ${state.tab === "results" ? "is-on" : ""}" data-tab="results" type="button">逐条结果 ${t.done}</button>
+          </div>
+          <div class="pane" id="eventPane">${state.tab === "events" ? eventsHtml(batch) : resultsHtml(batch)}</div>
+        </section>`;
+    }
+
+    function eventsHtml(batch) {
+      const rows = [...batch.events].reverse();
+      return rows.map((item) => `
+        <div class="event">
+          <time>${item.time}</time>
+          <kbd>${item.key}</kbd>
+          <p>${item.text}</p>
+        </div>`).join("");
+    }
+
+    function resultsHtml(batch) {
+      return batch.runs.map((item) => {
+        const open = state.expanded === item.caseId;
+        const ev = item.evidence;
+        return `
+          <div class="result ${open ? "is-open" : ""}">
+            <button class="result-head" data-expand="${item.caseId}" type="button">
+              <kbd>${item.key}</kbd>
+              <span>${item.name}</span>
+              ${statusChip(item.status)}
+              <span style="color:var(--muted);font-family:var(--mono);font-size:12px">${item.reason || (item.status === "queued" ? "未开始" : item.status === "running" ? "执行中" : "—")}</span>
+            </button>
+            ${ev ? `<div class="evidence">
+              <div class="ev-grid">
+                <div class="ev-item"><label>执行前</label><b>${ev.before}</b></div>
+                <div class="ev-item"><label>执行后</label><b>${ev.after}</b></div>
+                <div class="ev-item"><label>预期</label><b>${ev.expected}</b></div>
+                <div class="ev-item"><label>实际</label><b class="${item.status === "failed" ? "diff-bad" : "diff-ok"}">${ev.actual}</b></div>
+                <div class="ev-item wide"><label>说明</label><b>${ev.note}</b></div>
+              </div>
+            </div>` : ""}
+          </div>`;
+      }).join("");
+    }
+
+    function drawerHtml() {
+      const item = CASES.find((row) => row.id === state.activeId);
+      return `
+        <aside class="card panel drawer">
+          <div class="panel-title"><h3>参数设置</h3><span>${item.key}</span></div>
+          <div class="grid">
+            <div class="field wide"><label>用例名称</label><input value="${item.name}" /></div>
+            <div class="field"><label>支付渠道</label><select><option>余额</option><option>银行</option></select></div>
+            <div class="field"><label>金额步长(CNY)</label><input value="1" /></div>
+          </div>
+          <div class="section">
+            <h4>订单费用</h4>
+            <div class="grid">
+              <div class="field"><label>单番数量</label><input value="1" /></div>
+              <div class="field"><label>默认商品数量</label><input value="1" /></div>
+            </div>
+          </div>
+          <div class="actions section">
+            <button class="btn btn-primary" data-run-one type="button">单条执行</button>
+            <button class="btn btn-secondary" type="button">保存参数</button>
+          </div>
+        </aside>`;
+    }
+
+    function paintEvents() {
+      if (state.view !== "regression" || state.tab !== "events") {
+        paintCapsule();
+        return;
+      }
+      const pane = document.getElementById("eventPane");
+      if (!pane || !state.batch) { paint(); return; }
+      pane.innerHTML = eventsHtml(state.batch);
+      const tab = document.querySelector('[data-tab="events"]');
+      if (tab) tab.textContent = `实时事件 ${state.batch.events.length}`;
+      paintCapsule();
+    }
+
+    function paintModal() {
+      const root = document.getElementById("modalRoot");
+      if (!state.accountOpen) { root.innerHTML = ""; return; }
+      const run = state.batch?.runs.find((item) => item.status === "waiting_account");
+      root.innerHTML = `
+        <div class="modal-back">
+          <form class="modal" id="accountForm">
+            <h2>补充执行账号</h2>
+            <p>退款达到 500 元，${run ? run.key + " " + run.name : "当前用例"}需要部长账号后才能继续。</p>
+            <div class="field" style="margin-bottom:10px"><label>账号</label><input id="accUser" value="${state.accountUser}" autocomplete="username" /></div>
+            <div class="field"><label>密码</label><input id="accPass" type="password" value="${state.accountPass}" autocomplete="current-password" /></div>
+            <div class="actions">
+              <button class="btn btn-secondary" id="accCancel" type="button">稍后处理</button>
+              <button class="btn btn-primary" type="submit">继续执行</button>
+            </div>
+          </form>
+        </div>`;
+      root.querySelector("#accUser").addEventListener("input", (e) => { state.accountUser = e.target.value; });
+      root.querySelector("#accPass").addEventListener("input", (e) => { state.accountPass = e.target.value; });
+      root.querySelector("#accCancel").addEventListener("click", () => { state.accountOpen = false; paint(); });
+      root.querySelector("#accountForm").addEventListener("submit", (e) => { e.preventDefault(); resumeAccount(); });
+      root.querySelector("#accUser").focus();
+    }
+
+    function paintToast() {
+      document.getElementById("toastRoot").innerHTML = state.toast ? `<div class="toast">${state.toast}</div>` : "";
+    }
+
+    function bindView() {
+      document.querySelector("[data-dismiss-hint]")?.addEventListener("click", () => { state.hint = false; paint(); });
+      document.querySelectorAll("[data-cat]").forEach((btn) => btn.addEventListener("click", () => { state.category = btn.dataset.cat; paint(); }));
+      document.querySelectorAll("[data-open]").forEach((btn) => btn.addEventListener("click", () => { state.activeId = Number(btn.dataset.open); paint(); }));
+      document.querySelectorAll("[data-select]").forEach((box) => box.addEventListener("change", () => {
+        const id = Number(box.dataset.select);
+        box.checked ? state.selected.add(id) : state.selected.delete(id);
+      }));
+      const rows = visibleCases();
+      const selectAll = document.querySelector("[data-select-all]");
+      if (selectAll) {
+        const n = rows.filter((item) => state.selected.has(item.id)).length;
+        selectAll.checked = rows.length > 0 && n === rows.length;
+        selectAll.indeterminate = n > 0 && n < rows.length;
+        selectAll.addEventListener("change", () => {
+          rows.forEach((item) => selectAll.checked ? state.selected.add(item.id) : state.selected.delete(item.id));
+          paint();
+        });
+      }
+      document.querySelector("[data-select-visible]")?.addEventListener("click", () => {
+        rows.forEach((item) => state.selected.add(item.id));
+        paint();
+      });
+      document.querySelector("[data-run-batch]")?.addEventListener("click", () => startBatch([...state.selected]));
+      document.querySelector("[data-run-one]")?.addEventListener("click", () => startBatch([state.activeId]));
+      document.querySelector("[data-stop]")?.addEventListener("click", stopBatch);
+      document.querySelector("[data-rerun]")?.addEventListener("click", rerunFailed);
+      document.querySelector("[data-open-account]")?.addEventListener("click", () => { state.accountOpen = true; paint(); });
+      document.querySelectorAll("[data-tab]").forEach((btn) => btn.addEventListener("click", () => { state.tab = btn.dataset.tab; paint(); }));
+      document.querySelectorAll("[data-expand]").forEach((btn) => btn.addEventListener("click", () => {
+        const id = Number(btn.dataset.expand);
+        state.expanded = state.expanded === id ? null : id;
+        paint();
+      }));
+    }
+
+    document.querySelectorAll(".nav-item").forEach((item) => {
+      item.addEventListener("click", () => go(item.dataset.view));
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && state.accountOpen) { state.accountOpen = false; paint(); }
+    });
+
+    paint();
+  </script>
+</body>
+</html>

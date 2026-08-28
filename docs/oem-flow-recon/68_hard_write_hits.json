@@ -1,0 +1,63 @@
+{
+  "point_name": [
+    {
+      "file": "index-3a9a8301.js",
+      "len": 31434,
+      "snips": [
+        "=>{const l=c(t.$route.query.stage);e.inquiryAccessoryDetail({order_sn:t.$route.query.order_sn,...l?{point_name:l}:{}}).then(e=>{var l,u,r,o;if(a)Array.isArray(a)?a.forEach(t=>{_.detailData.value[t]=e.data[t],_[t]&&(_[t].value=e.data[t])}):a(e,_);else{if(0!=e.code)return t.$message.error(e.msg);(null"
+      ]
+    },
+    {
+      "file": "index-b1b799f2.js",
+      "len": 102315,
+      "snips": [
+        "etail({order_sn:e.$route.query.order_sn,is_quote:-1!=decodeURI(location.href).indexOf(\"报价阶段\"),...a?{point_name:a}:{}}).then(a=>{if(0!=a.code)return ElementPlus.ElMessage.error(a.msg);t?Array.isArray(t)?t.forEach(e=>{w.detailData.value[e]=a.data[e],w[e]&&(w[e].value=a.data[e])}):t(a,w):(w.orderStatus"
+      ]
+    }
+  ],
+  "inquiryStartInquiry": [
+    {
+      "file": "index-b1b799f2.js",
+      "len": 102315,
+      "snips": [
+        "=\"\",t=\"\";switch(e){case 1:l=\"是否确认退回审核？\",t=\"inquiryReturnTranslate\";break;case 2:l=\"是否确认此询价单开始询价\",t=\"inquiryStartInquiry\";break;case 3:l=\"是否确认此询价单询价完成\",t=\"inquiryComplete\";break;case 4:l=\"是否确认此询价单无法报价\",t=\"inquiryInvalid\";break;case 5:[\"询价完成\"].includes(o.value)&&(l=\"是否退回询价中状态\"),t=\"inquiryRegression\";b"
+      ]
+    }
+  ],
+  "inquiryComplete": [
+    {
+      "file": "index-b1b799f2.js",
+      "len": 102315,
+      "snips": [
+        "rnTranslate\";break;case 2:l=\"是否确认此询价单开始询价\",t=\"inquiryStartInquiry\";break;case 3:l=\"是否确认此询价单询价完成\",t=\"inquiryComplete\";break;case 4:l=\"是否确认此询价单无法报价\",t=\"inquiryInvalid\";break;case 5:[\"询价完成\"].includes(o.value)&&(l=\"是否退回询价中状态\"),t=\"inquiryRegression\";break;case 6:l=\"是否确认此询价单可以报价\",t=\"reinquiry\";break;case "
+      ]
+    }
+  ],
+  "inquiryQuoteComplate": [
+    {
+      "file": "index-b1b799f2.js",
+      "len": 102315,
+      "snips": [
+        "value.g_admin_status)))return u.$message.warning(\"该订单未完成询价，请询价完成后操作\");l=\"是否确认此询价单报价完成?确认将同步到客户端\",t=\"inquiryQuoteComplate\";break;case 8:if(![\"询价完成\",\"无法报价\"].includes(u.$fun.findName(a,d.value.g_admin_status)))return u.$message.warning(\"该订单未完成询价，请询价完成后操作\");l=\"是否确认此询价单无法报价?确认将同步到客户端\",t=\"inquiryQuoteInva"
+      ]
+    }
+  ],
+  "factoryQuoteToUser": [
+    {
+      "file": "index-b1b799f2.js",
+      "len": 102315,
+      "snips": [
+        "否确认该工厂无法报价？确认后该工厂状态将同步变更为无法报价状态\";break;case 5:n=\"factoryBackToGadmin\",o=\"是否确认退给采购?\";break;case 6:n=\"factoryQuoteToUser\",o=\"是否确认报价给客户?\";break;case 7:n=\"factoryUpdate\",o=\"是否确认修改该数据?\"}d||a.$refs.ODialog.open({text:o,title:\"提示\",successBtn:\"确认\",cancelBtn:\"取消\",btnAlign:\"反\",isprompt:!0,successMethods:()=>{"
+      ]
+    }
+  ],
+  "porderComplete": [
+    {
+      "file": "index-d314cafd.js",
+      "len": 24545,
+      "snips": [
+        "ationalDeliveryOrder\"==M.$route.name?e=\"porderDispatched\":\"completeDeliveryOrder\"==M.$route.name?e=\"porderComplete\":\"deletedDeliveryOrder\"==M.$route.name&&(e=\"porderDeleted\"),j.value=!0,M.$api[e](z.value).then(e=>{if(j.value=!1,0!=e.code)return M.$message.error(e.msg);q.value=e.data.data,A.value=e.d"
+      ]
+    }
+  ]
+}

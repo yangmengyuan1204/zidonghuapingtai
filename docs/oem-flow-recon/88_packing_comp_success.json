@@ -1,0 +1,93 @@
+{
+  "boxPacking": {
+    "box_id": 1201,
+    "packing_info": [
+      {
+        "porder_detail_id": 3118,
+        "pack_num": 2,
+        "warehouse_city": 1
+      }
+    ]
+  },
+  "packingComp_keys": [
+    "porder_sn",
+    "box_info"
+  ],
+  "box_info0_keys": [
+    "id",
+    "number",
+    "express_no",
+    "weight",
+    "type",
+    "length",
+    "width",
+    "height",
+    "volume",
+    "final_weight",
+    "volume_weight",
+    "logistics_id",
+    "warehouse_city",
+    "detail",
+    "box_id"
+  ],
+  "box_info0_detail0_keys": [
+    "id",
+    "order_sn",
+    "sku",
+    "sku_tr",
+    "detail",
+    "goods_name",
+    "goods_img",
+    "factory_name",
+    "num",
+    "packed_num",
+    "box_num",
+    "j_admin_list"
+  ],
+  "resp": {
+    "code": 0,
+    "msg": "操作成功"
+  },
+  "full_comp": {
+    "porder_sn": "OP20260302150837-15",
+    "box_info": [
+      {
+        "id": 1201,
+        "number": 1,
+        "express_no": "",
+        "weight": 2,
+        "type": 1,
+        "length": 30,
+        "width": 20,
+        "height": 10,
+        "volume": 6000,
+        "final_weight": 0,
+        "volume_weight": 0,
+        "logistics_id": "",
+        "warehouse_city": 1,
+        "detail": [
+          {
+            "id": 997,
+            "order_sn": "Y20251209131627-15-XH",
+            "sku": "",
+            "sku_tr": "",
+            "detail": [
+              {
+                "key": "颜色",
+                "value": "黄色(真的鸡蛋壳)"
+              }
+            ],
+            "goods_name": "碎鸡蛋手机支架打碎的鸡蛋摔破的鸡蛋恶作剧搞怪整人玩具礼盒礼物",
+            "goods_img": "https://cbu01.alicdn.com/img/ibank/O1CN01eqk8fE1EuHpOvfPu6_!!2219521070411-0-cib.jpg",
+            "factory_name": "宁海子玛电子商务商行(个体工商户)",
+            "num": 2,
+            "packed_num": 2,
+            "box_num": 2,
+            "j_admin_list": []
+          }
+        ],
+        "box_id": 1201
+      }
+    ]
+  }
+}

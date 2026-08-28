@@ -1,0 +1,341 @@
+oem_new_inquiry
+"key": "oem_new_inquiry",
+        "case_name": "OEM-创建询价单",
+        "url": "/api/newInquiry",
+        "body": {
+            "goods_name": "{{goods_name}}",
+            "hope_min_price": "{{hope_min_price}}",
+            "hope_max_price": "{{hope_max_price}}",
+            "hope_futures": "{{hope_futures}}",
+            "sku_info": [{"sku": "{{sku1}}", "num": "{{sku1_num}}"}, {"sku": "{{sku2}}", "num": "{{sku2_num}}"}],
+            "is_temporarily": False,
+            "goods_type": 1,
+            "num": "{{num}}",
+            "factory_urls": ["{{factory_url}}"],
+            "factory_type": 3,
+            "goods_img": "{{goods_img}}",
+            "goods_other_img": ["{{goods_other_img}}"],
+            "provide_prototype": False,
+        },
+        "extract": {"inquiry_sn": "json.data"},
+    },
+    {
+        "key": "oem_exchange_rate",
+        "case_name": "OEM-获取汇率",
+        "url": "/common/common/getExchangeRate",
+        "body": {},
+    },
+    {
+        "key": "oem_user_info",
+        "case_name": "OEM-用户信息",
+        "url": "/api/userInfo",
+        "body": {},
+    },
+    {
+        "key": "oem_user_attention",
+        "case_name": "OEM-用户关注信息",
+        "url": "/api/user.attentionInfo
+
+====
+oem_inquiry_translate
+"key": "oem_inquiry_translate",
+        "case_name": "OEM-询价单翻译保存",
+        "url": "/admin/inquiryTranslate",
+        "body": {
+            "is_temp": False,
+            "order_sn": "{{order_sn}}",
+            "goods_name_tr": "{{goods_name_tr}}",
+            "material_tr": "{{material_tr}}",
+            "customize_detail_tr": "{{customize_detail_tr}}",
+            "goods_detail_tr": "{{goods_detail_tr}}",
+            "goods_file_tr": [{"file_url": "{{file_url}}", "file_name": "{{file_name}}"}],
+            "sku_info": [
+                {"id": "{{sku_id_1}}", "sku": "{{sku1}}", "sku_tr": "{{sku1_tr}}", "num": "{{sku1_num}}"},
+                {"id": "{{sku_id_2}}", "sku": "{{sku2}}", "sku_tr": "{{sku2_tr}}", "num": "{{sku2_num}}"},
+            ],
+            "goods_id": "{{goods_id}}",
+            "goods_class": "{{goods_class}}",
+            "y_remark": "{{y_remark}}",
+            "user_remark": "{{user_remark}}",
+        },
+        "extract": {"data": "json.data"},
+    },
+    {
+        # 后台接口：翻译审核完成→提交给采购。翻译提交审核后调用此接口推进状态。
+        "key": "oem_inquiry_translate_audit",
+        "case_name": "OEM-翻译审核提交采购",
+        "url": "/admin/inquiryTranslateAudit",
+        "method": "POST",
+    
+
+====
+oem_inquiry_translate_audit
+"key": "oem_inquiry_translate_audit",
+        "case_name": "OEM-翻译审核提交采购",
+        "url": "/admin/inquiryTranslateAudit",
+        "method": "POST",
+        "headers": {"Authorization": "Bearer {{adminToken}}"},
+        "body": {
+            "order_sn": "{{order_sn}}",
+        },
+        "extract": {"data": "json.data"},
+    },
+    {
+        # 后台接口：询价单流程节点提交（翻译完成/开始询价等，需后台 admin Bearer token）。
+        # point_name 取值：translation=翻译提交采购，inquiry=进行询价提交。
+        "key": "oem_inquiry_submit",
+        "case_name": "OEM-询价单节点提交",
+        "url": "/admin/inquiryDetail",
+        "body": {
+            "order_sn": "{{order_sn}}",
+            "is_quote": False,
+            "point_name": "{{point_name}}",
+        },
+        "extract": {"data": "json.data"},
+    },
+    {
+        # 后台接口：开始询价（弹窗确认按钮，点击后才能进行询价，需后台 admin Bearer token）。
+        # body 为询价单完整详情对象，实际使用时通常先 GET 详情再回传。
+        "key": "oem_inquiry_start",
+        "case_name": "OEM-开始询价",
+        "url": "/admin/inquiryStartInquiry",
+        "body": {
+            "id": "{{inquiry_id}}",
+            "user_id": "{{user_id}}",
+            "order_sn": "{{order_sn}}",
+            "user_status": 2,
+            "admin_status": 0,
+            "y_admi
+
+====
+oem_inquiry_submit
+"key": "oem_inquiry_submit",
+        "case_name": "OEM-询价单节点提交",
+        "url": "/admin/inquiryDetail",
+        "body": {
+            "order_sn": "{{order_sn}}",
+            "is_quote": False,
+            "point_name": "{{point_name}}",
+        },
+        "extract": {"data": "json.data"},
+    },
+    {
+        # 后台接口：开始询价（弹窗确认按钮，点击后才能进行询价，需后台 admin Bearer token）。
+        # body 为询价单完整详情对象，实际使用时通常先 GET 详情再回传。
+        "key": "oem_inquiry_start",
+        "case_name": "OEM-开始询价",
+        "url": "/admin/inquiryStartInquiry",
+        "body": {
+            "id": "{{inquiry_id}}",
+            "user_id": "{{user_id}}",
+            "order_sn": "{{order_sn}}",
+            "user_status": 2,
+            "admin_status": 0,
+            "y_admin_status": 2,
+            "g_admin_status": 1,
+            "factory_type": "{{factory_type}}",
+            "goods_id": "{{goods_id}}",
+            "goods_no": "{{goods_no}}",
+            "goods_type": "{{goods_type}}",
+            "num": "{{num}}",
+            "hope_futures": "{{hope_futures}}",
+            "hope_min_price": "{{hope_min_price}}",
+            "hope_max_price": "{{hope_max_price}}",
+            "y_id": "{{y_id}}",
+            "p_id": "{{p_id}}"
+
+====
+oem_inquiry_start
+"key": "oem_inquiry_start",
+        "case_name": "OEM-开始询价",
+        "url": "/admin/inquiryStartInquiry",
+        "body": {
+            "id": "{{inquiry_id}}",
+            "user_id": "{{user_id}}",
+            "order_sn": "{{order_sn}}",
+            "user_status": 2,
+            "admin_status": 0,
+            "y_admin_status": 2,
+            "g_admin_status": 1,
+            "factory_type": "{{factory_type}}",
+            "goods_id": "{{goods_id}}",
+            "goods_no": "{{goods_no}}",
+            "goods_type": "{{goods_type}}",
+            "num": "{{num}}",
+            "hope_futures": "{{hope_futures}}",
+            "hope_min_price": "{{hope_min_price}}",
+            "hope_max_price": "{{hope_max_price}}",
+            "y_id": "{{y_id}}",
+            "p_id": "{{p_id}}",
+            "g_id": "{{g_id}}",
+            "goods_class": "{{goods_class}}",
+            "goods_img": "{{goods_img}}",
+            "goods_name": "{{goods_name}}",
+            "goods_name_tr": "{{goods_name_tr}}",
+            "material": "{{material}}",
+            "material_tr": "{{material_tr}}",
+            "customize_detail": "{{customize_detail}}",
+            "customize_detail_tr": "{{customize_detail_tr}}",
+
+====
+oem_factory_quote
+"key": "oem_factory_quote",
+        "case_name": "OEM-工厂报价",
+        "url": "/admin/factoryQuote",
+        "body": {
+            "id": "{{detail_id}}",
+            "order_sn": "{{order_sn}}",
+            "status": 0,
+            "g_cant_quote": 0,
+            "is_read": 1,
+            "factory_type": 1,
+            "factory_submit_info": "{{factory_submit_info}}",
+            "factory_iid": "{{factory_iid}}",
+            "factory_name": "{{factory_name}}",
+            "factory_province": "{{factory_province}}",
+            "factory_city": "{{factory_city}}",
+            "factory_url": "{{factory_url}}",
+            "factory_img": "{{factory_img}}",
+            "goods_url": "{{goods_url}}",
+            "samples_other_fee": "{{samples_other_fee}}",
+            "samples_freight": "{{samples_freight}}",
+            "samples_delivery_time": "{{samples_delivery_time}}",
+            "real_samples_other_fee": "{{real_samples_other_fee}}",
+            "real_samples_freight": "{{real_samples_freight}}",
+            "large_other_fee": "{{large_other_fee}}",
+            "large_freight": "{{large_freight}}",
+            "large_delivery_time": "{{large_delivery_time}}",
+            "large_deposi
+
+====
+oem_inquiry_complete
+"key": "oem_inquiry_complete",
+        "case_name": "OEM-询价完成",
+        "url": "/admin/inquiryComplete",
+        "body": {
+            "id": "{{inquiry_id}}",
+            "user_id": "{{user_id}}",
+            "order_sn": "{{order_sn}}",
+            "user_status": 2,
+            "admin_status": 0,
+            "y_admin_status": 2,
+            "g_admin_status": 2,
+            "factory_type": "{{factory_type}}",
+            "goods_id": "{{goods_id}}",
+            "goods_no": "{{goods_no}}",
+            "goods_type": "{{goods_type}}",
+            "num": "{{num}}",
+            "hope_futures": "{{hope_futures}}",
+            "hope_min_price": "{{hope_min_price}}",
+            "hope_max_price": "{{hope_max_price}}",
+            "y_id": "{{y_id}}",
+            "p_id": "{{p_id}}",
+            "g_id": "{{g_id}}",
+            "goods_class": "{{goods_class}}",
+            "goods_img": "{{goods_img}}",
+            "goods_name": "{{goods_name}}",
+            "goods_name_tr": "{{goods_name_tr}}",
+            "material": "{{material}}",
+            "material_tr": "{{material_tr}}",
+            "customize_detail": "{{customize_detail}}",
+            "customize_detail_tr": "{{customize_detail_tr}}",
+
+
+====
+oem_factory_quote_to_user
+"key": "oem_factory_quote_to_user",
+        "case_name": "OEM-报价给用户",
+        "url": "/admin/factoryQuoteToUser",
+        "body": {
+            "id": "{{detail_id}}",
+            "order_sn": "{{order_sn}}",
+            "status": 1,
+            "g_cant_quote": 0,
+            "is_read": 0,
+            "factory_type": 1,
+            "factory_submit_info": "{{factory_submit_info}}",
+            "factory_iid": "{{factory_iid}}",
+            "factory_name": "{{factory_name}}",
+            "factory_province": "{{factory_province}}",
+            "factory_city": "{{factory_city}}",
+            "factory_url": "{{factory_url}}",
+            "factory_img": "{{factory_img}}",
+            "goods_url": "{{goods_url}}",
+            "samples_other_fee": "{{samples_other_fee}}",
+            "samples_freight": "{{samples_freight}}",
+            "samples_delivery_time": "{{samples_delivery_time}}",
+            "real_samples_other_fee": "{{real_samples_other_fee}}",
+            "real_samples_freight": "{{real_samples_freight}}",
+            "large_other_fee": "{{large_other_fee}}",
+            "large_freight": "{{large_freight}}",
+            "large_delivery_time": "{{large_delivery_time}}",
+          
+
+====
+oem_inquiry_quote_complete
+"key": "oem_inquiry_quote_complete",
+        "case_name": "OEM-询价单报价完成",
+        "url": "/admin/inquiryQuoteComplate",
+        "body": {
+            "id": "{{inquiry_id}}",
+            "user_id": "{{user_id}}",
+            "order_sn": "{{order_sn}}",
+            "user_status": 3,
+            "admin_status": 0,
+            "y_admin_status": 3,
+            "g_admin_status": 3,
+            "factory_type": "{{factory_type}}",
+            "goods_id": "{{goods_id}}",
+            "goods_no": "{{goods_no}}",
+            "goods_type": "{{goods_type}}",
+            "num": "{{num}}",
+            "hope_futures": "{{hope_futures}}",
+            "hope_min_price": "{{hope_min_price}}",
+            "hope_max_price": "{{hope_max_price}}",
+            "y_id": "{{y_id}}",
+            "p_id": "{{p_id}}",
+            "g_id": "{{g_id}}",
+            "goods_class": "{{goods_class}}",
+            "goods_img": "{{goods_img}}",
+            "goods_name": "{{goods_name}}",
+            "goods_name_tr": "{{goods_name_tr}}",
+            "material": "{{material}}",
+            "material_tr": "{{material_tr}}",
+            "customize_detail": "{{customize_detail}}",
+            "customize_detail_tr": "{{customize_
+
+====
+oem_factory_edit
+"key": "oem_factory_edit",
+        "case_name": "OEM-编辑工厂",
+        "url": "/admin/factoryEdit",
+        "body": {
+            "detail_id": "{{detail_id}}",
+            "factory_iid": "{{factory_iid}}",
+            "factory_name": "{{factory_name}}",
+            "factory_province": "{{factory_province}}",
+            "factory_city": "{{factory_city}}",
+            "factory_img": "{{factory_img}}",
+            "factory_url": "{{factory_url}}",
+            "salesman": "{{salesman}}",
+            "salesman_phone": "{{salesman_phone}}",
+            "goods_url": "{{goods_url}}",
+        },
+        "extract": {"data": "json.data"},
+    },
+    {
+        # 后台接口：工厂报价（需后台 admin Bearer token）。
+        # 提交某条 detail 的工厂报价，含样品费用/大货费用/SKU 报价明细。
+        "key": "oem_factory_quote",
+        "case_name": "OEM-工厂报价",
+        "url": "/admin/factoryQuote",
+        "body": {
+            "id": "{{detail_id}}",
+            "order_sn": "{{order_sn}}",
+            "status": 0,
+            "g_cant_quote": 0,
+            "is_read": 1,
+            "factory_type": 1,
+            "factory_submit_info": "{{factory_submit_info}}",
+            "factory_iid": "{{factory_iid}}",
+            "factory_name": "{{factory

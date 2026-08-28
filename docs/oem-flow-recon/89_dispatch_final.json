@@ -1,0 +1,32 @@
+{
+  "sample": {
+    "sn": "Y20260403172102-15-OEM",
+    "admin_status": 50,
+    "point": 5,
+    "ok": [
+      "samplesDispatch",
+      "samplesExpressNo"
+    ],
+    "body_dispatch": {
+      "express_id": 1121,
+      "order_sn": "Y20260403172102-15-OEM",
+      "express_no": "SFxxxx",
+      "express_remark": "auto-dispatch"
+    }
+  },
+  "bulk": {
+    "sn": "D20260613110838-15-OEM",
+    "admin_status": 48,
+    "point": 4,
+    "status_name": "待出货",
+    "ok": [
+      "productionSyncYadmin",
+      "productionSyncUser",
+      "skipFinalPurchasePayment",
+      "largeExpressAdd",
+      "largeExpressEdit",
+      "largeExpressDel(express_id)"
+    ],
+    "blocked": "largeDispatch {order_sn} -> array_diff null LINE:2671 (UI button click fires no handler; direct fetch same error)"
+  }
+}

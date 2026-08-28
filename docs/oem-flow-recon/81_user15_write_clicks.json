@@ -1,0 +1,200 @@
+{
+  "inquiry_sn_created_or_used": "X20260808134327-15-OEM",
+  "create_resp": {
+    "code": 1000,
+    "msg": "エラーが発生しました",
+    "data": ""
+  },
+  "api_write_log": [
+    {
+      "step": "api_inquiryTranslate",
+      "path": "/admin/inquiryTranslate",
+      "req": {
+        "is_temp": false,
+        "order_sn": "X20260808134327-15-OEM",
+        "goods_name_tr": "11111_TR",
+        "material_tr": "1111_TR",
+        "customize_detail_tr": "定制_TR",
+        "goods_detail_tr": "详情_TR",
+        "goods_file_tr": [],
+        "sku_info": [
+          {
+            "id": 1534,
+            "sku": "1111",
+            "sku_tr": "1111",
+            "num": 1111
+          }
+        ],
+        "goods_id": "985",
+        "goods_class": null,
+        "y_remark": "auto-capture",
+        "user_remark": ""
+      },
+      "resp_code": 1000,
+      "resp_msg": "请选择分类后操作",
+      "resp_snip": "{\"code\": 1000, \"msg\": \"请选择分类后操作\", \"data\": \"\", \"success\": false}"
+    },
+    {
+      "step": "api_inquiryTranslateAudit",
+      "req": {
+        "order_sn": "X20260808134327-15-OEM"
+      },
+      "resp_code": 10000,
+      "resp_msg": "当前状态无法操作",
+      "resp_snip": "{\"success\": false, \"code\": 10000, \"msg\": \"当前状态无法操作\", \"data\": \"\"}"
+    }
+  ],
+  "ui_clicks": [
+    {
+      "name": "inquiry_submit_audit",
+      "hash": "/#/inquiryOrderDetail?order_sn=X20260808134327-15-OEM",
+      "clicked": "提交审核",
+      "confirmed": "确认",
+      "visible_buttons": [
+        "上传翻译文件",
+        "确认备注",
+        "临时保存",
+        "提交审核",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "writes": [
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/admin/inquiryDetail",
+          "s": 200,
+          "post": "{\"order_sn\":\"X20260808134327-15-OEM\",\"is_quote\":false}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"id\":1060,\"user_id\":15,\"order_sn\":\"X20260808134327-15-OEM\",\"user_status\":1,\"admin_status\":0,\"y_admin_status\":0,\"g_admin_status\":0,\"factory_type\":2,\"goods_id\":\"985\",\"goods_no\":\"43843342\",\"goods_type\":1,\"num\":1111,\"hope_futures\":82,\"hope_min_price\":\"111.00\",\"hope_max_price\":\"1111.00\",\"user_remark\":\"\",\"y_remark\":\"\",\"g_remark\":\"\",\"contract_notes\":\"\",\"y_id\":44,\"p_id\":46,\"g_id\":45,\"f_id\":43,\"create_at\":\"2026-08-08 13:43:27\",\"translate_submit_at\":null,\"translate_at\":null,\"first_inquiry_at\":null,\"first_quote_at\":null,\"inquiry_at\":null,\"complete_at\":null,\"1688_order_id\":\"\",\"1688_create_at\":null,\"1688_deadline_at\":null,\"1688_is_stop\":0,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":0,\"provide_prototype\":0,\"register_forward\":0,\"viewed_detail_y\":0,\"viewed_detail_g\":0,\"forward_order\":[],\"y_admin\":\"业务测试跟进专用账号\",\"p_admin\":\"测试跟进配货账号\",\"user_name\":\"小杨测试账号\",\"goods_class\":{},\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/089069\\/rakumade-preview-support-person-transparent.png\",\"goods_name\":\"11111\",\"goods_name_tr\":\"\",\"material\":\"1111\",\"material_tr\":\"\",\"customize_detail\":\"\",\"customize_detail_tr\":\"\",\"goods_detail\":\"\",\"goods_detail_tr\":\"\",\"goods_file\":[],\"goods_file_tr\":[],\"goods_other_img\":[],\"is_show_quote_btn\":false,\"sku_info\":[{\"id\":1534,\"sku\":\"1111\",\"sku_tr\":\"1111\",\"num\":1111}],\"detail_list\":[],\"factory_url\":[]},\"success\":true}"
+        }
+      ]
+    },
+    {
+      "name": "sample_start_confirm",
+      "hash": "/#/sampleListDetails?order_sn=Y20260403172102-15-OEM",
+      "clicked": "开始确认",
+      "confirmed": "是",
+      "visible_buttons": [
+        "退回翻译",
+        "开始确认",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "writes": [
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/admin/samplesDetail",
+          "s": 200,
+          "post": "{\"order_sn\":\"Y20260403172102-15-OEM\"}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"inquiry_salesman_id\":224,\"warehouse_city\":2,\"inquiry_order_sn\":\"X20260129153636-15-OEM\",\"point\":2,\"admin_status\":10,\"order_sn\":\"Y20260403172102-15-OEM\",\"exchange_rate\":\"23.56\",\"username\":\"小杨测试账号\",\"user_id\":15,\"yadmin\":\"admin\",\"padmin\":\"配货001\",\"gadmin\":\"采购张三\",\"goods_name\":\"bug检测机\",\"factory_name\":\"随便2工厂\",\"factory_url\":\"https:\\/\\/sale.1688.com\\/factory\\/card.html?spm=a260k.22464671.llq7jdxw.7.7e847a6eaIcCIY&memberId=b2b-221469840790958fd1&aHdkaW5n_isCentral=true&aHdkaW5n_isGrayed=false&topOfferIds=694988432014,773452001907,996534682275,1000656015306&aHdkaW5n_isUseGray=true\",\"factory_province\":\"\",\"factory_city\":\"\",\"factory_type\":2,\"goods_url\":\"\",\"hope_futures\":100,\"goods_type\":1,\"goods_file\":[],\"goods_other_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202601\\/456455\\/O1CN01sLVlVW25ABa5bQubA_!!1870557485.jpg\"],\"material\":\"塑料\",\"customize_detail\":\"\",\"goods_detail\":\"\",\"user_remark\":\"\",\"y_remark\":\"\",\"g_remark\":\"\",\"y_response\":\"\",\"delivery_time\":5,\"inquiry_delivery_time\":5,\"translate_info\":{\"goods_name_tr\":\"1\",\"sku_info_tr\":[{\"id\":1329,\"goods_id\":906,\"sku\":\"红1\",\"sku_tr\":\"红1\",\"keep_sample_num\":0},{\"id\":1330,\"goods_id\":906,\"sku\":\"黄2\",\"sku_tr\":\"黄2\",\"keep_sample_num\":0},{\"id\":1331,\"goods_id\":906,\"sku\":\"蓝3\",\"sku_tr\":\"蓝3\",\"keep_sample_num\":0},{\"id\":1332,\"goods_id\":906,\"sku\":\"绿4\",\"sku_tr\":\"绿4\",\"keep_sample_num\":0}],\"material_tr\":\"材质\",\"customize_detail_tr\":\"细节\",\"goods_detail_tr\":\"注意事项\",\"goods_file_tr\":[]},\"accessory_list\":[],\"has_supplier\":false,\"goods_accessory\":[{\"id\":443,\"order_sn\":\"X20250808145020-15-FL\",\"accessory_id\":160,\"goods_id\":906,\"expend_number\":1,\"created_at\":\"2026-06-10 15:25:01\",\"accessory_name\":\"测试异常辅料的辅料单\",\"master_image\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202508\\/665870\\/O1CN01sLVlVW25ABa5bQubA_!!1870557485.jpg\",\"accessory_type\":\"印刷物\",\"num\":87}],\"accessory_is_same\":false,\"coupon_id\":0,\"submit_problem_goods\":true,\"forward_order\":[],\"has_keep_sample\":false,\"contract_notes\":\"\",\"quote_inf"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/admin/samplesStartConfirm",
+          "s": 200,
+          "post": "{\"order_sn\":\"Y20260403172102-15-OEM\"}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":true,\"success\":true}"
+        }
+      ]
+    },
+    {
+      "name": "bulk_start_confirm",
+      "hash": "/#/bulkOrderDetails?order_sn=D20260613110838-15-OEM",
+      "clicked": null,
+      "confirmed": null,
+      "visible_buttons": [
+        "回到询价单",
+        "新增",
+        "退回翻译",
+        "特殊报价",
+        "确认完成",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "writes": [
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/admin/largeDetail",
+          "s": 200,
+          "post": "{\"order_sn\":\"D20260613110838-15-OEM\"}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"inquiry_salesman_id\":228,\"warehouse_city\":2,\"inquiry_order_sn\":\"X20260613094551-15-OEM\",\"point\":2,\"admin_status\":12,\"order_sn\":\"D20260613110838-15-OEM\",\"exchange_rate\":\"23.56\",\"username\":\"小杨测试账号\",\"user_id\":15,\"yadmin\":\"业务001\",\"padmin\":\"配货绩效测试\",\"gadmin\":\"admin\",\"goods_name\":\"スクリーン\",\"factory_name\":\"111\",\"factory_url\":\"https:\\/\\/sale.1688.com\\/factory\\/card.html?memberId=1111111\",\"factory_province\":\"\",\"factory_city\":\"\",\"factory_type\":2,\"goods_url\":\"\",\"hope_futures\":1,\"goods_type\":1,\"goods_file\":[],\"goods_other_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202606\\/589241\\/th.jpg\"],\"material\":\"100\",\"customize_detail\":\"222\",\"goods_detail\":\"333`1234q\",\"user_remark\":\"\",\"y_remark\":\"\",\"g_remark\":\"\",\"y_response\":\"\",\"delivery_time\":15,\"inquiry_delivery_time\":7,\"translate_info\":{\"goods_name_tr\":\"屏幕\",\"sku_info_tr\":[{\"id\":1339,\"goods_id\":911,\"sku\":\"ブルー\",\"sku_tr\":\"blue\",\"keep_sample_num\":0}],\"material_tr\":\"11\",\"customize_detail_tr\":\"22\",\"goods_detail_tr\":\"33\",\"goods_file_tr\":[]},\"accessory_list\":[],\"has_supplier\":false,\"goods_accessory\":[],\"accessory_is_same\":true,\"coupon_id\":0,\"submit_problem_goods\":true,\"forward_order\":[],\"has_keep_sample\":false,\"contract_notes\":\"合同注意事项\",\"is_buy_back\":true,\"is_fixed_service_rate\":false,\"quote_info\":{\"inquiry_other_fee\":\"0.00\",\"inquiry_freight\":\"0.00\",\"inquiry_delivery_time\":7,\"inquiry_large_deposit_rate\":\"100.00\",\"quote_other_fee\":\"0.00\",\"quote_freight\":\"55.00\",\"quote_delivery_time\":15,\"quote_large_deposit_rate\":\"100.00\",\"real_other_fee\":\"0.00\",\"real_freight\":\"50.00\",\"sku_info\":[{\"id\":2428,\"sku\":\"ブルー\",\"sku_tr\":\"blue\",\"sku_image\":\"\",\"num\":1000,\"large_min_quantity\":100,\"inquiry_large_price\":\"2.20\",\"quote_large_price\":\"2.20\",\"real_large_price\":\"2.00\",\"option\":[{\"id\":57,\"name\":\"opp袋子四角包装\",\"name_translate\":\"角折りopp梱包\",\"price\":\"2.00\",\"price_type\":0,\"remark\":\"把opp袋子的四角都粘好的包装\",\"unit\":\"元\",\"sort\":16,\"price_range\":[],\"num\":1000,\"checked\":true,\"total\":2000},{\"id\":68,\"name\":\"塑封包装\",\"name_translate\":\"シユリンク包装"
+        }
+      ]
+    },
+    {
+      "name": "porder_start_translate",
+      "hash": "/#/deliveryOrderDetails?porder_sn=OP20260302150837-15",
+      "clicked": "开始翻译",
+      "confirmed": null,
+      "visible_buttons": [
+        "开始翻译",
+        "修改密码",
+        "企业微信授权",
+        "退出登录"
+      ],
+      "writes": [
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/admin/porder/logisticsList",
+          "s": 200,
+          "post": "{\"user_id\":\"15\"}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":14,\"name\":\"お任せ(お勧め)\",\"logo\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/20251119155458318190.png\",\"logistics_city\":1,\"chargeFinal\":\"\",\"min_weight\":0},{\"id\":35,\"name\":\"海源電子特殊航空便\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202507\\/688825e5b606f.png\",\"logistics_city\":1,\"chargeFinal\":\"2\",\"min_weight\":\"15\"},{\"id\":37,\"name\":\"switch\",\"logo\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/20250911155501764451.jpg\",\"logistics_city\":2,\"chargeFinal\":\"1\",\"min_weight\":\"20\"},{\"id\":34,\"name\":\"お任せ（広州）\",\"logo\":\"\",\"logistics_city\":2,\"chargeFinal\":\"\",\"min_weight\":0},{\"id\":31,\"name\":\"Raku-KS（広州）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949955a543.png\",\"logistics_city\":2,\"chargeFinal\":\"2\",\"min_weight\":\"20\"},{\"id\":24,\"name\":\"Raku-KS（義鳥）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949955a543.png\",\"logistics_city\":1,\"chargeFinal\":\"2\",\"min_weight\":\"20\"},{\"id\":29,\"name\":\"RW船便（広州）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949a7c76e7.png\",\"logistics_city\":2,\"chargeFinal\":\"\",\"min_weight\":0},{\"id\":20,\"name\":\"RW船便（義鳥）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949a7c76e7.png\",\"logistics_city\":1,\"chargeFinal\":\"\",\"min_weight\":0},{\"id\":33,\"name\":\"Raku-DQ（広州）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949b147430.png\",\"logistics_city\":2,\"chargeFinal\":\"2\",\"min_weight\":\"0\"},{\"id\":23,\"name\":\"Raku-DQ（義鳥）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949b147430.png\",\"logistics_city\":1,\"chargeFinal\":\"2\",\"min_weight\":\"0\"},{\"id\":18,\"name\":\"KS-JP航空便（義鳥）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949baee730.png\",\"logistics_city\":1,\"chargeFinal\":\"2\",\"min_weight\":\"0\"},{\"id\":26,\"name\":\"KS-JP航空便（広州）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949baee730.png\",\"logistics_c"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/admin/porderDetail",
+          "s": 200,
+          "post": "{\"porder_sn\":\"OP20260302150837-15\"}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"has_coupon\":false,\"porder_sn\":\"OP20260302150837-15\",\"warehouse_type\":0,\"admin_status\":1,\"user_id\":15,\"user_name\":\"小杨测试账号\",\"y_admin\":\"admin\",\"p_admin\":\"配货001\",\"user_remark\":\"\",\"y_remark\":\"\",\"exchange_rate\":\"23.56\",\"logistics\":\"\",\"importer_address\":{\"id\":1597,\"user_id\":15,\"porder_sn\":\"OP20260302150837-15\",\"title\":\"进口商地址\",\"name\":\"小原跑火车1000\",\"name_rome\":\"跑火车的小原12\",\"zip\":\"100-0001\",\"mobile\":\"12345678990\",\"address\":\"出生在罗马帝国10\",\"address_rome\":\"这个地址很罗马字\",\"corporate_name\":\"\",\"standard_num\":\"12345789123456\",\"standard_code\":\"\",\"company\":\"1230\",\"company_en\":\"\",\"tel\":\"\",\"shop_image\":\"\",\"created_at\":\"0000-00-00 00:00:00\"},\"receiver_address\":{\"id\":1598,\"user_id\":15,\"porder_sn\":\"OP20260302150837-15\",\"title\":\"进口商地址\",\"name\":\"小原跑火车1001\",\"name_rome\":\"跑火车的小原12\",\"zip\":\"100-0001\",\"mobile\":\"12345678990\",\"address\":\"出生在罗马帝国10\",\"address_rome\":\"这个地址很罗马字\",\"corporate_name\":\"\",\"standard_num\":\"\",\"standard_code\":\"\",\"company\":\"1230\",\"company_en\":\"\",\"tel\":\"\",\"shop_image\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202508\\/467993\\/0d0983525bc14ac4874d7b04e2e4c466.jpeg\",\"created_at\":\"0000-00-00 00:00:00\"},\"detail_list\":[{\"id\":3118,\"order_detail_sku_id\":0,\"order_detail_stock_id\":492,\"inventory_id\":0,\"order_sn\":\"Y20251209131627-15-XH\",\"order_type\":1,\"postnatal_sample_from\":\"\",\"goods_name\":\"碎鸡蛋手机支架打碎的鸡蛋摔破的鸡蛋恶作剧搞怪整人玩具礼盒礼物\",\"goods_name_tr\":\"割れた卵のスマホスタンド、割れた卵、壊れた卵、いたずら、面白い、人をいたわるおもちゃ、ギフトボックス、プレゼント\",\"goods_img\":\"https:\\/\\/cbu01.alicdn.com\\/img\\/ibank\\/O1CN01eqk8fE1EuHpOvfPu6_!!2219521070411-0-cib.jpg\",\"sku\":\"\",\"sku_tr\":\"\",\"sku_image\":\"\",\"factory_name\":\"宁海子玛电子商务商行(个体工商户)\",\"detail\":[{\"key\":\"颜色\",\"value\":\"黄色(真的鸡蛋壳)\"}],\"detailT\":[{\"key\":\"色\",\"value\":\"黄色（本物の卵の殻）\"}],\"warehouse_city\":1,\"location_num\":0,\"purchase_num\":2,\"num\":2,\"unpacked_num\":2,\"packed_num\":0,\"packing_info\":[],\"sku_price\":\"2.00\",\"sku_price_jp\":47,\"subtotal\":94,\"warehouse_num\":0,\"option\":[],\"user_remark\":\"\",\"y_remark\":\"\",\"warehouse_list\":[],\"purchase_no\":\"777\",\"express_no\":[\"33\"],\"j_remark\":\"\",\"accessor"
+        },
+        {
+          "m": "POST",
+          "u": "https://oemapi.rakumart.cn/admin/porderStartTransalte",
+          "s": 200,
+          "post": "{\"porder_sn\":\"OP20260302150837-15\"}",
+          "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":true,\"success\":true}"
+        }
+      ]
+    }
+  ],
+  "after_status": {
+    "inquiry": {
+      "code": 0,
+      "sn": "X20260808134327-15-OEM",
+      "user_status": 1,
+      "admin_status": 0,
+      "y_admin_status": 0,
+      "g_admin_status": 0,
+      "point": null
+    },
+    "sample": {
+      "code": 0,
+      "sn": "Y20260403172102-15-OEM",
+      "user_status": null,
+      "admin_status": 12,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "point": 2
+    },
+    "bulk": {
+      "code": 0,
+      "sn": "D20260613110838-15-OEM",
+      "user_status": null,
+      "admin_status": 12,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "point": 2
+    },
+    "porder": {
+      "code": 0,
+      "sn": "OP20260302150837-15",
+      "user_status": null,
+      "admin_status": 2,
+      "y_admin_status": null,
+      "g_admin_status": null,
+      "point": null
+    }
+  }
+}

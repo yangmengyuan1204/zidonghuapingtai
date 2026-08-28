@@ -1,0 +1,288 @@
+{
+  "admin_status": 48,
+  "point": 4,
+  "dispatch_info": {
+    "production_status_fadmin": 4,
+    "production_status_yadmin": 4,
+    "production_status_salesman": 1,
+    "express_list": [
+      {
+        "id": 1126,
+        "order_sn": "D20260613110838-15-OEM",
+        "express_no": "BK1786770161"
+      }
+    ],
+    "production_fadmin": [
+      {
+        "point": "下单完成",
+        "time": "订单创建-2026-08-15",
+        "time_status": "",
+        "time_color": "green",
+        "sync_color": "red",
+        "sync_text": "未短信提醒工厂"
+      },
+      {
+        "point": "原材料拍照",
+        "time": "第5天提醒-到期2026-08-20",
+        "time_status": "已完成同步",
+        "time_color": "green",
+        "sync_color": "green",
+        "sync_text": "已同步给业务",
+        "status": 1,
+        "image": [],
+        "salesman_image": [],
+        "remark_f": "",
+        "remark_y": ""
+      },
+      {
+        "point": "车缝拍照",
+        "time": "第5天提醒-到期2026-08-20",
+        "time_status": "已完成同步",
+        "time_color": "green",
+        "sync_color": "green",
+        "sync_text": "已同步给业务",
+        "status": 2,
+        "image": [],
+        "salesman_image": [],
+        "remark_f": "",
+        "remark_y": ""
+      },
+      {
+        "point": "检品拍照",
+        "time": "第5天提醒-到期2026-08-20",
+        "time_status": "已完成同步",
+        "time_color": "green",
+        "sync_color": "green",
+        "sync_text": "已同步给业务",
+        "status": 3,
+        "image": [],
+        "salesman_image": [],
+        "remark_f": "",
+        "remark_y": ""
+      },
+      {
+        "point": "成品拍照",
+        "time": "第5天提醒-到期2026-08-20",
+        "time_status": "还有5天",
+        "time_color": "blue",
+        "sync_color": "blue",
+        "sync_text": "未到期-未传图",
+        "status": 4,
+        "image": [],
+        "salesman_image": [],
+        "remark_f": "",
+        "remark_y": ""
+      },
+      {
+        "point": "到期提醒",
+        "time": "第5天提醒-到期2026-08-20",
+        "time_status": "还有5天",
+        "time_color": "blue",
+        "sync_color": "blue",
+        "sync_text": "未到期"
+      }
+    ],
+    "production_yadmin": [
+      {
+        "point": "下单完成",
+        "time": "订单创建-2026-08-15",
+        "time_status": "",
+        "time_color": "green",
+        "sync_color": "red",
+        "sync_text": "未短信提醒工厂"
+      },
+      {
+        "point": "原材料拍照",
+        "time": "第5天提醒-到期2026-08-20",
+        "time_status": "已完成同步",
+        "time_color": "green",
+        "sync_color": "green",
+        "sync_text": "已同步给客户",
+        "status": 1,
+        "image": [],
+        "remark_f": "",
+        "remark_y": ""
+      },
+      {
+        "point": "车缝拍照",
+        "time": "第5天提醒-到期2026-08-20",
+        "time_status": "已完成同步",
+        "time_color": "green",
+        "sync_color": "green",
+        "sync_text": "已同步给客户",
+        "status": 2,
+        "image": [],
+        "remark_f": "",
+        "remark_y": ""
+      },
+      {
+        "point": "检品拍照",
+        "time": "第5天提醒-到期2026-08-20",
+        "time_status": "已完成同步",
+        "time_color": "green",
+        "sync_color": "green",
+        "sync_text": "已同步给客户",
+        "status": 3,
+        "image": [],
+        "remark_f": "",
+        "remark_y": ""
+      },
+      {
+        "point": "成品拍照",
+        "time": "第5天提醒-到期2026-08-20",
+        "time_status": "已完成同步",
+        "time_color": "green",
+        "sync_color": "green",
+        "sync_text": "已同步给客户",
+        "status": 4,
+        "image": [],
+        "remark_f": "",
+        "remark_y": ""
+      },
+      {
+        "point": "到期提醒",
+        "time": "第5天提醒-到期2026-08-20",
+        "time_status": "还有5天",
+        "time_color": "blue",
+        "sync_color": "blue",
+        "sync_text": "未到期"
+      }
+    ]
+  },
+  "purchase_info": {
+    "purchase_id": 872,
+    "quote_other_fee": "0.00",
+    "quote_freight": "0.00",
+    "purchase_other_fee": "0.00",
+    "purchase_freight": "50.00",
+    "purchase_no": "",
+    "contract": "",
+    "type": 1,
+    "sku_info": [
+      {
+        "id": 1576,
+        "order_detail_sku_id": 2428,
+        "goods_sku_id": 1339,
+        "sku": "ブルー",
+        "sku_tr": "blue",
+        "sku_image": "",
+        "num": 1000,
+        "purchase_large_price": "2.00",
+        "quote_large_price": "2.20",
+        "option": [
+          {
+            "id": 57,
+            "name": "opp袋子四角包装",
+            "name_translate": "角折りopp梱包",
+            "price": "2.00",
+            "price_type": 0,
+            "remark": "把opp袋子的四角都粘好的包装",
+            "unit": "元",
+            "sort": 16,
+            "price_range": [],
+            "num": 1000,
+            "checked": true,
+            "total": 2000
+          },
+          {
+            "id": 68,
+            "name": "塑封包装",
+            "name_translate": "シユリンク包装",
+            "price": "0.80",
+            "price_type": 0,
+            "remark": "塑封包装",
+            "unit": "元",
+            "sort": 17,
+            "price_range": [],
+            "num": 1000,
+            "checked": true,
+            "total": 800
+          },
+          {
+            "id": 72,
+            "name": "真空包装",
+            "name_translate": "圧縮包装（袋別途費用）",
+            "price": "2.00",
+            "price_type": 0,
+            "remark": null,
+            "unit": "元",
+            "sort": 18,
+            "price_range": [],
+            "num": 1000,
+            "checked": true,
+            "total": 2000
+          },
+          {
+            "id": 73,
+            "name": "更换客户自己的定制袋子",
+            "name_translate": "別注OPP袋入替",
+            "price": "0.30",
+            "price_type": 0,
+            "remark": "客户有自己袋子的话，更换其需要收费0.3元",
+            "unit": "元",
+            "sort": 19,
+            "price_range": [],
+            "num": 1000,
+            "checked": true,
+            "total": 300
+          }
+        ],
+        "img": [],
+        "remark": ""
+      }
+    ]
+  },
+  "price_info": {
+    "large_goods_fee": 2200,
+    "large_goods_fee_jp": 51832,
+    "large_fee": 2200,
+    "large_fee_jp": 51832,
+    "large_deposit_rate": "100.00",
+    "large_freight": "0.00",
+    "large_freight_jp": 0,
+    "large_other_fee": "0.00",
+    "large_other_fee_jp": 0,
+    "large_service_fee": 600,
+    "large_service_fee_jp": 14136,
+    "service_rate": 0,
+    "old_service_fee": 600,
+    "old_service_fee_jp": 14136,
+    "large_option_fee": 5100,
+    "large_option_fee_jp": 120156,
+    "large_balance_payment": 0,
+    "large_balance_payment_jp": 0,
+    "large_balance_rate": 0,
+    "large_down_payment": 7900,
+    "large_down_payment_jp": 186124,
+    "large_all_fee": 7900,
+    "large_all_fee_jp": 186124,
+    "real_all_fee": 7900,
+    "real_all_fee_jp": 186124
+  },
+  "translate_info": {
+    "goods_name_tr": "屏幕",
+    "sku_info_tr": [
+      {
+        "id": 1339,
+        "goods_id": 911,
+        "sku": "ブルー",
+        "sku_tr": "blue",
+        "keep_sample_num": 0
+      }
+    ],
+    "material_tr": "11",
+    "customize_detail_tr": "22",
+    "goods_detail_tr": "33",
+    "goods_file_tr": []
+  },
+  "quote_info": null,
+  "check_info": null,
+  "accessory_list": [],
+  "forward_order": [],
+  "goods_file": [],
+  "goods_other_img": [
+    "https://rakumart-oem.oss-ap-northeast-1.aliyuncs.com/dest/202606/589241/th.jpg"
+  ],
+  "has_keep_sample": false,
+  "warehouse_city": 2
+}

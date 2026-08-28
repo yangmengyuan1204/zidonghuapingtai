@@ -1,0 +1,12 @@
+{
+  "inquiry_translate": "X20260805143420-15-OEM",
+  "inquiry_audit": "X20260721135449-33-OEM",
+  "inquiry_inquiring": "X20260810140811-33-OEM",
+  "inquiry_quote": "X20260728145335-33-OEM",
+  "sample_confirm": "Y20260727131141-33-OEM",
+  "sample_quote": "Y20260727130920-33-OEM",
+  "bulk_confirm": "D20260727142725-33-OEM",
+  "bulk_quote": "D20260727142808-33-OEM",
+  "porder_translate": "OP20260812162836-33",
+  "porder_packing": "OP20260728095349-33"
+}

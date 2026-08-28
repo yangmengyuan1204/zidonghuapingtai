@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import sys
+import time
+import re
+from datetime import datetime
 
 from ..services.ui_locator_engine import select_step_page, select_step_scope
 
@@ -83,6 +86,7 @@ def _impl__perform_ui_action(page: Any, target: Any, action: str, value: Any, us
 
 
 def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int, case_id: int = 0, db: Any = None) -> Dict[str, Any]:
+    import re
     started = time.time()
     action = str(step.get("action") or "").strip()
     locator = str(step.get("locator") or "").strip()
@@ -138,13 +142,57 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
         elif action == "assert_url":
             exact = bool(step.get("exact", False))
             _wait_for_url_contains(page, str(value or ""), timeout_ms, exact=exact)
+        elif action == "resume_order_flow":
+            from ..data_scripts.full_flow import run_resume_order_flow_script
+            from ..models import Env
+            target_order_sn = ""
+            if isinstance(value, dict):
+                target_order_sn = str(value.get("order_sn") or "").strip()
+            elif isinstance(value, str):
+                target_order_sn = value.strip()
+            if not target_order_sn:
+                text = _page_text_excerpt(page, limit=3000)
+                m = re.findall(r"(\d{14,18}-\d+|RO\d+)", text)
+                if m:
+                    target_order_sn = m[0]
+            if not target_order_sn:
+                raise ValueError("resume_order_flow 步骤缺少目标订单号 order_sn")
+
+            env = db.get(Env, 1) if db else None
+            flow_vars = {
+                "account": "12345678990",
+                "password": "123456",
+                "backend_account": "Y001",
+                "backend_password": "xiaolin666@@",
+                "order_sn": target_order_sn,
+                "warehouse_fill_scope": "current_order",
+                "warehouse_sku_count": 1,
+                "send_num": 1,
+                "require_warehouse_sku_count": True,
+                "auto_fill_cart_on_shortage": False,
+                "timeout": 45,
+            }
+            if isinstance(value, dict):
+                flow_vars.update(value)
+            flow_vars["order_sn"] = target_order_sn
+
+            passed, log_json, report_html, summary = run_resume_order_flow_script(env, flow_vars)
+            detail["flow_passed"] = passed
+            detail["flow_summary"] = summary
+            detail["extracted"] = {
+                "order_sn": target_order_sn,
+                "porder_sn": summary.get("porder_sn", ""),
+                "current_node": summary.get("current_node", "")
+            }
+            if not passed:
+                raise RuntimeError(f"全流程流转失败于节点 {summary.get('current_node')}: {summary.get('reason') or summary.get('error')}")
         else:
             if action in UI_LOCATOR_REQUIRED and not candidates:
                 raise ValueError(f"{action} 步骤缺少 locator")
             last_error = None
             for attempt in range(1, 4):
                 try:
-                    target, used_locator, matched_count = _resolve_locator(locator_scope, candidates, timeout_ms=min(timeout_ms, 5000))
+                    target, used_locator, matched_count = _resolve_locator(locator_scope, candidates, timeout_ms=min(timeout_ms, 15000))
                     detail["used_locator"] = used_locator
                     detail["matched_count"] = matched_count
                     if locator and used_locator != locator:
@@ -164,7 +212,13 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
                             page.keyboard.press("Control+A")
                             page.keyboard.type(str(value or ""))
                     elif action == "click":
-                        target.click(timeout=timeout_ms)
+                        try:
+                            target.click(timeout=min(timeout_ms, 5000))
+                        except Exception:
+                            try:
+                                target.evaluate("el => el.click()")
+                            except Exception:
+                                target.click(timeout=min(timeout_ms, 3000), force=True)
                     elif action == "select":
                         target.select_option(str(value or ""), timeout=timeout_ms)
                     elif action == "check":
@@ -183,14 +237,40 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
                     elif action == "text_assert":
                         _wait_text_contains(target, value, timeout_ms)
                     elif action == "extract_text":
-                        extracted_value = target.inner_text(timeout=timeout_ms)
-                        extract_key = str(step.get("variable") or step.get("save_as") or step.get("key") or name or locator or "value")
+                        if str(used_locator or "").strip().lower() in ("body", "html", ":root"):
+                            try:
+                                extracted_value = page.evaluate("() => document.body ? (document.body.innerText || document.body.textContent || '') : ''")
+                            except Exception:
+                                extracted_value = target.text_content(timeout=timeout_ms) or ""
+                        else:
+                            try:
+                                extracted_value = target.inner_text(timeout=timeout_ms)
+                            except Exception:
+                                try:
+                                    extracted_value = target.evaluate("el => el.innerText || el.textContent || ''")
+                                except Exception:
+                                    extracted_value = target.text_content(timeout=timeout_ms) or ""
+                        extract_regex = step.get("regex") or step.get("pattern")
+                        if extract_regex:
+                            m = re.search(str(extract_regex), str(extracted_value))
+                            if m:
+                                extracted_value = m.group(1) if m.groups() else m.group(0)
+                            else:
+                                raise ValueError(f"未能从提取文本中匹配到符合正则 {extract_regex!r} 的内容")
+                        extract_key = str(step.get("variable") or step.get("variable_name") or step.get("save_as") or step.get("key") or name or locator or "value")
                         detail["extracted_key"] = extract_key
                         detail["extracted_value"] = extracted_value
                         detail["extracted"] = {extract_key: extracted_value}
                     elif action == "extract_value":
                         extracted_value = target.input_value(timeout=timeout_ms)
-                        extract_key = str(step.get("variable") or step.get("save_as") or step.get("key") or name or locator or "value")
+                        extract_regex = step.get("regex") or step.get("pattern")
+                        if extract_regex:
+                            m = re.search(str(extract_regex), str(extracted_value))
+                            if m:
+                                extracted_value = m.group(1) if m.groups() else m.group(0)
+                            else:
+                                raise ValueError(f"未能从提取值中匹配到符合正则 {extract_regex!r} 的内容")
+                        extract_key = str(step.get("variable") or step.get("variable_name") or step.get("save_as") or step.get("key") or name or locator or "value")
                         detail["extracted_key"] = extract_key
                         detail["extracted_value"] = extracted_value
                         detail["extracted"] = {extract_key: extracted_value}
@@ -212,7 +292,7 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
                                 detail["healed"] = True
                                 detail["original_locator"] = healed_locator
                                 detail["healed_locator"] = healed
-                                target, used_locator, matched_count = _resolve_locator(locator_scope, candidates, timeout_ms=min(timeout_ms, 5000))
+                                target, used_locator, matched_count = _resolve_locator(locator_scope, candidates, timeout_ms=min(timeout_ms, 15000))
                                 detail["used_locator"] = used_locator
                                 detail["matched_count"] = matched_count
                                 _perform_ui_action(page, target, action, value, used_locator, timeout_ms)
@@ -239,7 +319,7 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
                                             detail["ai_healed"] = True
                                             detail["heal_confidence"] = heal_result.get("confidence", 0)
                                             detail["heal_reason"] = heal_result.get("reason", "")
-                                            target, used_locator, matched_count = _resolve_locator(locator_scope, candidates, timeout_ms=min(timeout_ms, 5000))
+                                            target, used_locator, matched_count = _resolve_locator(locator_scope, candidates, timeout_ms=min(timeout_ms, 15000))
                                             detail["used_locator"] = used_locator
                                             detail["matched_count"] = matched_count
                                             _perform_ui_action(page, target, action, value, used_locator, timeout_ms)

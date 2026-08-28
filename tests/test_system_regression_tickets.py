@@ -55,7 +55,7 @@ USABLE_DISCOUNT_PAYLOAD = {
                 "status_name": "待使用",
                 "name_chinese": "手数料無料",
                 "name_translation": "手续费免费",
-                "discounts_amount_jpy": 0,
+                "discounts_amount_jpy": 1,
             },
             {
                 "id": "180900",
@@ -143,7 +143,15 @@ def test_catalog_registers_usable_discount_path():
 def test_normalize_usable_discounts_splits_order_coupons_and_logistics_vouchers():
     result = normalize_usable_discounts(USABLE_DISCOUNT_PAYLOAD)
 
-    assert result["coupons"] == [{"id": "180895", "title": "手数料無料"}]
+    assert result["coupons"] == [
+        {
+            "id": "180895",
+            "title": "手数料無料",
+            "type": "1",
+            "discounts_amount_jpy": "1",
+            "fee_waiver": True,
+        }
+    ]
     assert result["vouchers"] == [
         {
             "id": "180900",

@@ -1,0 +1,21 @@
+{
+  "admin_status": 3,
+  "box_list": [
+    {
+      "id": 1201,
+      "number": 1,
+      "express_no": "",
+      "weight": 2,
+      "type": 1,
+      "length": 30,
+      "width": 20,
+      "height": 10,
+      "volume": 6000,
+      "final_weight": 0,
+      "volume_weight": 0,
+      "logistics_id": "",
+      "warehouse_city": "",
+      "detail": []
+    }
+  ]
+}

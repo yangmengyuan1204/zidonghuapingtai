@@ -57,6 +57,7 @@ def _extract_predicted_price(payload):
         "predictLogisticsPrice",
         "amount",
         "logistics_price_artificial",
+        "totalLogisticsFee",
     )
 
     def from_mapping(row):
@@ -239,6 +240,9 @@ def _select_porder_logistics(
                     merged.append(cid)
             candidate_ids = merged
 
+    if variables.get("strict_delivery_logistics"):
+        candidate_ids = [requested_id]
+
     last_payload: dict = {}
     selected_id = ""
     for candidate_id in candidate_ids or [requested_id]:
@@ -292,6 +296,43 @@ def _predict_porder_logistics_price(session, base_url, variables, freight_id, ti
         timeout,
     )
     return _extract_predicted_price(payload), payload
+
+
+def _update_porder_logistics(session, base_url, variables, porder_sn, logistics_id, timeout):
+    return _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_update_logistics", "/porder.updatePorderLogistics"),
+        {"porder_sn": porder_sn, "logistics_id": logistics_id},
+        timeout,
+    )
+
+
+def _set_porder_other_fee(session, base_url, variables, porder_sn, freight_id, logistics_id, timeout):
+    fee = str(variables.get("other_price") or "").strip()
+    try:
+        has_fee = float(fee or "0") != 0
+    except (TypeError, ValueError):
+        has_fee = bool(fee)
+    rows = ""
+    if has_fee:
+        rows = [
+            {
+                "porder_sn": porder_sn,
+                "logistics_id": logistics_id,
+                "type": int(variables.get("other_price_type") or 1),
+                "desc": str(variables.get("other_price_remark") or "系统回归附加费"),
+                "fee": fee,
+                "freight_id": freight_id,
+            }
+        ]
+    return _post_admin_urlencoded(
+        session,
+        base_url,
+        _api_path(variables, "admin_porder_set_other_fee", "/porder.setPorderOtherFee"),
+        {"porder_sn": porder_sn, "list": rows},
+        timeout,
+    )
 
 
 def _impl__run_backend_porder_flow(
@@ -660,6 +701,20 @@ def _impl__run_backend_porder_flow(
         }
     logistics_id = selected_id
 
+    update_logistics_payload = _update_porder_logistics(
+        session, base_url, variables, porder_sn, logistics_id, timeout
+    )
+    backend_log["update_porder_logistics"] = {
+        **_payload_brief(update_logistics_payload),
+        "logistics_id": logistics_id,
+    }
+    if not _api_success(update_logistics_payload):
+        return False, {
+            "backend_passed": False,
+            "reason": "配送单物流线路写入失败",
+            "update_porder_logistics": _payload_brief(update_logistics_payload),
+        }
+
     predicted = ""
     if from_api:
         predicted, predict_payload = _predict_porder_logistics_price(session, base_url, variables, str(freight_id), timeout)
@@ -687,10 +742,36 @@ def _impl__run_backend_porder_flow(
     )
     backend_log["freight_list"] = _payload_brief(freight_list_payload)
     backend_log["amount_current"] = _payload_brief(current_payload)
-    if from_api and not predicted and not manual_price:
-        listed = _extract_predicted_price(freight_list_payload) or _extract_predicted_price(current_payload)
+    if from_api and not manual_price:
+        listed = (
+            _extract_predicted_price(current_payload)
+            or _extract_predicted_price(freight_list_payload)
+            or predicted
+        )
         if listed:
             logistics_price = listed
+
+    other_fee_payload = _set_porder_other_fee(
+        session,
+        base_url,
+        variables,
+        porder_sn,
+        str(freight_id),
+        logistics_id,
+        timeout,
+    )
+    backend_log["set_porder_other_fee"] = {
+        **_payload_brief(other_fee_payload),
+        "fee": str(variables.get("other_price") or "0"),
+        "freight_id": freight_id,
+        "logistics_id": logistics_id,
+    }
+    if not _api_success(other_fee_payload):
+        return False, {
+            "backend_passed": False,
+            "reason": "配送单附加费写入失败",
+            "set_porder_other_fee": _payload_brief(other_fee_payload),
+        }
 
     offer_payload = _post_admin_urlencoded(
         session,
@@ -737,7 +818,9 @@ def _impl__run_backend_porder_flow(
                     "complete_box",
                     "to_wait_offer",
                     "batch_update_freight_logistics",
+                    "update_porder_logistics",
                     "freight_list",
+                    "set_porder_other_fee",
                     "submit_offer",
                 ],
             },
@@ -757,7 +840,9 @@ def _impl__run_backend_porder_flow(
             "complete_box",
             "to_wait_offer",
             "batch_update_freight_logistics",
+            "update_porder_logistics",
             "freight_list",
+            "set_porder_other_fee",
             "submit_offer",
         ],
         "porder_detail_id": porder_detail_id,

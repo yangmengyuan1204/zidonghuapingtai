@@ -1,0 +1,123 @@
+{
+  "inquiry": {
+    "url": "https://oemadmin.rakumart.cn/#/inquiryOrderDetail?order_sn=X20260805143420-15-OEM",
+    "buttons": [
+      "上传翻译文件",
+      "待翻译",
+      "提交审核",
+      "确认备注",
+      "询价订单",
+      "询价订单 >"
+    ],
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/goodsClassList",
+        "s": 200,
+        "post": "{\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":110,\"parent_id\":0,\"class_name\":\"测试分类111\",\"class_name_translation\":\"测试分类\",\"childs\":[]},{\"id\":8,\"parent_id\":0,\"class_name\":\"五金产品\",\"class_name_translation\":\"\",\"childs\":[{\"id\":9,\"parent_id\":8,\"class_name\":\"冲压五金件（紧固件\\/支架）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":10,\"parent_id\":8,\"class_name\":\"铸造五金件（阀门\\/机械部件）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":11,\"parent_id\":8,\"class_name\":\"CNC精密加工件（模具\\/精密齿轮）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":12,\"parent_id\":8,\"class_name\":\"表面处理件（电镀\\/阳极氧化）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":13,\"parent_id\":8,\"class_name\":\"建筑五金系统（门窗配件\\/卫浴五金）\",\"class_name_translation\":\"\",\"childs\":[]}]},{\"id\":1,\"parent_id\":0,\"class_name\":\"电子产品\",\"class_name_translation\":\"\",\"childs\":[{\"id\":2,\"parent_id\":1,\"class_name\":\"消费电子组装（蓝牙设备\\/小家电）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":3,\"parent_id\":1,\"class_name\":\"工业设备配件（控制面板\\/传感器）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":5,\"parent_id\":1,\"class_name\":\"防灾电子设备（应急灯\\/报警器）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":6,\"parent_id\":1,\"class_name\":\"医疗电子配件（体征监测模块）\",\"class_name_translation\":\"\",\"childs\":[]},{\"id\":7,\"parent_id\":1,\"class_name\":\"检测仪\",\"class_name_tra"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/inquiryDetail",
+        "s": 200,
+        "post": "{\"order_sn\":\"X20260805143420-15-OEM\",\"is_quote\":false}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"id\":1055,\"user_id\":15,\"order_sn\":\"X20260805143420-15-OEM\",\"user_status\":1,\"admin_status\":0,\"y_admin_status\":0,\"g_admin_status\":0,\"factory_type\":3,\"goods_id\":\"980\",\"goods_no\":\"06252534\",\"goods_type\":1,\"num\":2,\"hope_futures\":10,\"hope_min_price\":\"1.00\",\"hope_max_price\":\"100.00\",\"user_remark\":\"\",\"y_remark\":\"\",\"g_remark\":\"\",\"contract_notes\":\"\",\"y_id\":19,\"p_id\":26,\"g_id\":19,\"f_id\":33,\"create_at\":\"2026-08-05 14:34:20\",\"translate_submit_at\":null,\"translate_at\":null,\"first_inquiry_at\":null,\"first_quote_at\":null,\"inquiry_at\":null,\"complete_at\":null,\"1688_order_id\":\"\",\"1688_create_at\":null,\"1688_deadline_at\":null,\"1688_is_stop\":0,\"delete_reason\":\"\",\"delete_at\":null,\"delete_type\":0,\"is_re_quote\":0,\"provide_prototype\":0,\"register_forward\":0,\"viewed_detail_y\":1,\"viewed_detail_g\":0,\"forward_order\":[],\"y_admin\":\"admin\",\"p_admin\":\"配货绩效测试\",\"user_name\":\"小杨测试账号\",\"goods_class\":{},\"goods_img\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202608\\/871608\\/鲁班.jpg\",\"goods_name\":\"测试商品\",\"goods_name_tr\":\"\",\"material\":\"\",\"material_tr\":\"\",\"customize_detail\":\"\",\"customize_detail_tr\":\"\",\"goods_detail\":\"\",\"goods_detail_tr\":\"\",\"goods_file\":[],\"goods_file_tr\":[],\"goods"
+      }
+    ]
+  },
+  "sample": {
+    "url": "https://oemadmin.rakumart.cn/#/sampleListDetails?order_sn=Y20260727131141-33-OEM",
+    "buttons": [
+      "开始确认",
+      "当前阶段： 待采购确认",
+      "待确认",
+      "待采购确认",
+      "报价 当前阶段： 待采购确认",
+      "退回翻译"
+    ],
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/problem.types",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":5,\"name\":\"option\"},{\"id\":10,\"name\":\"采购数量\"},{\"id\":15,\"name\":\"报价打样费用\"},{\"id\":20,\"name\":\"实际打样费用\"},{\"id\":25,\"name\":\"报价样品费退还\"},{\"id\":30,\"name\":\"实际样品费退还\"},{\"id\":35,\"name\":\"报价单价\"},{\"id\":40,\"name\":\"实际采购单价\"},{\"id\":45,\"name\":\"报价其他费用\"},{\"id\":50,\"name\":\"实际其他费用\"},{\"id\":55,\"name\":\"报价国内运费\"},{\"id\":60,\"name\":\"实际国内运费\"},{\"id\":65,\"name\":\"交易号\"}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/samplesDetail",
+        "s": 200,
+        "post": "{\"order_sn\":\"Y20260727131141-33-OEM\"}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"inquiry_salesman_id\":159,\"warehouse_city\":1,\"inquiry_order_sn\":\"X20260720094308-33-OEM\",\"point\":2,\"admin_status\":10,\"order_sn\":\"Y20260727131141-33-OEM\",\"exchange_rate\":\"23.56\",\"username\":\"Rakumade_test\",\"user_id\":33,\"yadmin\":\"业务001\",\"padmin\":\"配货001\",\"gadmin\":\"采购张三\",\"goods_name\":\"商品成本+跟进\",\"factory_name\":\"保护伞公司\",\"factory_url\":\"8964\",\"factory_province\":\"安徽\",\"factory_city\":\"合肥\",\"factory_type\":2,\"goods_url\":\"1\",\"hope_futures\":30,\"goods_type\":1,\"goods_file\":[],\"goods_other_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/929233\\/2.png\"],\"material\":\"1\",\"customize_detail\":\"1\",\"goods_detail\":\"1\",\"user_remark\":\"样品单确认\",\"y_remark\":\"样品单确认2026年7月27日13:20:37\",\"g_remark\":\"\",\"y_response\":\"\",\"delivery_time\":0,\"inquiry_delivery_time\":0,\"translate_info\":{\"goods_name_tr\":\"商品成本+跟进\",\"sku_info_tr\":[{\"id\":1512,\"goods_id\":969,\"sku\":\"ホワイト\",\"sku_tr\":\"ホワイト\",\"keep_sample_num\":0},{\"id\":1513,\"goods_id\":969,\"sku\":\"ブルー\",\"sku_tr\":\"ブルー\",\"keep_sample_num\":0}],\"material_tr\":\"1111111\",\"customize_detail_tr\":\"1\",\"goods_detail_tr\":\"1\",\"goods_file_tr\":[{\"goods_id\":969,\"file_url\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/20260720094756460488.png\",\"fil"
+      }
+    ]
+  },
+  "bulk": {
+    "url": "https://oemadmin.rakumart.cn/#/bulkOrderDetails?order_sn=D20260727142725-33-OEM",
+    "buttons": [
+      "回到询价单",
+      "开始确认",
+      "当前阶段： 待采购确认",
+      "待确认",
+      "待采购确认",
+      "报价 当前阶段： 待采购确认",
+      "退回翻译"
+    ],
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/problem.types",
+        "s": 200,
+        "post": "",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":5,\"name\":\"option\"},{\"id\":10,\"name\":\"采购数量\"},{\"id\":15,\"name\":\"报价打样费用\"},{\"id\":20,\"name\":\"实际打样费用\"},{\"id\":25,\"name\":\"报价样品费退还\"},{\"id\":30,\"name\":\"实际样品费退还\"},{\"id\":35,\"name\":\"报价单价\"},{\"id\":40,\"name\":\"实际采购单价\"},{\"id\":45,\"name\":\"报价其他费用\"},{\"id\":50,\"name\":\"实际其他费用\"},{\"id\":55,\"name\":\"报价国内运费\"},{\"id\":60,\"name\":\"实际国内运费\"},{\"id\":65,\"name\":\"交易号\"}],\"success\":true}"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/largeDetail",
+        "s": 200,
+        "post": "{\"order_sn\":\"D20260727142725-33-OEM\"}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"inquiry_salesman_id\":248,\"warehouse_city\":2,\"inquiry_order_sn\":\"X20260720094308-33-OEM\",\"point\":2,\"admin_status\":10,\"order_sn\":\"D20260727142725-33-OEM\",\"exchange_rate\":\"23.56\",\"username\":\"Rakumade_test\",\"user_id\":33,\"yadmin\":\"业务001\",\"padmin\":\"配货001\",\"gadmin\":\"采购张三\",\"goods_name\":\"商品成本+跟进\",\"factory_name\":\"广州衫阁服饰有限公司\",\"factory_url\":\"https:\\/\\/sale.1688.com\\/factory\\/card.html?memberId=b2b-22023770423888c68e&__recSource__=win_port&facMemId=b2b-22023770423888c68e&spm=a2615.2177701\\/2506.wp_pc_common_topnav.0\",\"factory_province\":\"\",\"factory_city\":\"\",\"factory_type\":2,\"goods_url\":\"\",\"hope_futures\":30,\"goods_type\":1,\"goods_file\":[],\"goods_other_img\":[\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202607\\/929233\\/2.png\"],\"material\":\"1\",\"customize_detail\":\"1\",\"goods_detail\":\"1\",\"user_remark\":\"确认2026年7月27日14:27:30\",\"y_remark\":\"\",\"g_remark\":\"\",\"y_response\":\"\",\"delivery_time\":30,\"inquiry_delivery_time\":30,\"translate_info\":{\"goods_name_tr\":\"商品成本+跟进\",\"sku_info_tr\":[{\"id\":1512,\"goods_id\":969,\"sku\":\"ホワイト\",\"sku_tr\":\"ホワイト\",\"keep_sample_num\":0},{\"id\":1513,\"goods_id\":969,\"sku\":\"ブルー\",\"sku_tr\":\"ブルー\",\"keep_sample_num\":0}],\"material_tr\":\"1111111\",\"customize_de"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/common/common/getServiceInfo",
+        "s": 200,
+        "post": "{\"goods_price\":220,\"goods_type\":1,\"is_buy_back\":true,\"user_id\":33,\"order_type\":2,\"noLoading\":true}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"service_rate\":0,\"service_fee\":400},\"success\":true}"
+      }
+    ]
+  },
+  "porder": {
+    "url": "https://oemadmin.rakumart.cn/#/deliveryOrderDetails?porder_sn=OP20260812162836-33",
+    "buttons": [
+      "开始翻译",
+      "待业务翻译",
+      "待翻译",
+      "待翻译 >"
+    ],
+    "apis": [
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/porderDetail",
+        "s": 200,
+        "post": "{\"porder_sn\":\"OP20260812162836-33\"}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"has_coupon\":false,\"porder_sn\":\"OP20260812162836-33\",\"warehouse_type\":0,\"admin_status\":1,\"user_id\":33,\"user_name\":\"Rakumade_test\",\"y_admin\":\"业务001\",\"p_admin\":\"配货001\",\"user_remark\":\"\",\"y_remark\":\"\",\"exchange_rate\":\"23.56\",\"logistics\":\"\",\"importer_address\":{\"id\":1653,\"user_id\":33,\"porder_sn\":\"OP20260812162836-33\",\"title\":\"￥￥￥\",\"name\":\"楽天２３２\",\"name_rome\":\"11\",\"zip\":\"0000000\",\"mobile\":\"00000000000\",\"address\":\"２３２３\",\"address_rome\":\"\",\"corporate_name\":\"\",\"standard_num\":\"\",\"standard_code\":\"\",\"company\":\"\",\"company_en\":\"\",\"tel\":\"\",\"shop_image\":\"\",\"created_at\":\"0000-00-00 00:00:00\"},\"receiver_address\":{\"id\":1654,\"user_id\":33,\"porder_sn\":\"OP20260812162836-33\",\"title\":\"￥￥￥\",\"name\":\"楽天２３２\",\"name_rome\":\"11\",\"zip\":\"0000000\",\"mobile\":\"00000000000\",\"address\":\"２３２３\",\"address_rome\":\"\",\"corporate_name\":\"\",\"standard_num\":\"\",\"standard_code\":\"\",\"company\":\"\",\"company_en\":\"\",\"tel\":\"\",\"shop_image\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202604\\/700049\\/MIUI06.jpg\",\"created_at\":\"0000-00-00 00:00:00\"},\"detail_list\":[{\"id\":3161,\"order_detail_sku_id\":2638,\"order_detail_stock_id\":0,\"inventory_id\":0,\"order_sn\":\"D20260812145513-33-OEM\",\"order_type\":2,\"postnatal"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/userAddressList",
+        "s": 200,
+        "post": "{\"user_id\":33}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":{\"data\":[{\"id\":28,\"title\":\"地址1\",\"user_id\":\"33\",\"name\":\"糯米团\",\"name_rome\":\"NAMITAN\",\"address\":\"栃木県小山市駅南町5-11-21\",\"address_rome\":\"koyama\",\"zip\":\"323-0822\",\"corporate_name\":\"无\",\"mobile\":\"08051840221\",\"tel\":\"08051840221\",\"company\":\"株式会社Ripula\",\"company_en\":\"\",\"standard_num\":\"0\",\"standard_code\":\"0\",\"default_receiver\":false,\"default_importer\":0,\"shop_image\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202506\\/643255\\/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_17501426586337.png\",\"created_at\":\"2024-05-29 15:15:28\",\"updated_at\":\"2026-08-12 09:55:56\"},{\"id\":36,\"title\":\"Amazon.co.jp NRT5 FBA 入庫係\",\"user_id\":\"33\",\"name\":\"Amazon.co.jp NRT5 FBA 入庫係\",\"name_rome\":\"Amazon.co.jp NRT5 FBA\",\"address\":\"埼玉県川越市南台1-10-15\",\"address_rome\":\"1-10-15 Minamidai,Kawagoe,Saitama,Japan\",\"zip\":\"350-1182\",\"corporate_name\":\"\",\"mobile\":\"09000000000\",\"tel\":\"\",\"company\":\"\",\"company_en\":\"\",\"standard_num\":\"\",\"standard_code\":\"\",\"default_receiver\":false,\"default_importer\":0,\"shop_image\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/dest\\/202604\\/553532\\/MIUI04.jpg\",\"created_at\":\"2025-03-12 16:16:05\",\"updated_at\":\"2026-04-15 16:48:39\"},{\"id\":37,\"title\":\"偏远"
+      },
+      {
+        "m": "POST",
+        "u": "https://oemapi.rakumart.cn/admin/porder/logisticsList",
+        "s": 200,
+        "post": "{\"user_id\":\"33\"}",
+        "b": "{\"code\":0,\"msg\":\"操作成功\",\"data\":[{\"id\":14,\"name\":\"お任せ(お勧め)\",\"logo\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/20251119155458318190.png\",\"logistics_city\":1,\"chargeFinal\":\"\",\"min_weight\":0},{\"id\":35,\"name\":\"海源電子特殊航空便\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202507\\/688825e5b606f.png\",\"logistics_city\":1,\"chargeFinal\":\"2\",\"min_weight\":\"15\"},{\"id\":37,\"name\":\"switch\",\"logo\":\"https:\\/\\/rakumart-oem.oss-ap-northeast-1.aliyuncs.com\\/20250911155501764451.jpg\",\"logistics_city\":2,\"chargeFinal\":\"1\",\"min_weight\":\"20\"},{\"id\":34,\"name\":\"お任せ（広州）\",\"logo\":\"\",\"logistics_city\":2,\"chargeFinal\":\"\",\"min_weight\":0},{\"id\":31,\"name\":\"Raku-KS（広州）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949955a543.png\",\"logistics_city\":2,\"chargeFinal\":\"2\",\"min_weight\":\"20\"},{\"id\":24,\"name\":\"Raku-KS（義鳥）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949955a543.png\",\"logistics_city\":1,\"chargeFinal\":\"2\",\"min_weight\":\"20\"},{\"id\":29,\"name\":\"RW船便（広州）\",\"logo\":\"https:\\/\\/rakumart-ps20.oss-ap-northeast-1.aliyuncs.com\\/202409\\/66d949a7c76e7.png\",\"logistics_city\":2,\"chargeFinal\":\"\",\"min_weight\":0},{\"id\":20,\"name\":\"RW船便（義鳥）\",\"logo\":\"htt"
+      }
+    ]
+  }
+}

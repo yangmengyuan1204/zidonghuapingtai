@@ -1,0 +1,157 @@
+{
+  "log": [
+    {
+      "name": "changeCheckNum-sku",
+      "path": "/admin/changeCheckNum",
+      "code": 1000,
+      "msg": "至少存在一条SKU"
+    },
+    {
+      "name": "checkTempSave-sku",
+      "path": "/admin/checkTempSave",
+      "code": 1000,
+      "msg": "至少存在一条SKU"
+    },
+    {
+      "name": "checkComplete-sku",
+      "path": "/admin/checkComplete",
+      "code": 1000,
+      "msg": "至少存在一条SKU"
+    },
+    {
+      "name": "checkComplete-full",
+      "path": "/admin/checkComplete",
+      "code": 1000,
+      "msg": "至少存在一条SKU"
+    },
+    {
+      "name": "checkReport-sku",
+      "path": "/admin/checkReport",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "changeCheckNum",
+      "path": "/admin/changeCheckNum",
+      "code": 1000,
+      "msg": "至少存在一条SKU"
+    },
+    {
+      "name": "checkTempSave",
+      "path": "/admin/checkTempSave",
+      "code": 1000,
+      "msg": "至少存在一条SKU"
+    },
+    {
+      "name": "checkComplete",
+      "path": "/admin/checkComplete",
+      "code": 1000,
+      "msg": "至少存在一条SKU"
+    },
+    {
+      "name": "checkComplete-pack",
+      "path": "/admin/checkComplete",
+      "code": 1000,
+      "msg": "至少存在一条SKU"
+    },
+    {
+      "name": "samplesCheckRaise",
+      "path": "/admin/samplesCheckRaise",
+      "code": 10000,
+      "msg": "当前状态无法操作"
+    },
+    {
+      "name": "orderShelve",
+      "path": "/admin/orderShelve",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "directShelve",
+      "path": "/admin/directShelve",
+      "code": 10000,
+      "msg": "当前状态无法操作"
+    },
+    {
+      "name": "orderShelve-pack",
+      "path": "/admin/orderShelve",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "updateExpressInfo",
+      "path": "/admin/updateExpressInfo",
+      "code": 0,
+      "msg": "操作成功"
+    },
+    {
+      "name": "savePorderExpress",
+      "path": "/admin/savePorderExpress",
+      "code": 1000,
+      "msg": "参数错误"
+    },
+    {
+      "name": "porderRaiseQuote",
+      "path": "/admin/porderRaiseQuote",
+      "code": 10000,
+      "msg": "当前物流无法计算费用"
+    },
+    {
+      "name": "balancePayPorder",
+      "path": "/api/balancePayPorder",
+      "code": 10000,
+      "msg": "現在の状態では操作できません"
+    },
+    {
+      "name": "porderShipGoods",
+      "path": "/admin/porderShipGoods",
+      "code": 10000,
+      "msg": "物流单号未填写完整，请补充信息后再试"
+    },
+    {
+      "name": "porderSign",
+      "path": "/admin/porderSign",
+      "code": 10000,
+      "msg": "当前状态无法操作"
+    },
+    {
+      "name": "porderComplete",
+      "path": "/admin/porderComplete",
+      "code": 0,
+      "msg": "操作成功"
+    }
+  ],
+  "summary": {
+    "S": 52,
+    "B": 48,
+    "P": 5
+  },
+  "sku0_keys": [
+    "id",
+    "check_id",
+    "sku_tr",
+    "sku",
+    "sku_image",
+    "num",
+    "price",
+    "option",
+    "check_num",
+    "weight",
+    "size",
+    "length",
+    "width",
+    "height",
+    "possible_num",
+    "storage_num",
+    "shelves_num",
+    "wait_inspect_num",
+    "inspect_num",
+    "bad_num",
+    "good_num",
+    "keep_sample_num",
+    "keep_sample_possible_num",
+    "keep_sample_shelves_num",
+    "warehouse_shelves",
+    "after_sale_num"
+  ]
+}

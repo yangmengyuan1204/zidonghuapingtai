@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>系统回归 · 算账参数面板 v2</title>
+  <link rel="icon" href="data:," />
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --box: #ffffff;
+      --line: rgba(15, 23, 42, 0.08);
+      --line-strong: #e2e8ee;
+      --field: #dbdfe1;
+      --ink: #29343d;
+      --ink-strong: #323251;
+      --muted: #7987a1;
+      --faint: #949eb7;
+      --hover: #f2f4f5;
+      --primary: #5d87ff;
+      --primary-hover: #4a7aff;
+      --primary-soft: #edf2ff;
+      --pass: #027a48;
+      --pass-bg: #ecfdf3;
+      --fail: #d92d20;
+      --fail-bg: #fef0f0;
+      --hold: #c2410c;
+      --debit: #1d4ed8;
+      --radius: 8px;
+      --sidebar: 230px;
+      --topbar: 60px;
+      --font: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: var(--font); font-size: 13px; color: var(--ink); background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 2px solid var(--primary); outline-offset: 2px;
+    }
+    .shell { min-height: 100vh; display: grid; grid-template-columns: var(--sidebar) minmax(0, 1fr); }
+    .sidebar {
+      position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
+      background: var(--box); border-right: 1px solid var(--line);
+    }
+    .brand {
+      display: flex; height: var(--topbar); align-items: center; gap: 10px;
+      padding: 0 16px; border-bottom: 1px solid var(--line);
+    }
+    .brand-mark {
+      display: grid; width: 32px; height: 32px; place-items: center;
+      border-radius: 8px; background: var(--primary); color: #fff; font-weight: 600;
+    }
+    .brand-copy strong, .brand-copy span { display: block; }
+    .brand-copy strong { font-size: 15px; color: var(--ink-strong); }
+    .brand-copy span { margin-top: 2px; color: var(--faint); font-size: 10px; letter-spacing: 0.04em; }
+    .nav { padding: 10px; }
+    .nav button {
+      width: 100%; display: flex; align-items: center; gap: 8px; border: 0; background: transparent;
+      border-radius: 7px; padding: 8px 10px; color: var(--ink); text-align: left;
+    }
+    .nav button.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+    .main { min-width: 0; }
+    .topbar {
+      display: flex; height: var(--topbar); align-items: center; justify-content: space-between;
+      padding: 0 20px; background: var(--box); border-bottom: 1px solid var(--line);
+    }
+    .crumb { color: var(--muted); font-size: 12px; }
+    .crumb b { color: var(--ink-strong); font-size: 14px; }
+    .flag { height: 24px; padding: 0 10px; border-radius: 999px; background: #fff4e5; color: #9a3412; font-size: 11px; font-weight: 600; }
+    .page { padding: 14px 18px 28px; }
+    .banner {
+      margin-bottom: 12px; padding: 10px 12px; border-radius: 7px;
+      background: var(--primary-soft); color: #3554b8; font-size: 12px; line-height: 1.5;
+    }
+    .toolbar { display: flex; align-items: end; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; }
+    .field label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 11px; font-weight: 500; }
+    .field.compact { min-width: 140px; }
+    input, select {
+      width: 100%; height: 36px; padding: 0 10px;
+      border: 1px solid var(--field); border-radius: 7px; background: #fff; color: var(--ink);
+    }
+    input[readonly] { background: #f4f6f8; color: var(--ink-strong); }
+    .btn {
+      height: 36px; padding: 0 14px; border: 0; border-radius: 7px;
+      background: var(--primary); color: #fff; font-weight: 600;
+    }
+    .btn:hover { background: var(--primary-hover); }
+    .btn.secondary { background: #fff; color: var(--ink); border: 1px solid var(--field); font-weight: 500; }
+    .btn.danger { background: #fff; color: var(--fail); border: 1px solid #f5c2c0; font-weight: 500; }
+    .btn.tiny { height: 28px; padding: 0 8px; font-size: 12px; font-weight: 500; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .layout {
+      display: grid;
+      grid-template-columns: 180px minmax(340px, 0.9fr) minmax(480px, 1.2fr);
+      gap: 12px; align-items: start;
+    }
+    .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--box); padding: 12px; }
+    .cats button {
+      width: 100%; display: flex; justify-content: space-between; margin-bottom: 4px; border: 0;
+      border-radius: 7px; padding: 9px 10px; background: transparent; text-align: left; color: var(--ink);
+    }
+    .cats button.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+    .case-tools { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .case-tools h3 { margin: 0; font-size: 13px; }
+    .note { color: var(--muted); font-size: 11px; line-height: 1.45; margin: 8px 0 0; }
+    .holes { color: var(--hold); }
+    table.cases, table.plain { width: 100%; border-collapse: collapse; }
+    table.cases th, table.cases td, table.plain th, table.plain td {
+      border-bottom: 1px solid #f0f2f5; padding: 8px 10px; text-align: left; font-size: 13px; vertical-align: middle;
+    }
+    table.cases th, table.plain th { background: #f2f4f7; color: var(--muted); font-size: 12px; font-weight: 600; }
+    table.cases tr.active { background: color-mix(in srgb, var(--primary) 7%, transparent); }
+    .link { border: 0; background: transparent; color: var(--primary); padding: 0; }
+    .tag { display: inline-block; padding: 1px 6px; border-radius: 999px; background: #eef2f7; color: var(--muted); font-size: 10px; }
+    .tag.mine { background: #fff4e5; color: #9a3412; }
+
+    .drawer { position: sticky; top: 14px; max-height: calc(100vh - 92px); overflow: auto; padding: 0; }
+    .drawer-head { position: sticky; top: 0; z-index: 2; padding: 12px 14px 10px; background: #fff; border-bottom: 1px solid var(--line); }
+    .drawer-kicker { display: flex; justify-content: space-between; color: var(--faint); font-size: 11px; }
+    .drawer-kicker b { color: var(--ink-strong); font-family: var(--mono); }
+    .drawer-title { margin: 4px 0 0; font-size: 15px; }
+    .bill {
+      margin-top: 10px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+    }
+    .bill > div { padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: #f8fafc; }
+    .bill span { display: block; color: var(--muted); font-size: 11px; }
+    .bill strong { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 16px; }
+    .bill .first { background: #fff7ed; }
+    .bill .tail { background: #eff6ff; }
+    .bill .delta.credit strong { color: var(--pass); }
+    .bill .delta.debit strong { color: var(--debit); }
+    .drawer-body { padding: 12px 14px 16px; display: grid; gap: 12px; }
+    .block { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .block > summary {
+      list-style: none; display: flex; justify-content: space-between; align-items: center;
+      padding: 9px 12px; background: #f7f8fb; font-weight: 600; cursor: pointer;
+    }
+    .block > summary::-webkit-details-marker { display: none; }
+    .block > summary em { font-style: normal; font-weight: 500; color: var(--muted); font-size: 11px; }
+    .block .inner { padding: 12px; display: grid; gap: 10px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .wide { grid-column: 1 / -1; }
+    .hint { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .money { display: grid; grid-template-columns: minmax(0, 1fr) 40px; }
+    .money input { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    .money span {
+      display: grid; place-items: center; border: 1px solid var(--field); border-left: 0;
+      border-radius: 0 7px 7px 0; background: #f4f6f8; color: var(--faint); font-size: 10px; font-weight: 700;
+    }
+    .item-card { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #f7f8fb; }
+    .item-card header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .check { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 12px; }
+    .check input { width: 16px; height: 16px; }
+    .foot { display: flex; gap: 8px; flex-wrap: wrap; position: sticky; bottom: 0; background: #fff; padding-top: 4px; }
+    .more { margin-top: 6px; color: var(--muted); font-size: 12px; }
+    .more summary { cursor: pointer; }
+
+    .preview-table { font-variant-numeric: tabular-nums; }
+    .toast {
+      position: fixed; right: 20px; bottom: 20px; z-index: 20;
+      padding: 10px 14px; border-radius: 8px; background: #1e293b; color: #fff; font-size: 13px;
+      display: none;
+    }
+    .modal {
+      position: fixed; inset: 0; z-index: 30; display: none; place-items: center;
+      background: rgba(15, 23, 42, 0.35);
+    }
+    .modal.show { display: grid; }
+    .dialog { width: min(520px, calc(100% - 32px)); background: #fff; border-radius: 10px; padding: 16px; }
+    .dialog h3 { margin: 0 0 12px; }
+    .dialog .actions { margin-top: 14px; justify-content: flex-end; }
+    .kind-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .kind-pick button {
+      display: block; width: 100%; text-align: left; padding: 12px;
+      border: 1px solid var(--field); border-radius: 8px; background: #fff; color: var(--ink);
+    }
+    .kind-pick button.active { border-color: var(--primary); background: var(--primary-soft); }
+    .kind-pick strong { display: block; font-size: 14px; }
+    .kind-pick span { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; line-height: 1.45; font-weight: 400; }
+    .dialog .grid .note { margin: 0; }
+    .wait-box { max-width: 220px; }
+    .drawer-tabs { display: flex; gap: 0; margin-top: 10px; border-bottom: 1px solid var(--line); }
+    .drawer-tabs button {
+      height: 34px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent;
+      background: transparent; color: var(--muted); font-weight: 600;
+    }
+    .drawer-tabs button.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .how {
+      margin: 0; padding: 8px 10px; border-radius: 7px; background: #fff7ed; color: #9a3412; font-size: 12px; line-height: 1.45;
+    }
+    .rail { display: flex; flex-wrap: wrap; gap: 6px; }
+    .rail span {
+      display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px;
+      border-radius: 999px; background: #eef2f7; color: var(--muted); font-size: 11px;
+    }
+    .rail span.on { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+    .step {
+      border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #fff;
+    }
+    .step header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    }
+    .step header b {
+      display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+      background: var(--primary); color: #fff; font-size: 11px;
+    }
+    .step header strong { font-size: 13px; }
+    .step header em { font-style: normal; color: var(--muted); font-size: 11px; font-weight: 500; }
+    .compare td:nth-child(2) { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .delta-line { margin: 8px 0 0; font-family: var(--mono); font-size: 13px; }
+    .delta-line.credit { color: var(--pass); }
+    .delta-line.debit { color: var(--debit); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">测</div>
+        <div class="brand-copy"><strong>自动化测试平台</strong><span>Prototype v2</span></div>
+      </div>
+      <nav class="nav">
+        <button type="button">工作台总览</button>
+        <button class="active" type="button">系统回归</button>
+      </nav>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div class="crumb">系统回归 / <b>算账参数 v2</b></div>
+        <span class="flag">交互稿 · 未接入产品</span>
+      </header>
+      <div class="page">
+        <div class="banner">
+          优惠券：从测试账号拉列表，选一张就把订单手续费变成 0。代金券也从账号拉，选完按券自己的规则抵扣（全部抵扣，或按物流抵）。不用手填名称、ID、怎么减、减免多少钱。
+        </div>
+        <p class="note" id="walletNote"></p>
+        <div class="toolbar">
+          <div class="filters">
+            <div class="field compact"><label>回归项目</label><select><option>日本站</option></select></div>
+            <div class="field compact"><label>业务项目</label><select><option>日本OEM</option></select></div>
+            <div class="field compact">
+              <label>客户 ID</label>
+              <input id="customerId" inputmode="numeric" value="300001" />
+              <small class="hint">换账号会重新拉这个人的券。</small>
+            </div>
+            <div class="field compact wait-box">
+              <label>付钱后等多久再对数</label>
+              <input id="ledgerWait" type="number" min="0" value="30" />
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn secondary" type="button" id="refreshTickets">重新拉券</button>
+            <button class="btn secondary" type="button" id="restoreDemo">恢复示例用例</button>
+            <button class="btn" type="button">批量执行</button>
+          </div>
+        </div>
+        <div class="layout">
+          <div class="panel cats" id="cats"></div>
+          <div class="panel">
+            <div class="case-tools">
+              <h3>用例</h3>
+              <div class="actions">
+                <button class="btn tiny" type="button" id="newCase">新建用例</button>
+                <button class="btn tiny danger" type="button" id="delCase">删除当前</button>
+              </div>
+            </div>
+            <div id="caseTable"></div>
+            <p class="note" id="keyNote"></p>
+          </div>
+          <aside class="panel drawer" id="drawer"></aside>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="modal" id="modal">
+    <div class="dialog">
+      <h3>新建用例</h3>
+      <p class="how">先选这是<strong>订单</strong>还是<strong>配送单</strong>。两边的钱和券不是一套，选错后面参数全对不上。</p>
+      <div class="kind-pick">
+        <button type="button" class="active" data-kind="order">
+          <strong>订单</strong>
+          <span>商品货款、国内运费、手续费。优惠券只把手续费变成 0。</span>
+        </button>
+        <button type="button" data-kind="porder">
+          <strong>配送单</strong>
+          <span>国际运费。代金券按券规则抵扣，跟订单货款无关。</span>
+        </button>
+      </div>
+      <div class="grid">
+        <div class="field wide" id="orderKindExtra">
+          <label>这条订单要测什么</label>
+          <select id="newType">
+            <option value="payment">一次付清</option>
+            <option value="part">分批付款</option>
+            <option value="problem">问题产品（先造订单，再处理问题）</option>
+          </select>
+        </div>
+        <p class="note wide" id="porderKindExtra" hidden>配送单没有商品货款，也没有优惠券。建完只填国际运费和代金券。</p>
+        <div class="field wide"><label>用例名称</label><input id="newName" placeholder="例如 两番分批付款" /></div>
+        <div class="field wide"><label>将得到的编号</label><input id="newKeyPreview" readonly />
+          <small class="hint" id="newKeyHint">订单编号是 JP-PAY 或 JP-PG，配送单是 JP-PORDER。</small>
+        </div>
+      </div>
+      <p class="note">编号只增不挤。删掉 002 后，003 还是 003，新建用下一个最大号，不会填回 002。</p>
+      <div class="actions">
+        <button class="btn secondary" type="button" id="cancelNew">取消</button>
+        <button class="btn" type="button" id="confirmNew">新建</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const CATALOG = [
+  { id: "pack", name: "加固包装", price_type: 0, price: 2.5 },
+  { id: "inspect", name: "检品", price_type: 1, price: 5 },
+  { id: "urgent", name: "加急出货", price_type: 0, price: 8 }
+];
+const FEE_FIELDS = [
+  { key: "domestic_freight", label: "国内运费" },
+  { key: "service_fee", label: "手续费" },
+  { key: "additional_service_fee", label: "附加服务费（OPTION 跟这项走）" },
+  { key: "other_fee", label: "其他费用" }
+];
+const PERCENTS = Array.from({ length: 21 }, (_, i) => i * 5);
+const PROBLEM_TYPES = [
+  [1, "单价变动"], [2, "运费变动"], [3, "少货"], [4, "不良"], [5, "不良且少货"],
+  [6, "OPTION变动"], [7, "数量多了"], [8, "其他"], [9, "客户原因"], [10, "不良直接上架"]
+];
+const CLIENT_DEALS = [["accept", "接受"], ["exchange", "不良品换货"], ["cancel", "退货/取消购买"], ["discard", "废弃（已收不退）"], ["other", "其他"]];
+const PURCHASE_DEALS = ["仅退款", "退货退款", "换货", "丢货重拍", "少货补买", "其他"].map((x) => [x, x]);
+const CATS = [
+  ["all", "全部"],
+  ["payment", "订单·支付"],
+  ["problem", "订单·问题"],
+  ["porder", "配送单"]
+];
+const LOGISTICS = [
+  ["25", "KS-JP电子特殊便"],
+  ["24", "KS-JP航空経済便"],
+  ["18", "KS-JP航空便"],
+  ["29", "海源電子特殊航空便"],
+  ["4", "電子特殊便"],
+  ["23", "Raku-DQ"],
+  ["1", "EMS"],
+  ["2", "OCS"],
+  ["14", "お任せ(お勧め)"],
+  ["20", "RW船便"],
+  ["30", "Rロジ専用船便"],
+  ["12", "TW船便"],
+  ["15", "海源DQ船便"],
+  ["22", "海源TK船便"],
+  ["3", "EMS船便"]
+];
+const AIR_LOGISTICS = new Set(["1", "2", "4", "18", "23", "24", "25", "29"]);
+const WALLETS = {
+  "300001": {
+    coupons: [{ id: "c-fee", title: "手续费减免券", left: 3 }],
+    vouchers: [
+      { id: "v-all", title: "配送全额代金券", kind: "all" },
+      { id: "v-log", title: "国际运费代金券", kind: "logistics", amount: 200 }
+    ]
+  },
+  "300002": {
+    coupons: [{ id: "c-fee2", title: "手续费减免券", left: 1 }],
+    vouchers: [{ id: "v-log2", title: "国际运费代金券", kind: "logistics", amount: 100 }]
+  }
+};
+
+function money(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+function yen(n) { return money(n).toFixed(2); }
+function esc(v) {
+  return String(v ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+function optAmt(row, unit, qtyKey = "order_num", priceKey = "price") {
+  const qty = money(row[qtyKey]);
+  const price = money(row[priceKey]);
+  if (Number(row.price_type) === 1) return money((price / 100) * unit * qty);
+  return money(price * qty);
+}
+function clone(v) { return JSON.parse(JSON.stringify(v)); }
+
+function makeOpt(id, order_num) {
+  const src = CATALOG.find((x) => x.id === id);
+  return {
+    id: src.id, name: src.name, price_type: src.price_type, price: src.price,
+    order_num: order_num, after_num: order_num, after_price: src.price, used: true
+  };
+}
+function makeItem(sorting, quantity, offer_price, offer_freight, options = []) {
+  return { sorting, quantity, offer_price, offer_freight, purchase_price: offer_price, confirm_price: offer_price, purchase_freight: offer_freight, confirm_freight: offer_freight, options };
+}
+function emptyCoupon(on) {
+  return { selectedId: on ? "c-fee" : "" };
+}
+function emptyPorder(voucherOn) {
+  return {
+    sku_count: 1, send_num: 1,
+    box_count: 1, box_length: 58, box_width: 51, box_height: 50, box_weight: 10,
+    logistics: "25", price_manual: false, logistics_price: 775, extra_name: "", extra_fee: 0,
+    payment_mode: "balance",
+    voucher: { selectedId: voucherOn ? "v-all" : "" }
+  };
+}
+function emptyPartPay(on) {
+  return {
+    enabled: !!on, percent: 50, tail_node: "before_shelf", tail_partial: false, tail_sortings: "",
+    fee_timing: { domestic_freight: "first", service_fee: "first", additional_service_fee: "first", other_fee: "first" }
+  };
+}
+function emptyProblem() {
+  return {
+    problem_type: 1, problem_num: 1,
+    description: "系统回归问题产品", translation: "システム回帰テスト",
+    pre_num: 2, pre_price: 9, pre_freight: 3, amount_step: 1,
+    option_deal: "auto", service_deal: "refund", service_rate: 0.05,
+    client_deal: "accept", client_other: "",
+    business_decision: "系统回归自动处理",
+    g_deal_type: "仅退款", purchase_remark: "系统回归",
+    confirm_distribution: true
+  };
+}
+
+function seed() {
+  return [
+    {
+      id: "JP-PAY-001", name: "单番余额全额支付", category: "payment", origin: "system",
+      payment_mode: "balance",
+      defaults: { quantity: 1, offer_price: 10, freight: 3 },
+      other_fee_name: "", other_fee_amount: 0,
+      items: [makeItem(1, 1, 10, 3, [])],
+      part_pay: emptyPartPay(false), problem: null, coupon: emptyCoupon(), porder: emptyPorder()
+    },
+    {
+      id: "JP-PAY-002", name: "单番银行全额支付", category: "payment", origin: "system",
+      payment_mode: "bank",
+      defaults: { quantity: 1, offer_price: 10, freight: 3 },
+      other_fee_name: "", other_fee_amount: 0,
+      items: [makeItem(1, 1, 10, 3, [])],
+      part_pay: emptyPartPay(false), problem: null, coupon: emptyCoupon(), porder: emptyPorder()
+    },
+    {
+      id: "JP-PAY-003", name: "余额分批付款", category: "payment", origin: "system",
+      payment_mode: "balance",
+      defaults: { quantity: 1, offer_price: 10, freight: 3 },
+      other_fee_name: "", other_fee_amount: 0,
+      items: [makeItem(1, 1, 10, 3, [])],
+      part_pay: emptyPartPay(true), problem: null, coupon: emptyCoupon(), porder: emptyPorder()
+    },
+    {
+      id: "JP-PAY-010", name: "全费用混合订单+优惠券", category: "payment", origin: "system",
+      payment_mode: "balance",
+      defaults: { quantity: 2, offer_price: 10, freight: 3 },
+      other_fee_name: "包装材料费", other_fee_amount: 5,
+      items: [
+        makeItem(1, 2, 10, 3, [makeOpt("pack", 2), makeOpt("inspect", 2)]),
+        makeItem(2, 2, 12, 4, [])
+      ],
+      part_pay: emptyPartPay(false), problem: null, coupon: emptyCoupon(true), porder: emptyPorder()
+    },
+    {
+      id: "JP-PG-004", name: "单价下调退款", category: "problem", origin: "system",
+      payment_mode: "balance",
+      defaults: { quantity: 3, offer_price: 10, freight: 3 },
+      other_fee_name: "", other_fee_amount: 0,
+      items: [makeItem(1, 3, 10, 3, [makeOpt("pack", 3)])],
+      part_pay: emptyPartPay(false), problem: emptyProblem(), coupon: emptyCoupon(), porder: emptyPorder()
+    },
+    {
+      id: "JP-PORDER-001", name: "配送单余额支付", category: "porder", origin: "system",
+      payment_mode: "balance",
+      defaults: { quantity: 1, offer_price: 10, freight: 3 },
+      other_fee_name: "", other_fee_amount: 0,
+      items: [],
+      part_pay: emptyPartPay(false), problem: null, coupon: emptyCoupon(), porder: emptyPorder()
+    },
+    {
+      id: "JP-PORDER-002", name: "配送单+代金券", category: "porder", origin: "system",
+      payment_mode: "balance",
+      defaults: { quantity: 1, offer_price: 10, freight: 3 },
+      other_fee_name: "", other_fee_amount: 0,
+      items: [],
+      part_pay: emptyPartPay(false), problem: null, coupon: emptyCoupon(), porder: emptyPorder(true)
+    }
+  ];
+}
+
+const state = {
+  cases: seed(),
+  retired: [],
+  category: "porder",
+  activeId: "JP-PORDER-002",
+  tab: "order",
+  customerId: "300001"
+};
+
+function current() { return state.cases.find((c) => c.id === state.activeId) || state.cases[0] || null; }
+function visible() {
+  return state.category === "all" ? state.cases : state.cases.filter((c) => c.category === state.category);
+}
+function nextKey(prefix) {
+  const nums = [...state.cases.map((c) => c.id), ...state.retired]
+    .filter((id) => id.startsWith(prefix + "-"))
+    .map((id) => Number(String(id).split("-").pop()))
+    .filter((n) => Number.isFinite(n));
+  const max = nums.length ? Math.max(...nums) : 0;
+  return `${prefix}-${String(max + 1).padStart(3, "0")}`;
+}
+
+function wallet() {
+  return WALLETS[state.customerId] || { coupons: [], vouchers: [] };
+}
+function selectedCoupon(c) {
+  const id = c.coupon && c.coupon.selectedId;
+  return (wallet().coupons || []).find((row) => row.id === id) || null;
+}
+function selectedVoucher(c) {
+  const id = c.porder && c.porder.voucher && c.porder.voucher.selectedId;
+  return (wallet().vouchers || []).find((row) => row.id === id) || null;
+}
+function ticketLabel(row, kind) {
+  if (kind === "coupon") return `${row.title}（剩 ${row.left} 张）`;
+  if (row.kind === "all") return `${row.title}（全部抵扣）`;
+  return `${row.title}（按物流抵 ${yen(row.amount)} 元）`;
+}
+function ticketOptions(kind, selectedId) {
+  const rows = kind === "coupon" ? wallet().coupons : wallet().vouchers;
+  const none = kind === "coupon" ? "不使用优惠券" : "不使用代金券";
+  const opts = [["", none]].concat((rows || []).map((row) => [row.id, ticketLabel(row, kind)]));
+  if (selectedId && !(rows || []).some((row) => row.id === selectedId)) {
+    opts.push([selectedId, "这张券不在当前账号里"]);
+  }
+  return opts;
+}
+function walletSummary() {
+  const w = wallet();
+  if (!WALLETS[state.customerId]) {
+    return `账号 ${state.customerId}：原型里还没模拟到券。先试 300001 或 300002。`;
+  }
+  return `账号 ${state.customerId}：优惠券 ${(w.coupons || []).length} 张，代金券 ${(w.vouchers || []).length} 张。换客户 ID 会重新拉。`;
+}
+function sanitizeTickets() {
+  const couponIds = new Set((wallet().coupons || []).map((row) => row.id));
+  const voucherIds = new Set((wallet().vouchers || []).map((row) => row.id));
+  let cleared = 0;
+  state.cases.forEach((c) => {
+    if (c.coupon && c.coupon.selectedId && !couponIds.has(c.coupon.selectedId)) {
+      c.coupon.selectedId = "";
+      cleared += 1;
+    }
+    if (c.porder && c.porder.voucher && c.porder.voucher.selectedId && !voucherIds.has(c.porder.voucher.selectedId)) {
+      c.porder.voucher.selectedId = "";
+      cleared += 1;
+    }
+  });
+  return cleared;
+}
+function applyCustomer(id, announce) {
+  state.customerId = String(id || "").trim();
+  const input = document.getElementById("customerId");
+  if (input && input.value !== state.customerId) input.value = state.customerId;
+  const cleared = sanitizeTickets();
+  if (announce) {
+    toast(walletSummary() + (cleared ? ` 有 ${cleared} 条用例原来选的券这个账号没有，已改成不使用。` : ""));
+  }
+  render();
+}
+
+function totals(c) {
+  let goods = 0, freight = 0, options = 0;
+  (c.items || []).forEach((it) => {
+    const unit = money(it.offer_price);
+    goods += money(money(it.quantity) * unit);
+    freight += money(it.offer_freight);
+    (it.options || []).filter((o) => o.used !== false).forEach((o) => { options += optAmt(o, unit, "order_num", "price"); });
+  });
+  const other = money(c.other_fee_amount);
+  const serviceBase = money(goods * 0.05);
+  const couponOn = !!selectedCoupon(c);
+  const service = couponOn ? 0 : serviceBase;
+  const gross = money(goods + freight + options + other + service);
+  return { goods, freight, options, other, service, serviceBase, couponOn, gross, payable: gross };
+}
+
+function predictFreight(p) {
+  const length = money(p.box_length);
+  const width = money(p.box_width);
+  const height = money(p.box_height);
+  const weight = money(p.box_weight);
+  const count = Math.max(1, Number(p.box_count) || 1);
+  const volume = money(length * width * height);
+  const air = AIR_LOGISTICS.has(String(p.logistics || "25"));
+  const volDiv = air ? 5000 : 6000;
+  const rate = air ? 26.2 : 8.5;
+  const volW = money(volume / volDiv);
+  const chargeKg = money(Math.max(weight, volW));
+  const perBox = money(chargeKg * rate);
+  const name = (LOGISTICS.find((row) => String(row[0]) === String(p.logistics)) || ["", "未选物流"])[1];
+  return {
+    length, width, height, weight, count, volume, volW, chargeKg, rate, volDiv, air, name,
+    perBox, total: money(perBox * count)
+  };
+}
+
+function porderTotals(c) {
+  const p = c.porder || emptyPorder();
+  const quote = predictFreight(p);
+  const logistics = p.price_manual ? money(p.logistics_price) : quote.total;
+  const extra = money(p.extra_fee);
+  const gross = money(logistics + extra);
+  const ticket = selectedVoucher(c);
+  let voucher = 0;
+  let voucherHint = "未使用代金券";
+  if (ticket && ticket.kind === "all") {
+    voucher = gross;
+    voucherHint = "这张券全部抵扣，配送应付变成 0";
+  } else if (ticket && ticket.kind === "logistics") {
+    voucher = Math.min(money(ticket.amount), logistics);
+    voucherHint = `这张券按物流抵扣 ${yen(ticket.amount)} 元`;
+  }
+  return { logistics, extra, gross, voucher, voucherHint, payable: money(Math.max(0, gross - voucher)), quote, manual: !!p.price_manual };
+}
+
+function partPreview(c) {
+  const t = totals(c);
+  const pp = c.part_pay;
+  const percent = Number(pp.percent) || 0;
+  const firstGoods = money(t.goods * percent / 100);
+  const tailGoods = money(t.goods - firstGoods);
+  const rows = [];
+  const push = (label, amount, timing) => {
+    rows.push({ label, amount: money(amount), timing });
+  };
+  push("商品", t.goods, "split");
+  push("国内运费", t.freight, pp.fee_timing.domestic_freight);
+  push("手续费", t.service, pp.fee_timing.service_fee);
+  push("附加服务费 / OPTION", t.options, pp.fee_timing.additional_service_fee);
+  push("其他费用", t.other, pp.fee_timing.other_fee);
+  let firstFee = 0, tailFee = 0;
+  rows.forEach((row) => {
+    if (row.timing === "split") return;
+    if (row.timing === "tail") tailFee += row.amount;
+    else firstFee += row.amount;
+  });
+  return {
+    percent, rows,
+    first: money(firstGoods + firstFee),
+    tail: money(tailGoods + tailFee),
+    firstGoods, tailGoods
+  };
+}
+
+function problemDelta(c) {
+  if (!c.problem) return null;
+  const it = c.items[0] || makeItem(1, 1, 10, 3, []);
+  const oldN = money(it.quantity), oldP = money(it.offer_price), oldF = money(it.offer_freight);
+  const p = c.problem;
+  const goods = money(money(p.pre_num) * money(p.pre_price) - oldN * oldP);
+  const freight = money(money(p.pre_freight) - oldF);
+  let service = 0;
+  if (!selectedCoupon(c)) {
+    const should = money(goods * money(p.service_rate));
+    if (goods > 0) service = should;
+    else if (goods < 0 && p.service_deal === "refund") service = should;
+  }
+  let option = 0;
+  (it.options || []).filter((o) => o.used !== false).forEach((o) => {
+    const before = optAmt(o, oldP, "order_num", "price");
+    const afterRow = { ...o, price: o.after_price };
+    let afterQty = money(o.after_num);
+    if (p.option_deal === "auto" && money(p.pre_num) < oldN) {
+      afterQty = Math.max(0, money(o.order_num) - (oldN - money(p.pre_num)));
+    }
+    afterRow.order_num = afterQty;
+    option += money(optAmt(afterRow, money(p.pre_price), "order_num", "price") - before);
+  });
+  const total = money(goods + freight + service + option);
+  return { goods, freight, service, option, total };
+}
+
+function toast(text) {
+  const el = document.getElementById("toast");
+  el.textContent = text;
+  el.style.display = "block";
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.style.display = "none"; }, 2600);
+}
+
+function inp(k, v, type = "text") {
+  return `<input data-k="${k}" type="${type}" ${type === "number" ? 'step="any"' : ""} value="${esc(v)}" />`;
+}
+function cny(k, v) { return `<div class="money">${inp(k, v, "number")}<span>CNY</span></div>`; }
+function roCny(v) {
+  return `<div class="money"><input readonly tabindex="-1" value="${esc(yen(v))}" /><span>CNY</span></div>`;
+}
+function sel(k, v, rows) {
+  return `<select data-k="${k}">${rows.map(([a, b]) => `<option value="${a}" ${String(a) === String(v) ? "selected" : ""}>${b}</option>`).join("")}</select>`;
+}
+
+function renderCats() {
+  document.getElementById("cats").innerHTML = CATS.map(([key, name]) => {
+    const n = key === "all" ? state.cases.length : state.cases.filter((c) => c.category === key).length;
+    return `<button type="button" class="${state.category === key ? "active" : ""}" data-cat="${key}"><span>${name}</span><b>${n}</b></button>`;
+  }).join("");
+}
+function renderTable() {
+  document.getElementById("caseTable").innerHTML = `<table class="cases"><thead><tr><th>编号</th><th>名称</th><th></th></tr></thead><tbody>${
+    visible().map((c) => `<tr class="${c.id === state.activeId ? "active" : ""}">
+      <td>${c.id} ${c.origin === "mine" ? '<span class="tag mine">我建的</span>' : '<span class="tag">系统</span>'}</td>
+      <td><button class="link" data-open="${c.id}" type="button">${esc(c.name)}</button></td>
+      <td><button class="btn tiny danger" data-del-row="${c.id}" type="button">删除</button></td>
+    </tr>`).join("") || `<tr><td colspan="3">这一类还没有用例，点「新建用例」。</td></tr>`
+  }</tbody></table>`;
+  const holes = state.retired.length ? `已删除编号（空着不补）：${state.retired.join("、")}。` : "还没删过用例。";
+  document.getElementById("keyNote").innerHTML = `编号是身份证，删了也不改别人的。删 002，003 还是 003。新建用比现在最大号再大 1 的号，不填空号。<span class="holes">${holes}</span>`;
+}
+
+function billHtml(c) {
+  if (c.category === "porder") {
+    const p = porderTotals(c);
+    return `<div class="bill">
+      <div><span>${p.manual ? "国际运费（人工钉死）" : "国际运费（按箱子+物流算出）"}</span><strong>${yen(p.logistics)}</strong></div>
+      <div><span>${esc(p.voucher ? p.voucherHint : "代金券抵扣")}</span><strong>−${yen(p.voucher)}</strong></div>
+      <div class="first"><span>配送单应付</span><strong>${yen(p.payable)}</strong></div>
+    </div>`;
+  }
+  const t = totals(c);
+  const pp = c.part_pay && c.part_pay.enabled ? partPreview(c) : null;
+  const d = problemDelta(c);
+  let extra = "";
+  if (pp) extra = `<div class="first"><span>首款预估</span><strong>${yen(pp.first)}</strong></div><div class="tail"><span>尾款预估</span><strong>${yen(pp.tail)}</strong></div>`;
+  else extra = `<div><span>${t.couponOn ? "手续费（优惠券免）" : "手续费"}</span><strong>${yen(t.service)}</strong></div><div class="first"><span>订单应付</span><strong>${yen(t.payable)}</strong></div>`;
+  let delta = "";
+  if (d) {
+    const word = d.total < 0 ? `应退 ${yen(Math.abs(d.total))}` : d.total > 0 ? `应补 ${yen(d.total)}` : "不退不补";
+    const tone = d.total < 0 ? "credit" : d.total > 0 ? "debit" : "";
+    delta = `<div class="delta ${tone}"><span>问题处理后</span><strong>${word}</strong></div>`;
+  }
+  return `<div class="bill">
+    <div><span>报给客户的商品金额</span><strong>${yen(t.goods)}</strong></div>
+    ${extra}
+    ${delta}
+  </div>`;
+}
+
+function optionTable(item, ii) {
+  const rows = (item.options || []).map((o, oi) => {
+    const unitLabel = Number(o.price_type) === 1 ? `${o.price}%` : `${yen(o.price)} 元/个`;
+    return `<tr>
+      <td><input type="checkbox" data-k="items.${ii}.options.${oi}.used" ${o.used !== false ? "checked" : ""} /></td>
+      <td>${esc(o.name)}<div class="hint">${Number(o.price_type) === 1 ? "按商品单价百分比" : "固定金额"} · ${unitLabel}</div></td>
+      <td>${inp(`items.${ii}.options.${oi}.order_num`, o.order_num, "number")}</td>
+      <td><button class="btn tiny danger" type="button" data-del-opt="${ii}:${oi}">删除</button></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="4">这一番还没加 OPTION。从下面选一个加上。</td></tr>`;
+  const adders = CATALOG.map((x) => {
+    const taken = (item.options || []).some((o) => o.id === x.id);
+    return `<button class="btn tiny secondary" type="button" data-add-opt="${ii}:${x.id}" ${taken ? "disabled" : ""}>${taken ? `已加 ${x.name}` : `加 ${x.name}`}</button>`;
+  }).join("");
+  return `<table class="plain">
+    <thead><tr><th>用</th><th>OPTION</th><th>下单买几个</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="actions" style="margin-top:8px">${adders}</div>
+  <small class="hint">这里只填下单时买了哪些。出了问题要改 OPTION，到「处理问题」第 3 步。</small>`;
+}
+
+function itemHtml(it, ii) {
+  return `<div class="item-card">
+    <header>
+      <strong>单番 ${esc(it.sorting)}</strong>
+      <button class="btn tiny danger" type="button" data-del-item="${ii}">删除这番</button>
+    </header>
+    <div class="grid">
+      <div class="field"><label>单番序号</label>${inp(`items.${ii}.sorting`, it.sorting, "number")}<small class="hint">删掉中间一番，后面的序号不会自动往前挤。</small></div>
+      <div class="field"><label>买几个</label>${inp(`items.${ii}.quantity`, it.quantity, "number")}</div>
+      <div class="field wide"><label>报给客户的单价</label>${cny(`items.${ii}.offer_price`, it.offer_price)}<small class="hint">报价给客户看的那个单价，不是采购价。</small></div>
+      <div class="field"><label>这一番的国内运费</label>${cny(`items.${ii}.offer_freight`, it.offer_freight)}</div>
+    </div>
+    <details class="more">
+      <summary>采购价 / 确认价一般跟报价一样，需要时再改</summary>
+      <div class="grid" style="margin-top:8px">
+        <div class="field"><label>采购单价</label>${cny(`items.${ii}.purchase_price`, it.purchase_price)}</div>
+        <div class="field"><label>确认单价</label>${cny(`items.${ii}.confirm_price`, it.confirm_price)}</div>
+      </div>
+    </details>
+    <div style="margin-top:10px"><strong style="font-size:12px">这一番的 OPTION</strong></div>
+    ${optionTable(it, ii)}
+  </div>`;
+}
+
+function partPayHtml(c) {
+  const pp = c.part_pay;
+  if (!pp.enabled) return "";
+  const preview = partPreview(c);
+  const feeSel = FEE_FIELDS.map((f) => `
+    <div class="field">
+      <label>${esc(f.label)}</label>
+      ${sel(`part_pay.fee_timing.${f.key}`, pp.fee_timing[f.key], [["first", "首款支付"], ["tail", "尾款支付"]])}
+    </div>`).join("");
+  const rows = preview.rows.map((r) => `<tr><td>${esc(r.label)}</td><td>${yen(r.amount)}</td><td>${r.timing === "split" ? `首款 ${preview.percent}% / 其余尾款` : r.timing === "tail" ? "尾款" : "首款"}</td></tr>`).join("");
+  const partialText = pp.tail_partial
+    ? `按番尾款：番序号 ${pp.tail_sortings || "还没填，执行时会拦住"}`
+    : "整单剩余尾款：到节点时付剩下的全部尾款";
+  return `<details class="block" open>
+    <summary>分批付款 <em>和数据工厂「全流程加入分批付款」同一套</em></summary>
+    <div class="inner">
+      <div class="grid">
+        <div class="field"><label>首款比例</label>
+          ${sel("part_pay.percent", pp.percent, PERCENTS.map((n) => [n, n + "%"]))}
+          <small class="hint">商品金额按这个比例先付，剩下的是尾款。</small>
+        </div>
+        <div class="field"><label>尾款什么时候付</label>
+          ${sel("part_pay.tail_node", pp.tail_node, [["before_shelf", "上架仓库前"], ["before_porder_create", "提出配送单前"]])}
+        </div>
+        <div class="field"><label>尾款付哪些番</label>
+          ${sel("part_pay.tail_partial", pp.tail_partial ? 1 : 0, [["0", "整单剩余尾款"], ["1", "按番尾款"]])}
+        </div>
+        <div class="field"><label>尾款支付番序号</label>
+          ${inp("part_pay.tail_sortings", pp.tail_sortings)}
+          <small class="hint">选「按番尾款」时填，例如 1,2。序号按下面每个单番的「单番序号」。</small>
+        </div>
+        ${feeSel}
+      </div>
+      <p class="note">${esc(partialText)}</p>
+      <table class="plain preview-table">
+        <thead><tr><th>费用项</th><th>预估金额</th><th>支付节点</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </details>`;
+}
+
+function orderPaneHtml(c) {
+  const isPart = c.part_pay.enabled;
+  return `
+      <details class="block" open>
+        <summary>怎么付钱</summary>
+        <div class="inner">
+          <div class="grid">
+            <div class="field"><label>支付渠道</label>${sel("payment_mode", c.payment_mode, [["balance", "余额"], ["bank", "银行"]])}</div>
+            <div class="field"><label>一次付清还是分批</label>${sel("part_pay.enabled", isPart ? 1 : 0, [["0", "一次付清"], ["1", "分批付款"]])}</div>
+            ${c.payment_mode === "bank" ? `<label class="check wide"><input data-k="finance_confirm" type="checkbox" checked />银行支付后，财务要确认到账</label>` : ""}
+          </div>
+        </div>
+      </details>
+      ${partPayHtml(c)}
+      <details class="block" open>
+        <summary>订单怎么算</summary>
+        <div class="inner">
+          <div class="grid">
+            <div class="field"><label>每个单番默认买几个</label>${inp("defaults.quantity", c.defaults.quantity, "number")}</div>
+            <div class="field"><label>报给客户的单价</label>${cny("defaults.offer_price", c.defaults.offer_price)}<small class="hint">报价给客户的单价。点「新建单番」时会带进去。</small></div>
+            <div class="field"><label>默认国内运费</label>${cny("defaults.freight", c.defaults.freight)}</div>
+            <div class="field"><label>其他费用叫什么</label>${inp("other_fee_name", c.other_fee_name)}</div>
+            <div class="field"><label>其他费用多少钱</label>${cny("other_fee_amount", c.other_fee_amount)}</div>
+          </div>
+        </div>
+      </details>
+      <details class="block" open>
+        <summary>每个单番 <em>现在 ${c.items.length} 番</em></summary>
+        <div class="inner">
+          ${c.items.map((it, i) => itemHtml(it, i)).join("")}
+          <button class="btn secondary" type="button" id="addItem">新建单番</button>
+        </div>
+      </details>
+      ${couponHtml(c)}`;
+}
+
+function couponHtml(c) {
+  const cp = c.coupon || emptyCoupon();
+  const t = totals(c);
+  const ticket = selectedCoupon(c);
+  const emptyWallet = !(wallet().coupons || []).length;
+  return `<details class="block" open>
+    <summary>订单优惠券 <em>选一张就把手续费变成 0</em></summary>
+    <div class="inner">
+      <div class="field wide">
+        <label>从测试账号 ${esc(state.customerId)} 拉到的优惠券</label>
+        ${sel("coupon.selectedId", cp.selectedId || "", ticketOptions("coupon", cp.selectedId))}
+      </div>
+      ${emptyWallet ? `<p class="hint">这个账号没有优惠券。换 300001 / 300002，或点「重新拉券」。</p>` : ""}
+      <p class="note">${ticket
+        ? `已选「${esc(ticket.title)}」。手续费从 ${yen(t.serviceBase)} 变成 0，订单应付 ${yen(t.payable)}。优惠券只免手续费，不减商品货款，也不能用在配送单。`
+        : `没选券。手续费按商品金额 5% 算，现在是 ${yen(t.service)}。`}</p>
+    </div>
+  </details>`;
+}
+
+function porderPaneHtml(c) {
+  const p = c.porder || emptyPorder();
+  const t = porderTotals(c);
+  const v = p.voucher || emptyPorder().voucher;
+  const emptyWallet = !(wallet().vouchers || []).length;
+  return `
+    <p class="how">配送单金额跟订单商品、国内运费、OPTION、订单优惠券都无关。国际运费按物流方式 + 箱子长宽高重量，走 porder.predictLogisticsPrice 算出来，不要手填。</p>
+    <details class="block" open>
+      <summary>怎么付钱</summary>
+      <div class="inner">
+        <div class="grid">
+          <div class="field"><label>支付渠道</label>${sel("porder.payment_mode", p.payment_mode, [["balance", "余额"], ["bank", "银行"]])}</div>
+        </div>
+      </div>
+    </details>
+    <details class="block" open>
+      <summary>提出哪些货 <em>不计入金额，只说明发什么</em></summary>
+      <div class="inner">
+        <div class="grid">
+          <div class="field"><label>提出几番</label>${inp("porder.sku_count", p.sku_count, "number")}</div>
+          <div class="field"><label>每番发几个</label>${inp("porder.send_num", p.send_num, "number")}</div>
+        </div>
+        <small class="hint">这是仓库提出数量，不拿来乘单价。配送单不收商品货款。</small>
+      </div>
+    </details>
+    <details class="block" open>
+      <summary>怎么装箱 <em>这些尺寸会拿去算运费</em></summary>
+      <div class="inner">
+        <div class="grid four">
+          <div class="field"><label>箱子数量</label>${inp("porder.box_count", p.box_count, "number")}</div>
+          <div class="field"><label>箱长</label>${inp("porder.box_length", p.box_length, "number")}</div>
+          <div class="field"><label>箱宽</label>${inp("porder.box_width", p.box_width, "number")}</div>
+          <div class="field"><label>箱高</label>${inp("porder.box_height", p.box_height, "number")}</div>
+          <div class="field"><label>箱重（KG）</label>${inp("porder.box_weight", p.box_weight, "number")}</div>
+          <div class="field"><label>单箱体积</label><input readonly tabindex="-1" value="${esc(t.quote.volume)}" /><small class="hint">长×宽×高 = ${esc(t.quote.length)}×${esc(t.quote.width)}×${esc(t.quote.height)}，接口入参 volume。</small></div>
+        </div>
+      </div>
+    </details>
+    <details class="block" open>
+      <summary>配送单怎么算钱 <em>换物流或改箱子，运费跟着变</em></summary>
+      <div class="inner">
+        <div class="grid">
+          <div class="field wide"><label>国际物流方式</label>${sel("porder.logistics", p.logistics, LOGISTICS)}
+            <small class="hint">不同物流方式报价不同。先选物流，再按每箱尺寸调接口。</small>
+          </div>
+          <div class="field"><label>计费重（KG）</label><input readonly tabindex="-1" value="${esc(yen(t.quote.chargeKg))}" />
+            <small class="hint">实重 ${yen(t.quote.weight)} 和体积重 ${yen(t.quote.volW)} 取大的。</small>
+          </div>
+          <div class="field"><label>国际运费</label>${p.price_manual ? cny("porder.logistics_price", p.logistics_price) : roCny(t.logistics)}
+            <small class="hint">${p.price_manual ? "已改成人工钉死。" : `执行时调 porder.predictLogisticsPrice，入参是每箱长宽高、重量、体积。freight_id 装箱后才有，这里不用填。原型用模拟价，落地以接口为准。`}</small>
+          </div>
+          <div class="field"><label>其他配送费用叫什么</label>${inp("porder.extra_name", p.extra_name)}</div>
+          <div class="field"><label>其他配送费用</label>${cny("porder.extra_fee", p.extra_fee)}</div>
+          <label class="check wide"><input data-k="porder.price_manual" type="checkbox" ${p.price_manual ? "checked" : ""} />少数情况要钉死金额，不用接口价</label>
+        </div>
+        <p class="note">${esc(t.quote.name)} · ${t.quote.count} 箱 · 单箱 ${yen(t.quote.perBox)} · ${t.manual ? "人工金额" : "接口报价"} ${yen(t.logistics)}。</p>
+        <table class="plain preview-table">
+          <thead><tr><th>费用项</th><th>金额</th></tr></thead>
+          <tbody>
+            <tr><td>国际运费</td><td>${yen(t.logistics)}</td></tr>
+            <tr><td>其他配送费用</td><td>${yen(t.extra)}</td></tr>
+            <tr><td>代金券抵扣</td><td>−${yen(t.voucher)}</td></tr>
+            <tr><td>配送单应付</td><td>${yen(t.payable)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+    <details class="block" open>
+      <summary>配送单代金券 <em>从账号拉列表，按券自己的规则抵</em></summary>
+      <div class="inner">
+        <div class="field wide">
+          <label>从测试账号 ${esc(state.customerId)} 拉到的代金券</label>
+          ${sel("porder.voucher.selectedId", v.selectedId || "", ticketOptions("voucher", v.selectedId))}
+        </div>
+        ${emptyWallet ? `<p class="hint">这个账号没有代金券。换 300001 / 300002，或点「重新拉券」。</p>` : ""}
+        <p class="note">${esc(t.voucherHint)}。不用填名称、ID、怎么减、减免多少钱。全部抵扣就把配送应付打成 0；按物流抵的只减国际运费，其他配送费用还在。代金券不能拿去减订单。</p>
+      </div>
+    </details>`;
+}
+
+function processOptionRows(c) {
+  const it = c.items[0] || makeItem(1, 1, 10, 3, []);
+  const manual = c.problem.option_deal === "manual";
+  const rows = (it.options || []).filter((o) => o.used !== false).map((o) => {
+    const realIndex = it.options.indexOf(o);
+    const unit = Number(o.price_type) === 1 ? "%" : "元";
+    return `<tr>
+      <td>${esc(o.name)}</td>
+      <td>${o.order_num} ${Number(o.price_type) === 1 ? `· ${o.price}%` : `· ${yen(o.price)}元`}</td>
+      <td>${manual ? inp(`items.0.options.${realIndex}.after_num`, o.after_num, "number") : `<span>${esc(o.after_num)}</span>`}</td>
+      <td>${manual ? `${inp(`items.0.options.${realIndex}.after_price`, o.after_price, "number")} <span class="hint">${unit}</span>` : `${esc(o.after_price)}${unit}`}</td>
+      <td>${manual ? `<button class="btn tiny danger" type="button" data-del-opt="0:${realIndex}">删除</button>` : "自动跟着数量变"}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="5">下单时没加 OPTION。要改 OPTION，先到「造订单」里加上，再回到这一步。</td></tr>`;
+  const adders = manual ? CATALOG.map((x) => {
+    const taken = (it.options || []).some((o) => o.id === x.id);
+    return `<button class="btn tiny secondary" type="button" data-add-opt="0:${x.id}" ${taken ? "disabled" : ""}>${taken ? `已加 ${x.name}` : `加 ${x.name}`}</button>`;
+  }).join("") : "";
+  return `<table class="plain compare">
+    <thead><tr><th>OPTION</th><th>下单时</th><th>改成几个</th><th>改成价格/比例</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  ${adders ? `<div class="actions" style="margin-top:8px">${adders}</div>` : ""}`;
+}
+
+function problemProcessHtml(c) {
+  const p = c.problem;
+  const it = c.items[0] || makeItem(1, 1, 10, 3, []);
+  const d = problemDelta(c);
+  const word = !d ? "" : d.total < 0 ? `改完预计应退 ${yen(Math.abs(d.total))} 元` : d.total > 0 ? `改完预计应补 ${yen(d.total)} 元` : "改完不退不补";
+  const tone = !d || d.total === 0 ? "" : d.total < 0 ? "credit" : "debit";
+  return `
+    <p class="how">执行这条用例时，脚本会先按「造订单」下好单，再按下面 6 步做问题产品处理。你现在填的就是这 6 步要做的事。</p>
+    <div class="rail">
+      <span class="on">1 提出</span><span class="on">2 改数量单价运费</span><span class="on">3 OPTION</span>
+      <span class="on">4 客户选</span><span class="on">5 业务定</span><span class="on">6 采购处理</span>
+    </div>
+    <div class="step">
+      <header><b>1</b><strong>提出什么问题</strong><em>对应数据工厂「提出问题产品」</em></header>
+      <div class="grid">
+        <div class="field"><label>问题类型</label>${sel("problem.problem_type", p.problem_type, PROBLEM_TYPES)}</div>
+        <div class="field"><label>这次提出几个</label>${inp("problem.problem_num", p.problem_num, "number")}<small class="hint">不是改完后剩几个，是这次当问题提出去的件数。</small></div>
+        <div class="field wide"><label>问题描述</label>${inp("problem.description", p.description)}</div>
+        <div class="field wide"><label>给客户看的译文</label>${inp("problem.translation", p.translation)}</div>
+      </div>
+    </div>
+    <div class="step">
+      <header><b>2</b><strong>把数量 / 单价 / 运费改成什么样</strong><em>左边是下单时的数，右边是你要改成的数</em></header>
+      <table class="plain compare">
+        <thead><tr><th></th><th>下单时（当前）</th><th>改成</th></tr></thead>
+        <tbody>
+          <tr><td>数量</td><td>${esc(it.quantity)}</td><td>${inp("problem.pre_num", p.pre_num, "number")}</td></tr>
+          <tr><td>报给客户的单价</td><td>${yen(it.offer_price)} CNY</td><td>${cny("problem.pre_price", p.pre_price)}</td></tr>
+          <tr><td>国内运费</td><td>${yen(it.offer_freight)} CNY</td><td>${cny("problem.pre_freight", p.pre_freight)}</td></tr>
+        </tbody>
+      </table>
+      <p class="delta-line ${tone}">${word}</p>
+      <div class="field" style="margin-top:8px;max-width:220px">
+        <label>让脚本自动改价时，每次加减</label>
+        ${cny("problem.amount_step", p.amount_step)}
+        <small class="hint">多数时候直接改右边「改成」即可。只有脚本自己涨价/降价时才用这个 1 元步长。</small>
+      </div>
+    </div>
+    <div class="step">
+      <header><b>3</b><strong>OPTION 怎么处理</strong><em>对应数据工厂「附加服务费」</em></header>
+      <div class="field">
+        <label>OPTION 金额怎么算</label>
+        ${sel("problem.option_deal", p.option_deal, [["auto", "系统自动算：商品少了，OPTION 跟着少"], ["manual", "按我在下面改的数量和价格算"]])}
+      </div>
+      ${processOptionRows(c)}
+    </div>
+    <div class="step">
+      <header><b>4</b><strong>客户怎么选</strong><em>对应数据工厂「客户处理」</em></header>
+      <div class="grid">
+        <div class="field"><label>客户选择</label>${sel("problem.client_deal", p.client_deal, CLIENT_DEALS)}</div>
+        <div class="field" ${p.client_deal === "other" ? "" : 'style="display:none"'}>
+          <label>其他回复</label>${inp("problem.client_other", p.client_other)}
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <header><b>5</b><strong>业务怎么定手续费</strong><em>对应数据工厂「业务决策与费用」</em></header>
+      ${selectedCoupon(c) ? `<p class="note">这条订单选了手续费减免券，手续费按 0。下面费率和多退少补在没选券时才用。</p>` : ""}
+      <div class="grid">
+        <div class="field"><label>手续费</label>${sel("problem.service_deal", p.service_deal, [["refund", "多退少补"], ["keep", "已收不退"]])}</div>
+        <div class="field"><label>手续费率</label>${inp("problem.service_rate", p.service_rate, "number")}<small class="hint">填 0.05 表示 5%。</small></div>
+        <div class="field wide"><label>业务处理意见</label>${inp("problem.business_decision", p.business_decision)}</div>
+      </div>
+    </div>
+    <div class="step">
+      <header><b>6</b><strong>采购怎么处理</strong><em>对应数据工厂「采购处理」</em></header>
+      <div class="grid">
+        <div class="field"><label>采购处理类型</label>${sel("problem.g_deal_type", p.g_deal_type, PURCHASE_DEALS)}</div>
+        <div class="field"><label>采购备注</label>${inp("problem.purchase_remark", p.purchase_remark)}</div>
+        <label class="check wide"><input data-k="problem.confirm_distribution" type="checkbox" ${p.confirm_distribution ? "checked" : ""} />采购完成后自动配货确认</label>
+      </div>
+    </div>`;
+}
+
+function renderDrawer() {
+  const c = current();
+  const box = document.getElementById("drawer");
+  if (!c) {
+    box.innerHTML = `<div class="drawer-head"><h3 class="drawer-title">还没有用例</h3><p class="note">点左边「新建用例」。</p></div>`;
+    return;
+  }
+  const isProblem = c.category === "problem";
+  const isPorder = c.category === "porder";
+  const tab = isProblem ? state.tab : "order";
+  box.innerHTML = `
+    <div class="drawer-head">
+      <div class="drawer-kicker"><span>参数设置</span><b>${c.id}</b></div>
+      <h3 class="drawer-title">${esc(c.name)}</h3>
+      ${billHtml(c)}
+      ${isProblem ? `<div class="drawer-tabs">
+        <button type="button" class="${tab === "process" ? "active" : ""}" data-tab="process">处理问题</button>
+        <button type="button" class="${tab === "order" ? "active" : ""}" data-tab="order">造订单</button>
+      </div>` : ""}
+    </div>
+    <div class="drawer-body">
+      ${isPorder ? porderPaneHtml(c) : (isProblem && tab === "process" ? problemProcessHtml(c) : orderPaneHtml(c))}
+      <div class="foot">
+        <button class="btn" type="button">保存参数</button>
+        <button class="btn secondary" type="button" id="copyCase">复制用例</button>
+        <button class="btn danger" type="button" id="delCase2">删除用例</button>
+        <button class="btn" type="button">单条执行</button>
+      </div>
+    </div>`;
+}
+
+function getPath(obj, path) {
+  return path.split(".").reduce((cur, k) => (cur == null ? cur : Array.isArray(cur) ? cur[Number(k)] : cur[k]), obj);
+}
+function setPath(obj, path, value) {
+  const keys = path.split(".");
+  let cur = obj;
+  for (let i = 0; i < keys.length - 1; i += 1) {
+    const k = keys[i];
+    cur = Array.isArray(cur) ? cur[Number(k)] : cur[k];
+  }
+  const last = keys[keys.length - 1];
+  if (Array.isArray(cur)) cur[Number(last)] = value;
+  else cur[last] = value;
+}
+
+function onField(el) {
+  const c = current();
+  if (!c) return;
+  const key = el.getAttribute("data-k");
+  const isCheck = el.type === "checkbox";
+  const prev = getPath(c, key);
+  let value = isCheck ? el.checked : el.value;
+  if (key === "part_pay.enabled" || key === "part_pay.tail_partial") value = String(el.value) === "1" || el.value === true;
+  else if (key === "part_pay.percent") value = Number(el.value);
+  else if (typeof prev === "number") value = el.value === "" ? 0 : Number(el.value);
+  setPath(c, key, value);
+  if (key === "defaults.offer_price" && c.items.length === 1) c.items[0].offer_price = value;
+  if (key === "defaults.quantity" && c.items.length === 1) c.items[0].quantity = value;
+  if (key === "defaults.freight" && c.items.length === 1) c.items[0].offer_freight = value;
+  if (key === "porder.price_manual" && value) c.porder.logistics_price = predictFreight(c.porder).total;
+  if (key === "part_pay.enabled" || key === "payment_mode" || key === "problem.option_deal" || key === "problem.client_deal" || key === "coupon.selectedId" || key === "porder.voucher.selectedId" || key === "porder.price_manual" || key === "porder.logistics") {
+    renderDrawer();
+    return;
+  }
+  const head = document.querySelector(".drawer-head");
+  if (head) {
+    const isProblem = c.category === "problem";
+    const tab = isProblem ? state.tab : "order";
+    head.innerHTML = `<div class="drawer-kicker"><span>参数设置</span><b>${c.id}</b></div>
+      <h3 class="drawer-title">${esc(c.name)}</h3>
+      ${billHtml(c)}
+      ${isProblem ? `<div class="drawer-tabs">
+        <button type="button" class="${tab === "process" ? "active" : ""}" data-tab="process">处理问题</button>
+        <button type="button" class="${tab === "order" ? "active" : ""}" data-tab="order">造订单</button>
+      </div>` : ""}`;
+  }
+  const delta = document.querySelector(".delta-line");
+  if (delta && c.problem) {
+    const d = problemDelta(c);
+    const word = d.total < 0 ? `改完预计应退 ${yen(Math.abs(d.total))} 元` : d.total > 0 ? `改完预计应补 ${yen(d.total)} 元` : "改完不退不补";
+    delta.textContent = word;
+    delta.className = `delta-line ${d.total < 0 ? "credit" : d.total > 0 ? "debit" : ""}`;
+  }
+}
+
+function deleteCase(id) {
+  if (state.cases.length <= 1) return toast("至少留一条用例");
+  const target = state.cases.find((c) => c.id === id);
+  if (!target) return;
+  if (!confirm(`删除 ${target.id}「${target.name}」？\n编号 ${target.id} 会空着，后面的编号不会往前变成它。`)) return;
+  state.retired.push(target.id);
+  state.cases = state.cases.filter((c) => c.id !== id);
+  if (state.activeId === id) state.activeId = state.cases[0].id;
+  toast(`${target.id} 已删除，其他编号不变`);
+  render();
+}
+
+function selectedNewType() {
+  const kindBtn = document.querySelector(".kind-pick button.active");
+  const kind = kindBtn ? kindBtn.getAttribute("data-kind") : "order";
+  if (kind === "porder") return "porder";
+  return document.getElementById("newType").value;
+}
+function setNewKind(kind) {
+  document.querySelectorAll(".kind-pick button").forEach((btn) => {
+    btn.classList.toggle("active", btn.getAttribute("data-kind") === kind);
+  });
+  const orderExtra = document.getElementById("orderKindExtra");
+  const porderExtra = document.getElementById("porderKindExtra");
+  if (orderExtra) orderExtra.hidden = kind !== "order";
+  if (porderExtra) porderExtra.hidden = kind !== "porder";
+  const name = document.getElementById("newName");
+  if (name && !name.value) name.placeholder = kind === "porder" ? "例如 海运加代金券" : "例如 两番分批付款";
+  previewNewKey();
+}
+
+function addCase(type, name) {
+  const isPart = type === "part";
+  const isProblem = type === "problem";
+  const isPorder = type === "porder";
+  const prefix = isProblem ? "JP-PG" : isPorder ? "JP-PORDER" : "JP-PAY";
+  const id = nextKey(prefix);
+  const c = {
+    id,
+    name: name || (isProblem ? "新建问题产品" : isPorder ? "新建配送单" : isPart ? "新建分批付款" : "新建支付用例"),
+    category: isProblem ? "problem" : isPorder ? "porder" : "payment",
+    origin: "mine",
+    payment_mode: "balance",
+    defaults: { quantity: 1, offer_price: 10, freight: 3 },
+    other_fee_name: "", other_fee_amount: 0,
+    items: isPorder ? [] : [makeItem(1, 1, 10, 3, [])],
+    part_pay: emptyPartPay(isPart),
+    problem: isProblem ? emptyProblem() : null,
+    coupon: emptyCoupon(),
+    porder: emptyPorder()
+  };
+  state.cases.push(c);
+  state.activeId = id;
+  state.tab = isProblem ? "process" : "order";
+  state.category = c.category;
+  toast(`已新建 ${id}（没有占用已删除的空号）`);
+}
+
+function previewNewKey() {
+  const type = selectedNewType();
+  const prefix = type === "problem" ? "JP-PG" : type === "porder" ? "JP-PORDER" : "JP-PAY";
+  document.getElementById("newKeyPreview").value = nextKey(prefix);
+  const hint = document.getElementById("newKeyHint");
+  if (hint) {
+    hint.textContent = type === "porder"
+      ? "这是配送单，编号前缀 JP-PORDER。"
+      : type === "problem"
+        ? "这是订单里的问题产品，编号前缀 JP-PG。"
+        : "这是订单支付，编号前缀 JP-PAY。";
+  }
+}
+
+function render() {
+  const note = document.getElementById("walletNote");
+  if (note) note.textContent = walletSummary();
+  renderCats();
+  renderTable();
+  renderDrawer();
+}
+
+document.addEventListener("click", (ev) => {
+  const cat = ev.target.closest("[data-cat]");
+  if (cat) {
+    state.category = cat.getAttribute("data-cat");
+    if (!visible().some((c) => c.id === state.activeId)) {
+      state.activeId = (visible()[0] || {}).id;
+      const row = current();
+      state.tab = row && row.category === "problem" ? "process" : "order";
+    }
+    render();
+    return;
+  }
+  const open = ev.target.closest("[data-open]");
+  if (open) {
+    state.activeId = open.getAttribute("data-open");
+    const row = state.cases.find((c) => c.id === state.activeId);
+    state.tab = row && row.category === "problem" ? "process" : "order";
+    render();
+    return;
+  }
+  const tabBtn = ev.target.closest("[data-tab]");
+  if (tabBtn) {
+    state.tab = tabBtn.getAttribute("data-tab");
+    renderDrawer();
+    return;
+  }
+  const delRow = ev.target.closest("[data-del-row]");
+  if (delRow) { deleteCase(delRow.getAttribute("data-del-row")); return; }
+  const kindBtn = ev.target.closest(".kind-pick [data-kind]");
+  if (kindBtn) {
+    setNewKind(kindBtn.getAttribute("data-kind"));
+    return;
+  }
+  if (ev.target.id === "newCase") {
+    document.getElementById("newName").value = "";
+    document.getElementById("newType").value = state.category === "problem" ? "problem" : "payment";
+    setNewKind(state.category === "porder" ? "porder" : "order");
+    document.getElementById("modal").classList.add("show");
+    return;
+  }
+  if (ev.target.id === "cancelNew") { document.getElementById("modal").classList.remove("show"); return; }
+  if (ev.target.id === "confirmNew") {
+    addCase(selectedNewType(), document.getElementById("newName").value.trim());
+    document.getElementById("modal").classList.remove("show");
+    render();
+    return;
+  }
+  if (ev.target.id === "delCase" || ev.target.id === "delCase2") { deleteCase(state.activeId); return; }
+  if (ev.target.id === "refreshTickets") {
+    applyCustomer(document.getElementById("customerId").value, true);
+    return;
+  }
+  if (ev.target.id === "restoreDemo") {
+    state.cases = seed();
+    state.retired = [];
+    state.category = "porder";
+    state.activeId = "JP-PORDER-002";
+    state.tab = "order";
+    sanitizeTickets();
+    toast("示例用例已恢复");
+    render();
+    return;
+  }
+  if (ev.target.id === "copyCase") {
+    const src = current();
+    const prefix = src.category === "problem" ? "JP-PG" : src.category === "porder" ? "JP-PORDER" : "JP-PAY";
+    const copy = clone(src);
+    copy.id = nextKey(prefix);
+    copy.name = src.name + "（副本）";
+    copy.origin = "mine";
+    state.cases.push(copy);
+    state.activeId = copy.id;
+    toast(`已复制为 ${copy.id}`);
+    render();
+    return;
+  }
+  if (ev.target.id === "addItem") {
+    const c = current();
+    const sorting = (c.items.reduce((m, it) => Math.max(m, Number(it.sorting) || 0), 0) || 0) + 1;
+    c.items.push(makeItem(sorting, c.defaults.quantity, c.defaults.offer_price, c.defaults.freight, []));
+    toast(`新建单番 ${sorting}，旧单番序号没变`);
+    renderDrawer();
+    return;
+  }
+  const delItem = ev.target.closest("[data-del-item]");
+  if (delItem) {
+    const c = current();
+    if (c.items.length <= 1) return toast("至少留一个单番");
+    const i = Number(delItem.getAttribute("data-del-item"));
+    const gone = c.items[i].sorting;
+    c.items.splice(i, 1);
+    toast(`单番 ${gone} 已删，其他单番序号不往前挤`);
+    renderDrawer();
+    return;
+  }
+  const addOpt = ev.target.closest("[data-add-opt]");
+  if (addOpt) {
+    const [ii, id] = addOpt.getAttribute("data-add-opt").split(":");
+    const item = current().items[Number(ii)];
+    item.options.push(makeOpt(id, item.quantity));
+    renderDrawer();
+    return;
+  }
+  const delOpt = ev.target.closest("[data-del-opt]");
+  if (delOpt) {
+    const [ii, oi] = delOpt.getAttribute("data-del-opt").split(":").map(Number);
+    current().items[ii].options.splice(oi, 1);
+    renderDrawer();
+  }
+});
+
+document.addEventListener("change", (ev) => {
+  if (ev.target.id === "newType") previewNewKey();
+  if (ev.target.id === "customerId") {
+    applyCustomer(ev.target.value, true);
+    return;
+  }
+  if (ev.target.matches("[data-k]")) {
+    onField(ev.target);
+    const key = ev.target.getAttribute("data-k");
+    if (key && (key.startsWith("part_pay") || key.startsWith("porder") || key.startsWith("coupon") || key.includes("options") || key.includes("offer_price") || key.includes("quantity") || key.includes("freight") || key.includes("other_fee") || key.startsWith("problem") || key.startsWith("defaults"))) {
+      if ((key.startsWith("part_pay") && key !== "part_pay.enabled") || key.startsWith("porder") || key.startsWith("coupon")) {
+        renderDrawer();
+        const again = document.querySelector(`[data-k="${key}"]`);
+        if (again) again.focus();
+      }
+    }
+  }
+});
+document.addEventListener("input", (ev) => {
+  if (ev.target.matches("[data-k]")) onField(ev.target);
+});
+
+render();
+</script>
+</body>
+</html>
