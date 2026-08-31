@@ -412,6 +412,19 @@ class UiRecordPreflight(Base):
     update_time = Column(DateTime, nullable=True)
 
 
+class UiRecordProjectConfig(Base):
+    __tablename__ = "ui_record_project_config"
+
+    project_id = Column(Integer, primary_key=True)
+    reset_script_key = Column(String(80), nullable=False)
+    reset_env_id = Column(Integer, nullable=False, index=True)
+    reset_variables_json = Column(Text, nullable=False, default="{}")
+    verification_rounds = Column(Integer, nullable=False, default=2)
+    max_repair_attempts = Column(Integer, nullable=False, default=3)
+    create_time = Column(DateTime, nullable=False)
+    update_time = Column(DateTime, nullable=True)
+
+
 class UiLocatorMemory(Base):
     __tablename__ = "ui_locator_memory"
     __table_args__ = (

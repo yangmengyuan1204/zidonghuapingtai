@@ -16,6 +16,7 @@ from ..executors import to_json_text
 from ..models import TestAccountProfile, UiCase, UiRecordPreflight, User
 from ..security import require_admin
 from ..services import ui_recording_session
+from ..services.ui_recording_config import save_recording_config, serialize_recording_config
 from ..services.ui_recording_preflight import (
     create_preflight,
     determine_recorded_case_status,
@@ -47,6 +48,30 @@ def _recording_account_profile(db: Session, raw_profile_id: Any, project_id: int
     if profile.project_id not in {None, project_id}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="测试账号不属于当前项目")
     return profile
+
+
+@router.get("/projects/{project_id}/config")
+def get_ui_record_project_config(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    ensure_project_exists(db, project_id)
+    return serialize_recording_config(db, project_id)
+
+
+@router.put("/projects/{project_id}/config")
+def put_ui_record_project_config(
+    project_id: int,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    try:
+        save_recording_config(db, project_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return serialize_recording_config(db, project_id)
 
 
 @router.post("/sessions")

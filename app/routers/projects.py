@@ -14,7 +14,7 @@ from ..core.utils import (
 )
 from ..database import get_db
 from ..models import (
-    Project, Env, ApiCase, UiCase, UiCaseRevision, UiLocatorMemory, UiRecordPreflight,
+    Project, Env, ApiCase, UiCase, UiCaseRevision, UiLocatorMemory, UiRecordPreflight, UiRecordProjectConfig,
     TestRecord, TestAccountBinding, TestAccountProfile, User,
     FunctionalTask, FunctionalCase, FunctionalRun, FunctionalScreenshot,
     FunctionalRequirementNote, FunctionalImpactItem, FunctionalDataCheckResult,
@@ -223,6 +223,7 @@ def delete_project(
     if ui_ids:
         db.query(UiCaseRevision).filter(UiCaseRevision.case_id.in_(ui_ids)).delete(synchronize_session=False)
     db.query(UiRecordPreflight).filter(UiRecordPreflight.project_id == project_id).delete(synchronize_session=False)
+    db.query(UiRecordProjectConfig).filter(UiRecordProjectConfig.project_id == project_id).delete(synchronize_session=False)
     db.query(UiLocatorMemory).filter(UiLocatorMemory.project_id == project_id).delete(synchronize_session=False)
     if ui_ids:
         db.query(UiCase).filter(UiCase.id.in_(ui_ids)).delete(synchronize_session=False)

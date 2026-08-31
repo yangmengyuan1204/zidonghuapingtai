@@ -950,6 +950,16 @@
     "name": "get_visual_ui_execution"
   },
   {
+    "method": "GET",
+    "path": "/api/ui-record/projects/{project_id}/config",
+    "name": "get_ui_record_project_config"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/ui-record/projects/{project_id}/config",
+    "name": "put_ui_record_project_config"
+  },
+  {
     "method": "POST",
     "path": "/api/ui-record/sessions",
     "name": "create_ui_record_session"
