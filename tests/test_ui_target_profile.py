@@ -135,6 +135,27 @@ def test_target_profile_filters_sensitive_keys_from_fragment_query_url_pattern()
     assert "frag-pass" not in str(profile)
 
 
+def test_target_profile_normalizes_sensitive_query_key_names_but_keeps_business_code():
+    profile = build_target_profile({
+        "url": (
+            "https://example.test/orders?accessToken=access-value&access-token=hyphen-value"
+            "&auth_token=auth-value&clientSecret=client-value&session_token=session-value"
+            "&jwt=jwt-value&order_code=ORD-100"
+        ),
+    })
+
+    assert profile["page"]["url_pattern"] == "https://example.test/orders*order_code=ORD-100*"
+    for value in (
+        "access-value",
+        "hyphen-value",
+        "auth-value",
+        "client-value",
+        "session-value",
+        "jwt-value",
+    ):
+        assert value not in str(profile)
+
+
 def test_target_profile_rejects_dynamic_aria_controls_as_stable_identity():
     profile = build_target_profile({
         "tag": "button",

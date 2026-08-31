@@ -49,6 +49,8 @@ _SENSITIVE_QUERY_KEYS = {
     "sig",
     "token",
 }
+_SENSITIVE_QUERY_PARTS = {"authorization", "cookie", "jwt", "password", "secret", "session", "token"}
+_AUTH_CODE_QUERY_KEYS = {"auth_code", "authorization_code", "code", "oauth_code"}
 
 
 def _text(value: Any, max_len: int) -> str:
@@ -91,6 +93,18 @@ def _is_dynamic_identifier(value: str) -> bool:
     )
 
 
+def _normalize_query_key(value: str) -> str:
+    split_camel = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", value)
+    return re.sub(r"[^a-zA-Z0-9]+", "_", split_camel).strip("_").lower()
+
+
+def _is_sensitive_query_key(value: str) -> bool:
+    normalized = _normalize_query_key(value)
+    if normalized in _SENSITIVE_QUERY_KEYS or normalized in _AUTH_CODE_QUERY_KEYS:
+        return True
+    return any(part in _SENSITIVE_QUERY_PARTS for part in normalized.split("_"))
+
+
 def _url_pattern(value: Any) -> str:
     url = _text(value, 1000)
     if not url:
@@ -106,8 +120,8 @@ def _url_pattern(value: Any) -> str:
         kept = [
             (key, item)
             for key, item in pairs
-            if key.lower() not in _DYNAMIC_QUERY_KEYS
-            and key.lower() not in _SENSITIVE_QUERY_KEYS
+            if _normalize_query_key(key) not in _DYNAMIC_QUERY_KEYS
+            and not _is_sensitive_query_key(key)
         ]
         return urlencode(kept, doseq=True), len(kept) != len(pairs)
 
