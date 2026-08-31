@@ -29,6 +29,26 @@ _DYNAMIC_QUERY_KEYS = {
     "timestamp",
     "ts",
 }
+_SENSITIVE_QUERY_KEYS = {
+    "access_token",
+    "api_key",
+    "apikey",
+    "auth",
+    "authorization",
+    "client_secret",
+    "code",
+    "id_token",
+    "key",
+    "nonce",
+    "password",
+    "passwd",
+    "pass",
+    "refresh_token",
+    "secret",
+    "signature",
+    "sig",
+    "token",
+}
 
 
 def _text(value: Any, max_len: int) -> str:
@@ -83,7 +103,12 @@ def _url_pattern(value: Any) -> str:
 
     def cleaned_query(query: str) -> tuple[str, bool]:
         pairs = parse_qsl(query, keep_blank_values=True)
-        kept = [(key, item) for key, item in pairs if key.lower() not in _DYNAMIC_QUERY_KEYS]
+        kept = [
+            (key, item)
+            for key, item in pairs
+            if key.lower() not in _DYNAMIC_QUERY_KEYS
+            and key.lower() not in _SENSITIVE_QUERY_KEYS
+        ]
         return urlencode(kept, doseq=True), len(kept) != len(pairs)
 
     query, query_changed = cleaned_query(parts.query)

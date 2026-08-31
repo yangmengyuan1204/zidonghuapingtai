@@ -115,6 +115,26 @@ def test_target_profile_keeps_stable_spa_route_parts_in_url_pattern():
     assert hash_profile["page"]["url_pattern"] == "https://example.test/#/orders*"
 
 
+def test_target_profile_filters_sensitive_keys_from_query_url_pattern():
+    profile = build_target_profile({
+        "url": "https://example.test/orders?token=tok-123&status=paid&code=code-456",
+    })
+
+    assert profile["page"]["url_pattern"] == "https://example.test/orders*status=paid*"
+    assert "tok-123" not in str(profile)
+    assert "code-456" not in str(profile)
+
+
+def test_target_profile_filters_sensitive_keys_from_fragment_query_url_pattern():
+    profile = build_target_profile({
+        "url": "https://example.test/#/orders?access_token=frag-token&tab=history&password=frag-pass",
+    })
+
+    assert profile["page"]["url_pattern"] == "https://example.test/#/orders*tab=history*"
+    assert "frag-token" not in str(profile)
+    assert "frag-pass" not in str(profile)
+
+
 def test_target_profile_rejects_dynamic_aria_controls_as_stable_identity():
     profile = build_target_profile({
         "tag": "button",
