@@ -187,3 +187,68 @@ def test_network_effect_observation_records_responses_before_wait():
     }, 100)
 
     assert detail["satisfied"] is True
+
+def test_network_window_reset_discards_stale_records():
+    class _Page:
+        def __init__(self):
+            self._ui_network_results = [
+                {"url": "https://example.test/stale", "status": 200, "ok": True, "method": "GET"},
+            ]
+            self._ui_network_observer_registered = True
+
+        def on(self, _event, _callback):
+            raise AssertionError("should not re-register observer")
+
+        def wait_for_timeout(self, _milliseconds):
+            return None
+
+    page = _Page()
+    begin_network_effect_observation(page, reset=True)
+
+    assert page._ui_network_results == []
+
+
+def test_retry_round_preserves_network_records():
+    class _Page:
+        def __init__(self):
+            self._ui_network_results = [
+                {"url": "https://example.test/api/orders", "status": 201, "ok": True, "method": "POST"},
+            ]
+            self._ui_network_observer_registered = True
+
+        def on(self, _event, _callback):
+            raise AssertionError("should not re-register observer")
+
+        def wait_for_timeout(self, _milliseconds):
+            return None
+
+    page = _Page()
+    begin_network_effect_observation(page, reset=False)
+
+    assert len(page._ui_network_results) == 1
+
+
+def test_network_wait_rejects_stale_records_after_window_reset():
+    class _Page:
+        def __init__(self):
+            self._ui_network_results = [
+                {"url": "https://example.test/api/orders", "status": 201, "ok": True, "method": "POST"},
+            ]
+            self._ui_network_observer_registered = True
+
+        def on(self, _event, _callback):
+            raise AssertionError("should not re-register observer")
+
+        def wait_for_timeout(self, _milliseconds):
+            return None
+
+    page = _Page()
+    begin_network_effect_observation(page, reset=True)
+
+    with pytest.raises(TimeoutError):
+        wait_for_effect_profile(page, {
+            "effect_profile": {"effects": [{
+                "type": "network_result",
+                "expected": {"url": "https://example.test/api/orders", "status": 201, "method": "POST"},
+            }]},
+        }, 100)

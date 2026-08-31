@@ -9,8 +9,12 @@ class UiEffectTimeout(TimeoutError):
     """动作未在共享等待窗口内产生录制时观察到的结果。"""
 
 
-def begin_network_effect_observation(page: Any) -> list[dict[str, Any]]:
-    """在动作触发前记录响应摘要，供网络结果 effect 在同一轮中验证。"""
+def begin_network_effect_observation(page: Any, reset: bool = True) -> list[dict[str, Any]]:
+    """准备本步骤的网络结果观察窗口。
+
+    reset=True 时清空上一动作窗口残留记录，避免跨步骤伪满足；
+    重试轮传 reset=False 保留上一轮记录，供防重复提交预检查使用。
+    """
     records = getattr(page, "_ui_network_results", None)
     if not isinstance(records, list):
         records = []
@@ -18,6 +22,8 @@ def begin_network_effect_observation(page: Any) -> list[dict[str, Any]]:
             setattr(page, "_ui_network_results", records)
         except Exception:
             return records
+    if reset:
+        records.clear()
     if getattr(page, "_ui_network_observer_registered", False):
         return records
 

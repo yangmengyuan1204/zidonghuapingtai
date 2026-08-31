@@ -326,7 +326,7 @@ def test_retry_round_freezes_resolution_and_disables_ai_heal(monkeypatch):
     )[0] is True
     assert contexts[1]["freeze_resolution"] is True
     assert contexts[1]["disable_ai_heal"] is True
-
+    assert contexts[1]["_retry_round"] is True
 
 def test_target_profile_step_does_not_require_legacy_locator():
     actions._sync_compat_globals()
@@ -390,3 +390,74 @@ def test_dangerous_action_ignores_external_retry_policy(monkeypatch):
     assert len(calls) == 1
 
 
+
+def test_semantic_branch_begins_network_window_before_precheck(monkeypatch):
+    order = []
+    page = type("Page", (), {"url": "https://example.test/orders", "wait_for_timeout": lambda *_args: None})()
+    resolved = SimpleNamespace(
+        target=object(),
+        used_locator="#submit",
+        matched_count=1,
+        score=100,
+        reasons=("唯一目标",),
+        page_identity={"url": page.url, "title": ""},
+    )
+    step = {
+        "action": "click",
+        "name": "提交订单",
+        "target_profile": {"element": {"stable_attrs": {"id": "submit"}}},
+    }
+    monkeypatch.setattr(actions, "resolve_target", lambda *_args, **_kwargs: resolved, raising=False)
+
+    def fake_begin(_page, reset=True):
+        order.append(("begin", reset))
+        return []
+
+    def fake_precheck(_page, _step):
+        order.append(("precheck",))
+        return True
+
+    monkeypatch.setattr(actions, "begin_network_effect_observation", fake_begin, raising=False)
+    monkeypatch.setattr(actions, "effect_already_satisfied", fake_precheck, raising=False)
+    monkeypatch.setattr(actions, "_capture_evidence_screenshot", lambda *_args, **_kwargs: "", raising=False)
+    monkeypatch.setattr(actions, "_page_text_excerpt", lambda *_args, **_kwargs: "", raising=False)
+
+    actions._sync_compat_globals()
+    detail = actions._impl__run_ui_step(page, step, [], 5)
+
+    assert detail["effect_pre_satisfied"] is True
+    assert [item[0] for item in order] == ["begin", "precheck"]
+    assert order[0][1] is True
+
+
+def test_retry_round_reset_false_preserves_network_window(monkeypatch):
+    order = []
+    page = type("Page", (), {"url": "https://example.test/orders", "wait_for_timeout": lambda *_args: None})()
+    resolved = SimpleNamespace(
+        target=object(),
+        used_locator="#submit",
+        matched_count=1,
+        score=100,
+        reasons=("唯一目标",),
+        page_identity={"url": page.url, "title": ""},
+    )
+    step = {
+        "action": "click",
+        "name": "提交订单",
+        "target_profile": {"element": {"stable_attrs": {"id": "submit"}}},
+    }
+    monkeypatch.setattr(actions, "resolve_target", lambda *_args, **_kwargs: resolved, raising=False)
+
+    def fake_begin(_page, reset=True):
+        order.append(("begin", reset))
+        return []
+
+    monkeypatch.setattr(actions, "begin_network_effect_observation", fake_begin, raising=False)
+    monkeypatch.setattr(actions, "effect_already_satisfied", lambda *_args: True, raising=False)
+    monkeypatch.setattr(actions, "_capture_evidence_screenshot", lambda *_args, **_kwargs: "", raising=False)
+    monkeypatch.setattr(actions, "_page_text_excerpt", lambda *_args, **_kwargs: "", raising=False)
+
+    actions._sync_compat_globals()
+    actions._impl__run_ui_step(page, step, [], 5, execution_context={"_retry_round": True})
+
+    assert order[0][1] is False

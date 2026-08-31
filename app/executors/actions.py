@@ -204,10 +204,10 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
                 "resolution_page": resolved.page_identity,
                 "freeze_resolution": freeze_resolution,
             })
+            begin_network_effect_observation(page, reset=not bool(execution_context.get("_retry_round")))
             if effect_already_satisfied(page, step):
                 detail["effect_pre_satisfied"] = True
             else:
-                begin_network_effect_observation(page)
                 action_detail = execute_adapted_action(page, resolved, step, timeout_ms)
                 detail["action_adapter"] = action_detail.pop("adapter", "")
                 detail.update(action_detail)

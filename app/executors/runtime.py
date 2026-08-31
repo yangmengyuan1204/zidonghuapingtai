@@ -236,6 +236,7 @@ def _impl_execute_ui_case_in_page(
                         **execution_context,
                         "freeze_resolution": True,
                         "disable_ai_heal": True,
+                        "_retry_round": True,
                     }
                     for attempt in range(min(retry_count, max_retry_attempts)):
                         retry_page = _active_page(page)
