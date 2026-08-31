@@ -12,263 +12,12 @@ from playwright.async_api import async_playwright
 
 from .browser_session import _launch_chromium
 from .ui_locator_engine import build_locator_profile
+from .ui_recording_capture import RECORDING_SCRIPT, recording_init_script
+from .ui_target_profile import build_target_profile, sanitize_target_event
 
 _SESSION_TIMEOUT = 30 * 60
 _CLEANUP_INTERVAL = 5 * 60
 _MAX_EVENTS = 2000
-
-
-RECORDING_SCRIPT = r"""
-(() => {
-  if (window.__uiRecorderInstalled) return;
-  window.__uiRecorderInstalled = true;
-
-  const trimText = (value, max = 100) => String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
-  const cssEscape = (value) => {
-    if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(String(value));
-    return String(value).replace(/[^a-zA-Z0-9_-]/g, (ch) => `\\${ch}`);
-  };
-  const quoteCss = (value) => String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  const pushUnique = (items, value) => {
-    const text = String(value || "").trim();
-    if (text && !items.includes(text)) items.push(text);
-  };
-  const isVisible = (el) => {
-    if (!el) return false;
-    try {
-      const style = window.getComputedStyle(el);
-      const rect = el.getBoundingClientRect();
-      return style.visibility !== "hidden" && style.display !== "none" && rect.width > 0 && rect.height > 0;
-    } catch (error) {
-      return false;
-    }
-  };
-  const inspectCandidate = (value, strategy) => {
-    let count = null;
-    let visible = null;
-    try {
-      if (!value.startsWith("text=") && !value.includes(":has-text(")) {
-        const matches = Array.from(document.querySelectorAll(value));
-        count = matches.length;
-        visible = matches.some(isVisible);
-      }
-    } catch (error) {
-      count = null;
-      visible = null;
-    }
-    return { value, strategy, count, visible };
-  };
-  const pushCandidate = (items, value, strategy) => {
-    const text = String(value || "").trim();
-    if (!text || items.some((item) => item.value === text)) return;
-    items.push(inspectCandidate(text, strategy));
-  };
-  const targetElement = (raw) => {
-    if (!raw) return null;
-    if (raw.nodeType === Node.ELEMENT_NODE) return raw;
-    return raw.parentElement || null;
-  };
-  const cleanText = (value, max = 40) => String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
-  const elementText = (el) => {
-    if (!el) return "";
-    return cleanText(el.innerText || el.textContent || el.value || el.getAttribute("title") || el.getAttribute("aria-label") || "");
-  };
-  const isLikelyClickable = (el) => {
-    if (!el || el === document.body || el === document.documentElement) return false;
-    const tag = (el.tagName || "").toLowerCase();
-    if (["a", "button", "select", "summary", "input"].includes(tag)) return true;
-    if (el.getAttribute("role") === "button" || el.hasAttribute("onclick")) return true;
-    const className = String(el.getAttribute("class") || "");
-    if (/\b(btn|button|el-button|ant-btn|tab|item|menu-item|goods|card|cart)\b/i.test(className)) return true;
-    try {
-      if (window.getComputedStyle(el).cursor === "pointer") return true;
-    } catch (error) {
-      return false;
-    }
-    return false;
-  };
-  const clickableElement = (start) => {
-    if (!start) return null;
-    const native = start.closest('a,button,[role="button"],input,textarea,select,label,summary,[onclick],[tabindex]');
-    if (native) return native;
-    let node = start;
-    let depth = 0;
-    while (node && node.nodeType === Node.ELEMENT_NODE && depth < 4) {
-      if (isLikelyClickable(node)) return node;
-      node = node.parentElement;
-      depth += 1;
-    }
-    return start;
-  };
-  const cssPath = (el) => {
-    const parts = [];
-    let node = el;
-    let depth = 0;
-    while (node && node.nodeType === Node.ELEMENT_NODE && node !== document.documentElement && depth < 5) {
-      const tag = node.tagName.toLowerCase();
-      if (!tag || tag === "body") break;
-      let nth = 1;
-      let prev = node.previousElementSibling;
-      while (prev) {
-        if (prev.tagName.toLowerCase() === tag) nth += 1;
-        prev = prev.previousElementSibling;
-      }
-      parts.unshift(`${tag}:nth-of-type(${nth})`);
-      node = node.parentElement;
-      depth += 1;
-    }
-    return parts.length ? parts.join(" > ") : "";
-  };
-  const framePath = () => {
-    try {
-      if (window === window.top || !window.frameElement) return [];
-      const frame = window.frameElement;
-      const id = frame.getAttribute("id") || "";
-      const name = frame.getAttribute("name") || "";
-      const selector = id ? `#${cssEscape(id)}` : (name ? `iframe[name="${quoteCss(name)}"]` : "iframe");
-      return [{ name, url: window.location.href, selector }];
-    } catch (error) {
-      return [{ name: "", url: window.location.href, selector: "iframe" }];
-    }
-  };
-  const locatorInfo = (el) => {
-    const candidates = [];
-    const tag = (el.tagName || "").toLowerCase();
-    const dataTestId = el.getAttribute("data-testid");
-    const dataTest = el.getAttribute("data-test");
-    const id = el.getAttribute("id");
-    const name = el.getAttribute("name");
-    const placeholder = el.getAttribute("placeholder");
-    const ariaLabel = el.getAttribute("aria-label");
-    const title = el.getAttribute("title");
-    const role = el.getAttribute("role");
-    const rawText = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
-    const isGoodText = rawText && rawText.length <= 40 && !rawText.includes("\n");
-    const text = isGoodText ? rawText.slice(0, 40) : "";
-    const label = trimText((el.labels && el.labels[0] && (el.labels[0].innerText || el.labels[0].textContent)) || "");
-    const accessibleName = trimText(ariaLabel || label || text || title || "");
-    const isDynamicId = (val) => !val || /(?:^|\b)(?:el-id|rc-tabs|input-\d+|select-\d+|uid-|guid-|__)/i.test(val) || /\d{4,}/.test(val);
-
-    if (dataTestId) pushCandidate(candidates, `[data-testid="${quoteCss(dataTestId)}"]`, "test_id");
-    if (dataTest) pushCandidate(candidates, `[data-test="${quoteCss(dataTest)}"]`, "test_id");
-    if (id && !isDynamicId(id)) pushCandidate(candidates, `#${cssEscape(id)}`, "id");
-    if (name) pushCandidate(candidates, `[name="${quoteCss(name)}"]`, "name");
-    if (placeholder) {
-      const base = tag === "textarea" ? "textarea" : "input";
-      pushCandidate(candidates, `${base}[placeholder="${quoteCss(placeholder)}"]`, "placeholder");
-      pushCandidate(candidates, `[placeholder="${quoteCss(placeholder)}"]`, "placeholder");
-    }
-    if (ariaLabel) pushCandidate(candidates, `[aria-label="${quoteCss(ariaLabel)}"]`, "aria");
-    if (title) pushCandidate(candidates, `[title="${quoteCss(title)}"]`, "title");
-    if (text) {
-      const quoted = quoteCss(text);
-      if (tag === "button") pushCandidate(candidates, `button:has-text("${quoted}")`, "role_text");
-      if (tag === "a") pushCandidate(candidates, `a:has-text("${quoted}")`, "role_text");
-      if (role) pushCandidate(candidates, `[role="${quoteCss(role)}"]:has-text("${quoted}")`, "role_text");
-      pushCandidate(candidates, `text="${quoted}"`, "text");
-    }
-    const iconEl = el.querySelector("i,svg,[class*='icon']");
-    if (iconEl && tag === "button") {
-      const iconClass = String(iconEl.getAttribute("class") || "").trim();
-      if (iconClass) {
-        const firstCls = iconClass.split(/\s+/).find(c => /icon|search|close|btn|submit|cart/i.test(c));
-        if (firstCls) pushCandidate(candidates, `button:has(.${cssEscape(firstCls)})`, "icon");
-      }
-    }
-    pushCandidate(candidates, cssPath(el), "css_path");
-    const locatorValues = candidates.map((item) => item.value);
-    return {
-      locator: locatorValues[0] || cssPath(el),
-      fallback_locators: locatorValues.slice(1),
-      locator_candidates: candidates,
-      text: text || cleanText(el.innerText || "", 40),
-      tag,
-      input_type: (el.getAttribute("type") || "").toLowerCase(),
-      role: role || "",
-      aria_label: ariaLabel || "",
-      accessible_name: accessibleName,
-      label,
-      placeholder: placeholder || "",
-      stable_attrs: {
-        data_testid: dataTestId || "",
-        data_test: dataTest || "",
-        name: name || "",
-        type: (el.getAttribute("type") || "").toLowerCase(),
-      },
-      frame_path: framePath(),
-    };
-  };
-  const send = (payload) => {
-    try {
-      if (typeof window.__recordUiEvent !== "function") return;
-      payload.url = window.location.href;
-      payload.created_at = new Date().toISOString();
-      Promise.resolve(window.__recordUiEvent(payload)).catch(() => {});
-    } catch (error) {
-      // recorder failure must not affect the target page
-    }
-  };
-  const recordValue = (el, eventType) => {
-    const info = locatorInfo(el);
-    const tag = info.tag;
-    const inputType = info.input_type;
-    let action = "input";
-    let value = "";
-    let checked = undefined;
-    if (tag === "select") {
-      action = "select";
-      value = el.value;
-    } else if (tag === "input" && (inputType === "checkbox" || inputType === "radio")) {
-      action = el.checked ? "check" : "uncheck";
-      checked = Boolean(el.checked);
-      value = el.value || "";
-    } else if (el.isContentEditable) {
-      value = el.innerText || "";
-    } else {
-      value = el.value || "";
-    }
-    send({ event_type: eventType, action, value, checked, ...info });
-  };
-
-  document.addEventListener("click", (event) => {
-    const start = targetElement(event.target);
-    const el = clickableElement(start) || start;
-    if (!el) return;
-    const tag = (el.tagName || "").toLowerCase();
-    const type = (el.getAttribute("type") || "").toLowerCase();
-    if ((tag === "input" && (type === "checkbox" || type === "radio")) || tag === "select") return;
-    if (tag === "input" || tag === "textarea" || el.isContentEditable) return;
-    send({ event_type: "click", action: "click", ...locatorInfo(el) });
-  }, true);
-
-  document.addEventListener("input", (event) => {
-    const el = targetElement(event.target);
-    if (!el) return;
-    const tag = (el.tagName || "").toLowerCase();
-    const type = (el.getAttribute("type") || "").toLowerCase();
-    if (tag === "select" || type === "checkbox" || type === "radio") return;
-    if (tag === "input" || tag === "textarea" || el.isContentEditable) recordValue(el, "input");
-  }, true);
-
-  document.addEventListener("change", (event) => {
-    const el = targetElement(event.target);
-    if (!el) return;
-    const tag = (el.tagName || "").toLowerCase();
-    if (tag === "input" || tag === "textarea" || tag === "select" || el.isContentEditable) {
-      recordValue(el, "change");
-    }
-  }, true);
-
-  let lastUrl = window.location.href;
-  window.setInterval(() => {
-    if (window.location.href !== lastUrl) {
-      lastUrl = window.location.href;
-      send({ event_type: "url_change", action: "url_change", value: lastUrl, locator: "" });
-    }
-  }, 500);
-  send({ event_type: "ready", action: "ready", value: window.location.href, locator: "" });
-})();
-"""
 
 
 @dataclass
@@ -358,6 +107,20 @@ def _frame_path(value: Any, max_items: int = 8) -> list[dict[str, str]]:
     return result
 
 
+def _source_frame_chain(source_frame: Any, main_frame: Any, max_items: int = 8) -> list[dict[str, str]]:
+    result: list[dict[str, str]] = []
+    current = source_frame
+    while current is not None and current != main_frame and len(result) < max_items:
+        name = getattr(current, "name", "")
+        name = name() if callable(name) else name
+        url = getattr(current, "url", "")
+        url = url() if callable(url) else url
+        result.insert(0, {"name": str(name or ""), "url": str(url or ""), "selector": ""})
+        current = getattr(current, "parent_frame", None)
+        current = current() if callable(current) else current
+    return result
+
+
 def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
     if not isinstance(payload, dict):
         return None
@@ -387,6 +150,7 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
         "page_index": int(payload.get("page_index") or 0),
         "checked": payload.get("checked"),
         "created_at": _short_text(payload.get("created_at") or datetime.now().isoformat(), 80),
+        **sanitize_target_event(payload),
     }
     if action == "checkpoint":
         item.update(
@@ -496,6 +260,7 @@ def _event_to_step(event: dict[str, Any]) -> dict[str, Any] | None:
         "action": action,
         "locator": primary,
         "locator_profile": profile,
+        "target_profile": build_target_profile(event),
     }
     fallbacks = [
         str(item.get("value") or "").strip()
@@ -664,15 +429,15 @@ async def _attach_page_recorder(session: _Session, page: Any) -> None:
                 enriched["page_index"] = pages.index(source_page) if source_page in pages else 0
             except Exception:
                 enriched["page_index"] = 0
-            if source_frame and not enriched.get("frame_path"):
+            if source_frame:
                 try:
-                    frame_name = getattr(source_frame, "name", "")
-                    frame_name = frame_name() if callable(frame_name) else frame_name
-                    frame_url = getattr(source_frame, "url", "")
-                    frame_url = frame_url() if callable(frame_url) else frame_url
                     main_frame = getattr(source_page, "main_frame", None)
-                    if source_frame != main_frame:
-                        enriched["frame_path"] = [{"name": frame_name or "", "url": frame_url or "", "selector": ""}]
+                    frame_chain = _source_frame_chain(source_frame, main_frame)
+                    if frame_chain:
+                        if not enriched.get("frame_chain"):
+                            enriched["frame_chain"] = frame_chain
+                        if not enriched.get("frame_path"):
+                            enriched["frame_path"] = frame_chain
                 except Exception:
                     pass
         _append_event(session, enriched)
@@ -695,7 +460,7 @@ async def _attach_page_recorder(session: _Session, page: Any) -> None:
 
     async def _ensure_script(p: Any) -> None:
         try:
-            await p.evaluate(RECORDING_SCRIPT)
+            await p.evaluate(recording_init_script())
         except Exception:
             pass
 
@@ -745,18 +510,18 @@ async def start_session(
         persistent=bool(persistent),
     )
 
-    await context.add_init_script(RECORDING_SCRIPT)
+    await context.add_init_script(recording_init_script())
 
     def on_new_page(new_page: Any) -> None:
         session.page = new_page
         async def _inject_new_page(p: Any) -> None:
             await _attach_page_recorder(session, p)
             try:
-                await p.add_init_script(RECORDING_SCRIPT)
+                await p.add_init_script(recording_init_script())
             except Exception:
                 pass
             try:
-                await p.evaluate(RECORDING_SCRIPT)
+                await p.evaluate(recording_init_script())
             except Exception:
                 pass
         try:

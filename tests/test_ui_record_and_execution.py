@@ -1,5 +1,5 @@
 import pytest
-from app.services.ui_recording_session import _sanitize_event, build_ui_steps, _event_to_step
+from app.services.ui_recording_session import _event_to_step, _sanitize_event, _source_frame_chain, build_ui_steps
 from app.executors.runtime import _active_page
 
 
@@ -34,6 +34,51 @@ def test_sanitize_event_does_not_strip_ordinary_phone():
     }
     sanitized = _sanitize_event(event, 2)
     assert sanitized["value"] == "13800138000"
+
+
+def test_event_to_step_keeps_legacy_locator_profile_and_adds_target_profile():
+    event = _sanitize_event(
+        {
+            "action": "click",
+            "locator": '[data-testid="delete-order"]',
+            "locator_candidates": [
+                {"value": '[data-testid="delete-order"]', "strategy": "test_id", "count": 1, "visible": True},
+            ],
+            "url": "https://example.test/orders?ts=123",
+            "page_title": "订单管理",
+            "scope_chain": [{"kind": "table_row", "headers": {"订单号": "A100"}}],
+            "tag": "button",
+            "role": "button",
+            "accessible_name": "删除",
+            "stable_attrs": {"data-testid": "delete-order"},
+            "capabilities": {"click": True},
+            "recorded_match_count": 1,
+        },
+        3,
+    )
+
+    step = _event_to_step(event)
+
+    assert step["locator_profile"]["schema_version"] == 2
+    assert step["target_profile"]["schema_version"] == 1
+    assert step["target_profile"]["scope_chain"][0]["headers"]["订单号"] == "A100"
+
+
+def test_source_frame_chain_keeps_nested_cross_origin_frame_context():
+    class FakeFrame:
+        def __init__(self, name, url, parent_frame=None):
+            self.name = name
+            self.url = url
+            self.parent_frame = parent_frame
+
+    main = FakeFrame("", "https://example.test")
+    outer = FakeFrame("payment", "https://pay.test/outer", main)
+    inner = FakeFrame("challenge", "https://bank.test/challenge", outer)
+
+    assert _source_frame_chain(inner, main) == [
+        {"name": "payment", "url": "https://pay.test/outer", "selector": ""},
+        {"name": "challenge", "url": "https://bank.test/challenge", "selector": ""},
+    ]
 
 
 def test_build_ui_steps_cleans_dynamic_query_assert_url():
