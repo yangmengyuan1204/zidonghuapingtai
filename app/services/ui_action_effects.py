@@ -106,6 +106,7 @@ def effect_observation_score(event: dict[str, Any], state: dict[str, Any]) -> in
 
 
 def infer_effect_profile(event: dict[str, Any]) -> dict[str, Any]:
+    has_observed_state = "before_state" in event or "after_state" in event
     before = event.get("before_state") if isinstance(event.get("before_state"), dict) else {}
     after = event.get("after_state") if isinstance(event.get("after_state"), dict) else {}
     effects: list[dict[str, Any]] = []
@@ -135,7 +136,7 @@ def infer_effect_profile(event: dict[str, Any]) -> dict[str, Any]:
             if event.get("sensitive") or _text(event.get("input_type"), 50).lower() == "password":
                 expected = event.get("value") if event.get("value") in {"{{password}}", "{{username}}"} else "***"
             effects.append({"type": "target_value", "expected": expected})
-    elif action in {"input", "select"} and event.get("value") not in (None, ""):
+    elif action in {"input", "select"} and not has_observed_state and event.get("value") not in (None, ""):
         expected = event.get("value")
         if event.get("sensitive") or _text(event.get("input_type"), 50).lower() == "password":
             expected = event.get("value") if event.get("value") in {"{{password}}", "{{username}}"} else "***"

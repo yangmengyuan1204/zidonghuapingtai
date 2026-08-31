@@ -26,6 +26,43 @@ def test_input_effect_requires_value_change():
     assert profile["effects"] == [{"type": "target_value", "expected": "张三"}]
 
 
+def test_input_effect_does_not_fallback_when_state_exists_without_observed_value():
+    profile = infer_effect_profile(
+        {
+            "action": "input",
+            "value": "张三",
+            "before_state": {"target": {"visible": True}},
+            "after_state": {"target": {"visible": True}},
+        }
+    )
+
+    assert profile["effects"] == []
+    assert profile["required"] is False
+    assert profile["confidence"] <= 30
+
+
+def test_input_effect_is_optional_when_observed_value_does_not_change():
+    profile = infer_effect_profile(
+        {
+            "action": "select",
+            "value": "paid",
+            "before_state": {"target": {"value": "paid"}},
+            "after_state": {"target": {"value": "paid"}},
+        }
+    )
+
+    assert profile["effects"] == []
+    assert profile["required"] is False
+    assert profile["confidence"] <= 30
+
+
+def test_input_effect_uses_legacy_value_only_when_states_are_absent():
+    profile = infer_effect_profile({"action": "select", "value": "paid"})
+
+    assert profile["effects"] == [{"type": "target_value", "expected": "paid"}]
+    assert profile["required"] is True
+
+
 def test_delete_submit_and_payment_are_not_automatically_retried():
     for text in ("删除", "提交", "提交订单", "确认支付"):
         policy = build_retry_policy({"action": "click", "name": text})
