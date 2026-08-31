@@ -660,6 +660,13 @@ git add app/services/ui_action_effects.py app/services/ui_recording_capture.py a
 git commit -m "feat: record and compile UI action effects"
 ```
 
+#### Task 4 Review Fix Report (2026-08-31)
+
+- 修复危险动作识别：`build_retry_policy` 现在同时检查步骤名称、文案、可访问性信息、定位器及 `target_profile` 元数据（`data-testid`、`name`、`title`、`class` 等）。命中删除、提交、支付、付款、确认、下单、退款或充值等语义时，始终固定 `safe_retry=False`、`max_attempts=1`，即使已观察到效果也不重试。
+- 修复敏感事件脱敏：保留并处理 payload 的 `name` 与显式 `sensitive=True`；输入/选择事件在字段名或显式标记敏感时，事件值、`raw_value`/`default_value`、前后状态及效果编译结果均不再写入原始敏感值，非敏感元数据继续保留。
+- 新增回归覆盖：稳定属性 `name='删除'` 搭配已观察效果仍禁止重试；`name='password'` 且 `sensitive=True` 的输入值不会泄漏。
+- 定向回归：`tests/test_ui_action_effects.py`、`tests/test_ui_record_and_execution.py`、`tests/test_ui_recording.py` 共 35 项通过。
+
 ---
 
 ### Task 5: 上下文约束的统一目标解析器

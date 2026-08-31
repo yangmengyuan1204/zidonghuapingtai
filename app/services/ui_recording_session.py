@@ -143,6 +143,7 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
         "fallback_locators": _list_strings(payload.get("fallback_locators")),
         "locator_candidates": _locator_candidates(payload.get("locator_candidates")),
         "value": payload.get("value"),
+        "name": _short_text(payload.get("name"), 300).strip(),
         "url": sanitize_page_url(payload.get("url")),
         "text": _short_text(payload.get("text"), 300).strip(),
         "tag": _short_text(payload.get("tag"), 50).strip(),
@@ -184,19 +185,22 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
     ).lower()
     if isinstance(item.get("stable_attrs"), dict):
         sensitive_text += " " + " ".join(str(value) for value in item["stable_attrs"].values()).lower()
+    explicit_sensitive = payload.get("sensitive") is True
     sensitive = bool(
-        item.get("input_type") == "password"
+        explicit_sensitive
+        or item.get("input_type") == "password"
         or any(word in sensitive_text for word in ("password", "passwd", "token", "cookie", "authorization", "密码"))
     )
     secret_sensitive = bool(
-        item.get("input_type") == "password"
+        explicit_sensitive
+        or item.get("input_type") == "password"
         or any(word in sensitive_text for word in ("password", "passwd", "token", "cookie", "authorization", "密码"))
     )
     if item.get("action") == "input" and any(word in sensitive_text for word in ("username", "account", "账号", "登录名", "user_name")):
         item["value"] = "{{username}}"
         item["default_value"] = raw_val
         sensitive = True
-    elif item.get("action") == "input" and sensitive:
+    elif item.get("action") in {"input", "select"} and sensitive:
         item["value"] = "{{password}}" if item.get("input_type") == "password" or "密码" in sensitive_text else "***"
     if secret_sensitive:
         item["raw_value"] = "***"

@@ -32,6 +32,22 @@ def test_delete_submit_and_payment_are_not_automatically_retried():
         assert policy == {"safe_retry": False, "max_attempts": 1, "reason": "dangerous_action"}
 
 
+def test_dangerous_stable_attribute_blocks_retry_even_with_observed_effect():
+    policy = build_retry_policy(
+        {
+            "action": "click",
+            "effect_profile": {"required": True, "effects": [{"type": "url_change"}]},
+            "target_profile": {
+                "element": {
+                    "stable_attrs": {"name": "删除"},
+                }
+            },
+        }
+    )
+
+    assert policy == {"safe_retry": False, "max_attempts": 1, "reason": "dangerous_action"}
+
+
 def test_plain_click_without_observed_effect_is_optional_and_low_confidence():
     profile = infer_effect_profile({"action": "click", "before_state": {}, "after_state": {}})
 

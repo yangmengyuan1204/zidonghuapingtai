@@ -6,7 +6,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 _DANGEROUS_ACTION_RE = re.compile(
-    r"删除|移除|清空|提交|确认(?:支付|付款|下单)|支付|付款|退款|发布|"
+    r"删除|移除|清空|提交|确认|下单|支付|付款|退款|充值|发布|"
     r"delete|remove|clear\s+all|submit|place\s+order|pay(?:ment)?|refund|publish",
     re.IGNORECASE,
 )
@@ -151,10 +151,28 @@ def infer_effect_profile(event: dict[str, Any]) -> dict[str, Any]:
 
 def build_retry_policy(step: dict[str, Any]) -> dict[str, Any]:
     action = _text(step.get("action"), 40).lower()
-    description = " ".join(
-        _text(step.get(key), 300)
-        for key in ("name", "text", "accessible_name", "label", "locator")
-    )
+
+    def _metadata_text(value: Any) -> list[str]:
+        if isinstance(value, dict):
+            result: list[str] = []
+            for key, item in value.items():
+                result.append(_text(key, 120))
+                result.extend(_metadata_text(item))
+            return result
+        if isinstance(value, (list, tuple, set)):
+            result: list[str] = []
+            for item in value:
+                result.extend(_metadata_text(item))
+            return result
+        return [_text(value, 500)] if value not in (None, "") else []
+
+    metadata: list[str] = []
+    for key in ("name", "text", "accessibility", "accessible_name", "aria_label", "label", "locator"):
+        metadata.extend(_metadata_text(step.get(key)))
+    target_profile = step.get("target_profile") if isinstance(step.get("target_profile"), dict) else {}
+    metadata.extend(_metadata_text(target_profile.get("element")))
+    metadata.extend(_metadata_text(target_profile.get("stable_attrs")))
+    description = " ".join(metadata)
     if action == "click" and _DANGEROUS_ACTION_RE.search(description):
         return {"safe_retry": False, "max_attempts": 1, "reason": "dangerous_action"}
     if action in {"input", "select", "check", "uncheck"}:

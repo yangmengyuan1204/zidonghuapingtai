@@ -135,6 +135,24 @@ def test_sanitize_event_redacts_sensitive_page_state_values():
     assert "url-secret" not in str(event)
 
 
+def test_sanitize_event_redacts_explicit_sensitive_named_input_value_everywhere():
+    event = _sanitize_event(
+        {
+            "action": "input",
+            "name": "password",
+            "sensitive": True,
+            "value": "secret",
+            "before_state": {"target": {"value": "old-secret"}},
+            "after_state": {"target": {"value": "secret"}},
+        },
+        5,
+    )
+
+    assert event is not None
+    assert "secret" not in str(event)
+    assert event["sensitive"] is True
+
+
 def test_source_frame_chain_keeps_nested_cross_origin_frame_context():
     class FakeFrame:
         def __init__(self, name, url, parent_frame=None):
