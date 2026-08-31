@@ -6,6 +6,9 @@ import re
 from datetime import datetime
 
 from ..services.ui_locator_engine import select_step_page, select_step_scope
+from ..services.ui_target_resolver import resolve_target
+from .ui_adapters import execute_adapted_action
+from .ui_effects_runtime import begin_network_effect_observation, effect_already_satisfied, wait_for_effect_profile
 
 
 _COMPAT_NAMES = (
@@ -85,7 +88,7 @@ def _impl__perform_ui_action(page: Any, target: Any, action: str, value: Any, us
         target.input_value(timeout=timeout_ms)
 
 
-def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int, case_id: int = 0, db: Any = None) -> Dict[str, Any]:
+def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int, case_id: int = 0, db: Any = None, execution_context: Dict[str, Any] | None = None) -> Dict[str, Any]:
     import re
     started = time.time()
     action = str(step.get("action") or "").strip()
@@ -93,16 +96,21 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
     value = step.get("value")
     name = str(step.get("name") or UI_ACTION_LABELS.get(action) or action or "未命名步骤")
     timeout_ms = _step_timeout_ms(step, default_timeout)
+    execution_context = dict(execution_context or {})
+    freeze_resolution = bool(execution_context.get("freeze_resolution"))
+    disable_ai_heal = bool(execution_context.get("disable_ai_heal"))
     page = select_step_page(page, step, timeout_ms=min(timeout_ms, 5000))
     locator_scope = select_step_scope(page, step)
     candidates = _locator_candidates(step)
-    if case_id and db is not None:
+    memory_candidates: list[Any] = []
+    if case_id and db is not None and not freeze_resolution:
         try:
             from ..services.ui_locator_learning import memory_candidates_for_step
 
             for candidate in memory_candidates_for_step(db, case_id, step):
                 if candidate and candidate not in candidates:
                     candidates.append(candidate)
+                    memory_candidates.append(candidate)
         except Exception:
             pass
     detail: Dict[str, Any] = {
@@ -186,6 +194,25 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
             }
             if not passed:
                 raise RuntimeError(f"全流程流转失败于节点 {summary.get('current_node')}: {summary.get('reason') or summary.get('error')}")
+        elif isinstance(step.get("target_profile"), dict):
+            resolved = resolve_target(page, step, timeout_ms, memory_candidates, frozen=freeze_resolution)
+            detail.update({
+                "used_locator": resolved.used_locator,
+                "matched_count": resolved.matched_count,
+                "resolution_score": resolved.score,
+                "resolution_reasons": list(resolved.reasons),
+                "resolution_page": resolved.page_identity,
+                "freeze_resolution": freeze_resolution,
+            })
+            if effect_already_satisfied(page, step):
+                detail["effect_pre_satisfied"] = True
+            else:
+                begin_network_effect_observation(page)
+                action_detail = execute_adapted_action(page, resolved, step, timeout_ms)
+                detail["action_adapter"] = action_detail.pop("adapter", "")
+                detail.update(action_detail)
+                _wait_after_action(page, action)
+                detail["effect"] = wait_for_effect_profile(page, step, timeout_ms)
         else:
             if action in UI_LOCATOR_REQUIRED and not candidates:
                 raise ValueError(f"{action} 步骤缺少 locator")
@@ -282,7 +309,7 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
                     break
                 except Exception as exc:
                     last_error = exc
-                    if attempt >= 3:
+                    if attempt >= 3 and not disable_ai_heal:
                         # 自愈尝试：解析定位器失败时尝试自愈
                         healed_locator = locator or (candidates[0] if candidates else "")
                         try:
@@ -379,7 +406,7 @@ def _impl__validate_ui_steps_for_execution(steps: Any) -> tuple[list[Dict[str, A
         action = str(step.get("action") or "").strip()
         if action not in UI_ACTION_LABELS:
             issues.append({"severity": "error", "step": index, "message": f"第{index}步 action 不支持：{action or '空'}"})
-        if action in UI_LOCATOR_REQUIRED and not _locator_candidates(step):
+        if action in UI_LOCATOR_REQUIRED and not _locator_candidates(step) and not isinstance(step.get("target_profile"), dict):
             issues.append({"severity": "error", "step": index, "message": f"第{index}步缺少 locator"})
         if action in UI_VALUE_REQUIRED and step.get("value") in (None, ""):
             issues.append({"severity": "error", "step": index, "message": f"第{index}步缺少 value"})
@@ -397,9 +424,9 @@ def _perform_ui_action(page: Any, target: Any, action: str, value: Any, used_loc
     return _impl__perform_ui_action(page, target, action, value, used_locator, timeout_ms)
 
 
-def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int, case_id: int=0, db: Any=None) -> Dict[str, Any]:
+def _run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], default_timeout: int, case_id: int=0, db: Any=None, execution_context: Dict[str, Any] | None = None) -> Dict[str, Any]:
     _sync_compat_globals()
-    return _impl__run_ui_step(page, step, screenshots, default_timeout, case_id, db)
+    return _impl__run_ui_step(page, step, screenshots, default_timeout, case_id, db, execution_context)
 
 
 def _validate_ui_steps_for_execution(steps: Any) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:

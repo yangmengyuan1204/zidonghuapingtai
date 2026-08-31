@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sys
 
+from ..services.ui_action_effects import build_retry_policy
+
 
 _COMPAT_NAMES = (
     'Any',
@@ -213,7 +215,7 @@ def _impl_execute_ui_case_in_page(
                 _wait_page_stable(curr_page, timeout=1500)
 
             try:
-                step_detail = _run_ui_step(curr_page, current_step, screenshots, timeout, case_id=getattr(case, 'id', 0) or 0, db=db_session)
+                step_detail = _run_ui_step(curr_page, current_step, screenshots, timeout, case_id=getattr(case, 'id', 0) or 0, db=db_session, execution_context=execution_context)
                 step_detail["index"] = index
                 log_parts["step_logs"].append(step_detail)
                 if isinstance(step_detail.get("extracted"), dict):
@@ -225,14 +227,22 @@ def _impl_execute_ui_case_in_page(
                 _wait_after_action(curr_page, action)
             except UiStepExecutionError as exc:
                 # 失败自动重试
-                if retry_count > 0 and action not in ("text_assert", "assert_url", "assert_value", "assert_visible"):
+                retry_policy = build_retry_policy(current_step)
+                safe_retry = bool(retry_policy.get("safe_retry"))
+                max_retry_attempts = max(0, int(retry_policy.get("max_attempts", 1)) - 1)
+                if retry_count > 0 and safe_retry and max_retry_attempts > 0 and action not in ("text_assert", "assert_url", "assert_value", "assert_visible"):
                     retried = False
-                    for attempt in range(retry_count):
+                    retry_execution_context = {
+                        **execution_context,
+                        "freeze_resolution": True,
+                        "disable_ai_heal": True,
+                    }
+                    for attempt in range(min(retry_count, max_retry_attempts)):
                         retry_page = _active_page(page)
                         retry_page.wait_for_timeout(retry_interval_ms)
                         _wait_page_stable(retry_page)
                         try:
-                            step_detail = _run_ui_step(retry_page, current_step, screenshots, timeout, case_id=getattr(case, 'id', 0) or 0, db=db_session)
+                            step_detail = _run_ui_step(retry_page, current_step, screenshots, timeout, case_id=getattr(case, 'id', 0) or 0, db=db_session, execution_context=retry_execution_context)
                             step_detail["index"] = index
                             step_detail["retry_attempt"] = attempt + 1
                             log_parts["step_logs"].append(step_detail)
