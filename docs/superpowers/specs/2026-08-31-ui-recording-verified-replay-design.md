@@ -196,6 +196,7 @@ AI 和视觉能力只能生成候选或辅助用户重新选点，不得在置�
 
 - `project_id`，唯一。
 - `reset_script_key`。
+- `reset_env_id`，必须属于当前项目。
 - `reset_variables_json`。
 - `verification_rounds`，首期固定为 2。
 - `max_repair_attempts`。
