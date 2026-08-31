@@ -150,3 +150,26 @@ def test_missing_recorded_tab_fails_safely_instead_of_falling_back_to_main_page(
 
     with pytest.raises(ValueError, match="标签页"):
         select_step_page(page, {"page_index": 1}, timeout_ms=0)
+
+
+def test_step_page_prefers_target_profile_identity_to_legacy_page_index():
+    class ContextPage:
+        def __init__(self, title):
+            self.context = None
+            self._title = title
+
+        def title(self):
+            return self._title
+
+    first = ContextPage("主页")
+    popup = ContextPage("支付结果")
+    context = SimpleNamespace(pages=[first, popup])
+    first.context = popup.context = context
+
+    selected = select_step_page(
+        first,
+        {"page_index": 0, "target_profile": {"page": {"title": "支付结果"}}},
+        timeout_ms=0,
+    )
+
+    assert selected is popup

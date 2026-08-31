@@ -170,6 +170,10 @@ def ordered_locator_values(step: dict[str, Any], memory: Iterable[str] | None = 
 
 
 def select_step_page(page: Any, step: dict[str, Any], timeout_ms: int = 5000) -> Any:
+    if isinstance(step.get("target_profile"), dict):
+        from .ui_target_resolver import select_profile_page
+
+        return select_profile_page(page, step, timeout_ms)
     try:
         index = int(step.get("page_index") or 0)
     except (TypeError, ValueError):
@@ -192,7 +196,11 @@ def select_step_page(page: Any, step: dict[str, Any], timeout_ms: int = 5000) ->
             time.sleep(0.1)
 
 
-def select_step_scope(page: Any, step: dict[str, Any]) -> Any:
+def select_step_scope(page: Any, step: dict[str, Any], timeout_ms: int = 5000) -> Any:
+    if isinstance(step.get("target_profile"), dict):
+        from .ui_target_resolver import select_profile_scope
+
+        return select_profile_scope(page, step, timeout_ms)
     scope = page
     for frame in step.get("frame_path") or []:
         if not isinstance(frame, dict):
