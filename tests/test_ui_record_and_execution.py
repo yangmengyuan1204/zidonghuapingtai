@@ -1,5 +1,12 @@
 import pytest
-from app.services.ui_recording_session import _event_to_step, _sanitize_event, _source_frame_chain, build_ui_steps
+from app.services.ui_recording_session import (
+    _Session,
+    _append_event,
+    _event_to_step,
+    _sanitize_event,
+    _source_frame_chain,
+    build_ui_steps,
+)
 from app.executors.runtime import _active_page
 
 
@@ -62,6 +69,70 @@ def test_event_to_step_keeps_legacy_locator_profile_and_adds_target_profile():
     assert step["locator_profile"]["schema_version"] == 2
     assert step["target_profile"]["schema_version"] == 1
     assert step["target_profile"]["scope_chain"][0]["headers"]["订单号"] == "A100"
+
+
+def test_effect_observation_merges_into_action_without_creating_business_step():
+    session = _Session(
+        playwright=None,
+        browser=None,
+        context=None,
+        page=None,
+        project_id=1,
+        case_name="效果合并",
+        start_url="https://example.test/orders",
+    )
+    _append_event(
+        session,
+        {
+            "action": "click",
+            "locator": "#details",
+            "interaction_id": "interaction-1",
+            "before_state": {"url": "https://example.test/orders", "dialogs": []},
+        },
+    )
+    _append_event(
+        session,
+        {
+            "action": "effect_observation",
+            "interaction_id": "interaction-1",
+            "after_state": {"url": "https://example.test/orders/1", "dialogs": ["订单详情"]},
+            "final": True,
+        },
+    )
+
+    assert len(session.events) == 1
+    assert session.events[0]["after_state"]["url"] == "https://example.test/orders/1"
+    steps = build_ui_steps(session.start_url, session.current_url, session.events)
+    assert [step["action"] for step in steps].count("click") == 1
+    assert {item["type"] for item in steps[1]["effect_profile"]["effects"]} == {
+        "url_change",
+        "dialog_visible",
+    }
+    assert steps[1]["retry_policy"]["max_attempts"] == 2
+
+
+def test_sanitize_event_redacts_sensitive_page_state_values():
+    event = _sanitize_event(
+        {
+            "action": "input",
+            "locator": "#password",
+            "input_type": "password",
+            "value": "secret-value",
+            "interaction_id": "interaction-secret",
+            "url": "https://example.test/reset?token=url-secret",
+            "before_state": {"target": {"value": "old-secret"}},
+            "after_state": {"target": {"value": "secret-value"}},
+        },
+        4,
+    )
+
+    assert event["interaction_id"] == "interaction-secret"
+    assert event["before_state"]["target"]["value"] == "***"
+    assert event["after_state"]["target"]["value"] == "***"
+    assert "secret-value" not in str(event["before_state"])
+    assert "secret-value" not in str(event["after_state"])
+    assert "secret-value" not in str(event)
+    assert "url-secret" not in str(event)
 
 
 def test_source_frame_chain_keeps_nested_cross_origin_frame_context():

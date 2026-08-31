@@ -168,6 +168,18 @@ def test_recording_script_collects_candidate_counts_labels_and_accessible_metada
     assert "frame_path" in script
 
 
+def test_recording_script_captures_correlated_before_and_after_states():
+    script = ui_recording_session.RECORDING_SCRIPT
+
+    assert "interaction_id" in script
+    assert "capturePageState" in script
+    assert "before_state" in script
+    assert "effect_observation" in script
+    assert "after_state" in script
+    assert "400" in script
+    assert "1200" in script
+
+
 def test_get_session_storage_state_returns_live_browser_state():
     class FakeContext:
         async def storage_state(self):

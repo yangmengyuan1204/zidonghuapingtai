@@ -11,6 +11,13 @@ from uuid import uuid4
 from playwright.async_api import async_playwright
 
 from .browser_session import _launch_chromium
+from .ui_action_effects import (
+    build_retry_policy,
+    effect_observation_score,
+    infer_effect_profile,
+    sanitize_page_state,
+    sanitize_page_url,
+)
 from .ui_locator_engine import build_locator_profile
 from .ui_recording_capture import RECORDING_SCRIPT, recording_init_script
 from .ui_target_profile import build_target_profile, sanitize_target_event
@@ -98,7 +105,7 @@ def _frame_path(value: Any, max_items: int = 8) -> list[dict[str, str]]:
         result.append(
             {
                 "name": _short_text(raw.get("name"), 160).strip(),
-                "url": _short_text(raw.get("url"), 1000).strip(),
+                "url": sanitize_page_url(raw.get("url")),
                 "selector": _short_text(raw.get("selector"), 500).strip(),
             }
         )
@@ -136,7 +143,7 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
         "fallback_locators": _list_strings(payload.get("fallback_locators")),
         "locator_candidates": _locator_candidates(payload.get("locator_candidates")),
         "value": payload.get("value"),
-        "url": _short_text(payload.get("url"), 1000).strip(),
+        "url": sanitize_page_url(payload.get("url")),
         "text": _short_text(payload.get("text"), 300).strip(),
         "tag": _short_text(payload.get("tag"), 50).strip(),
         "input_type": _short_text(payload.get("input_type"), 50).strip(),
@@ -149,6 +156,7 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
         "frame_path": _frame_path(payload.get("frame_path")),
         "page_index": int(payload.get("page_index") or 0),
         "checked": payload.get("checked"),
+        "interaction_id": _short_text(payload.get("interaction_id"), 160).strip(),
         "created_at": _short_text(payload.get("created_at") or datetime.now().isoformat(), 80),
         **sanitize_target_event(payload),
     }
@@ -165,12 +173,22 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
         )
     if isinstance(item["value"], str):
         item["value"] = _short_text(item["value"], 2000)
+    if action == "url_change":
+        item["value"] = sanitize_page_url(item.get("value"))
     raw_val = item.get("value")
     item["raw_value"] = raw_val
     sensitive_text = " ".join(
-        str(item.get(key) or "") for key in ("locator", "text", "input_type")
+        str(item.get(key) or "") for key in (
+            "locator", "text", "input_type", "name", "aria_label", "label", "placeholder",
+        )
     ).lower()
+    if isinstance(item.get("stable_attrs"), dict):
+        sensitive_text += " " + " ".join(str(value) for value in item["stable_attrs"].values()).lower()
     sensitive = bool(
+        item.get("input_type") == "password"
+        or any(word in sensitive_text for word in ("password", "passwd", "token", "cookie", "authorization", "密码"))
+    )
+    secret_sensitive = bool(
         item.get("input_type") == "password"
         or any(word in sensitive_text for word in ("password", "passwd", "token", "cookie", "authorization", "密码"))
     )
@@ -179,13 +197,34 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
         item["default_value"] = raw_val
         sensitive = True
     elif item.get("action") == "input" and sensitive:
-        item["value"] = "{{password}}" if item.get("input_type") == "password" or "密码" in sensitive_text else (raw_val or "***")
-        item["default_value"] = raw_val
+        item["value"] = "{{password}}" if item.get("input_type") == "password" or "密码" in sensitive_text else "***"
+    if secret_sensitive:
+        item["raw_value"] = "***"
+        item.pop("default_value", None)
     item["sensitive"] = sensitive
+    item["before_state"] = sanitize_page_state(payload.get("before_state"), sensitive=secret_sensitive)
+    item["after_state"] = sanitize_page_state(payload.get("after_state"), sensitive=secret_sensitive)
     return item
 
 
 def _append_event(session: _Session, payload: Any) -> None:
+    if isinstance(payload, dict) and str(payload.get("action") or "").strip().lower() == "effect_observation":
+        interaction_id = _short_text(payload.get("interaction_id"), 160).strip()
+        if not interaction_id:
+            return
+        for event in reversed(session.events):
+            if event.get("interaction_id") != interaction_id:
+                continue
+            state = sanitize_page_state(payload.get("after_state"), sensitive=bool(event.get("sensitive")))
+            current = event.get("after_state") if isinstance(event.get("after_state"), dict) else {}
+            if not current or effect_observation_score(event, state) >= effect_observation_score(event, current):
+                event["after_state"] = state
+                event["effect_observation_final"] = bool(payload.get("final"))
+                if state.get("url"):
+                    session.current_url = str(state["url"])
+            session.last_activity = time.time()
+            return
+        return
     event = _sanitize_event(payload, len(session.events) + 1)
     if not event:
         return
@@ -261,7 +300,12 @@ def _event_to_step(event: dict[str, Any]) -> dict[str, Any] | None:
         "locator": primary,
         "locator_profile": profile,
         "target_profile": build_target_profile(event),
+        "effect_profile": infer_effect_profile(event),
     }
+    for key in ("text", "accessible_name", "aria_label", "label", "placeholder", "input_type"):
+        if event.get(key) not in (None, ""):
+            step[key] = event.get(key)
+    step["retry_policy"] = build_retry_policy(step)
     fallbacks = [
         str(item.get("value") or "").strip()
         for item in scored_candidates[1:]

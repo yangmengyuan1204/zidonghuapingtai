@@ -335,6 +335,53 @@ RECORDING_SCRIPT = r"""
       recorded_match_count: candidateMatchCount(el, info),
     };
   };
+  const isSensitiveTarget = (el) => {
+    if (!el) return false;
+    const info = `${el.getAttribute("type") || ""} ${el.getAttribute("name") || ""} ${el.id || ""} ${el.getAttribute("autocomplete") || ""}`;
+    return /password|passwd|token|cookie|authorization|secret|密码/i.test(info);
+  };
+  const captureDialogs = () => {
+    const values = [];
+    try {
+      document.querySelectorAll('dialog[open],[role="dialog"],[aria-modal="true"],.modal,.dialog,.drawer').forEach((node) => {
+        if (!isVisible(node)) return;
+        const name = trimText(node.getAttribute("aria-label") || scopeName(node) || node.innerText || node.textContent || "", 200);
+        if (name && !values.includes(name)) values.push(name);
+      });
+    } catch (error) {
+      return values;
+    }
+    return values.slice(0, 12);
+  };
+  const capturePageState = (el) => {
+    const target = {};
+    if (el) {
+      const tag = (el.tagName || "").toLowerCase();
+      const type = (el.getAttribute("type") || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || el.isContentEditable) {
+        const value = el.isContentEditable ? (el.innerText || "") : (el.value || "");
+        const sensitive = isSensitiveTarget(el);
+        target.value = sensitive ? "***" : trimText(value, 1000);
+        if (sensitive) target.has_value = Boolean(value);
+      }
+      if (type === "checkbox" || type === "radio") target.checked = Boolean(el.checked);
+      target.visible = isVisible(el);
+    }
+    return {
+      url: window.location.href,
+      title: document.title || "",
+      dialogs: captureDialogs(),
+      target,
+    };
+  };
+  const interactionId = () => {
+    try {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+    } catch (error) {
+      // fall through to a local correlation id
+    }
+    return `${Date.now()}-${Math.random()}`;
+  };
   const send = (payload) => {
     try {
       if (typeof window.__recordUiEvent !== "function") return;
@@ -344,6 +391,32 @@ RECORDING_SCRIPT = r"""
     } catch (error) {
       // recorder failure must not affect the target page
     }
+  };
+  const beforeStates = new WeakMap();
+  const rememberBeforeState = (event) => {
+    const el = targetElement(event.target);
+    if (el) beforeStates.set(el, capturePageState(el));
+  };
+  document.addEventListener("beforeinput", rememberBeforeState, true);
+  document.addEventListener("pointerdown", rememberBeforeState, true);
+  document.addEventListener("keydown", rememberBeforeState, true);
+  const recordAction = (payload, el, beforeState = null) => {
+    const id = interactionId();
+    const initial = beforeState || capturePageState(el);
+    send({ ...payload, interaction_id: id, before_state: initial });
+    window.setTimeout(() => send({
+      action: "effect_observation",
+      event_type: "effect_observation",
+      interaction_id: id,
+      after_state: capturePageState(el),
+    }), 400);
+    window.setTimeout(() => send({
+      action: "effect_observation",
+      event_type: "effect_observation",
+      interaction_id: id,
+      after_state: capturePageState(el),
+      final: true,
+    }), 1200);
   };
   const recordValue = (el, eventType) => {
     const info = locatorInfo(el);
@@ -364,7 +437,9 @@ RECORDING_SCRIPT = r"""
     } else {
       value = el.value || "";
     }
-    send({ event_type: eventType, action, value, checked, ...info, ...window.__uiRecorderCaptureTarget(el) });
+    const beforeState = beforeStates.get(el) || capturePageState(el);
+    recordAction({ event_type: eventType, action, value, checked, ...info, ...window.__uiRecorderCaptureTarget(el) }, el, beforeState);
+    beforeStates.set(el, capturePageState(el));
   };
 
   document.addEventListener("click", (event) => {
@@ -375,7 +450,7 @@ RECORDING_SCRIPT = r"""
     const type = (el.getAttribute("type") || "").toLowerCase();
     if ((tag === "input" && (type === "checkbox" || type === "radio")) || tag === "select") return;
     if (tag === "input" || tag === "textarea" || el.isContentEditable) return;
-    send({ event_type: "click", action: "click", ...locatorInfo(el), ...window.__uiRecorderCaptureTarget(el) });
+    recordAction({ event_type: "click", action: "click", ...locatorInfo(el), ...window.__uiRecorderCaptureTarget(el) }, el);
   }, true);
 
   document.addEventListener("input", (event) => {
