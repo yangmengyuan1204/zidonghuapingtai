@@ -667,6 +667,13 @@ git commit -m "feat: record and compile UI action effects"
 - 新增回归覆盖：稳定属性 `name='删除'` 搭配已观察效果仍禁止重试；`name='password'` 且 `sensitive=True` 的输入值不会泄漏。
 - 定向回归：`tests/test_ui_action_effects.py`、`tests/test_ui_record_and_execution.py`、`tests/test_ui_recording.py` 共 35 项通过。
 
+#### Task 4 Final Compatibility Fix Report (2026-08-31)
+
+- 根因：`_sanitize_event` 对缺少状态载荷的旧事件无条件写入空的 `before_state`/`after_state`，导致 `infer_effect_profile` 将旧 `input`/`select` 事件误判为已观测状态并禁用 `value` fallback。
+- 修复：仅在 payload 明确提供状态字段，或清洗后确有状态内容时写入对应字段；显式空状态仍保留字段，因此继续 fail-closed，不触发旧值 fallback。
+- 新增回归覆盖：无状态旧 `input` 经 `_sanitize_event` 和 `build_ui_steps` 继续生成 `target_value` effect；显式空状态事件不触发 fallback。
+- 定向回归：`tests/test_ui_action_effects.py`、`tests/test_ui_record_and_execution.py`、`tests/test_ui_recording.py` 共 41 项通过。
+
 ---
 
 ### Task 5: 上下文约束的统一目标解析器

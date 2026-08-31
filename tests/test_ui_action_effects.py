@@ -56,6 +56,20 @@ def test_input_effect_is_optional_when_observed_value_does_not_change():
     assert profile["confidence"] <= 30
 
 
+def test_input_effect_does_not_fallback_when_state_payload_is_explicitly_empty():
+    profile = infer_effect_profile(
+        {
+            "action": "input",
+            "value": "paid",
+            "before_state": {},
+            "after_state": {},
+        }
+    )
+
+    assert profile["effects"] == []
+    assert profile["required"] is False
+
+
 def test_input_effect_uses_legacy_value_only_when_states_are_absent():
     profile = infer_effect_profile({"action": "select", "value": "paid"})
 

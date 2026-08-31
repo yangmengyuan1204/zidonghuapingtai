@@ -206,8 +206,10 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
         item["raw_value"] = "***"
         item.pop("default_value", None)
     item["sensitive"] = sensitive
-    item["before_state"] = sanitize_page_state(payload.get("before_state"), sensitive=secret_sensitive)
-    item["after_state"] = sanitize_page_state(payload.get("after_state"), sensitive=secret_sensitive)
+    for state_key in ("before_state", "after_state"):
+        state = sanitize_page_state(payload.get(state_key), sensitive=secret_sensitive)
+        if state_key in payload or state:
+            item[state_key] = state
     return item
 
 

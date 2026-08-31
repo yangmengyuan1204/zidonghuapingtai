@@ -43,6 +43,43 @@ def test_sanitize_event_does_not_strip_ordinary_phone():
     assert sanitized["value"] == "13800138000"
 
 
+def test_sanitize_event_preserves_legacy_input_effect_without_state_payload():
+    sanitized = _sanitize_event(
+        {
+            "action": "input",
+            "locator": "#email",
+            "value": "demo@example.test",
+        },
+        3,
+    )
+
+    assert sanitized is not None
+    assert "before_state" not in sanitized
+    assert "after_state" not in sanitized
+    step = _event_to_step(sanitized)
+    assert step is not None
+    assert step["effect_profile"]["effects"] == [
+        {"type": "target_value", "expected": "demo@example.test"}
+    ]
+
+
+def test_build_ui_steps_preserves_legacy_input_effect_without_state_payload():
+    event = _sanitize_event(
+        {
+            "action": "input",
+            "locator": "#email",
+            "value": "demo@example.test",
+        },
+        4,
+    )
+
+    steps = build_ui_steps("https://example.test", events=[event])
+
+    assert steps[1]["effect_profile"]["effects"] == [
+        {"type": "target_value", "expected": "demo@example.test"}
+    ]
+
+
 def test_event_to_step_keeps_legacy_locator_profile_and_adds_target_profile():
     event = _sanitize_event(
         {
