@@ -165,25 +165,24 @@ def select_profile_scope(page: Any, step: dict[str, Any], timeout_ms: int = 5000
     """逐层验证 iframe 和语义范围唯一性，绝不以 first/nth 静默消歧。"""
     scope = page
     frames = _profile(step).get("frame_chain")
-    if not isinstance(frames, list):
-        return scope
-    for index, raw in enumerate(frames, start=1):
-        if not isinstance(raw, dict):
-            continue
-        selector = _frame_selector(raw)
-        try:
-            count = _safe_count(scope.locator(selector))
-        except TargetResolutionError:
-            raise
-        except Exception as exc:
-            raise TargetResolutionError(f"iframe第{index}层无法定位: {exc}") from exc
-        if count != 1:
-            suffix = "匹配不唯一" if count > 1 else "未匹配"
-            raise TargetResolutionError(f"iframe第{index}层{suffix}（{count} 个）")
-        try:
-            scope = scope.frame_locator(selector)
-        except Exception as exc:
-            raise TargetResolutionError(f"iframe第{index}层无法进入: {exc}") from exc
+    if isinstance(frames, list):
+        for index, raw in enumerate(frames, start=1):
+            if not isinstance(raw, dict):
+                continue
+            selector = _frame_selector(raw)
+            try:
+                count = _safe_count(scope.locator(selector))
+            except TargetResolutionError:
+                raise
+            except Exception as exc:
+                raise TargetResolutionError(f"iframe第{index}层无法定位: {exc}") from exc
+            if count != 1:
+                suffix = "匹配不唯一" if count > 1 else "未匹配"
+                raise TargetResolutionError(f"iframe第{index}层{suffix}（{count} 个）")
+            try:
+                scope = scope.frame_locator(selector)
+            except Exception as exc:
+                raise TargetResolutionError(f"iframe第{index}层无法进入: {exc}") from exc
     scoped, _reason = _select_scope_chain(scope, _profile(step))
     return scoped
 
@@ -231,6 +230,107 @@ def _apply_scope_filters(locator: Any, item: dict[str, Any]) -> Any:
     return locator
 
 
+_TABLE_ROW_HEADER_MAP_SCRIPT = """
+(rows, expectedHeaders) => {
+    const normalize = value => String(value || "").replace(/\\s+/g, " ").trim();
+    return rows.map(row => {
+        const cells = Array.from(row.children).filter(cell =>
+            cell.matches("td, th, [role='cell'], [role='gridcell']")
+        );
+        if (!cells.length) {
+            return { eligible: false, mapping: "skipped", matches: false, columns: {} };
+        }
+        const table = row.closest("table, [role='table'], [role='grid']");
+        if (!table) {
+            return { eligible: true, mapping: "unmapped", matches: false, columns: {} };
+        }
+        const headerRows = Array.from(table.querySelectorAll("thead tr"));
+        const headers = (headerRows.length ? headerRows : Array.from(table.querySelectorAll("tr")))
+            .flatMap(headerRow => Array.from(headerRow.children).filter(cell =>
+                cell.matches("th, [role='columnheader']")
+            ));
+        const columns = {};
+        for (const [header, value] of Object.entries(expectedHeaders)) {
+            const indexes = headers
+                .map((cell, index) => normalize(cell.innerText) === normalize(header) ? index + 1 : 0)
+                .filter(Boolean);
+            if (indexes.length !== 1 || indexes[0] > cells.length) {
+                return {
+                    eligible: true,
+                    mapping: indexes.length > 1 ? "ambiguous" : "unmapped",
+                    matches: false,
+                    columns: {},
+                };
+            }
+            columns[header] = indexes[0];
+            if (normalize(cells[indexes[0] - 1].innerText) !== normalize(value)) {
+                return { eligible: true, mapping: "mapped", matches: false, columns };
+            }
+        }
+        return { eligible: true, mapping: "mapped", matches: true, columns };
+    });
+}
+"""
+
+
+def _normalized_headers(item: dict[str, Any]) -> dict[str, str]:
+    raw_headers = item.get("headers")
+    if not isinstance(raw_headers, dict):
+        return {}
+    return {
+        header: value
+        for raw_header, raw_value in raw_headers.items()
+        if (header := _text(raw_header)) and (value := _text(raw_value))
+    }
+
+
+def _select_table_row_scope(scope: Any, item: dict[str, Any], index: int) -> Any:
+    headers = _normalized_headers(item)
+    if not headers:
+        raise TargetResolutionError(f"范围第{index}层表头映射为空，已安全停止")
+    try:
+        rows = scope.locator(_scope_selector(item))
+        row_states = rows.evaluate_all(_TABLE_ROW_HEADER_MAP_SCRIPT, headers)
+    except Exception as exc:
+        raise TargetResolutionError(f"范围第{index}层无法验证表头到单元格映射: {exc}") from exc
+    if not isinstance(row_states, list):
+        raise TargetResolutionError(f"范围第{index}层无法验证表头到单元格映射")
+    eligible = [state for state in row_states if isinstance(state, dict) and state.get("eligible")]
+    if not eligible:
+        raise TargetResolutionError(f"范围第{index}层表头无法映射，已安全停止")
+    mappings = [state.get("mapping") for state in eligible]
+    if any(mapping == "ambiguous" for mapping in mappings):
+        raise TargetResolutionError(f"范围第{index}层表头映射不唯一，已安全停止")
+    if any(mapping != "mapped" for mapping in mappings):
+        raise TargetResolutionError(f"范围第{index}层表头无法映射，已安全停止")
+    matches = [state for state in eligible if state.get("matches")]
+    if len(matches) != 1:
+        suffix = "匹配不唯一" if len(matches) > 1 else "未匹配"
+        raise TargetResolutionError(f"范围第{index}层{suffix}（{len(matches)} 个）")
+    columns = matches[0].get("columns")
+    if not isinstance(columns, dict):
+        raise TargetResolutionError(f"范围第{index}层表头无法映射，已安全停止")
+    candidate = rows
+    for header, value in headers.items():
+        try:
+            column = int(columns.get(header))
+        except (TypeError, ValueError):
+            raise TargetResolutionError(f"范围第{index}层表头无法映射，已安全停止") from None
+        if column < 1:
+            raise TargetResolutionError(f"范围第{index}层表头无法映射，已安全停止")
+        cell = scope.locator(f":is(td, th):nth-child({column}):text-is({json.dumps(value, ensure_ascii=False)})")
+        candidate = candidate.filter(has=cell)
+    if _safe_count(candidate) != 1:
+        raise TargetResolutionError(f"范围第{index}层表头单元格验证不唯一，已安全停止")
+    try:
+        verified = candidate.evaluate_all(_TABLE_ROW_HEADER_MAP_SCRIPT, headers)
+    except Exception as exc:
+        raise TargetResolutionError(f"范围第{index}层无法复核表头到单元格映射: {exc}") from exc
+    if not isinstance(verified, list) or len(verified) != 1 or not verified[0].get("matches"):
+        raise TargetResolutionError(f"范围第{index}层表头单元格验证失败，已安全停止")
+    return candidate
+
+
 def _select_scope_chain(scope: Any, profile: dict[str, Any]) -> tuple[Any, str]:
     reason = ""
     chain = profile.get("scope_chain")
@@ -240,15 +340,19 @@ def _select_scope_chain(scope: Any, profile: dict[str, Any]) -> tuple[Any, str]:
         if not isinstance(raw, dict):
             continue
         try:
-            candidate = _apply_scope_filters(scope.locator(_scope_selector(raw)), raw)
-            count = _safe_count(candidate)
+            if _text(raw.get("kind")).lower() == "table_row" and _normalized_headers(raw):
+                candidate = _select_table_row_scope(scope, raw, index)
+            else:
+                candidate = _apply_scope_filters(scope.locator(_scope_selector(raw)), raw)
+                count = _safe_count(candidate)
         except TargetResolutionError:
             raise
         except Exception as exc:
             raise TargetResolutionError(f"范围第{index}层无法定位: {exc}") from exc
-        if count != 1:
-            suffix = "匹配不唯一" if count > 1 else "未匹配"
-            raise TargetResolutionError(f"范围第{index}层{suffix}（{count} 个）")
+        if not (_text(raw.get("kind")).lower() == "table_row" and _normalized_headers(raw)):
+            if count != 1:
+                suffix = "匹配不唯一" if count > 1 else "未匹配"
+                raise TargetResolutionError(f"范围第{index}层{suffix}（{count} 个）")
         scope = candidate
         reason = _scope_reason(raw) or reason
     return scope, reason
@@ -351,25 +455,49 @@ def _not_obscured(target: Any) -> bool:
         return False
 
 
-def _stable_box(target: Any) -> bool:
+def _stable_box(target: Any, deadline: float) -> bool:
     try:
-        first = target.bounding_box()
-        second = target.bounding_box()
-        if not first or not second:
+        if time.monotonic() >= deadline:
             return False
-        if min(float(first.get("width") or 0), float(first.get("height") or 0)) <= 0:
+        first = target.bounding_box()
+        if not first or min(float(first.get("width") or 0), float(first.get("height") or 0)) <= 0:
+            return False
+        remaining_ms = int((deadline - time.monotonic()) * 1000)
+        if remaining_ms <= 0:
+            return False
+        sampled = target.evaluate(f"""
+            element => new Promise(resolve => {{
+                let settled = false;
+                const finish = value => {{
+                    if (!settled) {{
+                        settled = true;
+                        resolve(value);
+                    }}
+                }};
+                const timer = setTimeout(() => finish(false), {min(100, remaining_ms)});
+                requestAnimationFrame(() => requestAnimationFrame(() => {{
+                    clearTimeout(timer);
+                    finish(true);
+                }}));
+            }})
+        """)
+        if sampled is not True or time.monotonic() >= deadline:
+            return False
+        second = target.bounding_box()
+        if not second or min(float(second.get("width") or 0), float(second.get("height") or 0)) <= 0:
             return False
         return all(abs(float(first.get(key, 0)) - float(second.get(key, 0))) <= 1 for key in ("x", "y", "width", "height"))
     except Exception:
         return False
 
 
-def _evaluate_candidate(scope: Any, candidate: _Candidate, profile: dict[str, Any], action: str, timeout_ms: int) -> tuple[Any, tuple[str, ...]] | tuple[None, tuple[str, ...]]:
+def _evaluate_candidate(scope: Any, candidate: _Candidate, profile: dict[str, Any], action: str, deadline: float) -> tuple[Any, tuple[str, ...]] | tuple[None, tuple[str, ...]]:
     reasons = list(candidate.reasons)
     try:
         target = scope.locator(candidate.value)
         try:
-            target.wait_for(state="visible", timeout=max(1, min(1500, timeout_ms)))
+            remaining_ms = max(0, int((deadline - time.monotonic()) * 1000))
+            target.wait_for(state="visible", timeout=max(1, min(1500, remaining_ms)))
         except Exception:
             pass
         count = _safe_count(target)
@@ -379,7 +507,7 @@ def _evaluate_candidate(scope: Any, candidate: _Candidate, profile: dict[str, An
         enabled = bool(target.is_enabled())
         compatible = _action_compatible(action, profile)
         unobscured = _not_obscured(target)
-        stable = _stable_box(target)
+        stable = _stable_box(target, deadline)
     except Exception as exc:
         return None, tuple(reasons + [f"候选无法验证: {exc}"])
     if not visible:
@@ -404,16 +532,15 @@ def resolve_target(
 ) -> ResolvedTarget:
     """统一评估语义、录制、记忆与 AI 候选，只有高置信唯一目标才返回。"""
     profile = _profile(step)
-    selected_page = select_profile_page(page, step, timeout_ms)
-    scope = select_profile_scope(selected_page, step, timeout_ms)
+    deadline = time.monotonic() + max(0, timeout_ms) / 1000
+    selected_page = select_profile_page(page, step, max(0, int((deadline - time.monotonic()) * 1000)))
+    scope = select_profile_scope(selected_page, step, max(0, int((deadline - time.monotonic()) * 1000)))
     scope_reason = _scope_chain_reason(profile)
     action = _text(step.get("action")).lower()
-    deadline = time.monotonic() + max(0, timeout_ms) / 1000
     accepted: list[tuple[_Candidate, Any, tuple[str, ...]]] = []
     rejected: list[str] = []
     for candidate in _candidate_pool(step, memory, frozen):
-        remaining_ms = max(0, int((deadline - time.monotonic()) * 1000))
-        target, reasons = _evaluate_candidate(scope, candidate, profile, action, remaining_ms)
+        target, reasons = _evaluate_candidate(scope, candidate, profile, action, deadline)
         if target is None:
             rejected.append(f"{candidate.value}: {reasons[-1]}")
             continue
