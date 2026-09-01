@@ -92,3 +92,20 @@ export function listUiCaseRevisions(caseId) {
 export function rollbackUiCaseRevision(caseId, revisionId) {
   return api(`/api/ui-cases/${caseId}/revisions/${revisionId}/rollback`, { method: 'POST' })
 }
+
+// ========== 录制验证（双轮预检 + 重新选点 + 重启） ==========
+export function getUiRecordProjectConfig(projectId) {
+  return api(`/api/ui-record/projects/${projectId}/config`)
+}
+
+export function saveUiRecordProjectConfig(projectId, data) {
+  return api(`/api/ui-record/projects/${projectId}/config`, { method: 'PUT', body: data })
+}
+
+export function startUiRecordRepick(runId, stepIndex) {
+  return api(`/api/ui-record/preflights/${runId}/steps/${stepIndex}/repick/start`, { method: 'POST' })
+}
+
+export function restartUiRecordPreflight(runId) {
+  return api(`/api/ui-record/preflights/${runId}/restart`, { method: 'POST' })
+}

@@ -7,6 +7,8 @@ const frontendDir = resolve(scriptDir, '..')
 const view = readFileSync(join(frontendDir, 'src', 'views', 'UiCasesView.vue'), 'utf8')
 const apiModule = readFileSync(join(frontendDir, 'src', 'api', 'modules', 'uiCases.js'), 'utf8')
 const recordingPanel = readFileSync(join(frontendDir, 'src', 'components', 'ui-cases', 'UiRecordingPanel.vue'), 'utf8')
+const preflightPanelPath = join(frontendDir, 'src', 'components', 'ui-cases', 'UiRecordingPreflightPanel.vue')
+const preflightPanelSource = existsSync(preflightPanelPath) ? readFileSync(preflightPanelPath, 'utf8') : ''
 const failures = []
 const requirePattern = (pattern, message) => { if (!pattern.test(view)) failures.push(message) }
 
@@ -42,15 +44,34 @@ for (const contract of ['recordPreflightGeneration', 'recordPreflightPollInFligh
 for (const contract of ['startUiRecordPreflight', 'getUiRecordPreflight', 'applyUiRecordLocator', 'listUiCaseRevisions', 'rollbackUiCaseRevision']) {
   if (!apiModule.includes(contract)) failures.push(`uiCases API missing ${contract}`)
 }
+for (const contract of [
+  'getUiRecordProjectConfig',
+  'saveUiRecordProjectConfig',
+  'startUiRecordRepick',
+  'restartUiRecordPreflight',
+  'verified_rounds',
+  'repair_required',
+  'round_2_running',
+]) {
+  if (!apiModule.includes(contract) && !view.includes(contract) && !preflightPanelSource.includes(contract)) {
+    failures.push(`missing verified recording contract ${contract}`)
+  }
+}
+if (!existsSync(join(frontendDir, 'src', 'components', 'ui-cases', 'UiRecordingStartDialog.vue'))) {
+  failures.push('missing UiRecordingStartDialog.vue')
+} else if (!view.includes('UiRecordingStartDialog')) {
+  failures.push('UiCasesView does not use UiRecordingStartDialog')
+}
+if (!preflightPanelSource.includes("emit('repick'") || !preflightPanelSource.includes("emit('restart'")) {
+  failures.push('UiRecordingPreflightPanel missing repick/restart actions')
+}
 if (!recordingPanel.includes('定位质量')) failures.push('UiRecordingPanel missing locator quality column')
 if (!recordingPanel.includes('停止并检查')) failures.push('UiRecordingPanel missing preflight action copy')
 if (!view.includes("row.status === 'active'")) failures.push('UiCasesView must hide execution action for draft cases')
 if (!view.includes("{ value: 'draft', label: '待修复草稿' }")) failures.push('UiCasesView missing repair-draft status option')
-const preflightPanelPath = join(frontendDir, 'src', 'components', 'ui-cases', 'UiRecordingPreflightPanel.vue')
 if (existsSync(preflightPanelPath)) {
-  const preflightPanel = readFileSync(preflightPanelPath, 'utf8')
-  if (!preflightPanel.includes("emit('adopt'")) failures.push('UiRecordingPreflightPanel missing candidate adopt action')
-  if (!preflightPanel.includes('item.reasons')) failures.push('UiRecordingPreflightPanel missing locator score reasons')
+  if (!preflightPanelSource.includes("emit('adopt'")) failures.push('UiRecordingPreflightPanel missing candidate adopt action')
+  if (!preflightPanelSource.includes('item.reasons')) failures.push('UiRecordingPreflightPanel missing locator score reasons')
 }
 requirePattern(/WorkbenchPageHeader/, 'UiCasesView missing WorkbenchPageHeader')
 requirePattern(/WorkbenchPanel/, 'UiCasesView missing WorkbenchPanel')

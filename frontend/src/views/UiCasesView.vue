@@ -54,15 +54,13 @@
     @submit="submitForm"
   />
 
-  <!-- 录制UI用例-启动表单弹窗（对齐旧应用 openUiRecordStartDialog → openForm） -->
-  <AppFormDialog
+  <!-- 录制UI用例-启动表单弹窗（含数据重置配置，对齐双轮验证流程） -->
+  <UiRecordingStartDialog
     :visible="recordStartVisible"
-    title="录制UI用例"
-    :fields="recordStartFields"
-    :values="recordStartValues"
-    submit-label="开始录制"
+    :projects="projects"
+    :accounts="accounts"
     @close="closeRecordStart"
-    @submit="submitRecordStart"
+    @start="submitRecordStart"
   />
 
   <!-- 录制中弹窗（对齐旧应用 renderUiRecordSessionDialog） -->
@@ -134,6 +132,8 @@
           @retry="startRecordPreflight"
           @save-draft="saveRecordDraft"
           @adopt="adoptRecordLocator"
+          @repick="startRecordRepick"
+          @restart="restartRecordPreflight"
         />
       </div>
       <div class="modal-foot">
@@ -272,6 +272,7 @@ import UiCaseForm from '../components/ui-cases/UiCaseForm.vue'
 import UiExecutionPanel from '../components/ui-cases/UiExecutionPanel.vue'
 import UiRecordingPanel from '../components/ui-cases/UiRecordingPanel.vue'
 import UiRecordingPreflightPanel from '../components/ui-cases/UiRecordingPreflightPanel.vue'
+import UiRecordingStartDialog from '../components/ui-cases/UiRecordingStartDialog.vue'
 import { WorkbenchPageHeader, WorkbenchPanel } from '../components/v2/workbench/index.js'
 import { badgeText, badgeClass } from '../utils/badge.js'
 import { accountLabel } from '../utils/account.js'
@@ -899,7 +900,7 @@ async function startRecordPreflight() {
     stopRecordPreflightPolling(false)
     recordSaving.value = false
     await pollRecordPreflight(generation)
-    if (recordPreflight.value?.run_id === result.run_id && !['passed', 'failed'].includes(recordPreflight.value?.status)) {
+    if (recordPreflight.value?.run_id === result.run_id && !['passed', 'failed', 'repair_required', 'repick_waiting', 'repair_ready'].includes(recordPreflight.value?.status)) {
       recordPreflightPollTimer = window.setInterval(() => pollRecordPreflight(generation), 1000)
     }
   } catch (error) {
@@ -921,6 +922,8 @@ async function pollRecordPreflight(generation = recordPreflightGeneration) {
     if (['passed', 'failed'].includes(result.status)) {
       stopRecordPreflightPolling(false)
       if (result.status === 'passed') await finalizeRecordSave(runId)
+    } else if (['repair_required', 'repick_waiting', 'repair_ready'].includes(result.status)) {
+      stopRecordPreflightPolling(false)
     }
   } catch (error) {
     if (generation !== recordPreflightGeneration) return
@@ -950,6 +953,47 @@ async function adoptRecordLocator(candidate) {
   } catch (error) {
     toast.show(error.message || '采用定位器失败')
   }
+}
+
+async function startRecordRepick(stepIndex) {
+  if (!stepIndex || recordSaving.value) return
+  const runId = recordPreflight.value?.run_id
+  if (!runId) return
+  recordSaving.value = true
+  try {
+    const result = await uiCasesApi.startUiRecordRepick(runId, stepIndex)
+    recordPreflight.value = { ...recordPreflight.value, ...result }
+    toast.show('请在验证浏览器中点击正确元素')
+    resumeRecordPreflightPolling()
+  } catch (error) {
+    toast.show(error.message || '重新选点失败')
+  } finally {
+    recordSaving.value = false
+  }
+}
+
+async function restartRecordPreflight() {
+  const runId = recordPreflight.value?.run_id
+  if (!runId || recordSaving.value) return
+  recordSaving.value = true
+  try {
+    const result = await uiCasesApi.restartUiRecordPreflight(runId)
+    recordPreflight.value = result
+    toast.show('已从头重新验证')
+    resumeRecordPreflightPolling()
+  } catch (error) {
+    toast.show(error.message || '重新验证失败')
+  } finally {
+    recordSaving.value = false
+  }
+}
+
+function resumeRecordPreflightPolling() {
+  const generation = recordPreflightGeneration
+  stopRecordPreflightPolling(false)
+  if (!recordPreflight.value?.run_id) return
+  recordPreflightPollTimer = window.setInterval(() => pollRecordPreflight(generation), 1000)
+  pollRecordPreflight(generation)
 }
 
 async function finalizeRecordSave(preflightRunId) {
