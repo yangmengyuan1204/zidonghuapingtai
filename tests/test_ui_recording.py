@@ -426,12 +426,24 @@ def test_save_recording_session_updates_selected_account_browser_state(monkeypat
 
 
 def test_save_recording_session_activates_case_only_for_matching_passed_preflight(monkeypatch):
+    from app.services.ui_recording_preflight import steps_snapshot_hash
+
+    stable_steps = [
+        {"action": "goto", "value": "https://example.test"},
+        {"action": "click", "locator": "#save", "locator_profile": {"quality": "stable"}},
+    ]
     preflight = SimpleNamespace(
         run_id="passed-run",
         session_id="recording-session",
         project_id=1,
         status="passed",
         case_id=None,
+        report_json=json.dumps({
+            "verification_mode": "verified",
+            "verified_rounds": 2,
+            "rounds": [{"round_no": 1, "status": "passed", "frozen": False}, {"round_no": 2, "status": "passed", "frozen": True}],
+            "steps_snapshot_hash": steps_snapshot_hash(stable_steps),
+        }, ensure_ascii=False),
     )
 
     class FakeDb:
@@ -455,10 +467,6 @@ def test_save_recording_session_activates_case_only_for_matching_passed_prefligh
         def refresh(self, _item):
             pass
 
-    stable_steps = [
-        {"action": "goto", "value": "https://example.test"},
-        {"action": "click", "locator": "#save", "locator_profile": {"quality": "stable"}},
-    ]
     preflight.steps_json = json.dumps(stable_steps, ensure_ascii=False)
     monkeypatch.setattr(
         ui_record.ui_recording_session,
@@ -537,3 +545,174 @@ def test_override_session_step_target_applies_to_preview_steps():
         assert steps[1]["target_profile"]["element"]["stable_attrs"]["id"] == "new-btn"
     finally:
         ui_recording_session._SESSIONS.pop("repick-session", None)
+
+
+def _fake_async(result):
+    async def _fn(*_args, **_kwargs):
+        return result
+
+    return _fn
+
+# ─── Task 8: 预检/重新选点/重启/保存 API ─────────────────────────
+
+class _FakeDb:
+    def __init__(self, preflight=None):
+        self.preflight = preflight
+        self.added = []
+
+    def get(self, model, key):
+        if model is UiRecordPreflight and self.preflight is not None:
+            return self.preflight
+        return None
+
+    def add(self, obj):
+        self.added.append(obj)
+
+    def flush(self):
+        return None
+
+    def commit(self):
+        return None
+
+    def refresh(self, obj):
+        obj.id = 7
+        return None
+
+    def rollback(self):
+        return None
+
+
+def _fake_session_state(steps):
+    return {
+        "project_id": 1,
+        "case_name": "订单下单",
+        "start_url": "https://example.test/orders",
+        "preview_steps": steps,
+        "account_profile_id": None,
+        "count": 0,
+        "items": [],
+    }
+
+
+def _fake_preflight_row(status="queued", report=None, session_id="session", project_id=1, steps=None):
+    return SimpleNamespace(
+        run_id="run",
+        session_id=session_id,
+        project_id=project_id,
+        case_id=0,
+        status=status,
+        assertion_text="",
+        steps_json=json.dumps(steps, ensure_ascii=False) if steps is not None else "[]",
+        report_json=json.dumps(report or {}, ensure_ascii=False),
+        screenshot="",
+        error_category="",
+        update_time=None,
+    )
+
+
+def test_start_preflight_without_config_uses_legacy_single_round(monkeypatch):
+    monkeypatch.setattr(ui_record.ui_recording_session, "get_session_state", lambda _sid, _text="": _fake_session_state([]))
+    monkeypatch.setattr(ui_record.ui_recording_session, "get_session_storage_state", _fake_async({}))
+    monkeypatch.setattr(ui_record, "get_recording_config", lambda _db, _pid: None)
+    monkeypatch.setattr(ui_record, "serialize_recording_config", lambda _db, _pid: {"config": None})
+    launched = {"verification": 0, "legacy": 0}
+    monkeypatch.setattr(ui_record, "launch_verification", lambda *_args, **_kwargs: launched.__setitem__("verification", 1))
+    monkeypatch.setattr(ui_record, "launch_legacy_preflight", lambda *_args, **_kwargs: launched.__setitem__("legacy", 1))
+    row = _fake_preflight_row()
+    monkeypatch.setattr(ui_record, "create_preflight", lambda *_args, **_kwargs: row)
+    monkeypatch.setattr(ui_record, "serialize_preflight", lambda r: {"report": json.loads(r.report_json or "{}")})
+
+    result = asyncio.run(ui_record.start_ui_record_preflight("session", payload={}, db=_FakeDb(), current_user=SimpleNamespace()))
+
+    assert result["report"]["verification_mode"] == "legacy"
+    assert result["report"]["required_rounds"] == 1
+    assert launched == {"verification": 0, "legacy": 1}
+
+
+def test_start_preflight_with_config_uses_verified_two_rounds(monkeypatch):
+    monkeypatch.setattr(ui_record.ui_recording_session, "get_session_state", lambda _sid, _text="": _fake_session_state([]))
+    monkeypatch.setattr(ui_record.ui_recording_session, "get_session_storage_state", _fake_async({}))
+    monkeypatch.setattr(ui_record, "get_recording_config", lambda _db, _pid: SimpleNamespace(reset_script_key="reset", reset_env_id=1))
+    monkeypatch.setattr(ui_record, "serialize_recording_config", lambda _db, _pid: {"config": {"reset_script_key": "reset"}})
+    launched = {"verification": 0, "legacy": 0}
+    monkeypatch.setattr(ui_record, "launch_verification", lambda *_args, **_kwargs: launched.__setitem__("verification", 1))
+    monkeypatch.setattr(ui_record, "launch_legacy_preflight", lambda *_args, **_kwargs: launched.__setitem__("legacy", 1))
+    row = _fake_preflight_row()
+    monkeypatch.setattr(ui_record, "create_preflight", lambda *_args, **_kwargs: row)
+    monkeypatch.setattr(ui_record, "serialize_preflight", lambda r: {"report": json.loads(r.report_json or "{}")})
+
+    result = asyncio.run(ui_record.start_ui_record_preflight("session", payload={}, db=_FakeDb(), current_user=SimpleNamespace()))
+
+    assert result["report"]["verification_mode"] == "verified"
+    assert result["report"]["required_rounds"] == 2
+    assert result["report"]["config"] == {"reset_script_key": "reset"}
+    assert launched == {"verification": 1, "legacy": 0}
+
+
+def test_repick_requires_matching_failed_step(monkeypatch):
+    row = _fake_preflight_row(status="repair_required", report={"repair": {"failed_step_index": 2}})
+    db = _FakeDb(preflight=row)
+    monkeypatch.setattr(ui_record, "request_repick", lambda *_args: {"ok": True})
+
+    with pytest.raises(HTTPException, match="只能重新选择当前失败步骤"):
+        ui_record.start_ui_record_repick("run", 4, db=db, current_user=SimpleNamespace())
+
+
+def test_repick_delegates_when_step_matches(monkeypatch):
+    row = _fake_preflight_row(status="repair_required", report={"repair": {"failed_step_index": 3}})
+    db = _FakeDb(preflight=row)
+    calls = {}
+    monkeypatch.setattr(ui_record, "request_repick", lambda run_id, index: calls.update({"run_id": run_id, "index": index}) or {"ok": True})
+    monkeypatch.setattr(ui_record, "serialize_preflight", lambda r: {"status": r.status})
+
+    result = ui_record.start_ui_record_repick("run", 3, db=db, current_user=SimpleNamespace())
+
+    assert calls == {"run_id": "run", "index": 3}
+    assert result["status"] == "repair_required"
+
+
+def test_case_is_active_only_after_two_frozen_rounds(monkeypatch):
+    from app.services.ui_recording_preflight import steps_snapshot_hash
+
+    steps = [{"action": "goto", "value": "https://example.test"}, {"action": "click", "locator": "#save"}]
+    report = {
+        "verification_mode": "verified",
+        "verified_rounds": 2,
+        "rounds": [{"round_no": 1, "status": "passed", "frozen": False}, {"round_no": 2, "status": "passed", "frozen": True}],
+        "steps_snapshot_hash": steps_snapshot_hash(steps),
+    }
+    row = _fake_preflight_row(status="passed", report=report, steps=steps)
+    monkeypatch.setattr(ui_record.ui_recording_session, "get_session_state", lambda _sid, _text="": _fake_session_state(steps))
+    monkeypatch.setattr(ui_record.ui_recording_session, "get_session_storage_state", _fake_async({}))
+    monkeypatch.setattr(ui_record.ui_recording_session, "close_session", _fake_async(None))
+    monkeypatch.setattr(ui_record, "save_test_account_binding", lambda *_args: None)
+    monkeypatch.setattr(ui_record, "serialize", lambda case: {"id": getattr(case, "id", 0), "status": case.status})
+
+    result = asyncio.run(ui_record.save_ui_record_session(
+        "session",
+        payload={"preflight_run_id": "run"},
+        db=_FakeDb(preflight=row),
+        current_user=SimpleNamespace(),
+    ))
+
+    assert result["case"]["status"] == "active"
+
+
+def test_legacy_single_preflight_can_only_save_draft(monkeypatch):
+    steps = [{"action": "goto", "value": "https://example.test"}, {"action": "click", "locator": "#save"}]
+    report = {"verification_mode": "legacy", "required_rounds": 1, "verified_rounds": 1}
+    row = _fake_preflight_row(status="passed", report=report, steps=steps)
+    monkeypatch.setattr(ui_record.ui_recording_session, "get_session_state", lambda _sid, _text="": _fake_session_state(steps))
+    monkeypatch.setattr(ui_record.ui_recording_session, "get_session_storage_state", _fake_async({}))
+    monkeypatch.setattr(ui_record.ui_recording_session, "close_session", _fake_async(None))
+    monkeypatch.setattr(ui_record, "save_test_account_binding", lambda *_args: None)
+    monkeypatch.setattr(ui_record, "serialize", lambda case: {"id": getattr(case, "id", 0), "status": case.status})
+
+    result = asyncio.run(ui_record.save_ui_record_session(
+        "session",
+        payload={"preflight_run_id": "run"},
+        db=_FakeDb(preflight=row),
+        current_user=SimpleNamespace(),
+    ))
+
+    assert result["case"]["status"] == "draft"

@@ -369,12 +369,20 @@ def _run_verification_worker(
         max_attempts = int(config.max_repair_attempts) if config and config.max_repair_attempts else DEFAULT_MAX_REPAIR_ATTEMPTS
         control = _register_control(VerificationControl(run_id=run_id, repair_attempts=attempts, max_repair_attempts=max_attempts))
         progress_report: dict[str, Any] = {"status": "queued", "steps": [], "rounds": 2}
+        round_status: dict[int, str] = {}
 
         def progress(payload: dict[str, Any]) -> None:
-            nonlocal progress_report
+            nonlocal progress_report, round_status
             from .ui_recording_preflight import merge_preflight_progress
 
             progress_report = merge_preflight_progress(progress_report, payload)
+            round_no = payload.get("round_no")
+            if isinstance(round_no, int) and round_no > 0:
+                status_text = str(payload.get("status") or "")
+                if payload.get("event") == "state" and status_text in {"passed", "failed"}:
+                    round_status[int(round_no)] = status_text
+                elif payload.get("event") == "repair" and status_text == "repair_required":
+                    round_status[1] = "failed"
             row.report_json = json.dumps(progress_report, ensure_ascii=False, default=str)
             row.update_time = datetime.now()
             db.commit()
@@ -390,6 +398,23 @@ def _run_verification_worker(
                 report = {}
             if isinstance(report, dict):
                 report["repair"] = {"failed_step_index": control.requested_step_index, "attempts": control.repair_attempts}
+                row.report_json = json.dumps(report, ensure_ascii=False, default=str)
+        if row.status == "passed":
+            try:
+                report = json.loads(row.report_json or "{}")
+            except (TypeError, ValueError):
+                report = {}
+            from .ui_recording_preflight import steps_snapshot_hash
+
+            if isinstance(report, dict):
+                report["verification_mode"] = "verified"
+                report["required_rounds"] = 2
+                report["verified_rounds"] = 2
+                report["rounds"] = [
+                    {"round_no": 1, "status": round_status.get(1, "passed"), "frozen": False},
+                    {"round_no": 2, "status": round_status.get(2, "passed"), "frozen": True},
+                ]
+                report["steps_snapshot_hash"] = steps_snapshot_hash(case_data.get("steps") or [])
                 row.report_json = json.dumps(report, ensure_ascii=False, default=str)
         runner.close_browser()
         row.update_time = datetime.now()

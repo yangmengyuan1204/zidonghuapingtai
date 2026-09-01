@@ -1383,7 +1383,16 @@
     "method": "GET",
     "path": "/api/ui-record/preflights/{run_id}",
     "name": "get_ui_record_preflight"
-  },
+  },    {
+      "method": "POST",
+      "path": "/api/ui-record/preflights/{run_id}/steps/{step_index}/repick/start",
+      "name": "start_ui_record_repick"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ui-record/preflights/{run_id}/restart",
+      "name": "restart_ui_record_preflight"
+    },
   {
     "method": "POST",
     "path": "/api/ui-record/sessions/{session_id}/steps/{step_index}/locator",

@@ -1,3 +1,5 @@
+import json
+
 from datetime import datetime
 from typing import Any, Dict
 
@@ -16,11 +18,13 @@ from ..executors import to_json_text
 from ..models import TestAccountProfile, UiCase, UiRecordPreflight, User
 from ..security import require_admin
 from ..services import ui_recording_session
-from ..services.ui_recording_config import save_recording_config, serialize_recording_config
+from ..services.ui_recording_config import get_recording_config, save_recording_config, serialize_recording_config
+from ..services.ui_recording_verification import launch_verification, request_repick, restart_verification
 from ..services.ui_recording_preflight import (
     create_preflight,
+    initialize_preflight_report,
     determine_recorded_case_status,
-    launch_preflight,
+    launch_legacy_preflight,
     preflight_matches_steps,
     serialize_preflight,
 )
@@ -146,16 +150,34 @@ async def start_ui_record_preflight(
         steps=steps,
         assertion_text=assertion_text,
     )
-    launch_preflight(
-        row,
-        case_data={
-            "case_name": session_state["case_name"],
-            "page_url": session_state["start_url"],
-            "steps": steps,
-            "timeout": 30,
-        },
-        storage_state=storage_state,
-    )
+    project_config = get_recording_config(db, int(session_state["project_id"]))
+    if project_config is not None:
+        config_snapshot = serialize_recording_config(db, int(session_state["project_id"])).get("config")
+        initialize_preflight_report(row, "verified", 2, config_snapshot if isinstance(config_snapshot, dict) else None)
+        db.commit()
+        launch_verification(
+            row,
+            case_data={
+                "case_name": session_state["case_name"],
+                "page_url": session_state["start_url"],
+                "steps": steps,
+                "timeout": 30,
+            },
+            storage_state=storage_state,
+        )
+    else:
+        initialize_preflight_report(row, "legacy", 1)
+        db.commit()
+        launch_legacy_preflight(
+            row,
+            case_data={
+                "case_name": session_state["case_name"],
+                "page_url": session_state["start_url"],
+                "steps": steps,
+                "timeout": 30,
+            },
+            storage_state=storage_state,
+        )
     return serialize_preflight(row)
 
 
@@ -171,6 +193,70 @@ def get_ui_record_preflight(
     return serialize_preflight(row)
 
 
+
+
+@router.post("/preflights/{run_id}/steps/{step_index}/repick/start")
+def start_ui_record_repick(
+    run_id: str,
+    step_index: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    row = db.get(UiRecordPreflight, run_id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="录制预检不存在")
+    if row.status != "repair_required":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前状态不允许重新选点")
+    try:
+        report = json.loads(row.report_json or "{}")
+    except (TypeError, ValueError):
+        report = {}
+    repair = report.get("repair") if isinstance(report.get("repair"), dict) else {}
+    failed_index = repair.get("failed_step_index")
+    if failed_index is None or int(failed_index) != int(step_index):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="只能重新选择当前失败步骤")
+    try:
+        repick_result = request_repick(run_id, int(step_index))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return {**serialize_preflight(row), "repick": repick_result}
+
+
+@router.post("/preflights/{run_id}/restart")
+async def restart_ui_record_preflight(
+    run_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    row = db.get(UiRecordPreflight, run_id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="录制预检不存在")
+    if row.status not in {"repair_ready", "failed"}:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前状态不允许重新检查")
+    try:
+        session_state = ui_recording_session.get_session_state(row.session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    steps = session_state.get("preview_steps") or []
+    storage_state = await ui_recording_session.get_session_storage_state(row.session_id)
+    restart_verification(
+        db,
+        row,
+        case_data={
+            "case_name": session_state["case_name"],
+            "page_url": session_state["start_url"],
+            "steps": steps,
+            "timeout": 30,
+        },
+        storage_state=storage_state,
+    )
+    try:
+        report = json.loads(row.report_json or "{}")
+    except (TypeError, ValueError):
+        report = {}
+    new_run_id = report.get("restarted_run_id") if isinstance(report, dict) else None
+    new_row = db.get(UiRecordPreflight, new_run_id) if new_run_id else None
+    return serialize_preflight(new_row) if new_row else serialize_preflight(row)
 @router.post("/sessions/{session_id}/steps/{step_index}/locator")
 def override_ui_record_step_locator(
     session_id: str,
@@ -221,7 +307,13 @@ async def save_ui_record_session(
         or not preflight_matches_steps(preflight, steps)
     ):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="预检结果与当前录制会话不匹配")
-    case_status = determine_recorded_case_status(preflight.status if preflight else "", steps)
+    preflight_report: dict[str, Any] | None = None
+    if preflight:
+        try:
+            preflight_report = json.loads(preflight.report_json or "{}")
+        except (TypeError, ValueError):
+            preflight_report = {}
+    case_status = determine_recorded_case_status(preflight.status if preflight else "", steps, preflight_report)
 
     ui_case = UiCase(
         project_id=int(session_state["project_id"]),

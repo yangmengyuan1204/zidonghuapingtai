@@ -8,6 +8,7 @@ from app.database import Base
 from app.models import UiCaseRevision, UiLocatorMemory, UiRecordPreflight
 from app.services.ui_recording_preflight import (
     determine_recorded_case_status,
+    steps_snapshot_hash,
     summarize_preflight_log,
 )
 from app.services import ui_recording_preflight
@@ -27,8 +28,15 @@ def test_passed_preflight_with_stable_locators_activates_recorded_case():
         {"action": "goto", "value": "https://example.test"},
         {"action": "click", "locator": "#save", "locator_profile": {"quality": "stable"}},
     ]
+    report = {
+        "verification_mode": "verified",
+        "verified_rounds": 2,
+        "rounds": [{"round_no": 1, "status": "passed", "frozen": False}, {"round_no": 2, "status": "passed", "frozen": True}],
+        "steps_snapshot_hash": steps_snapshot_hash(steps),
+    }
 
-    assert determine_recorded_case_status("passed", steps) == "active"
+    assert determine_recorded_case_status("passed", steps, report) == "active"
+    assert determine_recorded_case_status("passed", steps) == "draft"
 
 
 def test_failed_or_risky_preflight_stays_draft():

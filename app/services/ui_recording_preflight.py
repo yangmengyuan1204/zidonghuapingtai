@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import threading
 from datetime import datetime
@@ -14,12 +15,43 @@ from ..models import UiRecordPreflight
 from .ui_recording_verification import launch_verification
 
 
-def determine_recorded_case_status(preflight_status: str, steps: list[dict[str, Any]]) -> str:
+def steps_snapshot_hash(steps: list[dict[str, Any]]) -> str:
+    canonical = json.dumps(steps, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def determine_recorded_case_status(
+    preflight_status: str,
+    steps: list[dict[str, Any]],
+    preflight_report: dict[str, Any] | None = None,
+) -> str:
+    """只有双轮冻结验证全部通过且步骤快照一致时才能保存为 active。"""
     if preflight_status != "passed":
         return "draft"
+    report = preflight_report if isinstance(preflight_report, dict) else {}
+    if report.get("verification_mode") != "verified":
+        return "draft"
+    if int(report.get("verified_rounds") or 0) != 2:
+        return "draft"
+    rounds = report.get("rounds")
+    if not isinstance(rounds, list) or len(rounds) < 2:
+        return "draft"
+    if (
+        rounds[0].get("status") != "passed"
+        or rounds[1].get("status") != "passed"
+        or rounds[1].get("frozen") is not True
+    ):
+        return "draft"
+    if report.get("steps_snapshot_hash") != steps_snapshot_hash(steps):
+        return "draft"
     for step in steps:
-        profile = step.get("locator_profile") if isinstance(step, dict) else None
+        if not isinstance(step, dict):
+            continue
+        profile = step.get("locator_profile") if isinstance(step.get("locator_profile"), dict) else None
         if isinstance(profile, dict) and profile.get("quality") == "risk":
+            return "draft"
+        target = step.get("target_profile") if isinstance(step.get("target_profile"), dict) else None
+        if isinstance(target, dict) and target.get("quality") == "risk":
             return "draft"
     return "active"
 
@@ -218,6 +250,40 @@ def launch_preflight(
 ) -> None:
     # 兼容入口：内部转交双轮验证编排器
     launch_verification(row, case_data=case_data, storage_state=storage_state)
+
+
+def launch_legacy_preflight(
+    row: UiRecordPreflight,
+    *,
+    case_data: dict[str, Any],
+    storage_state: dict[str, Any] | None,
+) -> None:
+    """未配置数据重置的项目运行旧单轮预检，结果只能保存为 draft。"""
+    thread = threading.Thread(
+        target=_run_preflight_worker,
+        args=(row.run_id, case_data, storage_state),
+        daemon=True,
+    )
+    thread.start()
+
+
+def initialize_preflight_report(
+    row: UiRecordPreflight,
+    mode: str,
+    required_rounds: int,
+    config_snapshot: dict[str, Any] | None = None,
+) -> None:
+    try:
+        report = json.loads(row.report_json or "{}")
+    except (TypeError, ValueError):
+        report = {}
+    if not isinstance(report, dict):
+        report = {}
+    report["verification_mode"] = mode
+    report["required_rounds"] = int(required_rounds)
+    if isinstance(config_snapshot, dict):
+        report["config"] = config_snapshot
+    row.report_json = json.dumps(report, ensure_ascii=False, default=str)
 
 
 def serialize_preflight(row: UiRecordPreflight) -> dict[str, Any]:
