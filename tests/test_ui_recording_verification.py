@@ -170,3 +170,61 @@ def test_apply_repick_persists_target_override(monkeypatch):
     assert overrides["index"] == 3
     assert overrides["candidates"] == ["#save"]
     assert overrides["profile"]["element"]["stable_attrs"] == {"id": "save"}
+
+
+def test_runner_emits_state_and_reset_progress(monkeypatch):
+    payloads = []
+    row = SimpleNamespace(run_id="run-2", session_id="s", project_id=1, status="queued", report_json="{}", error_category="", update_time=None)
+    instance = _VerificationRunner(
+        row=row,
+        case_data={"case_name": "测试", "page_url": "https://example.test", "steps": [], "timeout": 30},
+        storage_state=None,
+        db=None,
+        progress_callback=lambda payload: payloads.append(dict(payload)),
+    )
+    monkeypatch.setattr(instance, "execute_recording_reset", lambda *_args: _passed_reset())
+    monkeypatch.setattr(instance, "execute_round", lambda _round, _context: _passed_round())
+
+    instance.run()
+
+    events = [item for item in payloads if item.get("event") == "state"]
+    assert [item["status"] for item in events] == ["resetting", "round_1_running", "resetting", "round_2_running", "passed"]
+    assert [item["round_no"] for item in events] == [1, 1, 2, 2, 2]
+    reset_events = [item for item in payloads if item.get("event") == "reset"]
+    assert len(reset_events) == 2
+    assert reset_events[0]["reset"] == {}
+    assert reset_events[0]["round_no"] == 1
+
+
+def test_repair_required_emits_repair_progress(monkeypatch):
+    payloads = []
+    row = SimpleNamespace(run_id="run-3", session_id="s", project_id=1, status="queued", report_json="{}", error_category="", update_time=None)
+    instance = _VerificationRunner(
+        row=row,
+        case_data={"case_name": "测试", "page_url": "https://example.test", "steps": [], "timeout": 30},
+        storage_state=None,
+        db=None,
+        progress_callback=lambda payload: payloads.append(dict(payload)),
+    )
+    monkeypatch.setattr(instance, "execute_recording_reset", lambda *_args: _passed_reset())
+    monkeypatch.setattr(instance, "execute_round", lambda _round, _context: _failed_round("定位器找不到", step_index=3))
+
+    instance.run()
+
+    repair_events = [item for item in payloads if item.get("event") == "repair"]
+    assert repair_events and repair_events[-1]["status"] == "repair_required"
+    assert repair_events[-1]["repair"]["failed_step_index"] == 3
+
+
+def test_wait_for_repick_marks_repick_waiting_before_apply(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(verification, "_apply_repick", lambda control, page, row: seen.update({"before": row.status}) or setattr(row, "status", "repair_ready"), raising=False)
+    row = SimpleNamespace(run_id="run-4", status="repair_required", update_time=None, error_category="")
+    control = VerificationControl(run_id="run-4")
+    control.repick_requested.set()
+    fake_runner = SimpleNamespace(db=None, row=row, page=object())
+
+    verification._wait_for_repick(control, fake_runner)
+
+    assert seen["before"] == "repick_waiting"
+    assert row.status == "repair_ready"

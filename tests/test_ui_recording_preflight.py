@@ -176,3 +176,13 @@ def test_serialize_preflight_keeps_legacy_fields_and_adds_round_repair():
     assert payload["rounds"] == 2
     assert payload["repair"] == {"failed_step_index": 3, "attempts": 1}
     assert payload["reset"] == {"passed": True, "outputs": {}}
+
+
+def test_preflight_progress_merges_reset_and_repair_and_round():
+    merge = ui_recording_preflight.merge_preflight_progress
+    report = merge({}, {"event": "reset", "status": "resetting", "round_no": 1, "reset": {"passed": True, "outputs": {}}})
+    assert report["round_no"] == 1
+    assert report["reset"] == {"passed": True, "outputs": {}}
+    report = merge(report, {"event": "repair", "status": "repair_required", "round_no": 1, "repair": {"failed_step_index": 3}})
+    assert report["status"] == "repair_required"
+    assert report["repair"] == {"failed_step_index": 3}

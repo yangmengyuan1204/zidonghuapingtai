@@ -51,6 +51,10 @@ def merge_preflight_progress(report: dict[str, Any], payload: dict[str, Any]) ->
     result["status"] = str(payload.get("status") or result.get("status") or "running")
     if payload.get("round_no") is not None:
         result["round_no"] = int(payload.get("round_no") or 0)
+    if payload.get("reset") is not None:
+        result["reset"] = payload.get("reset")
+    if payload.get("repair") is not None:
+        result["repair"] = payload.get("repair")
     if payload.get("total_steps") is not None:
         result["total_steps"] = int(payload.get("total_steps") or 0)
     if event == "prepared":

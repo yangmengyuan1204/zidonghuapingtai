@@ -82,6 +82,18 @@ def _failure_category(log_text: str) -> str:
     return str(data.get("error_category") or "未知异常")
 
 
+def _failed_step_index(log_text: str) -> Any:
+    try:
+        data = json.loads(log_text or "{}")
+    except (TypeError, ValueError):
+        return None
+    value = data.get("failed_step_index")
+    if value is None:
+        detail = data.get("failed_step_detail")
+        if isinstance(detail, dict):
+            return detail.get("index")
+    return value
+
 def _commit(db: Any, row: UiRecordPreflight, **extra: Any) -> None:
     for key, value in extra.items():
         setattr(row, key, value)
@@ -111,11 +123,19 @@ def _build_case(row: UiRecordPreflight, steps: list[dict[str, Any]], timeout: in
 class _VerificationRunner:
     """双轮验证：每轮先重置数据，再开浏览器执行；第一轮修复类失败暂停等待重新选点。"""
 
-    def __init__(self, row: UiRecordPreflight, case_data: dict[str, Any], storage_state: dict[str, Any] | None, db: Any) -> None:
+    def __init__(
+        self,
+        row: UiRecordPreflight,
+        case_data: dict[str, Any],
+        storage_state: dict[str, Any] | None,
+        db: Any,
+        progress_callback: Any = None,
+    ) -> None:
         self.row = row
         self.case_data = case_data
         self.storage_state = storage_state
         self.db = db
+        self.progress_callback = progress_callback
         self.config = get_recording_config(db, row.project_id) if db is not None else None
         self.browser_is_open = False
         self.playwright = None
@@ -235,32 +255,47 @@ class _VerificationRunner:
     def run(self) -> RoundResult:
         for round_no in (1, 2):
             _commit(self.db, self.row, status="resetting")
+            self._emit(self.progress_callback, {"event": "state", "status": "resetting"}, round_no)
             reset_result = self.execute_recording_reset()
             if not reset_result.passed:
                 _commit(self.db, self.row, status="failed", error_category="environment_error")
+                self._emit(self.progress_callback, {"event": "state", "status": "failed"}, round_no)
                 return RoundResult(round_no=round_no, passed=False, category="environment_error", failed_step_detail={"error": reset_result.error})
+            self._emit(self.progress_callback, {"event": "reset", "status": "resetting", "reset": dict(reset_result.public_report)}, round_no)
             steps = resolve_reset_templates(list(self.case_data.get("steps") or []), reset_result.runtime_variables)
             context = {
                 "round_no": round_no,
                 "steps": steps,
                 "reset_outputs": dict(reset_result.runtime_variables),
                 "execution": self._round_execution(round_no),
-                "progress_callback": None,
+                "progress_callback": self.progress_callback,
             }
             _commit(self.db, self.row, status=f"round_{round_no}_running")
+            self._emit(self.progress_callback, {"event": "state", "status": f"round_{round_no}_running"}, round_no)
             result = self.execute_round(round_no, context)
             if result.passed:
                 if round_no == 1:
                     self.close_browser()
                     continue
                 _commit(self.db, self.row, status="passed")
+                self._emit(self.progress_callback, {"event": "state", "status": "passed"}, round_no)
                 return result
             if round_no == 1 and result.category in _REPAIR_CATEGORIES:
                 self.browser_is_open = True
                 _commit(self.db, self.row, status="repair_required")
+                self._emit(
+                    self.progress_callback,
+                    {
+                        "event": "repair",
+                        "status": "repair_required",
+                        "repair": {"failed_step_index": _failed_step_index(result.log_text), "attempts": 0},
+                    },
+                    round_no,
+                )
                 return result
             self.close_browser()
             _commit(self.db, self.row, status="failed", error_category=result.category or "environment_error")
+            self._emit(self.progress_callback, {"event": "state", "status": "failed"}, round_no)
             return result
         return RoundResult(round_no=2, passed=False, category="environment_error")
 
@@ -306,6 +341,7 @@ def _wait_for_repick(control: VerificationControl, runner: _VerificationRunner) 
             _commit(runner.db, runner.row, status="failed", error_category="repick_cancelled")
             return
         if control.repick_requested.is_set():
+            _commit(runner.db, runner.row, status="repick_waiting")
             _apply_repick(control, runner.page, runner.row)
             _commit(runner.db, runner.row)
             return
@@ -332,7 +368,6 @@ def _run_verification_worker(
         config = get_recording_config(db, row.project_id)
         max_attempts = int(config.max_repair_attempts) if config and config.max_repair_attempts else DEFAULT_MAX_REPAIR_ATTEMPTS
         control = _register_control(VerificationControl(run_id=run_id, repair_attempts=attempts, max_repair_attempts=max_attempts))
-        runner = _VerificationRunner(row, case_data, storage_state, db)
         progress_report: dict[str, Any] = {"status": "queued", "steps": [], "rounds": 2}
 
         def progress(payload: dict[str, Any]) -> None:
@@ -344,6 +379,7 @@ def _run_verification_worker(
             row.update_time = datetime.now()
             db.commit()
 
+        runner = _VerificationRunner(row, case_data, storage_state, db, progress_callback=progress)
         runner.run()
         if row.status == "repair_required":
             _wait_for_repick(control, runner)
