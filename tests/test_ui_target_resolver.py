@@ -11,7 +11,7 @@ from app.services.ui_target_resolver import (
 
 
 class _Locator:
-    def __init__(self, count=0, *, visible=True, enabled=True, text="", box=True, children=None, obscured=False):
+    def __init__(self, count=0, *, visible=True, enabled=True, text="", box=True, children=None, obscured=False, element_id=""):
         self._count = count
         self._visible = visible
         self._enabled = enabled
@@ -19,6 +19,7 @@ class _Locator:
         self._box = box
         self._children = children or {}
         self._obscured = obscured
+        self._element_id = element_id
 
     def count(self):
         return self._count
@@ -49,6 +50,8 @@ class _Locator:
         return self
 
     def evaluate(self, _script):
+        if "__uiTargetResolverIds" in _script:
+            return self._element_id or str(id(self))
         return not self._obscured
 
 
@@ -178,6 +181,27 @@ def test_resolver_rejects_close_scores_instead_of_clicking():
         resolve_target(page, step, 1000)
 
 
+def test_resolver_merges_close_scored_selectors_for_same_dom_element():
+    same_element_id = "save-button"
+    page = _Page({
+        '[data-testid="save"]': _Locator(1, element_id=same_element_id),
+        '[data-test="save"]': _Locator(1, element_id=same_element_id),
+    })
+    step = {
+        "action": "click",
+        "target_profile": {
+            "element": {
+                "stable_attrs": {"data-testid": "save", "data-test": "save"},
+                "capabilities": {"click": True},
+            }
+        },
+    }
+
+    result = resolve_target(page, step, 1000)
+
+    assert result.used_locator == '[data-testid="save"]'
+
+
 def test_resolver_uses_page_identity_before_page_index():
     first = _Page({}, title="主页")
     second = _Page({}, title="支付结果")
@@ -257,3 +281,16 @@ def test_frozen_resolver_does_not_use_ai_or_new_memory_candidates():
 
     with pytest.raises(TargetResolutionError):
         resolve_target(page, step, 1000, memory=["#memory"], frozen=True)
+
+
+def test_verified_memory_candidate_can_recover_failed_recorded_locator():
+    page = _Page({"#recorded": _Locator(0), "#memory": _Locator(1)})
+    step = {
+        "action": "click",
+        "locator_profile": {"candidates": [{"value": "#recorded", "score": 90}]},
+    }
+
+    result = resolve_target(page, step, 1000, memory=["#memory"])
+
+    assert result.used_locator == "#memory"
+    assert result.score >= 80

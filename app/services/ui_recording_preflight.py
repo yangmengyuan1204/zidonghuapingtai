@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from ..database import SessionLocal
 from ..models import UiRecordPreflight
 from .ui_recording_verification import launch_verification
+from .ui_recording_session import sanitize_recorded_steps
 
 
 def steps_snapshot_hash(steps: list[dict[str, Any]]) -> str:
@@ -91,6 +92,7 @@ def merge_preflight_progress(report: dict[str, Any], payload: dict[str, Any]) ->
         result["total_steps"] = int(payload.get("total_steps") or 0)
     if event == "prepared":
         raw_steps = payload.get("steps") if isinstance(payload.get("steps"), list) else []
+        raw_steps = sanitize_recorded_steps(raw_steps)
         result["steps"] = [
             _progress_step(step if isinstance(step, dict) else {"raw": step}, index)
             for index, step in enumerate(raw_steps, start=1)
@@ -106,6 +108,8 @@ def merge_preflight_progress(report: dict[str, Any], payload: dict[str, Any]) ->
         current["status"] = "running" if event == "step_start" else str(payload.get("status") or current.get("status") or "")
         detail = payload.get("detail") if isinstance(payload.get("detail"), dict) else {}
         if detail:
+            sanitized_detail = sanitize_recorded_steps([detail])
+            detail = sanitized_detail[0] if sanitized_detail else {}
             current.update(detail)
             current["index"] = index
         steps[index - 1] = current
@@ -157,13 +161,14 @@ def create_preflight(
     steps: list[dict[str, Any]],
     assertion_text: str,
 ) -> UiRecordPreflight:
+    safe_steps = sanitize_recorded_steps(steps)
     row = UiRecordPreflight(
         run_id=uuid4().hex,
         session_id=session_id,
         project_id=project_id,
         status="queued",
         assertion_text=assertion_text,
-        steps_json=json.dumps(steps, ensure_ascii=False),
+        steps_json=json.dumps(safe_steps, ensure_ascii=False),
         report_json=json.dumps({"status": "queued", "steps": []}, ensure_ascii=False),
         create_time=datetime.now(),
         update_time=datetime.now(),

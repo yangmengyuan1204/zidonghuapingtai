@@ -10,7 +10,10 @@ from ..models import Project, UiRecordProjectConfig
 from .requirement_verification import data_script_catalog, validate_data_setup_for_project
 
 
-SENSITIVE_KEY_PARTS = ("password", "token", "cookie", "secret", "authorization")
+SENSITIVE_KEY_PARTS = (
+    "password", "token", "cookie", "secret", "authorization",
+    "api_key", "apikey", "access_key", "private_key", "client_secret",
+)
 
 
 def _contains_sensitive_key(value: Any) -> bool:

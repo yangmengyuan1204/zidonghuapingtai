@@ -6,8 +6,8 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 _DANGEROUS_ACTION_RE = re.compile(
-    r"删除|移除|清空|提交|确认|下单|支付|付款|退款|充值|发布|"
-    r"delete|remove|clear\s+all|submit|place\s+order|pay(?:ment)?|refund|publish",
+    r"删除|移除|清空|提交|确认|保存|登录|下单|支付|付款|退款|充值|发布|"
+    r"delete|remove|clear\s+all|submit|confirm|save|log\s*in|sign\s*in|place\s+order|pay(?:ment)?|refund|publish",
     re.IGNORECASE,
 )
 _SENSITIVE_KEY_RE = re.compile(r"password|passwd|token|cookie|authorization|secret|密码", re.IGNORECASE)
@@ -15,6 +15,11 @@ _SENSITIVE_KEY_RE = re.compile(r"password|passwd|token|cookie|authorization|secr
 
 def _text(value: Any, max_len: int = 1000) -> str:
     return " ".join(str(value or "").split())[:max_len]
+
+
+def _runtime_placeholder(value: Any) -> str:
+    text = str(value or "").strip()
+    return text if re.fullmatch(r"\{\{[A-Za-z_][A-Za-z0-9_.-]*\}\}", text) else "***"
 
 
 def _safe_url(value: Any) -> str:
@@ -134,16 +139,18 @@ def infer_effect_profile(event: dict[str, Any]) -> dict[str, Any]:
         if value_changed or presence_changed:
             expected = event.get("value", after_target.get("value", ""))
             if event.get("sensitive") or _text(event.get("input_type"), 50).lower() == "password":
-                expected = event.get("value") if event.get("value") in {"{{password}}", "{{username}}"} else "***"
+                expected = _runtime_placeholder(event.get("value"))
             effects.append({"type": "target_value", "expected": expected})
     elif action in {"input", "select"} and not has_observed_state and event.get("value") not in (None, ""):
         expected = event.get("value")
         if event.get("sensitive") or _text(event.get("input_type"), 50).lower() == "password":
-            expected = event.get("value") if event.get("value") in {"{{password}}", "{{username}}"} else "***"
+            expected = _runtime_placeholder(event.get("value"))
         effects.append({"type": "target_value", "expected": expected})
     elif action in {"check", "uncheck"} and isinstance(after_target.get("checked"), bool):
         if after_target.get("checked") != before_target.get("checked"):
             effects.append({"type": "target_checked", "expected": after_target["checked"]})
+    if action == "click" and before_target.get("visible") is True and after_target.get("visible") is False:
+        effects.append({"type": "element_hidden"})
 
     if effects:
         return {"schema_version": 1, "effects": effects, "required": True, "confidence": 90}

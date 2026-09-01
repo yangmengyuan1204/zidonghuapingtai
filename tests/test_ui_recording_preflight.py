@@ -194,3 +194,38 @@ def test_preflight_progress_merges_reset_and_repair_and_round():
     report = merge(report, {"event": "repair", "status": "repair_required", "round_no": 1, "repair": {"failed_step_index": 3}})
     assert report["status"] == "repair_required"
     assert report["repair"] == {"failed_step_index": 3}
+
+
+def test_create_preflight_applies_final_sensitive_step_redaction():
+    class _Db:
+        def add(self, row):
+            self.row = row
+
+        def commit(self):
+            return None
+
+        def refresh(self, _row):
+            return None
+
+    secret = "otp-987654"
+    db = _Db()
+    row = ui_recording_preflight.create_preflight(
+        db,
+        session_id="session-sensitive",
+        project_id=1,
+        steps=[{
+            "action": "input",
+            "locator": "input[name='otp']",
+            "name": "验证码",
+            "value": secret,
+            "raw_value": secret,
+            "default_value": secret,
+            "effect_profile": {
+                "effects": [{"type": "target_value", "expected": secret, "actual": secret}],
+            },
+        }],
+        assertion_text="",
+    )
+
+    assert secret not in row.steps_json
+    assert "default_value" not in row.steps_json

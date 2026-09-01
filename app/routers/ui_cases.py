@@ -35,6 +35,23 @@ _SENSITIVE_VISUAL_KEY_RE = re.compile(r"(password|passwd|pwd|captcha|token|secre
 _REPORTS_DIR = Path(__file__).resolve().parents[2] / "reports"
 
 
+def _recording_profile_steps(value: Any) -> list[dict[str, Any]]:
+    steps = parse_json_value(value, [])
+    profile_keys = ("target_profile", "locator_profile", "effect_profile")
+    return [
+        step for step in steps
+        if isinstance(step, dict) and any(isinstance(step.get(key), dict) for key in profile_keys)
+    ]
+
+
+def _reject_unverified_recording_activation(status_value: Any, steps_value: Any) -> None:
+    if str(status_value or "").strip().lower() == "active" and _recording_profile_steps(steps_value):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="新录制格式必须通过双轮验证后才能启用",
+        )
+
+
 def _visual_screenshot_url(path: Any) -> str:
     if not path:
         return ""
@@ -322,6 +339,7 @@ def create_ui_case(
 ) -> Dict[str, Any]:
     data = normalize_json_fields(schema_data(payload))
     ensure_project_exists(db, data["project_id"])
+    _reject_unverified_recording_activation(data.get("status"), data.get("steps"))
     case = UiCase(**data, create_time=datetime.now())
     db.add(case)
     db.commit()
@@ -340,6 +358,14 @@ def update_ui_case(
     data = normalize_json_fields(schema_data(payload, exclude_unset=True))
     if "project_id" in data:
         ensure_project_exists(db, data["project_id"])
+    next_status = data.get("status", case.status)
+    steps_changed = "steps" in data
+    if str(next_status or "").strip().lower() == "active" and (
+        str(case.status or "").strip().lower() != "active" or steps_changed
+    ):
+        _reject_unverified_recording_activation(next_status, data.get("steps", case.steps))
+        if steps_changed:
+            _reject_unverified_recording_activation(next_status, case.steps)
     for field, value in data.items():
         setattr(case, field, value)
     db.commit()

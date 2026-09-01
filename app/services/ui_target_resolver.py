@@ -420,9 +420,9 @@ def _candidate_pool(step: dict[str, Any], memory: Iterable[Any], frozen: bool) -
     if not frozen:
         for raw in memory or ():
             if isinstance(raw, dict):
-                _add_candidate(pool, raw.get("value") or raw.get("locator"), raw.get("score", 65), "memory", "定位记忆候选")
+                _add_candidate(pool, raw.get("value") or raw.get("locator"), raw.get("score", 90), "memory", "已验证定位记忆候选")
             else:
-                _add_candidate(pool, raw, 65, "memory", "定位记忆候选")
+                _add_candidate(pool, raw, 90, "memory", "已验证定位记忆候选")
         for key in ("ai_locator_candidates", "ai_candidates"):
             raw_candidates = step.get(key) or []
             for raw in (raw_candidates if isinstance(raw_candidates, (list, tuple)) else [raw_candidates]):
@@ -523,6 +523,26 @@ def _evaluate_candidate(scope: Any, candidate: _Candidate, profile: dict[str, An
     return target, tuple(reasons + ["唯一、可见、启用、未遮挡且布局稳定"])
 
 
+def _element_identity(target: Any, fallback: str) -> str:
+    try:
+        value = target.evaluate("""
+            element => {
+                window.__uiTargetResolverIds ||= new WeakMap();
+                window.__uiTargetResolverSeq ||= 0;
+                if (!window.__uiTargetResolverIds.has(element)) {
+                    window.__uiTargetResolverSeq += 1;
+                    window.__uiTargetResolverIds.set(element, String(window.__uiTargetResolverSeq));
+                }
+                return window.__uiTargetResolverIds.get(element);
+            }
+        """)
+        if value not in (None, ""):
+            return str(value)
+    except Exception:
+        pass
+    return f"locator:{fallback}"
+
+
 def resolve_target(
     page: Any,
     step: dict[str, Any],
@@ -549,6 +569,15 @@ def resolve_target(
         detail = "；".join(rejected[-3:])
         raise TargetResolutionError(f"没有安全且唯一的目标候选{('：' + detail) if detail else ''}")
     accepted.sort(key=lambda item: (-item[0].score, item[0].value))
+    distinct_targets: list[tuple[_Candidate, Any, tuple[str, ...]]] = []
+    seen_target_ids: set[str] = set()
+    for item in accepted:
+        identity = _element_identity(item[1], item[0].value)
+        if identity in seen_target_ids:
+            continue
+        seen_target_ids.add(identity)
+        distinct_targets.append(item)
+    accepted = distinct_targets
     top_candidate, target, reasons = accepted[0]
     if top_candidate.score < MIN_CONFIDENCE:
         raise TargetResolutionError(f"候选置信度不足：{top_candidate.score} < {MIN_CONFIDENCE}")

@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import json
 import re
 import time
@@ -48,6 +49,69 @@ class _Session:
 
 
 _SESSIONS: dict[str, _Session] = {}
+
+_SENSITIVE_INPUT_TERMS = (
+    "password", "passwd", "token", "cookie", "authorization", "secret", "密码",
+    "otp", "one-time", "one_time", "verification code", "verify code", "captcha",
+    "cvv", "cvc", "card number", "银行卡", "验证码", "api key", "api_key",
+    "access key", "access_key", "private key", "private_key",
+)
+_USERNAME_INPUT_TERMS = ("username", "account", "账号", "登录名", "user_name")
+_CODE_INPUT_TERMS = ("otp", "one-time", "one_time", "verification code", "verify code", "captcha", "验证码")
+
+
+def _contains_term(text: str, terms: tuple[str, ...]) -> bool:
+    return any(term in text for term in terms)
+
+
+def _sensitive_placeholder(text: str, input_type: str = "") -> str:
+    if input_type == "password" or _contains_term(text, ("password", "passwd", "密码")):
+        return "{{password}}"
+    if _contains_term(text, _USERNAME_INPUT_TERMS):
+        return "{{username}}"
+    if _contains_term(text, _CODE_INPUT_TERMS):
+        return "{{code}}"
+    return "{{secret}}"
+
+
+def is_sensitive_recorded_step(step: Any) -> bool:
+    if not isinstance(step, dict):
+        return False
+    metadata = " ".join(
+        str(step.get(key) or "")
+        for key in ("locator", "text", "input_type", "name", "aria_label", "label", "placeholder")
+    ).lower()
+    profile = step.get("target_profile")
+    if isinstance(profile, dict):
+        metadata += " " + json.dumps(profile.get("element") or {}, ensure_ascii=False, default=str).lower()
+    return bool(step.get("sensitive")) or _contains_term(metadata, _SENSITIVE_INPUT_TERMS + _USERNAME_INPUT_TERMS)
+
+
+def sanitize_recorded_steps(steps: Any) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for raw in steps if isinstance(steps, list) else []:
+        if not isinstance(raw, dict):
+            continue
+        step = copy.deepcopy(raw)
+        if is_sensitive_recorded_step(step):
+            metadata = " ".join(str(step.get(key) or "") for key in ("locator", "text", "input_type", "name", "label", "placeholder")).lower()
+            placeholder = _sensitive_placeholder(metadata, str(step.get("input_type") or "").lower())
+            if step.get("action") in {"input", "select"}:
+                step["value"] = placeholder
+            step["raw_value"] = "***"
+            step.pop("default_value", None)
+            profile = step.get("effect_profile")
+            if isinstance(profile, dict):
+                for effect in profile.get("effects") if isinstance(profile.get("effects"), list) else []:
+                    if not isinstance(effect, dict):
+                        continue
+                    if "expected" in effect:
+                        effect["expected"] = placeholder
+                    if "actual" in effect:
+                        effect["actual"] = "***"
+            step["sensitive"] = True
+        result.append(step)
+    return result
 _LOCK = asyncio.Lock()
 _cleanup_started = False
 
@@ -187,28 +251,21 @@ def _sanitize_event(payload: Any, event_id: int) -> dict[str, Any] | None:
     if isinstance(item.get("stable_attrs"), dict):
         sensitive_text += " " + " ".join(str(value) for value in item["stable_attrs"].values()).lower()
     explicit_sensitive = payload.get("sensitive") is True
-    sensitive = bool(
+    username_sensitive = item.get("action") == "input" and _contains_term(sensitive_text, _USERNAME_INPUT_TERMS)
+    credential_sensitive = bool(
         explicit_sensitive
         or item.get("input_type") == "password"
-        or any(word in sensitive_text for word in ("password", "passwd", "token", "cookie", "authorization", "密码"))
+        or _contains_term(sensitive_text, _SENSITIVE_INPUT_TERMS)
     )
-    secret_sensitive = bool(
-        explicit_sensitive
-        or item.get("input_type") == "password"
-        or any(word in sensitive_text for word in ("password", "passwd", "token", "cookie", "authorization", "密码"))
-    )
-    if item.get("action") == "input" and any(word in sensitive_text for word in ("username", "account", "账号", "登录名", "user_name")):
-        item["value"] = "{{username}}"
-        item["default_value"] = raw_val
-        sensitive = True
-    elif item.get("action") in {"input", "select"} and sensitive:
-        item["value"] = "{{password}}" if item.get("input_type") == "password" or "密码" in sensitive_text else "***"
-    if secret_sensitive:
+    sensitive = bool(username_sensitive or credential_sensitive)
+    if item.get("action") in {"input", "select"} and sensitive:
+        item["value"] = _sensitive_placeholder(sensitive_text, item.get("input_type") or "")
+    if sensitive:
         item["raw_value"] = "***"
         item.pop("default_value", None)
     item["sensitive"] = sensitive
     for state_key in ("before_state", "after_state"):
-        state = sanitize_page_state(payload.get(state_key), sensitive=secret_sensitive)
+        state = sanitize_page_state(payload.get(state_key), sensitive=sensitive)
         if state_key in payload or state:
             item[state_key] = state
     return item
@@ -415,7 +472,13 @@ def build_ui_steps(
             if has_dynamic_query
             else final_url
         )
-        url_step = {"name": "检查最终地址", "action": "assert_url", "value": clean_url, "exact": False}
+        url_step = {
+            "name": "检查最终地址",
+            "action": "assert_url",
+            "value": clean_url,
+            "exact": False,
+            "observation_only": True,
+        }
         if final_page_index > 0:
             url_step["page_index"] = final_page_index
         steps.append(url_step)
@@ -574,66 +637,90 @@ async def start_session(
     persist_learning_events: bool = True,
 ) -> str:
     global _cleanup_started
-    playwright = await async_playwright().start()
-    browser = await _launch_chromium(playwright)
-    context_options: dict[str, Any] = {"ignore_https_errors": True}
-    if isinstance(storage_state, dict) and isinstance(storage_state.get("cookies"), list):
-        context_options["storage_state"] = storage_state
-    context = await browser.new_context(**context_options)
+    playwright = None
+    browser = None
+    context = None
+    session_id = ""
+    try:
+        if preferred_session_id:
+            async with _LOCK:
+                if str(preferred_session_id) in _SESSIONS:
+                    raise RuntimeError("录制会话 ID 已存在")
+        playwright = await async_playwright().start()
+        browser = await _launch_chromium(playwright)
+        context_options: dict[str, Any] = {"ignore_https_errors": True}
+        if isinstance(storage_state, dict) and isinstance(storage_state.get("cookies"), list):
+            context_options["storage_state"] = storage_state
+        context = await browser.new_context(**context_options)
 
-    session = _Session(
-        playwright=playwright,
-        browser=browser,
-        context=context,
-        page=None,
-        project_id=project_id,
-        case_name=case_name,
-        start_url=start_url,
-        user_id=user_id,
-        account_profile_id=account_profile_id,
-        current_url=start_url,
-        learning_session_id=str(preferred_session_id or "") if persist_learning_events else "",
-        persistent=bool(persistent),
-    )
+        session = _Session(
+            playwright=playwright,
+            browser=browser,
+            context=context,
+            page=None,
+            project_id=project_id,
+            case_name=case_name,
+            start_url=start_url,
+            user_id=user_id,
+            account_profile_id=account_profile_id,
+            current_url=start_url,
+            learning_session_id=str(preferred_session_id or "") if persist_learning_events else "",
+            persistent=bool(persistent),
+        )
 
-    await context.add_init_script(recording_init_script())
+        await context.add_init_script(recording_init_script())
 
-    def on_new_page(new_page: Any) -> None:
-        session.page = new_page
-        async def _inject_new_page(p: Any) -> None:
-            await _attach_page_recorder(session, p)
+        def on_new_page(new_page: Any) -> None:
+            session.page = new_page
+
+            async def _inject_new_page(p: Any) -> None:
+                await _attach_page_recorder(session, p)
+                try:
+                    await p.add_init_script(recording_init_script())
+                except Exception:
+                    pass
+                try:
+                    await p.evaluate(recording_init_script())
+                except Exception:
+                    pass
             try:
-                await p.add_init_script(recording_init_script())
+                loop = asyncio.get_running_loop()
+                loop.create_task(_inject_new_page(new_page))
             except Exception:
                 pass
-            try:
-                await p.evaluate(recording_init_script())
-            except Exception:
-                pass
+
+        context.on("page", on_new_page)
+        page = await context.new_page()
+        session.page = page
+        await _attach_page_recorder(session, page)
+
+        async with _LOCK:
+            session_id = str(preferred_session_id or uuid4().hex)
+            if session_id in _SESSIONS:
+                raise RuntimeError("录制会话 ID 已存在")
+            if persist_learning_events:
+                session.learning_session_id = session_id
+            _SESSIONS[session_id] = session
+        if not _cleanup_started:
+            _cleanup_started = True
+            asyncio.create_task(_cleanup_loop())
         try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(_inject_new_page(new_page))
+            await page.goto(start_url, wait_until="domcontentloaded")
         except Exception:
             pass
-
-    context.on("page", on_new_page)
-    page = await context.new_page()
-    session.page = page
-    await _attach_page_recorder(session, page)
-
-    async with _LOCK:
-        session_id = str(preferred_session_id or uuid4().hex)
-        if persist_learning_events:
-            session.learning_session_id = session_id
-        _SESSIONS[session_id] = session
-    if not _cleanup_started:
-        _cleanup_started = True
-        asyncio.create_task(_cleanup_loop())
-    try:
-        await page.goto(start_url, wait_until="domcontentloaded")
+        return session_id
     except Exception:
-        pass
-    return session_id
+        if session_id:
+            async with _LOCK:
+                _SESSIONS.pop(session_id, None)
+        for resource in (context, browser, playwright):
+            closer = getattr(resource, "close", None) or getattr(resource, "stop", None)
+            if closer:
+                try:
+                    await closer()
+                except Exception:
+                    pass
+        raise
 
 
 async def get_session_storage_state(session_id: str) -> dict[str, Any]:

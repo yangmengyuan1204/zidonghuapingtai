@@ -13,8 +13,9 @@ from ..models import UiRecordPreflight
 from .ui_recording_capture import recording_init_script, repick_script
 from .ui_recording_config import get_recording_config
 from .ui_recording_reset import ResetExecutionResult, execute_recording_reset, resolve_reset_templates
-from .ui_recording_session import override_session_step_target
+from .ui_recording_session import get_session_state, override_session_step_target
 from .ui_target_profile import build_target_profile
+from .ui_target_resolver import select_profile_page
 
 # 第一轮修复等待上限：超过后按环境失败收尾，避免后台线程无限等待
 REPAIR_WAIT_SECONDS = 600.0
@@ -274,11 +275,12 @@ class _VerificationRunner:
             self._emit(self.progress_callback, {"event": "state", "status": f"round_{round_no}_running"}, round_no)
             result = self.execute_round(round_no, context)
             if result.passed:
+                round_status = "passed" if round_no == 2 else "round_1_passed"
+                self._emit(self.progress_callback, {"event": "state", "status": round_status}, round_no)
                 if round_no == 1:
                     self.close_browser()
                     continue
                 _commit(self.db, self.row, status="passed")
-                self._emit(self.progress_callback, {"event": "state", "status": "passed"}, round_no)
                 return result
             if round_no == 1 and result.category in _REPAIR_CATEGORIES:
                 self.browser_is_open = True
@@ -309,11 +311,50 @@ def _evaluate_repick(page: Any, step_index: int) -> dict[str, Any]:
     return result if isinstance(result, dict) else {}
 
 
+def _repick_frame_selector(frame: dict[str, Any]) -> str:
+    selector = str(frame.get("selector") or "").strip()
+    if selector:
+        return selector
+    attrs = frame.get("stable_attrs") if isinstance(frame.get("stable_attrs"), dict) else {}
+    for key in ("data-testid", "data-test", "id", "name", "title"):
+        value = str(attrs.get(key) or frame.get(key) or "").strip().replace('"', '\\"')
+        if value:
+            return f'iframe[{key}="{value}"]'
+    return "iframe"
+
+
+def _repick_execution_context(page: Any, session_id: str, step_index: int) -> Any:
+    try:
+        state = get_session_state(session_id)
+        steps = state.get("preview_steps") if isinstance(state, dict) else []
+        step = steps[step_index - 1] if isinstance(steps, list) and 0 < step_index <= len(steps) else {}
+    except Exception:
+        step = {}
+    if not isinstance(step, dict):
+        return page
+    selected: Any = select_profile_page(page, step, timeout_ms=5000)
+    profile = step.get("target_profile") if isinstance(step.get("target_profile"), dict) else {}
+    frames = profile.get("frame_chain") if isinstance(profile.get("frame_chain"), list) else []
+    for index, raw in enumerate(frames, start=1):
+        if not isinstance(raw, dict):
+            continue
+        locator = selected.locator(_repick_frame_selector(raw))
+        count = int(locator.count())
+        if count != 1:
+            raise RuntimeError(f"重新选点 iframe 第{index}层匹配数量为 {count}")
+        handle = locator.element_handle()
+        selected = handle.content_frame() if handle is not None else None
+        if selected is None:
+            raise RuntimeError(f"重新选点 iframe 第{index}层无法进入")
+    return selected
+
+
 def _apply_repick(control: VerificationControl, page: Any, row: UiRecordPreflight) -> None:
     try:
         if page is None:
             raise RuntimeError("验证浏览器已关闭，无法重新选点")
-        result = _evaluate_repick(page, control.requested_step_index)
+        repick_context = _repick_execution_context(page, row.session_id, control.requested_step_index)
+        result = _evaluate_repick(repick_context, control.requested_step_index)
         candidates = [str(item).strip() for item in (result.get("locator_candidates") or []) if str(item).strip()][:12]
         source = result.get("target_profile_source")
         profile = build_target_profile(source) if isinstance(source, dict) else {}
@@ -379,8 +420,8 @@ def _run_verification_worker(
             round_no = payload.get("round_no")
             if isinstance(round_no, int) and round_no > 0:
                 status_text = str(payload.get("status") or "")
-                if payload.get("event") == "state" and status_text in {"passed", "failed"}:
-                    round_status[int(round_no)] = status_text
+                if payload.get("event") == "state" and status_text in {"passed", "round_1_passed", "failed"}:
+                    round_status[int(round_no)] = "passed" if status_text == "round_1_passed" else status_text
                 elif payload.get("event") == "repair" and status_text == "repair_required":
                     round_status[1] = "failed"
             row.report_json = json.dumps(progress_report, ensure_ascii=False, default=str)
@@ -411,8 +452,8 @@ def _run_verification_worker(
                 report["required_rounds"] = 2
                 report["verified_rounds"] = 2
                 report["rounds"] = [
-                    {"round_no": 1, "status": round_status.get(1, "passed"), "frozen": False},
-                    {"round_no": 2, "status": round_status.get(2, "passed"), "frozen": True},
+                    {"round_no": 1, "status": round_status.get(1, "unknown"), "frozen": False},
+                    {"round_no": 2, "status": round_status.get(2, "unknown"), "frozen": True},
                 ]
                 report["steps_snapshot_hash"] = steps_snapshot_hash(case_data.get("steps") or [])
                 row.report_json = json.dumps(report, ensure_ascii=False, default=str)

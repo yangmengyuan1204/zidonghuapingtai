@@ -6,9 +6,9 @@ import re
 from datetime import datetime
 
 from ..services.ui_locator_engine import select_step_page, select_step_scope
-from ..services.ui_target_resolver import resolve_target
+from ..services.ui_target_resolver import TargetResolutionError, resolve_target
 from .ui_adapters import execute_adapted_action
-from .ui_effects_runtime import begin_network_effect_observation, effect_already_satisfied, wait_for_effect_profile
+from .ui_effects_runtime import begin_network_effect_observation, effect_already_satisfied, validate_effect_profile_for_action, wait_for_effect_profile
 
 
 _COMPAT_NAMES = (
@@ -120,7 +120,7 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
         "fallback_locators": [item for item in candidates if item != locator],
         "locator_quality": (step.get("locator_profile") or {}).get("quality") if isinstance(step.get("locator_profile"), dict) else "",
         "locator_candidates": (step.get("locator_profile") or {}).get("candidates", []) if isinstance(step.get("locator_profile"), dict) else [],
-        "value": "***" if "password" in name.lower() or "password" in locator.lower() else value,
+        "value": "***" if step.get("sensitive") or "password" in name.lower() or "password" in locator.lower() else value,
         "started_at": datetime.now(),
         "status": "running",
         "current_url_before": getattr(page, "url", ""),
@@ -195,7 +195,39 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
             if not passed:
                 raise RuntimeError(f"全流程流转失败于节点 {summary.get('current_node')}: {summary.get('reason') or summary.get('error')}")
         elif isinstance(step.get("target_profile"), dict):
-            resolved = resolve_target(page, step, timeout_ms, memory_candidates, frozen=freeze_resolution)
+            try:
+                resolved = resolve_target(page, step, timeout_ms, memory_candidates, frozen=freeze_resolution)
+            except TargetResolutionError:
+                if freeze_resolution or disable_ai_heal or not case_id or db is None:
+                    raise
+                from ..services.locator_heal import auto_heal
+
+                failed_locator = locator or (candidates[0] if candidates else "")
+                heal_result = auto_heal(
+                    page,
+                    case_id,
+                    failed_locator,
+                    step,
+                    db,
+                    screenshot_path=detail.get("before_screenshot") or "",
+                )
+                if not heal_result or not heal_result.get("locator"):
+                    raise
+                confidence = float(heal_result.get("confidence") or 0)
+                score = round(confidence * 100) if confidence <= 1 else round(confidence)
+                healed_step = dict(step)
+                healed_step["ai_locator_candidates"] = [
+                    {"value": str(heal_result["locator"]), "score": score},
+                ]
+                resolved = resolve_target(page, healed_step, timeout_ms, memory_candidates, frozen=False)
+                detail.update({
+                    "healed": True,
+                    "ai_healed": True,
+                    "original_locator": failed_locator,
+                    "healed_locator": str(heal_result["locator"]),
+                    "heal_confidence": confidence,
+                    "heal_reason": str(heal_result.get("reason") or ""),
+                })
             detail.update({
                 "used_locator": resolved.used_locator,
                 "matched_count": resolved.matched_count,
@@ -204,15 +236,16 @@ def _impl__run_ui_step(page: Any, step: Dict[str, Any], screenshots: list[str], 
                 "resolution_page": resolved.page_identity,
                 "freeze_resolution": freeze_resolution,
             })
+            validate_effect_profile_for_action(step)
             begin_network_effect_observation(page, reset=not bool(execution_context.get("_retry_round")))
-            if effect_already_satisfied(page, step):
+            if effect_already_satisfied(page, step, resolved):
                 detail["effect_pre_satisfied"] = True
             else:
                 action_detail = execute_adapted_action(page, resolved, step, timeout_ms)
                 detail["action_adapter"] = action_detail.pop("adapter", "")
                 detail.update(action_detail)
                 _wait_after_action(page, action)
-                detail["effect"] = wait_for_effect_profile(page, step, timeout_ms)
+                detail["effect"] = wait_for_effect_profile(page, step, timeout_ms, resolved)
         else:
             if action in UI_LOCATOR_REQUIRED and not candidates:
                 raise ValueError(f"{action} 步骤缺少 locator")

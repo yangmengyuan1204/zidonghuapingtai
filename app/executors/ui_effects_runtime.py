@@ -4,6 +4,9 @@ import json
 import time
 from typing import Any
 
+from ..services.ui_action_effects import build_retry_policy
+from ..services.ui_target_resolver import select_profile_page, select_profile_scope
+
 
 class UiEffectTimeout(TimeoutError):
     """动作未在共享等待窗口内产生录制时观察到的结果。"""
@@ -92,12 +95,21 @@ def _stable_selector(step: dict[str, Any]) -> str:
     return ""
 
 
-def _effect_locator(page: Any, step: dict[str, Any], effect: dict[str, Any], default: str = "") -> Any | None:
+def _effect_locator(page: Any, step: dict[str, Any], effect: dict[str, Any], default: str = "", resolved: Any = None) -> Any | None:
     selector = _text(effect.get("locator")) or _stable_selector(step) or default
+    resolved_target = getattr(resolved, "target", None) if resolved is not None else None
+    used_locator = _text(getattr(resolved, "used_locator", "")) if resolved is not None else ""
+    if resolved_target is not None and (
+        not _text(effect.get("locator"))
+        or selector in {_stable_selector(step), used_locator}
+    ):
+        return resolved_target
     if not selector:
         return None
     try:
-        return page.locator(selector)
+        selected_page = select_profile_page(page, step, timeout_ms=0)
+        scope = select_profile_scope(selected_page, step, timeout_ms=0)
+        return scope.locator(selector)
     except Exception:
         return None
 
@@ -133,7 +145,7 @@ def _network_matches(page: Any, expected: Any) -> bool:
     return False
 
 
-def _matches(page: Any, step: dict[str, Any], effect: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+def _matches(page: Any, step: dict[str, Any], effect: dict[str, Any], resolved: Any = None) -> tuple[bool, dict[str, Any]]:
     kind = _text(effect.get("type")).lower()
     expected = effect.get("expected")
     if kind in {"url_change", "url", "url_matches"}:
@@ -155,7 +167,7 @@ def _matches(page: Any, step: dict[str, Any], effect: dict[str, Any]) -> tuple[b
         locator = _dialog_locator(page, effect.get("name"))
         return not locator or _count(locator) == 0 or not _visible(locator), {"type": kind, "name": effect.get("name")}
     if kind in {"element_visible", "element_hidden", "element_enabled", "element_disabled"}:
-        locator = _effect_locator(page, step, effect)
+        locator = _effect_locator(page, step, effect, resolved=resolved)
         visible = bool(locator and _visible(locator))
         if kind == "element_visible":
             ok = visible
@@ -169,14 +181,18 @@ def _matches(page: Any, step: dict[str, Any], effect: dict[str, Any]) -> tuple[b
             ok = enabled if kind == "element_enabled" else not enabled
         return ok, {"type": kind, "locator": _text(effect.get("locator"))}
     if kind in {"target_value", "value_changed", "selected_value"}:
-        locator = _effect_locator(page, step, effect)
+        locator = _effect_locator(page, step, effect, resolved=resolved)
         try:
             actual = locator.input_value() if locator else None
         except Exception:
             actual = None
-        return _text(actual) == _text(expected), {"type": kind, "expected": expected, "actual": actual}
+        detail = {"type": kind, "expected": expected, "actual": actual}
+        if step.get("sensitive"):
+            detail["expected"] = "***"
+            detail["actual"] = "***"
+        return _text(actual) == _text(expected), detail
     if kind in {"target_checked", "checked"}:
-        locator = _effect_locator(page, step, effect)
+        locator = _effect_locator(page, step, effect, resolved=resolved)
         try:
             actual = bool(locator.is_checked()) if locator else None
         except Exception:
@@ -200,19 +216,27 @@ def _matches(page: Any, step: dict[str, Any], effect: dict[str, Any]) -> tuple[b
     return False, {"type": kind or "unknown", "reason": "unsupported_effect"}
 
 
-def effect_already_satisfied(page: Any, step: dict[str, Any]) -> bool:
+def validate_effect_profile_for_action(step: dict[str, Any]) -> None:
     effects = _effects(step)
-    return bool(effects) and all(_matches(page, step, effect)[0] for effect in effects)
+    policy = build_retry_policy(step)
+    if policy.get("reason") == "dangerous_action" and (not _profile_required(step) or not effects):
+        raise UiEffectTimeout("危险操作缺少可验证结果，已安全停止")
 
 
-def wait_for_effect_profile(page: Any, step: dict[str, Any], timeout_ms: int) -> dict[str, Any]:
+def effect_already_satisfied(page: Any, step: dict[str, Any], resolved: Any = None) -> bool:
+    effects = _effects(step)
+    return bool(effects) and all(_matches(page, step, effect, resolved)[0] for effect in effects)
+
+
+def wait_for_effect_profile(page: Any, step: dict[str, Any], timeout_ms: int, resolved: Any = None) -> dict[str, Any]:
+    validate_effect_profile_for_action(step)
     effects = _effects(step)
     if not effects:
         return {"required": _profile_required(step), "effects": [], "satisfied": True}
     deadline = time.monotonic() + max(0, timeout_ms) / 1000
     last_details: list[dict[str, Any]] = []
     while True:
-        checks = [_matches(page, step, effect) for effect in effects]
+        checks = [_matches(page, step, effect, resolved) for effect in effects]
         last_details = [detail for _ok, detail in checks]
         if all(ok for ok, _detail in checks):
             return {"required": _profile_required(step), "effects": last_details, "satisfied": True}

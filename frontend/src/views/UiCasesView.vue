@@ -740,7 +740,7 @@ function recordShort(value, max = 120) {
 }
 
 function recordQualityValue(step) {
-  return step?.locator_profile?.quality || (step?.locator ? 'weak' : '')
+  return step?.target_profile?.quality || step?.locator_profile?.quality || (step?.locator ? 'weak' : '')
 }
 
 function recordQualityText(step) {

@@ -10,6 +10,219 @@ from app.routers import ui_cases, ui_record
 from app.services import ui_recording_session
 from app.services.ui_recording_session import build_ui_steps
 from app.models import UiRecordPreflight
+from app.schemas import UiCaseCreate, UiCaseUpdate
+
+
+def test_generic_crud_cannot_activate_new_recording_format(monkeypatch):
+    class _Db:
+        def add(self, value):
+            self.value = value
+
+        def commit(self):
+            return None
+
+        def refresh(self, value):
+            value.id = 1
+
+    steps = [{
+        "action": "click",
+        "locator": "#save",
+        "target_profile": {"schema_version": 1, "element": {"stable_attrs": {"id": "save"}}},
+    }]
+    monkeypatch.setattr(ui_cases, "ensure_project_exists", lambda *_args: None)
+
+    with pytest.raises(HTTPException, match="双轮验证"):
+        ui_cases.create_ui_case(
+            UiCaseCreate(project_id=1, case_name="绕过验证", page_url="https://example.test", steps=steps, status="active"),
+            db=_Db(),
+            current_user=SimpleNamespace(),
+        )
+
+
+def test_generic_crud_keeps_legacy_manual_case_compatibility(monkeypatch):
+    class _Db:
+        def add(self, value):
+            self.value = value
+
+        def commit(self):
+            return None
+
+        def refresh(self, value):
+            value.id = 1
+
+    monkeypatch.setattr(ui_cases, "ensure_project_exists", lambda *_args: None)
+
+    result = ui_cases.create_ui_case(
+        UiCaseCreate(
+            project_id=1,
+            case_name="手工旧格式",
+            page_url="https://example.test",
+            steps=[{"action": "click", "locator": "#save"}],
+            status="active",
+        ),
+        db=_Db(),
+        current_user=SimpleNamespace(),
+    )
+
+    assert result["status"] == "active"
+
+
+def test_generic_update_cannot_promote_recording_draft(monkeypatch):
+    case = SimpleNamespace(
+        id=7,
+        project_id=1,
+        status="draft",
+        steps=[{"action": "click", "target_profile": {"schema_version": 1}}],
+    )
+    monkeypatch.setattr(ui_cases, "get_or_404", lambda *_args, **_kwargs: case)
+
+    with pytest.raises(HTTPException, match="双轮验证"):
+        ui_cases.update_ui_case(
+            7,
+            UiCaseUpdate(status="active"),
+            db=SimpleNamespace(),
+            current_user=SimpleNamespace(),
+        )
+
+
+def test_generic_update_cannot_strip_target_profile_to_bypass_activation(monkeypatch):
+    case = SimpleNamespace(
+        id=8,
+        project_id=1,
+        status="draft",
+        steps=[{"action": "click", "target_profile": {"schema_version": 1}}],
+    )
+    monkeypatch.setattr(ui_cases, "get_or_404", lambda *_args, **_kwargs: case)
+
+    with pytest.raises(HTTPException, match="双轮验证"):
+        ui_cases.update_ui_case(
+            8,
+            UiCaseUpdate(
+                status="active",
+                steps=[{
+                    "action": "click",
+                    "locator_profile": {"quality": "stable"},
+                    "effect_profile": {"required": True, "effects": [{"type": "url_change"}]},
+                }],
+            ),
+            db=SimpleNamespace(),
+            current_user=SimpleNamespace(),
+        )
+
+
+def test_generic_update_allows_metadata_edit_for_verified_active_recording(monkeypatch):
+    case = SimpleNamespace(
+        id=9,
+        project_id=1,
+        case_name="原名称",
+        status="active",
+        steps=[{"action": "click", "target_profile": {"schema_version": 1}}],
+    )
+    db = SimpleNamespace(commit=lambda: None, refresh=lambda _case: None)
+    monkeypatch.setattr(ui_cases, "get_or_404", lambda *_args, **_kwargs: case)
+    monkeypatch.setattr(ui_cases, "serialize", lambda value: vars(value))
+
+    result = ui_cases.update_ui_case(
+        9,
+        UiCaseUpdate(case_name="新名称", timeout=45),
+        db=db,
+        current_user=SimpleNamespace(),
+    )
+
+    assert result["case_name"] == "新名称"
+    assert result["status"] == "active"
+
+
+def test_start_session_rejects_preferred_id_collision_without_overwriting_old_session(monkeypatch):
+    closed = []
+    session_id = "existing-recording-session"
+    old_session = object()
+
+    class _Page:
+        async def goto(self, *_args, **_kwargs):
+            return None
+
+    class _Context:
+        async def add_init_script(self, _script):
+            return None
+
+        def on(self, *_args):
+            return None
+
+        async def new_page(self):
+            return _Page()
+
+        async def close(self):
+            closed.append("context")
+
+    class _Browser:
+        async def new_context(self, **_options):
+            return _Context()
+
+        async def close(self):
+            closed.append("browser")
+
+    class _Playwright:
+        async def stop(self):
+            closed.append("playwright")
+
+    class _Starter:
+        async def start(self):
+            return _Playwright()
+
+    async def _attach(*_args):
+        return None
+
+    monkeypatch.setattr(ui_recording_session, "async_playwright", lambda: _Starter())
+    monkeypatch.setattr(ui_recording_session, "_launch_chromium", lambda _playwright: _fake_async(_Browser())())
+    monkeypatch.setattr(ui_recording_session, "_attach_page_recorder", _attach)
+    ui_recording_session._SESSIONS[session_id] = old_session
+    try:
+        with pytest.raises(RuntimeError, match="已存在"):
+            asyncio.run(ui_recording_session.start_session(
+                1,
+                "冲突会话",
+                "https://example.test",
+                preferred_session_id=session_id,
+            ))
+        assert ui_recording_session._SESSIONS[session_id] is old_session
+        assert closed == []
+    finally:
+        ui_recording_session._SESSIONS.pop(session_id, None)
+
+
+def test_start_session_cleans_partial_browser_resources_on_setup_failure(monkeypatch):
+    closed = []
+
+    class _Context:
+        async def add_init_script(self, _script):
+            raise RuntimeError("init failed")
+
+        async def close(self):
+            closed.append("context")
+
+    class _Browser:
+        async def new_context(self, **_options):
+            return _Context()
+
+        async def close(self):
+            closed.append("browser")
+
+    class _Playwright:
+        async def stop(self):
+            closed.append("playwright")
+
+    class _Starter:
+        async def start(self):
+            return _Playwright()
+
+    monkeypatch.setattr(ui_recording_session, "async_playwright", lambda: _Starter())
+    monkeypatch.setattr(ui_recording_session, "_launch_chromium", lambda _playwright: _fake_async(_Browser())())
+
+    with pytest.raises(RuntimeError, match="init failed"):
+        asyncio.run(ui_recording_session.start_session(1, "失败清理", "https://example.test"))
+
+    assert closed == ["context", "browser", "playwright"]
 
 
 def test_build_ui_steps_merges_consecutive_input_and_appends_assertions():
@@ -51,7 +264,13 @@ def test_build_ui_steps_merges_consecutive_input_and_appends_assertions():
     assert input_steps[0]["fallback_locators"] == ['[name="username"]']
     assert any(step["action"] == "click" and step["locator"] == 'button:has-text("登录")' for step in steps)
     assert steps[-2] == {"name": "检查页面文案", "action": "text_assert", "locator": "body", "value": "欢迎回来"}
-    assert steps[-1] == {"name": "检查最终地址", "action": "assert_url", "value": "https://example.test/home", "exact": False}
+    assert steps[-1] == {
+        "name": "检查最终地址",
+        "action": "assert_url",
+        "value": "https://example.test/home",
+        "exact": False,
+        "observation_only": True,
+    }
 
 
 def test_build_ui_steps_ignores_url_change_as_action_but_uses_final_url():
@@ -68,6 +287,7 @@ def test_build_ui_steps_ignores_url_change_as_action_but_uses_final_url():
     assert steps[2]["value"] == "paid"
     assert steps[3]["value"] == "yes"
     assert steps[-1]["value"] == "https://example.test/list?done=1"
+    assert steps[-1]["observation_only"] is True
 
 
 def test_build_ui_steps_keeps_full_navigation_before_form_input():

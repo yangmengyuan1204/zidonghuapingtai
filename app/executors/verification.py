@@ -75,6 +75,8 @@ def _impl__expected_origin(url: str) -> str:
 def _impl__step_has_business_assertion(step: Dict[str, Any]) -> bool:
     if not isinstance(step, dict):
         return False
+    if step.get("observation_only"):
+        return False
     if step.get("action") in {"assert_url", "assert_visible", "assert_value", "text_assert"}:
         return True
     return bool(step.get("assertions") or step.get("success_condition"))

@@ -486,8 +486,9 @@ def recording_init_script() -> str:
     return RECORDING_SCRIPT
 
 
-def repick_script(step_index: int) -> str:
+def repick_script(step_index: int, timeout_ms: int = 120000) -> str:
     index = max(0, int(step_index))
+    timeout = max(1000, min(600000, int(timeout_ms)))
     return f"""
 (async () => {{
   if (typeof window.__uiRecorderCaptureTarget !== "function") return null;
@@ -520,19 +521,28 @@ def repick_script(step_index: int) -> str:
     previousOutline = candidate.style.outline || "";
     candidate.style.outline = "2px solid #1677ff";
   }};
-  const target = await new Promise((resolve) => {{
+  const target = await new Promise((resolve, reject) => {{
+    let timer = null;
+    const cleanup = () => {{
+      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("pointerover", onPointerOver, true);
+      if (timer) clearTimeout(timer);
+      clearHighlight();
+      banner.remove();
+    }};
     const onClick = (event) => {{
       event.preventDefault();
       event.stopImmediatePropagation();
-      document.removeEventListener("click", onClick, true);
-      document.removeEventListener("pointerover", onPointerOver, true);
       const selected = pickTarget(event.target);
-      clearHighlight();
-      banner.remove();
+      cleanup();
       resolve(selected);
     }};
     document.addEventListener("pointerover", onPointerOver, true);
     document.addEventListener("click", onClick, true);
+    timer = setTimeout(() => {{
+      cleanup();
+      reject(new Error("重新选点等待超时"));
+    }}, {timeout});
   }});
   const info = window.__uiRecorderLocatorInfo
     ? window.__uiRecorderLocatorInfo(target)

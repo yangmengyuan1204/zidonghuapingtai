@@ -180,14 +180,28 @@ def _impl_execute_ui_case_in_page(
             steps, removed_login_steps = _strip_leading_login_steps(steps)
         steps, runtime_replacements = _stabilize_runtime_steps(steps, variables)
         steps, validation_issues = _validate_ui_steps_for_execution(steps)
+        from ..services.ui_recording_session import sanitize_recorded_steps
+
+        log_steps = sanitize_recorded_steps(steps)
+        safe_replacements = []
+        for replacement in runtime_replacements:
+            item = dict(replacement) if isinstance(replacement, dict) else {"value": replacement}
+            try:
+                replacement_step = steps[int(item.get("step")) - 1]
+            except (TypeError, ValueError, IndexError):
+                replacement_step = {}
+            if isinstance(replacement_step, dict) and replacement_step.get("sensitive"):
+                item["from"] = "***"
+                item["to"] = "***"
+            safe_replacements.append(item)
         log_parts.update(
             {
-                "steps": steps,
+                "steps": log_steps,
                 "variables": _mask_variables(variables),
                 "validation_issues": validation_issues,
-                "runtime_seed_variables": applied_variables,
-                "runtime_step_replacements": runtime_replacements,
-                "extracted_vars": extracted_vars,
+                "runtime_seed_variables": _mask_variables(applied_variables),
+                "runtime_step_replacements": safe_replacements,
+                "extracted_vars": _mask_variables(extracted_vars),
             }
         )
         emit_progress("prepared", status="running", steps=steps, validation_issues=validation_issues)

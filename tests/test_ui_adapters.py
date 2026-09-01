@@ -157,6 +157,121 @@ def test_wait_for_effect_profile_uses_single_deadline(fake_page):
     assert wait_for_effect_profile(fake_page, step, 1000)["satisfied"] is True
 
 
+def test_dangerous_click_without_observed_effect_fails_closed():
+    step = {
+        "action": "click",
+        "name": "确认支付",
+        "effect_profile": {"required": False, "effects": []},
+    }
+
+    with pytest.raises(TimeoutError, match="危险操作缺少可验证结果"):
+        wait_for_effect_profile(_FakePage(), step, 100)
+
+
+def test_target_value_effect_reuses_resolved_iframe_target():
+    top_level_target = _Target()
+    iframe_target = _Target()
+    iframe_target.value = "上海"
+    page = _FakePage()
+    page.target = top_level_target
+    resolved = SimpleNamespace(target=iframe_target, used_locator="#city")
+    step = {
+        "action": "select",
+        "locator": "#city",
+        "effect_profile": {
+            "required": True,
+            "effects": [{"type": "target_value", "expected": "上海"}],
+        },
+    }
+
+    assert wait_for_effect_profile(page, step, 100, resolved=resolved)["satisfied"] is True
+
+
+def test_target_value_effect_with_explicit_locator_still_reuses_resolved_iframe_target():
+    top_level_target = _Target()
+    iframe_target = _Target()
+    iframe_target.value = "上海"
+    page = _FakePage()
+    page.target = top_level_target
+    resolved = SimpleNamespace(target=iframe_target, used_locator="#city")
+    step = {
+        "action": "select",
+        "locator": "#city",
+        "effect_profile": {
+            "required": True,
+            "effects": [{"type": "target_value", "locator": "#city", "expected": "上海"}],
+        },
+    }
+
+    assert wait_for_effect_profile(page, step, 100, resolved=resolved)["satisfied"] is True
+
+
+def test_explicit_effect_locator_uses_recorded_iframe_scope():
+    top_level_status = _Target()
+    iframe_action = _Target()
+    iframe_status = _Target()
+    iframe_status.value = "已保存"
+
+    class _FrameScope:
+        def locator(self, selector):
+            assert selector == "#status"
+            return iframe_status
+
+    class _IframeLocator:
+        def count(self):
+            return 1
+
+    class _IframePage(_FakePage):
+        def locator(self, selector):
+            if selector == 'iframe[name="editor"]':
+                return _IframeLocator()
+            if selector == "#status":
+                return top_level_status
+            return super().locator(selector)
+
+        def frame_locator(self, selector):
+            assert selector == 'iframe[name="editor"]'
+            return _FrameScope()
+
+    page = _IframePage()
+    resolved = SimpleNamespace(target=iframe_action, used_locator="#save")
+    step = {
+        "action": "click",
+        "locator": "#save",
+        "target_profile": {"frame_chain": [{"name": "editor"}]},
+        "effect_profile": {
+            "required": True,
+            "effects": [{"type": "target_value", "locator": "#status", "expected": "已保存"}],
+        },
+    }
+
+    assert wait_for_effect_profile(page, step, 0, resolved=resolved)["satisfied"] is True
+
+
+def test_sensitive_target_value_effect_never_returns_or_raises_actual_secret():
+    secret = "otp-987654"
+    page = _FakePage()
+    page.target.value = secret
+    step = {
+        "action": "input",
+        "locator": "input[name='otp']",
+        "sensitive": True,
+        "effect_profile": {
+            "required": True,
+            "effects": [{"type": "target_value", "expected": secret}],
+        },
+    }
+
+    detail = wait_for_effect_profile(page, step, 100)
+    assert secret not in repr(detail)
+
+    page.target.value = "wrong-secret"
+    with pytest.raises(TimeoutError) as exc_info:
+        wait_for_effect_profile(page, step, 0)
+    assert secret not in str(exc_info.value)
+    assert "wrong-secret" not in str(exc_info.value)
+
+
 def test_network_effect_observation_records_responses_before_wait():
     class _Request:
         method = "POST"

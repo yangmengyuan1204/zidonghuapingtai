@@ -1,5 +1,8 @@
+import json
+
 import pytest
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 from app.services.ui_recording_session import (
     _Session,
     _append_event,
@@ -12,9 +15,10 @@ from app.executors.runtime import _active_page
 from app.executors import runtime
 from app.executors import actions
 from app.executors import UiStepExecutionError
+from app.services.ui_target_resolver import TargetResolutionError
 
 
-def test_sanitize_event_preserves_values_and_sets_default_value():
+def test_sanitize_event_replaces_username_without_storing_recorded_value():
     event = {
         "action": "input",
         "locator": "input[name='username']",
@@ -25,14 +29,37 @@ def test_sanitize_event_preserves_values_and_sets_default_value():
     sanitized = _sanitize_event(event, 1)
     assert sanitized is not None
     assert sanitized["value"] == "{{username}}"
-    assert sanitized["default_value"] == "12345678990"
-    assert sanitized["raw_value"] == "12345678990"
+    assert "default_value" not in sanitized
+    assert sanitized["raw_value"] == "***"
 
-    # Step conversion retains default_value
     step = _event_to_step(sanitized)
     assert step is not None
     assert step["value"] == "{{username}}"
-    assert step["default_value"] == "12345678990"
+    assert "default_value" not in step
+    assert "12345678990" not in str(step)
+
+
+@pytest.mark.parametrize(
+    ("locator", "text"),
+    [
+        ("input[name='otp']", "一次性验证码"),
+        ("input[name='cvv']", "银行卡安全码"),
+        ("input[name='api_key']", "API Key"),
+    ],
+)
+def test_sanitize_event_never_keeps_extended_sensitive_inputs(locator, text):
+    secret = "sensitive-987654"
+    sanitized = _sanitize_event({
+        "action": "input",
+        "locator": locator,
+        "value": secret,
+        "input_type": "text",
+        "text": text,
+    }, 2)
+
+    assert sanitized["sensitive"] is True
+    assert sanitized["value"].startswith("{{")
+    assert secret not in str(sanitized)
 
 
 def test_sanitize_event_does_not_strip_ordinary_phone():
@@ -276,6 +303,29 @@ def test_dangerous_action_timeout_is_not_retried(monkeypatch):
     assert len(calls) == 1
 
 
+def test_sensitive_input_step_detail_never_contains_value(monkeypatch):
+    secret = "otp-987654"
+    target = MagicMock()
+    target.count.return_value = 1
+    target.is_visible.return_value = True
+    page = MagicMock()
+    page.url = "https://example.test/verify"
+    page.locator.return_value = target
+    monkeypatch.setattr(actions, "_capture_evidence_screenshot", lambda *_args: "", raising=False)
+    monkeypatch.setattr(actions, "_page_text_excerpt", lambda *_args, **_kwargs: "", raising=False)
+    actions._sync_compat_globals()
+
+    detail = actions._impl__run_ui_step(
+        page,
+        {"action": "input", "locator": "input[name='otp']", "value": secret, "sensitive": True},
+        [],
+        5,
+    )
+
+    assert secret not in repr(detail)
+    assert detail["value"] == "***"
+
+
 def test_retry_round_freezes_resolution_and_disables_ai_heal(monkeypatch):
     contexts = []
     page = type("Page", (), {
@@ -337,6 +387,106 @@ def test_target_profile_step_does_not_require_legacy_locator():
     }])
 
     assert not [item for item in issues if item["severity"] == "error"]
+
+
+def test_target_profile_resolution_failure_can_use_validated_ai_candidate(monkeypatch):
+    page = type("Page", (), {"url": "https://example.test/orders", "wait_for_timeout": lambda *_args: None})()
+    healed_target = object()
+    healed = SimpleNamespace(
+        target=healed_target,
+        used_locator="#healed-save",
+        matched_count=1,
+        score=95,
+        reasons=("AI 候选已验证",),
+        page_identity={"url": page.url, "title": ""},
+    )
+    calls = []
+
+    def fake_resolve(_page, candidate_step, *_args, **_kwargs):
+        calls.append(candidate_step)
+        if len(calls) == 1:
+            raise TargetResolutionError("录制定位器失效")
+        assert candidate_step["ai_locator_candidates"][0]["value"] == "#healed-save"
+        return healed
+
+    monkeypatch.setattr(actions, "resolve_target", fake_resolve)
+    monkeypatch.setattr(
+        "app.services.locator_heal.auto_heal",
+        lambda *_args, **_kwargs: {"locator": "#healed-save", "confidence": 0.95, "reason": "语义匹配"},
+    )
+    monkeypatch.setattr(actions, "execute_adapted_action", lambda *_args: {})
+    monkeypatch.setattr(actions, "effect_already_satisfied", lambda *_args: True)
+    monkeypatch.setattr(actions, "_capture_evidence_screenshot", lambda *_args: "", raising=False)
+    monkeypatch.setattr(actions, "_page_text_excerpt", lambda *_args, **_kwargs: "", raising=False)
+    actions._sync_compat_globals()
+
+    detail = actions._impl__run_ui_step(
+        page,
+        {
+            "action": "click",
+            "locator": "#old-save",
+            "target_profile": {"element": {"role": "button", "accessible_name": "保存"}},
+            "effect_profile": {"required": True, "effects": [{"type": "element_visible"}]},
+        },
+        [],
+        5,
+        case_id=7,
+        db=object(),
+    )
+
+    assert detail["used_locator"] == "#healed-save"
+    assert detail["ai_healed"] is True
+    assert detail["original_locator"] == "#old-save"
+
+
+def test_runtime_log_redacts_rendered_sensitive_steps(monkeypatch):
+    secret = "otp-987654"
+    captured = {}
+    page = type("Page", (), {
+        "url": "https://example.test/verify",
+        "set_default_timeout": lambda *_args: None,
+        "screenshot": lambda *_args, **_kwargs: None,
+    })()
+    case = SimpleNamespace(
+        id=0,
+        case_name="敏感日志",
+        timeout=1,
+        page_url="",
+        steps=[{
+            "action": "input",
+            "locator": "input[name='otp']",
+            "value": "{{code}}",
+            "sensitive": True,
+            "effect_profile": {"effects": [{"type": "target_value", "expected": "{{code}}"}]},
+        }, {"action": "text_assert", "locator": "body", "value": "成功"}],
+    )
+    runtime._sync_compat_globals()
+    monkeypatch.setattr(runtime, "ensure_report_dirs", lambda: None)
+    monkeypatch.setattr(runtime, "builtin_variables", lambda: {"code": secret})
+    monkeypatch.setattr(runtime, "parse_json_value", lambda value, _default: value)
+    monkeypatch.setattr(runtime, "_business_variables_from_text", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(runtime, "_merge_inferred_business_variables", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(runtime, "_page_text_excerpt", lambda *_args, **_kwargs: "成功")
+    monkeypatch.setattr(runtime, "_stabilize_runtime_steps", lambda steps, _variables: (steps, []))
+    monkeypatch.setattr(runtime, "_validate_ui_steps_for_execution", lambda steps: (steps, []))
+    monkeypatch.setattr(runtime, "_wait_page_stable", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(runtime, "_wait_after_action", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(runtime, "_run_ui_step", lambda *_args, **_kwargs: {"status": "passed"})
+    monkeypatch.setattr(runtime, "_quick_screenshot_check", lambda *_args, **_kwargs: {"ok": True})
+    monkeypatch.setattr(runtime, "_url_looks_reasonable", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(runtime, "_final_business_verification", lambda *_args, **_kwargs: (True, [], {}))
+    monkeypatch.setattr(runtime, "write_allure_result", lambda *_args, **_kwargs: "report")
+
+    def dump(parts):
+        captured.clear()
+        captured.update(parts)
+        return json.dumps(parts, ensure_ascii=False, default=str)
+
+    monkeypatch.setattr(runtime, "_json_dump_log", dump)
+
+    assert runtime._impl_execute_ui_case_in_page(case, page)[0] is True
+    assert secret not in json.dumps(captured, ensure_ascii=False, default=str)
+    assert captured["steps"][0]["value"] == "{{code}}"
 
 
 def test_dangerous_action_ignores_external_retry_policy(monkeypatch):
@@ -404,8 +554,8 @@ def test_semantic_branch_begins_network_window_before_precheck(monkeypatch):
     )
     step = {
         "action": "click",
-        "name": "提交订单",
-        "target_profile": {"element": {"stable_attrs": {"id": "submit"}}},
+        "name": "打开详情",
+        "target_profile": {"element": {"stable_attrs": {"id": "details"}}},
     }
     monkeypatch.setattr(actions, "resolve_target", lambda *_args, **_kwargs: resolved, raising=False)
 
@@ -413,7 +563,7 @@ def test_semantic_branch_begins_network_window_before_precheck(monkeypatch):
         order.append(("begin", reset))
         return []
 
-    def fake_precheck(_page, _step):
+    def fake_precheck(_page, _step, _resolved=None):
         order.append(("precheck",))
         return True
 
@@ -443,8 +593,8 @@ def test_retry_round_reset_false_preserves_network_window(monkeypatch):
     )
     step = {
         "action": "click",
-        "name": "提交订单",
-        "target_profile": {"element": {"stable_attrs": {"id": "submit"}}},
+        "name": "打开详情",
+        "target_profile": {"element": {"stable_attrs": {"id": "details"}}},
     }
     monkeypatch.setattr(actions, "resolve_target", lambda *_args, **_kwargs: resolved, raising=False)
 
@@ -461,3 +611,33 @@ def test_retry_round_reset_false_preserves_network_window(monkeypatch):
     actions._impl__run_ui_step(page, step, [], 5, execution_context={"_retry_round": True})
 
     assert order[0][1] is False
+
+
+def test_dangerous_semantic_action_without_effect_is_rejected_before_click(monkeypatch):
+    calls = []
+    page = type("Page", (), {"url": "https://example.test/pay", "wait_for_timeout": lambda *_args: None})()
+    resolved = SimpleNamespace(
+        target=object(),
+        used_locator="#pay",
+        matched_count=1,
+        score=100,
+        reasons=("唯一目标",),
+        page_identity={"url": page.url, "title": ""},
+    )
+    step = {
+        "action": "click",
+        "name": "确认支付",
+        "target_profile": {"element": {"stable_attrs": {"id": "pay"}}},
+        "effect_profile": {"required": False, "effects": []},
+    }
+    monkeypatch.setattr(actions, "resolve_target", lambda *_args, **_kwargs: resolved, raising=False)
+    monkeypatch.setattr(actions, "execute_adapted_action", lambda *_args: calls.append(1) or {}, raising=False)
+    monkeypatch.setattr(actions, "_capture_evidence_screenshot", lambda *_args: "", raising=False)
+    monkeypatch.setattr(actions, "_page_text_excerpt", lambda *_args, **_kwargs: "", raising=False)
+
+    actions._sync_compat_globals()
+    with pytest.raises(UiStepExecutionError) as caught:
+        actions._impl__run_ui_step(page, step, [], 5)
+
+    assert calls == []
+    assert "危险操作缺少可验证结果" in caught.value.detail["error"]

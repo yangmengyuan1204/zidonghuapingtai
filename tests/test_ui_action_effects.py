@@ -105,6 +105,14 @@ def test_plain_click_without_observed_effect_is_optional_and_low_confidence():
     assert profile == {"schema_version": 1, "effects": [], "required": False, "confidence": 20}
 
 
+def test_save_click_without_observed_effect_is_treated_as_dangerous():
+    assert build_retry_policy({"action": "click", "name": "保存"}) == {
+        "safe_retry": False,
+        "max_attempts": 1,
+        "reason": "dangerous_action",
+    }
+
+
 def test_sensitive_input_effect_never_contains_recorded_secret():
     profile = infer_effect_profile(
         {
@@ -133,6 +141,34 @@ def test_sensitive_input_uses_non_secret_value_presence_change():
     )
 
     assert profile["effects"] == [{"type": "target_value", "expected": "{{password}}"}]
+
+
+def test_sensitive_code_effect_keeps_only_runtime_placeholder():
+    profile = infer_effect_profile(
+        {
+            "action": "input",
+            "value": "{{code}}",
+            "sensitive": True,
+            "before_state": {"target": {"value": "***", "has_value": False}},
+            "after_state": {"target": {"value": "***", "has_value": True}},
+        }
+    )
+
+    assert profile["effects"] == [{"type": "target_value", "expected": "{{code}}"}]
+
+
+def test_click_effect_detects_target_disappearing_after_delete():
+    profile = infer_effect_profile(
+        {
+            "action": "click",
+            "name": "删除订单",
+            "before_state": {"target": {"visible": True}},
+            "after_state": {"target": {"visible": False}},
+        }
+    )
+
+    assert profile["effects"] == [{"type": "element_hidden"}]
+    assert profile["required"] is True
 
 
 def test_page_state_url_preserves_spa_fragment_but_removes_tokens():

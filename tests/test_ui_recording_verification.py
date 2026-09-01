@@ -188,12 +188,63 @@ def test_runner_emits_state_and_reset_progress(monkeypatch):
     instance.run()
 
     events = [item for item in payloads if item.get("event") == "state"]
-    assert [item["status"] for item in events] == ["resetting", "round_1_running", "resetting", "round_2_running", "passed"]
-    assert [item["round_no"] for item in events] == [1, 1, 2, 2, 2]
+    assert [item["status"] for item in events] == ["resetting", "round_1_running", "round_1_passed", "resetting", "round_2_running", "passed"]
+    assert [item["round_no"] for item in events] == [1, 1, 1, 2, 2, 2]
     reset_events = [item for item in payloads if item.get("event") == "reset"]
     assert len(reset_events) == 2
     assert reset_events[0]["reset"] == {}
     assert reset_events[0]["round_no"] == 1
+
+
+def test_worker_records_both_successful_rounds_as_passed(monkeypatch):
+    row = SimpleNamespace(
+        run_id="run-worker",
+        session_id="session-worker",
+        project_id=1,
+        status="queued",
+        report_json="{}",
+        error_category="",
+        update_time=None,
+    )
+
+    class _Db:
+        def get(self, _model, run_id):
+            return row if run_id == row.run_id else None
+
+        def commit(self):
+            return None
+
+        def rollback(self):
+            return None
+
+        def close(self):
+            return None
+
+    class _Runner:
+        def __init__(self, target, _case_data, _storage, _db, progress_callback=None):
+            self.row = target
+            self.progress_callback = progress_callback
+
+        def run(self):
+            self.progress_callback({"event": "state", "status": "round_1_passed", "round_no": 1})
+            self.progress_callback({"event": "state", "status": "passed", "round_no": 2})
+            self.row.status = "passed"
+
+        def close_browser(self):
+            return None
+
+    monkeypatch.setattr(verification, "SessionLocal", lambda: _Db())
+    monkeypatch.setattr(verification, "get_recording_config", lambda *_args: SimpleNamespace(max_repair_attempts=3))
+    monkeypatch.setattr(verification, "_VerificationRunner", _Runner)
+
+    verification._run_verification_worker(
+        row.run_id,
+        {"steps": [{"action": "goto", "value": "https://example.test"}]},
+        None,
+    )
+
+    report = json.loads(row.report_json)
+    assert [item["status"] for item in report["rounds"]] == ["passed", "passed"]
 
 
 def test_repair_required_emits_repair_progress(monkeypatch):
@@ -228,3 +279,60 @@ def test_wait_for_repick_marks_repick_waiting_before_apply(monkeypatch):
 
     assert seen["before"] == "repick_waiting"
     assert row.status == "repair_ready"
+
+
+def test_repick_uses_failed_step_page_and_iframe_context(monkeypatch):
+    frame = object()
+
+    class _Handle:
+        def content_frame(self):
+            return frame
+
+    class _FrameLocator:
+        def count(self):
+            return 1
+
+        def element_handle(self):
+            return _Handle()
+
+    first = SimpleNamespace(url="https://example.test/home", title=lambda: "主页")
+    second = SimpleNamespace(
+        url="https://example.test/pay",
+        title=lambda: "支付页",
+        locator=lambda selector: _FrameLocator() if selector == "iframe[name=pay]" else None,
+    )
+    context = SimpleNamespace(pages=[first, second])
+    first.context = second.context = context
+    monkeypatch.setattr(verification, "get_session_state", lambda _sid: {
+        "preview_steps": [
+            {"action": "goto", "value": "https://example.test/home"},
+            {
+                "action": "input",
+                "target_profile": {
+                    "page": {"title": "支付页"},
+                    "frame_chain": [{"selector": "iframe[name=pay]"}],
+                },
+            },
+        ],
+    }, raising=False)
+    used = {}
+    monkeypatch.setattr(verification, "_evaluate_repick", lambda target, _index: used.update({"target": target}) or {
+        "locator_candidates": ["#card"],
+        "target_profile_source": {"stable_attrs": {"id": "card"}},
+    })
+    monkeypatch.setattr(verification, "override_session_step_target", lambda *_args: None)
+    monkeypatch.setattr(verification, "build_target_profile", lambda source: source)
+    row = SimpleNamespace(session_id="session-frame", status="repair_required", error_category="", report_json="{}")
+
+    verification._apply_repick(VerificationControl(run_id="run", requested_step_index=2), first, row)
+
+    assert row.status == "repair_ready"
+    assert used["target"] is frame
+
+
+def test_repick_script_contains_bounded_timeout_and_cleanup():
+    script = verification.repick_script(3, timeout_ms=1500)
+
+    assert "setTimeout" in script
+    assert "1500" in script
+    assert "removeEventListener" in script

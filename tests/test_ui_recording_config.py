@@ -91,6 +91,25 @@ def test_recording_config_rejects_sensitive_reset_variables():
             })
 
 
+@pytest.mark.parametrize("key", ["api_key", "access_key", "private_key", "client_secret"])
+def test_recording_config_rejects_extended_secret_keys(key):
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine) as db:
+        db.add_all([
+            Project(id=1, name="A", desc="", create_time=datetime.now()),
+            Env(id=8, project_id=1, env_name="A测试", base_url="https://a.test"),
+        ])
+        db.commit()
+
+        with pytest.raises(ValueError, match="重置参数不能保存"):
+            save_recording_config(db, 1, {
+                "reset_script_key": "shopping_cart",
+                "reset_env_id": 8,
+                "reset_variables": {key: "not-persisted"},
+            })
+
+
 def test_recording_config_routes_require_admin():
     routes = [
         route for route in app.routes

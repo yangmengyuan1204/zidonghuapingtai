@@ -69,6 +69,7 @@ if (!recordingPanel.includes('定位质量')) failures.push('UiRecordingPanel mi
 if (!recordingPanel.includes('停止并检查')) failures.push('UiRecordingPanel missing preflight action copy')
 if (!view.includes("row.status === 'active'")) failures.push('UiCasesView must hide execution action for draft cases')
 if (!view.includes("{ value: 'draft', label: '待修复草稿' }")) failures.push('UiCasesView missing repair-draft status option')
+if (!view.includes('target_profile?.quality')) failures.push('UiCasesView must display target profile quality before legacy locator quality')
 if (existsSync(preflightPanelPath)) {
   if (!preflightPanelSource.includes("emit('adopt'")) failures.push('UiRecordingPreflightPanel missing candidate adopt action')
   if (!preflightPanelSource.includes('item.reasons')) failures.push('UiRecordingPreflightPanel missing locator score reasons')

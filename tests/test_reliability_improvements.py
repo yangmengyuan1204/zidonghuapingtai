@@ -158,6 +158,16 @@ def test_steps_without_business_assertion_are_not_trusted_success():
     assert any("缺少业务断言" in item for item in verification_issues)
 
 
+def test_automatic_url_observation_is_not_a_business_assertion():
+    steps = [{
+        "action": "assert_url",
+        "value": "https://example.test/orders",
+        "observation_only": True,
+    }]
+
+    assert executors._case_has_business_assertion(steps) is False
+
+
 def test_expected_text_generates_weak_business_assertion():
     class FakeDb:
         flushed = False
