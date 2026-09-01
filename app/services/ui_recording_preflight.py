@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..database import SessionLocal
 from ..models import UiRecordPreflight
+from .ui_recording_verification import launch_verification
 
 
 def determine_recorded_case_status(preflight_status: str, steps: list[dict[str, Any]]) -> str:
@@ -48,6 +49,8 @@ def merge_preflight_progress(report: dict[str, Any], payload: dict[str, Any]) ->
     result = dict(report or {})
     event = str(payload.get("event") or "")
     result["status"] = str(payload.get("status") or result.get("status") or "running")
+    if payload.get("round_no") is not None:
+        result["round_no"] = int(payload.get("round_no") or 0)
     if payload.get("total_steps") is not None:
         result["total_steps"] = int(payload.get("total_steps") or 0)
     if event == "prepared":
@@ -209,12 +212,8 @@ def launch_preflight(
     case_data: dict[str, Any],
     storage_state: dict[str, Any] | None,
 ) -> None:
-    thread = threading.Thread(
-        target=_run_preflight_worker,
-        args=(row.run_id, case_data, storage_state),
-        daemon=True,
-    )
-    thread.start()
+    # 兼容入口：内部转交双轮验证编排器
+    launch_verification(row, case_data=case_data, storage_state=storage_state)
 
 
 def serialize_preflight(row: UiRecordPreflight) -> dict[str, Any]:
@@ -222,6 +221,8 @@ def serialize_preflight(row: UiRecordPreflight) -> dict[str, Any]:
         report = json.loads(getattr(row, "report_json", None) or "{}")
     except (TypeError, ValueError):
         report = {}
+    repair = report.get("repair") if isinstance(report.get("repair"), dict) else None
+    reset = report.get("reset") if isinstance(report.get("reset"), dict) else None
     return {
         "run_id": row.run_id,
         "session_id": row.session_id,
@@ -231,5 +232,9 @@ def serialize_preflight(row: UiRecordPreflight) -> dict[str, Any]:
         "report": report,
         "screenshot": getattr(row, "screenshot", None) or report.get("screenshot") or "",
         "error_category": getattr(row, "error_category", None) or report.get("error_category") or "",
+        "round_no": report.get("round_no") if isinstance(report.get("round_no"), int) else None,
+        "rounds": report.get("rounds") if isinstance(report.get("rounds"), int) else 2,
+        "repair": repair,
+        "reset": reset,
         "updated_at": row.update_time.isoformat() if getattr(row, "update_time", None) else "",
     }

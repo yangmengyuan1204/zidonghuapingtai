@@ -42,6 +42,7 @@ class _Session:
     persistent: bool = False
     events: list[dict[str, Any]] = field(default_factory=list)
     locator_overrides: dict[int, str] = field(default_factory=dict)
+    target_overrides: dict[int, dict[str, Any]] = field(default_factory=dict)
     current_url: str = ""
     last_activity: float = field(default_factory=time.time)
 
@@ -442,6 +443,23 @@ def _session_payload(session_id: str, session: _Session, assertion_text: str = "
         step["locator"] = new_locator
         step["fallback_locators"] = fallbacks
         step["locator_override"] = True
+    for step_index, override in session.target_overrides.items():
+        if not 1 <= step_index <= len(preview_steps):
+            continue
+        step = preview_steps[step_index - 1]
+        if not isinstance(step, dict):
+            continue
+        candidates = [str(item) for item in (override.get("locator_candidates") or []) if str(item)]
+        if candidates:
+            old_locator = str(step.get("locator") or "")
+            step["locator"] = candidates[0]
+            fallbacks = [str(item) for item in (step.get("fallback_locators") or []) if str(item) not in candidates]
+            fallbacks = candidates[1:] + ([old_locator] if old_locator and old_locator not in candidates else []) + fallbacks
+            step["fallback_locators"] = fallbacks
+            step["locator_override"] = True
+        profile = override.get("target_profile")
+        if isinstance(profile, dict):
+            step["target_profile"] = profile
     return {
         "session_id": session_id,
         "status": "recording",
@@ -468,6 +486,24 @@ def override_session_step_locator(session_id: str, step_index: int, locator: str
     return _session_payload(session_id, session)
 
 
+
+def override_session_step_target(session_id: str, step_index: int, locator_candidates: list[str] | None, target_profile: dict[str, Any] | None) -> dict[str, Any]:
+    session = _SESSIONS.get(session_id)
+    if not session:
+        raise ValueError(f"录制会话不存在: {session_id}")
+    index = int(step_index)
+    if index <= 0:
+        raise ValueError("步骤序号不能为空")
+    candidates = [str(item).strip() for item in (locator_candidates or []) if str(item).strip()][:12]
+    profile = target_profile if isinstance(target_profile, dict) else {}
+    if not candidates and not profile:
+        raise ValueError("重新选点结果为空")
+    session.target_overrides[index] = {
+        "locator_candidates": candidates,
+        "target_profile": profile,
+    }
+    session.last_activity = time.time()
+    return _session_payload(session_id, session)
 async def _attach_page_recorder(session: _Session, page: Any) -> None:
     async def record_binding(source: Any, payload: Any) -> None:
         enriched = dict(payload) if isinstance(payload, dict) else payload

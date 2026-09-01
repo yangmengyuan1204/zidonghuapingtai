@@ -131,3 +131,48 @@ def test_executor_imports_locator_heal_from_app_services_package():
     assert "from ..services.locator_heal import auto_heal" in actions
     assert "from ..services.locator_heal import update_heal_history_on_success" in runtime
     assert "confirm_locator_updates" in runtime
+
+
+def test_launch_preflight_delegates_to_verification(monkeypatch):
+    calls = []
+    monkeypatch.setattr(ui_recording_preflight, "launch_verification", lambda row, *, case_data, storage_state: calls.append((row, case_data, storage_state)), raising=False)
+    row = SimpleNamespace(run_id="run-9", session_id="session-9", project_id=1)
+    case_data = {"case_name": "测试", "page_url": "https://example.test", "steps": [], "timeout": 30}
+
+    ui_recording_preflight.launch_preflight(row, case_data=case_data, storage_state=None)
+
+    assert calls == [(row, case_data, None)]
+
+
+def test_serialize_preflight_keeps_legacy_fields_and_adds_round_repair():
+    row = SimpleNamespace(
+        run_id="run-10",
+        session_id="session-10",
+        project_id=1,
+        case_id=0,
+        status="repair_ready",
+        screenshot="shots/fail.png",
+        error_category="",
+        update_time=None,
+        report_json=json.dumps({
+            "status": "repair_ready",
+            "round_no": 1,
+            "rounds": 2,
+            "reset": {"passed": True, "outputs": {}},
+            "repair": {"failed_step_index": 3, "attempts": 1},
+            "steps": [],
+        }, ensure_ascii=False),
+    )
+
+    payload = ui_recording_preflight.serialize_preflight(row)
+
+    assert payload["run_id"] == "run-10"
+    assert payload["session_id"] == "session-10"
+    assert payload["project_id"] == 1
+    assert payload["case_id"] == 0
+    assert payload["status"] == "repair_ready"
+    assert payload["screenshot"] == "shots/fail.png"
+    assert payload["round_no"] == 1
+    assert payload["rounds"] == 2
+    assert payload["repair"] == {"failed_step_index": 3, "attempts": 1}
+    assert payload["reset"] == {"passed": True, "outputs": {}}

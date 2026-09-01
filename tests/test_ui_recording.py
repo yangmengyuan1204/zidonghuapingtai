@@ -505,3 +505,35 @@ def test_draft_ui_case_is_rejected_by_normal_and_visual_execution(monkeypatch):
         ui_cases.run_ui_case(9, payload=None, db=SimpleNamespace(), current_user=SimpleNamespace(id=1))
     with pytest.raises(HTTPException, match="待修复草稿"):
         ui_cases.start_visual_ui_case(9, payload=None, db=SimpleNamespace(), current_user=SimpleNamespace(id=1))
+
+
+def test_override_session_step_target_applies_to_preview_steps():
+    session = ui_recording_session._Session(
+        playwright=None,
+        browser=None,
+        context=None,
+        page=SimpleNamespace(url="https://example.test/list"),
+        project_id=1,
+        case_name="测试",
+        start_url="https://example.test/list",
+    )
+    session.events.append({
+        "action": "click",
+        "locator": 'button:has-text("旧按钮")',
+        "text": "旧按钮",
+        "url": "https://example.test/list",
+    })
+    ui_recording_session._SESSIONS["repick-session"] = session
+    try:
+        payload = ui_recording_session.override_session_step_target(
+            "repick-session",
+            2,
+            ["#new-btn", '[data-testid="new-btn"]'],
+            {"element": {"stable_attrs": {"id": "new-btn"}}},
+        )
+        steps = payload["preview_steps"]
+        assert steps[1]["locator"] == "#new-btn"
+        assert steps[1]["fallback_locators"] == ['[data-testid="new-btn"]', 'button:has-text("旧按钮")']
+        assert steps[1]["target_profile"]["element"]["stable_attrs"]["id"] == "new-btn"
+    finally:
+        ui_recording_session._SESSIONS.pop("repick-session", None)
